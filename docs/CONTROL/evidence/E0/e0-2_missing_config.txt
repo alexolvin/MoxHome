@@ -1,0 +1,23 @@
+##### E0-2: старт без обязательного параметра (отсутствует LLM_BASE_URL)
+--- env-файл прогона:
+# Локальный .env (не коммитится). Значения — плейсхолдеры до BLOCKER-1.
+LLM_MODEL=probe-model
+LLM_API_KEY=<sanitized: placeholder key removed from evidence>
+SERVER_BIND_ADDRESS=127.0.0.1
+--- запуск:
+$ .venv/bin/python -m app --config config/config.yaml --env /tmp/e0probe/env_missing_baseurl
+CONFIGURATION ERROR: не заданы обязательные параметры конфигурации (молчаливых значений по умолчанию нет)
+  missing: ['LLM_BASE_URL']
+EXIT_CODE=2
+
+--- дополнительно: без SERVER_BIND_ADDRESS
+$ .venv/bin/python -m app --config config/config.yaml --env /tmp/e0probe/env_missing_bind
+CONFIGURATION ERROR: не заданы обязательные параметры конфигурации (молчаливых значений по умолчанию нет)
+  missing: ['SERVER_BIND_ADDRESS']
+EXIT_CODE=2
+
+--- дополнительно: без storage.root (YAML без root)
+$ .venv/bin/python -m app --config /tmp/e0probe/no_root.yaml --env .env
+CONFIGURATION ERROR: не заданы обязательные параметры конфигурации (молчаливых значений по умолчанию нет)
+  missing: ['storage.root (YAML-конфиг)']
+EXIT_CODE=2
