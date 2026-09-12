@@ -1,0 +1,94 @@
+##### E1 P5: заголовки / TOC / OPF-метаданные (verbatim)
+дата: 2026-09-12 04:27:02Z
+
+=== ВХОД: OEBPS/content.opf ===
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="book-id">urn:uuid:11111111-2222-3333-4444-555555555555</dc:identifier>
+    <dc:title>Probe Book</dc:title>
+    <dc:creator>Probe Author</dc:creator>
+    <dc:description>A small probe book for engine verification.</dc:description>
+    <dc:subject>probe</dc:subject>
+    <dc:language>en</dc:language>
+    <dc:date>2026-01-01</dc:date>
+    <meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>
+  </metadata>
+  <manifest>
+    <item id="ch1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
+    <item id="ch2" href="chapter2.xhtml" media-type="application/xhtml+xml"/>
+    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+    <item id="css" href="style.css" media-type="text/css"/>
+  </manifest>
+  <spine>
+    <itemref idref="ch1"/>
+    <itemref idref="ch2"/>
+  </spine>
+</package>
+
+
+=== ВЫХОД: OEBPS/content.opf ===
+<?xml version="1.0" encoding="utf-8"?>
+<package version="3.0" unique-identifier="book-id" xmlns="http://www.idpf.org/2007/opf" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <metadata>
+    <dc:identifier id="book-id">urn:uuid:11111111-2222-3333-4444-555555555555</dc:identifier>
+    <dc:title>Probe Book Sureh Errn</dc:title>
+    <dc:creator>Probe Author Sureh Dxwkru</dc:creator>
+    <dc:description>A small probe book for engine verification. D vpdoo sureh errn iru hqjlqh yhulilfdwlrq. </dc:description>
+    <dc:subject>probe sureh</dc:subject>
+    <dc:language>en</dc:language>
+    <dc:date>2026-01-01</dc:date>
+    <meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>
+  </metadata>
+  <manifest>
+    <item id="ch1" href="chapter1.xhtml" media-type="application/xhtml+xml" />
+    <item id="ch2" href="chapter2.xhtml" media-type="application/xhtml+xml" />
+    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav" />
+    <item id="css" href="style.css" media-type="text/css" />
+  </manifest>
+  <spine>
+    <itemref idref="ch1" />
+    <itemref idref="ch2" />
+  </spine>
+</package>
+
+=== ВХОД: OEBPS/nav.xhtml ===
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"
+      lang="en" xml:lang="en">
+<head>
+  <title>Contents</title>
+</head>
+<body>
+  <nav epub:type="toc" id="toc">
+    <h1>Contents</h1>
+    <ol>
+      <li><a href="chapter1.xhtml">Chapter One</a></li>
+      <li><a href="chapter2.xhtml">Chapter Two</a></li>
+    </ol>
+  </nav>
+</body>
+</html>
+
+
+=== ВЫХОД: OEBPS/nav.xhtml ===
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xml:lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+  <title>Contents</title>
+</head>
+<body>
+  <nav id="toc" epub:type="toc">
+    <h1>Contents</h1>
+    <ol>
+      <li><a href="chapter1.xhtml">Chapter One Fkdswhu Rqh</a></li>
+      <li><a href="chapter2.xhtml">Chapter Two Fkdswhu Wzr</a></li>
+    </ol>
+  </nav>
+</body>
+</html>
+
+заголовки h1 на входе:  ['  <h1 id="h1-1">Chapter One</h1>']
+заголовки h1 на выходе: ['  <h1 id="h1-1">Chapter One</h1><h1 id="h1-1__translated">Fkdswhu Rqh</h1>']

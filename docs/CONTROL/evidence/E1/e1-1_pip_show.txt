@@ -1,0 +1,13 @@
+##### E1 P1: версия движка (verbatim)
+дата: 2026-09-12 04:27:02Z
+$ .venv/bin/pip show epub-translator
+Name: epub-translator
+Version: 0.1.10
+Summary: Translate the epub book using LLM. The translated book will retain the original text and list the translated text side by side with the original text.
+Home-page: https://hub.oomol.com/package/books-translator
+Author: Tao Zeyu
+Author-email: i@taozeyu.com
+License: MIT
+Location: /mdisk/EpubTranslator/.venv/lib64/python3.11/site-packages
+Requires: jinja2, mathml2latex, openai, resource-segmentation, tiktoken
+Required-by: 

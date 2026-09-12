@@ -1,0 +1,36 @@
+##### E1 P8: on_fill_failed на заведомо неверном ответе LLM (verbatim)
+дата: 2026-09-12 04:27:02Z
+конфигурация: сценарий mock=fill_garbage (fill отвечает 'Sorry, I cannot produce...'),
+submit=APPEND_BLOCK, max_retries=2 (fill-повторы), target_language=ru
+
+exception: None
+elapsed_seconds: 0.02
+total_tokens: 5972 (input=5699, input_cache=0, output=273)
+progress: [0.05, 0.1, 0.5499999999999999, 0.9999999999999999]
+fill_events: [{"error_message": "No complete <xml>...</xml> block found. Please ensure you have properly closed the XML with </xml> tag.", "retried_count": 1, "over_maximum_retries": false}, {"error_message": "No complete <xml>...</xml> block found. Please ensure you have properly closed the XML with </xml> tag.", "retried_count": 2, "over_maximum_retries": false}, {"error_message": "No complete <xml>...</xml> block found. Please ensure you have properly closed the XML with </xml> tag.", "retried_count": 2, "over_maximum_retries": true}]
+
+fill-запросов к mock: 2
+
+глава 1 выхода побайтово равна входу: False
+
+=== ВЫХОД: OEBPS/chapter1.xhtml ===
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xml:lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>Chapter One</title>
+  <link rel="stylesheet" type="text/css" href="style.css" />
+</head>
+<body>
+  <h1 id="h1-1">Chapter One</h1>
+  <p id="p1">The quick <b>brown fox</b> jumps over the <i>lazy dog</i> near the river.</p>
+  <p id="p2">She visited the <a href="https://example.com/old-mill" id="a1">old mill</a> on a cold morning.</p>
+  <p>The third paragraph has no id and contains a <strong>strong phrase</strong> and a <code>code span</code>.</p>
+  <ul>
+    <li id="li1">First list item with <b>emphasis</b>.</li>
+    <li>Second list item, plain.</li>
+  </ul>
+  <blockquote id="bq1"><p>The fox said: patience is a virtue.</p></blockquote>
+  <p id="p3">End of chapter one.</p>
+</body>
+</html>

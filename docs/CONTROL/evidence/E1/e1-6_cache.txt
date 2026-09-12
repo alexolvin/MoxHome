@@ -1,0 +1,46 @@
+##### E1 P6: поведение кэша (verbatim)
+дата: 2026-09-12 04:27:02Z
+конфигурация: общий cache_path во всех прогонах; target_language=ru, кроме C (de); D — та же папка и язык, но model=other-model.
+
+A (холодный кэш, вызовов к mock: 2):
+exception: None
+elapsed_seconds: 0.024
+total_tokens: 3857 (input=2950, input_cache=0, output=907)
+progress: [0.05, 0.1, 0.5499999999999999, 0.9999999999999999]
+fill_events: []
+
+B (тёплый кэш, фактических LLM-вызовов: 0):
+exception: None
+elapsed_seconds: 0.009
+total_tokens: 0 (input=0, input_cache=0, output=0)
+progress: [0.05, 0.1, 0.5499999999999999, 0.9999999999999999]
+fill_events: []
+
+C (смена target_language на de, та же папка):
+exception: None
+elapsed_seconds: 0.026
+total_tokens: 3857 (input=2950, input_cache=0, output=907)
+progress: [0.05, 0.1, 0.5499999999999999, 0.9999999999999999]
+fill_events: []
+
+D (смена model, та же папка, тот же язык; LLM-вызовов: 0):
+exception: None
+elapsed_seconds: 0.009
+total_tokens: 0 (input=0, input_cache=0, output=0)
+progress: [0.05, 0.1, 0.5499999999999999, 0.9999999999999999]
+fill_events: []
+
+
+прирост токенов B/A: 0.00%   (порог E1-2: <= 2%)
+прирост токенов C/A: 100.00%   (порог E1-3: >= 90%)
+прирост токенов D/A: 0.00%   (смена модели: инвалидация или нет)
+
+структура кэш-каталога (файлы = ключи):
+после A: файлов=2
+  9cdc40d6800e53d28a9cb3ce721d4e774c40f95cc97218b30b0dfe6091aa7584ceca42207f3292128475fff44d0255bcb7f6c672ca3f6ebda3fd11f20ea70b31.txt
+  a56c8a6758651bfaab638af681a6d1ec66a0c34789baeda83659e2ea345d243656fa535826bd0c67b74e1dbac9511861d253282bc2de041781800cebed49a6c6.txt
+после C: файлов=4
+  8199e6d5c73b352b0adc9e93b1d7a24076c6069f266482c6d69e7b1320e196bd6de1ae1f56f7703e83f990e91d43ba57c30ebcfdfce81cc963f1cb2a619e2010.txt
+  9cdc40d6800e53d28a9cb3ce721d4e774c40f95cc97218b30b0dfe6091aa7584ceca42207f3292128475fff44d0255bcb7f6c672ca3f6ebda3fd11f20ea70b31.txt
+  a284ead9dd8ffdbb35dbff22b589b602cc4d1b28d3ec620154c6e87dad6e98c28a30632d1a747cb632390a793c44d402b999dc260e68ce4c4bc3f92bf066040c.txt
+  a56c8a6758651bfaab638af681a6d1ec66a0c34789baeda83659e2ea345d243656fa535826bd0c67b74e1dbac9511861d253282bc2de041781800cebed49a6c6.txt
