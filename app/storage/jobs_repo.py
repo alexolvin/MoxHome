@@ -405,6 +405,15 @@ class JobRepository:
         )
         self._db.conn.commit()
 
+    def set_alignment_coverage(self, job_id: str, coverage: float) -> None:
+        """Доля выравнивания в статусе задания (E6.5). Единственный источник —
+        aligner (alignment_report.json); учебные этапы читают это же значение."""
+        self._db.conn.execute(
+            "UPDATE jobs SET alignment_coverage = ?, updated_at = ? WHERE id = ?",
+            (coverage, _now(), job_id),
+        )
+        self._db.conn.commit()
+
     def add_tokens(self, job_id: str, profile: str, delta: int) -> None:
         if delta <= 0:
             return
@@ -577,5 +586,6 @@ class JobRepository:
             tokens_fill=row["tokens_fill"],
             tokens_analysis=row["tokens_analysis"],
             tokens_total=row["tokens_total"],
+            alignment_coverage=row["alignment_coverage"],
             error_message=row["error_message"],
         )

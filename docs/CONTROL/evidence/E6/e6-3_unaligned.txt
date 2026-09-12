@@ -1,0 +1,10 @@
+##### E6-3: невыровненные поимённо с причиной (verbatim)
+дата: 2026-09-13 01:39:36 · повреждение: удалён блок c1-p1__translated из z_alpha
+
+отчёт: aligned=25/26 coverage=0.961538 unaligned=1
+    UNALIGNED OEBPS/z_alpha.xhtml /htmlbody[1]p[1] | missing_translation | переведённый блок не найден (p)
+
+невыровненных: 1; с причиной из фиксированного набора и detail: 1/1 (100%)
+
+набор причин (TZ E6.4): missing_translation, xpath_mismatch, empty,
+identical, extra_block. Отброшенных без причины: 0.
