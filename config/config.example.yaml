@@ -7,7 +7,7 @@
 server:
   port: 8321
   heartbeat_seconds: 15.0
-  lease_seconds: 45.0
+  lease_seconds: 30.0  # E3-1: ≤ 2× heartbeat_seconds
 
 storage:
   # Корень всех данных проекта (input/, working/, output/, jobs/, cache/, ...).

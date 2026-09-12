@@ -402,6 +402,7 @@ def _lang_opf(title: str, lang: str, uid: str) -> str:
   </metadata>
   <manifest>
     <item id="ch1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
+    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
   </manifest>
   <spine>
     <itemref idref="ch1"/>
@@ -410,12 +411,33 @@ def _lang_opf(title: str, lang: str, uid: str) -> str:
 """
 
 
+def _lang_nav(title: str, lang: str) -> str:
+    return f"""<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"
+      lang="{lang}" xml:lang="{lang}">
+<head>
+  <title>Contents</title>
+</head>
+<body>
+  <nav epub:type="toc" id="toc">
+    <h1>Contents</h1>
+    <ol>
+      <li><a href="chapter1.xhtml">{title}</a></li>
+    </ol>
+  </nav>
+</body>
+</html>
+"""
+
+
 def build_lang_book(out_path: Path, lang: str, title: str, uid: str, lines: tuple[str, str]) -> None:
-    """E2-6 (Rule 4): минимальная корректная книга на языке `lang`."""
+    """E2-6 (Rule 4): минимальная корректная книга на языке `lang` (с nav для движка)."""
     files: dict[str, str | bytes] = {
         "META-INF/container.xml": CONTAINER_XML,
         "OEBPS/content.opf": _lang_opf(title, lang, uid),
         "OEBPS/chapter1.xhtml": _lang_chapter(title, lang, lines),
+        "OEBPS/nav.xhtml": _lang_nav(title, lang),
     }
     _write_epub(out_path, files)
 

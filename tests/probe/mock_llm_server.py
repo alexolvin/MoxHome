@@ -57,6 +57,7 @@ class _State:
     def __init__(self) -> None:
         self.lock = threading.Lock()
         self.scenario = "ok"
+        self.delay_seconds = 0.0
         self.requests: list[dict[str, object]] = []
 
 
@@ -90,6 +91,15 @@ class MockLLMServer:
     def set_scenario(self, mode: str) -> None:
         with self._state.lock:
             self._state.scenario = mode
+
+    def set_delay(self, seconds: float) -> None:
+        """Имитация сетевой задержки ответа (для детерминированного kill в середине перевода)."""
+        with self._state.lock:
+            self._state.delay_seconds = max(0.0, float(seconds))
+
+    def delay_seconds(self) -> float:
+        with self._state.lock:
+            return self._state.delay_seconds
 
     @property
     def url(self) -> str:
@@ -162,6 +172,9 @@ def _build_server(
 
             with state.lock:
                 scenario = state.scenario
+                delay = state.delay_seconds
+            if delay > 0:
+                time.sleep(delay)
 
             if scenario == "http500":
                 error_payload = {
