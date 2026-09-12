@@ -1,0 +1,70 @@
+# EpubTranslator — пример YAML-конфигурации (структурные параметры).
+# Секреты и адреса (LLM_BASE_URL, LLM_MODEL, LLM_API_KEY, SERVER_BIND_ADDRESS)
+# находятся в .env — см. .env.example.
+#
+# Установка: cp config/config.example.yaml config/config.yaml
+
+server:
+  port: 8321
+  heartbeat_seconds: 15.0
+  lease_seconds: 45.0
+
+storage:
+  # Корень всех данных проекта (input/, working/, output/, jobs/, cache/, ...).
+  root: /mdisk/EpubTranslator
+  busy_timeout_ms: 5000
+  # dirs:  # имена каталогов внутри storage.root (можно переопределить)
+  #   input: input
+  #   working: working
+  #   output: output
+  #   jobs: jobs
+  #   cache: cache
+  #   logs: logs
+  #   backups: backups
+  #   books: books
+  #   data: data
+
+llm:
+  # Базовые URL/модель — в .env; здесь только структурные параметры профилей.
+  profiles:
+    translation:
+      token_encoding: cl100k_base
+      temperature: 0.2
+      timeout_seconds: 300
+      retry_times: 3
+      max_retries: 5
+      concurrency: 1
+      max_group_tokens: 2600
+    fill:
+      token_encoding: cl100k_base
+      temperature: 0.2
+      timeout_seconds: 300
+      retry_times: 3
+      max_retries: 5
+      concurrency: 1
+      max_group_tokens: 2600
+    analysis:
+      token_encoding: cl100k_base
+      temperature: 0.1
+      timeout_seconds: 120
+      retry_times: 3
+      max_retries: 3
+      concurrency: 1
+
+limits:
+  vocabulary_max_cards_per_1000_words: 15
+  grammar_max_notes_per_chapter: 10
+  glossary_max_user_prompt_chars: 8000
+
+alignment:
+  min_coverage: 0.995
+
+segmentation:
+  block_tags: [p, li, blockquote, h1, h2, h3, h4, h5, h6, dd, dt, td]
+
+language_detection:
+  sample_segments: 200
+  min_confidence: 0.6
+
+epubcheck:
+  jar_path: data/tools/epubcheck.jar
