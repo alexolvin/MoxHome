@@ -19,16 +19,34 @@ def _missing_keys(excinfo: pytest.ExceptionInfo[ConfigurationError]) -> list[str
     return [str(item) for item in missing]
 
 
-@pytest.mark.parametrize("key", ["SERVER_BIND_ADDRESS", "LLM_BASE_URL", "LLM_MODEL"])
+@pytest.mark.parametrize("key", ["SERVER_BIND_ADDRESS"])
 def test_missing_required_env_key(
     key: str, make_env: object, make_yaml: object, tmp_path: Path
 ) -> None:
-    # T-E0-1
+    # T-E0-1 (E4.1: в .env остался единственный обязательный адрес — bind)
     env_file = make_env({key: None})  # type: ignore[operator]
     yaml_file = make_yaml(str(tmp_path / "data"))  # type: ignore[operator]
     with pytest.raises(ConfigurationError) as excinfo:
         load_settings(yaml_file, env_file)
     assert key in _missing_keys(excinfo)
+
+
+@pytest.mark.parametrize("profile", ["translation", "fill", "analysis"])
+@pytest.mark.parametrize("field", ["base_url", "model"])
+def test_missing_required_llm_profile_field(
+    profile: str,
+    field: str,
+    make_env: object,
+    make_yaml: object,
+    tmp_path: Path,
+) -> None:
+    # E4.1: адрес и модель — только в YAML-профилях; пропуск → отказ старта.
+    yaml_file = make_yaml(  # type: ignore[operator]
+        str(tmp_path / "data"), profile_overrides={profile: {field: ""}}
+    )
+    with pytest.raises(ConfigurationError) as excinfo:
+        load_settings(yaml_file, make_env())  # type: ignore[operator]
+    assert f"llm.profiles.{profile}.{field} (YAML-конфиг)" in _missing_keys(excinfo)
 
 
 def test_missing_storage_root(make_env: object, tmp_path: Path) -> None:
@@ -39,16 +57,24 @@ def test_missing_storage_root(make_env: object, tmp_path: Path) -> None:
     assert any("storage.root" in item for item in _missing_keys(excinfo))
 
 
-def test_all_missing_listed_at_once(make_env: object, make_yaml: object, tmp_path: Path) -> None:
-    env_file = make_env(
-        {"SERVER_BIND_ADDRESS": None, "LLM_BASE_URL": None, "LLM_MODEL": None}
-    )  # type: ignore[operator]
+def test_all_missing_listed_at_once(
+    make_env: object, tmp_path: Path
+) -> None:
+    # Пустой YAML (нет root и всех LLM-профилей) + пустой bind — всё в одном списке.
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text("storage: {}\n", encoding="utf-8")
+    env_file = make_env({"SERVER_BIND_ADDRESS": None})  # type: ignore[operator]
     with pytest.raises(ConfigurationError) as excinfo:
-        load_settings(make_yaml(str(tmp_path / "data")), env_file)  # type: ignore[operator]
+        load_settings(yaml_file, env_file)
     assert set(_missing_keys(excinfo)) == {
         "SERVER_BIND_ADDRESS",
-        "LLM_BASE_URL",
-        "LLM_MODEL",
+        "storage.root (YAML-конфиг)",
+        "llm.profiles.translation.base_url (YAML-конфиг)",
+        "llm.profiles.translation.model (YAML-конфиг)",
+        "llm.profiles.fill.base_url (YAML-конфиг)",
+        "llm.profiles.fill.model (YAML-конфиг)",
+        "llm.profiles.analysis.base_url (YAML-конфиг)",
+        "llm.profiles.analysis.model (YAML-конфиг)",
     }
 
 
@@ -75,29 +101,30 @@ def test_wildcard_bind_allowed_with_flag(
 
 def test_valid_config_loads(make_env: object, make_yaml: object, tmp_path: Path) -> None:
     settings = load_settings(make_yaml(str(tmp_path / "data")), make_env())  # type: ignore[operator]
-    assert settings.llm.base_url == "http://127.0.0.1:9999/v1"
-    assert settings.llm.model == "test-model"
+    # E4.1: адрес и модель — только в YAML-профилях (env-вариантов не существует).
+    translation = settings.llm.profiles["translation"]
+    assert translation.base_url == "http://127.0.0.1:9999/v1"
+    assert translation.model == "test-model"
     assert settings.llm.api_key == "test-key-value-000"
     assert settings.server.port == 8321
     assert settings.storage.root == (tmp_path / "data").resolve()
     for directory in settings.all_data_dirs():
         assert directory.is_dir(), directory
     assert set(settings.llm.profiles) == {"translation", "fill", "analysis"}
-    assert settings.llm.profiles["translation"].concurrency == 1
+    assert translation.concurrency == 1
     assert settings.secrets() == ("test-key-value-000",)
 
 
 def test_profiles_endpoint_override(make_env: object, make_yaml: object, tmp_path: Path) -> None:
-    yaml_file = make_yaml(
+    # E4.1: переопределение — в YAML-профилях; у analysis может быть свой API-ключ.
+    yaml_file = make_yaml(  # type: ignore[operator]
         str(tmp_path / "data"),
-        "llm:\n  profiles:\n    translation:\n      concurrency: 2\n",
-    )  # type: ignore[operator]
-    env_file = make_env(  # type: ignore[operator]
-        {
-            "LLM_ANALYSIS_BASE_URL": "http://127.0.0.1:9998/v1",
-            "LLM_ANALYSIS_MODEL": "analysis-model",
-        }
+        profile_overrides={
+            "translation": {"concurrency": 2},
+            "analysis": {"base_url": "http://127.0.0.1:9998/v1", "model": "analysis-model"},
+        },
     )
+    env_file = make_env({"LLM_ANALYSIS_API_KEY": "analysis-key-000"})  # type: ignore[operator]
     settings = load_settings(yaml_file, env_file)
     assert settings.llm.profiles["translation"].concurrency == 2
     assert settings.llm.endpoint("translation") == (
@@ -108,7 +135,7 @@ def test_profiles_endpoint_override(make_env: object, make_yaml: object, tmp_pat
     assert settings.llm.endpoint("analysis") == (
         "http://127.0.0.1:9998/v1",
         "analysis-model",
-        "test-key-value-000",
+        "analysis-key-000",
     )
 
 
@@ -129,7 +156,7 @@ def test_invalid_yaml_value_rejected(
 ) -> None:
     yaml_file = make_yaml(
         str(tmp_path / "data"),
-        "llm:\n  profiles:\n    translation:\n      concurrency: -5\n",
+        profile_overrides={"translation": {"concurrency": -5}},
     )  # type: ignore[operator]
     with pytest.raises(ConfigurationError) as excinfo:
         load_settings(yaml_file, make_env())  # type: ignore[operator]

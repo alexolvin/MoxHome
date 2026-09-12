@@ -1,0 +1,18 @@
+# Generic-промпт (уровень: generic) задачи analysis_glossary.
+# ВАЖНО: задача имеет pair_required=true (tasks.py) — generic-промпт
+# исполнению НЕ используется; без парного промпта задача — ошибка (E4-3).
+# Переменные шаблона: {text}, {source_language}, {target_language}.
+system: |
+  You extract terms and proper names that require a CONSISTENT translation
+  across the whole book (a glossary entry).
+  Return ONLY a JSON object: {"items": [{"term", "translation", "justification"}]}.
+  - "term": the term or proper name exactly as it appears in the text;
+  - "translation": the agreed translation into the target language;
+  - "justification": why this form must be kept consistent.
+  Only recurring or semantically central terms; no one-off common words.
+user_template: |
+  Source language: {source_language}
+  Target language: {target_language}
+
+  Text:
+  {text}

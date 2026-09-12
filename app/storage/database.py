@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     tokens_translation INTEGER NOT NULL DEFAULT 0,
     tokens_fill INTEGER NOT NULL DEFAULT 0,
     tokens_analysis INTEGER NOT NULL DEFAULT 0,
+    tokens_total INTEGER NOT NULL DEFAULT 0,
     error_message TEXT
 );
 
@@ -60,10 +61,34 @@ CREATE TABLE IF NOT EXISTS stage_results (
     PRIMARY KEY (job_id, stage)
 );
 
+CREATE TABLE IF NOT EXISTS resolved_prompts (
+    job_id TEXT NOT NULL,
+    task TEXT NOT NULL,
+    file TEXT NOT NULL,
+    version INTEGER NOT NULL,
+    level TEXT NOT NULL,
+    created_at REAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS job_tokens (
+    job_id TEXT NOT NULL,
+    profile TEXT NOT NULL,
+    input_tokens INTEGER NOT NULL DEFAULT 0,
+    input_cache_tokens INTEGER NOT NULL DEFAULT 0,
+    output_tokens INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (job_id, profile)
+);
+
 CREATE INDEX IF NOT EXISTS idx_jobs_claim
     ON jobs (status, priority DESC, created_at ASC);
 CREATE INDEX IF NOT EXISTS idx_transitions_job ON transitions (job_id, id);
+CREATE INDEX IF NOT EXISTS idx_resolved_prompts_job ON resolved_prompts (job_id, task);
 """
+
+#: Колонки jobs, добавляемые миграциями (имя → DDL ALTER TABLE).
+_MIGRATED_JOB_COLUMNS: dict[str, str] = {
+    "tokens_total": "INTEGER NOT NULL DEFAULT 0",
+}
 
 
 class Database:
@@ -86,7 +111,23 @@ class Database:
         self.migrate()
 
     def migrate(self) -> None:
+        """DDL новых баз + миграции существующих (E3 → E4: колонка tokens_total).
+
+        CREATE TABLE IF NOT EXISTS не меняет уже существующую таблицу, поэтому
+        для старых баз (E3) недостающие колонки добавляются ALTER TABLE с
+        бекфиллом инварианта tokens_total = translation + fill + analysis.
+        """
         self._conn.executescript(SCHEMA)
+        existing = {row[1] for row in self._conn.execute("PRAGMA table_info(jobs)")}
+        for column, ddl in _MIGRATED_JOB_COLUMNS.items():
+            if column in existing:
+                continue
+            self._conn.execute(f"ALTER TABLE jobs ADD COLUMN {column} {ddl}")
+            if column == "tokens_total":
+                self._conn.execute(
+                    "UPDATE jobs SET tokens_total = "
+                    "tokens_translation + tokens_fill + tokens_analysis"
+                )
         self._conn.commit()
 
     @property

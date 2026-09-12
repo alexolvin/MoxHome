@@ -1,0 +1,34 @@
+##### E4-6: цена не задана → Cost: unknown (verbatim)
+дата: 2026-09-12 21:34:11
+job_id: j-20260912T183412Z-3cd278
+цен в конфигурации профилей: 0 (input/output price не заданы)
+
+отчёт по заданию (строки стоимости, как в выводе воркера):
+  cost: translation: Cost: unknown
+  cost: fill: Cost: unknown
+  cost: analysis: Cost: unknown
+строк «Cost: unknown» из 3 профилей: 3 (100%)
+
+UI/CLI-показ профилей перед стартом задания (E4.3) — verbatim:
+  LLM profiles (E4.3):
+    profile: translation
+      provider: openai-compatible (host: 127.0.0.1:33417)
+      endpoint: http://127.0.0.1:33417/v1
+      model: test-model
+      api_key: задан
+    profile: fill
+      provider: openai-compatible (host: 127.0.0.1:33417)
+      endpoint: http://127.0.0.1:33417/v1
+      model: test-model
+      api_key: задан
+    profile: analysis
+      provider: openai-compatible (host: 127.0.0.1:33417)
+      endpoint: http://127.0.0.1:33417/v1
+      model: test-model
+      api_key: задан
+
+контроль против выдуманной стоимости: те же токены, НО с ценами
+(2.0/8.0 $/Mtok, заданы явно):
+  Cost: 0.0025 USD (input 2.00/Mtok, output 8.00/Mtok)
+без заданных цен функция возвращает ровно «Cost: unknown» —
+численная стоимость без цен в конфигурации не выводится.

@@ -9,12 +9,55 @@
 
 - **Завершено:** E0 (фундамент) — CONTROL PASS 5/5; **E1 (ENGINE_PROBE)** — CONTROL PASS 6/6;
   **E2 (Ридер EPUB и сегментатор)** — CONTROL PASS 6/6; **E3 (Job, воркер, возобновление)** —
-  CONTROL PASS 6/6, 34/34 теста. Отчёты: `docs/ENGINE_PROBE.md`, `docs/CONTROL/E2.md`,
-  `docs/CONTROL/E3.md`; evidence: `docs/CONTROL/evidence/E1…E3/`.
-- **Далее:** **E4 — «Слой LLM»** (профили как единый источник настроек, собственный
-  analysis-клиент тракта A с JSON-схемой и `raw/`, разрешение промптов
-  `prompts/<task>/<src>/<tgt>/vN.yaml` пар→source→generic + `pair_required`, 6-сценарный
-  mock, суммы токенов по профилям, `Cost: unknown` до реального прайса).
+  CONTROL PASS 6/6; **E4 (Слой LLM)** — CONTROL PASS 6/6, 53/53 теста. Отчёты:
+  `docs/ENGINE_PROBE.md`, `docs/CONTROL/E2.md`, `docs/CONTROL/E3.md`, `docs/CONTROL/E4.md`;
+  evidence: `docs/CONTROL/evidence/E1…E4/`.
+- **Далее:** **E5 — «Движок: адаптер и атомарный выход»** (адаптер `TranslationEngine`
+  вместо прямого импорта D17; режимы REPLACE/APPEND_BLOCK; атомарность
+  `target.epub.partial` → validate → `os.replace` → fsync; EPUBCheck (jar + Java 17),
+  отсутствие → `COMPLETED_WITH_WARNINGS`/`VALIDATION_UNAVAILABLE`; 10-пунктный
+  детерминированный QC; глоссарий через user_prompt с лимитом и записью усечения;
+  `on_fill_failed(over_maximum_retries)` → errors.log + QC по именам; исходный EPUB
+  не изменяется, бэкап перед перезаписью).
+
+## Сделано в E4
+
+- **E4.1 — единый источник LLM-настроек:** `llm.profiles.{translation,fill,analysis}` в
+  YAML (`base_url`, `model`, `token_encoding`, `temperature`, `timeout_seconds`,
+  `retry_times`, `concurrency`, опц. `input/output_price_per_mtok`); из `.env` убраны
+  `LLM_BASE_URL`/`LLM_MODEL`/`LLM_ANALYSIS_*` — остались только секреты
+  (`LLM_API_KEY`, `LLM_ANALYSIS_API_KEY`) и адрес бинда. `LLMSection.endpoint(name)` /
+  `profile(name)` / `api_key_for(name)` — единственный путь к настройкам (D21).
+- **E4.3 — показ профилей:** `app/llm/profiles.py::describe_profiles` (провайдер,
+  эндпоинт, модель, профиль, факт ключа) — выводится CLI воркера перед стартом задания.
+- **E4.4 — клиент анализа (тракт A):** `app/llm/analysis.py` — httpx, не-streaming
+  (`stream:false`), валидация `jsonschema` по схеме задачи (`app/llm/tasks.py`:
+  `analysis_vocabulary`, `analysis_grammar`, `analysis_glossary` — pair_required=true),
+  повторы ≤ `profile.retry_times`, сырые ответы каждой попытки →
+  `jobs/<job_id>/raw/`; невалидно после исчерпания → `AnalysisTaskError`,
+  пустой артефакт не создаётся (D19). Зависимости: `jsonschema` + `types-jsonschema` (dev).
+- **E4.5 — внешние промпты:** `prompts/<task>/<source>/<target>/vN.yaml` в storage.root
+  (корень — `llm.prompts_root`, D20); разрешение пара → язык → generic, версия = max N;
+  `pair_required` — без парного промпта `PromptError` до обращения к модели; применённый
+  файл+версия+уровень → таблица `resolved_prompts` (E4-2: 100% задач).
+  В репозитории: generic v1 ×3 + pair `analysis_glossary/en/de/v1.yaml`.
+- **E4.6 — mock:** вид запросов `analysis` (системный промпт с маркером
+  `You are an analysis engine`) + сценарии `empty`, `bad_json`, `refuse`;
+  не-streaming JSON-ответ при `stream:false` (SSE — для движка, без изменений).
+- **E4.7 — токены:** `jobs.tokens_total` (инвариант = сумма профилей; отдельный UPDATE —
+  семантика SQLite SET, D22; миграция E3→E4 `ALTER`+бекфилл), разбивка
+  `job_tokens(job_id, profile, input, input_cache, output)`; тракт T — из
+  `llm.total_tokens/input_tokens/input_cache_tokens/output_tokens` (flush в pipeline);
+  тракт A — собственные счётчики из `usage` (учитываются и неудачные попытки).
+- **E4.6/E4.7 — стоимость:** `app/llm/cost.py::format_cost` — без цен `Cost: unknown`
+  (выдумка запрещена), `job_cost_summary` в отчёте воркера.
+- Измерено (evidence E4): 0 LLM-URL/моделей/ключей в `app/` (3 XML-неймспейса
+  протокола — исключение, D21); разрешение 3/3=100% записано; pair_required fr→de —
+  `PromptError`, 0 записей, 0 LLM-запросов; `bad_json` ×3 → `AnalysisTaskError`,
+  0 артефактов, 3 сырых ответа, 1002 токена; 1896+8078+0=9974=`tokens_total`,
+  расхождение 0 (разбивка 744+1152 / 6345+1733); 3/3 `Cost: unknown`.
+- Тесты: 10 функций (15 запусков) в `tests/test_e4_llm.py` (T-E4-1..8 + резолвер +
+  показ профилей); полный прогон 53 passed, ruff 0, mypy 0 (42 файла).
 
 ## Сделано в E3
 
@@ -105,7 +148,8 @@
   lxml 6.1.3, pydantic 2.13.5, pydantic-settings 2.15.0, python-multipart 0.0.32, PyYAML 6.0.3,
   uvicorn 0.52.4; dev: mypy 2.3.1, pytest 9.1.1, ruff 0.16.7, types-PyYAML.
 - Конфиг-слой `app/core/config.py`: ЕДИНСТВЕННОЕ место чтения `.env`/YAML (Rule 1).
-  Обязательные без по-умолчанию: `SERVER_BIND_ADDRESS`, `LLM_BASE_URL`, `LLM_MODEL`, `storage.root`.
+  Обязательные без по-умолчанию (состояние после E4.1): `SERVER_BIND_ADDRESS` (.env),
+  `llm.profiles.{translation,fill,analysis}.base_url/.model` (YAML), `storage.root` (YAML).
   `0.0.0.0` — только с `ALLOW_WILDCARD_BIND=true`. Профили LLM: translation/fill/analysis.
 - Логирование `app/core/logging.py`: JSON-строки, `job_id` через contextvar, redaction секретов.
 - Ошибки `app/core/errors.py`: классы кодов выхода (2 конфиг, 3 вход, 4 LLM, 5 выход).
@@ -124,6 +168,7 @@ cd /mdisk/EpubTranslator
 .venv/bin/python -m app --config config/config.yaml --env .env   # bootstrap (E0)
 .venv/bin/python -m app.workers.run --config config/config.yaml --env .env  # воркер (E3)
 .venv/bin/python tests/e3_evidence.py   # сборка verbatim-evidence CONTROL E3
+.venv/bin/python tests/e4_evidence.py   # сборка verbatim-evidence CONTROL E4
 ```
 
 Новые пакеты: `uv add <pkg>` (runtime) / `uv add --dev <pkg>`; lock обновляется автоматически.
@@ -156,6 +201,16 @@ share = 0.0000% (порог ≤5%). E3-5: CANCELLED за 0.392 с (порог �
 воркеров, 1 переход CREATED→VALIDATING, 4 LLM-запроса (2 translate).
 Итого по инструментарию после E3: ruff 0, mypy 0 (34 файла), pytest 34/34.
 
+E4-1: 0 LLM-URL/имён моделей/ключей в `app/` (3 XML-неймспейса протокола — зафиксировано
+как исключение, D21). E4-2: разрешение промпта записано 3/3 = 100% (generic v1 ×2,
+pair en/de v1 ×1). E4-3: pair_required fr→de — `PromptError`, 0 записей разрешения,
+0 LLM-запросов (generic-промпт существует — тихий фолбэк исключён). E4-4: `bad_json` ×3
+попытки → `AnalysisTaskError`, артефакт 0, сырых ответов 3, токены неудач 1002 учтены.
+E4-5: 1896 (translation) + 8078 (fill) + 0 (analysis) = 9974 = `tokens_total`,
+расхождение 0; разбивка: 744+1152=1896, 6345+1733=8078. E4-6: 3/3 = 100%
+`Cost: unknown` (цены не заданы); с ценами 2.0/8.0 $/Mtok → `Cost: 0.0025 USD`.
+Итого по инструментарию после E4: ruff 0, mypy 0 (42 файла), pytest 53/53.
+
 ## Открытые дефекты / ограничения
 
 - Сервер ещё не запускается (этап U1) — `python -m app` пока только валидирует конфиг.
@@ -163,6 +218,9 @@ share = 0.0000% (порог ≤5%). E3-5: CANCELLED за 0.392 с (порог �
   интеграция «сервер создаёт задания + воркер их исполняет» — в U1.
 - Конвейер E3 импортирует `epub_translator` напрямую (D17) — временный шов, адаптер
   `TranslationEngine` с атомарным выходом (`.partial` → `os.replace`) появится в E5.
+- Стадия `analyzing` в pipeline — заглушка (E4): клиент анализа, реестр задач и промпты
+  v1 готовы, исполнение задач в конвейере — этапы L1/L2; профиль `analysis` не входит
+  в `config_hash` (D21) — смена analysis-настроек не инвалидирует готовый перевод.
 - LLM-эндпоинт — плейсхолдер (`http://127.0.0.1:9999/v1`, модель `probe-model`) до **BLOCKER-1**
   (нужен реальный OpenAI-совместимый эндпоинт от владельца).
 - EPUBCheck-джар ещё не скачан (нужен для E5; Java 17 на месте).

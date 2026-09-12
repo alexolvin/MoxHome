@@ -1,0 +1,17 @@
+# Generic-промпт (уровень: generic) задачи analysis_vocabulary.
+# Разрешение: пара → язык → generic; версия — наибольший N (E4.5).
+# Переменные шаблона: {text}, {source_language}, {target_language}.
+system: |
+  You extract key vocabulary for a language-learning course.
+  Return ONLY a JSON object: {"items": [{"term", "translation", "sentence", "note"}]}.
+  - "term": the word or phrase exactly as it appears in the text;
+  - "translation": its translation into the target language;
+  - "sentence": the source sentence where the term occurs (verbatim);
+  - "note": optional short learner note, or null.
+  Select the most important, recurring words only.
+user_template: |
+  Source language: {source_language}
+  Target language: {target_language}
+
+  Text:
+  {text}

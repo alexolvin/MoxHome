@@ -28,11 +28,11 @@ def config_hash(settings: Settings, target_language: str) -> str:
     """Хэш конфигурации, влияющей на результат (часть ключа идемпотентности, E3.6).
 
     Другая конфигурация LLM или другой целевой язык — другой ключ: кэш и результаты
-    задания не переиспользуются (E3.7).
+    задания не переиспользуются (E3.7). E4.1: адрес и модель — только в
+    YAML-профилях, поэтому в хэше участвуют сами профили (translation/fill);
+    анализ в хэш не входит, пока стадия analyzing — заглушка (E4, CONTROL E4).
     """
     payload = {
-        "base_url": settings.llm.base_url,
-        "model": settings.llm.model,
         "profiles": {
             name: settings.llm.profile(name).model_dump()
             for name in ("translation", "fill")

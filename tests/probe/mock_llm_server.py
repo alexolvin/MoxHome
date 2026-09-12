@@ -1,12 +1,20 @@
 """Детерминированный OpenAI-совместимый mock-сервер (тестовый инструмент, D3).
 
-Назначение: E1 (разведка движка без реального эндпоинта) и E1-тесты.
+Назначение: E1 (разведка движка), E3 (воркер) и E4 (клиент анализа).
 Сценарии (set_scenario):
-  ok               — translate = code(text); fill = шаблон с code-преобразованием текстов;
+  ok               — translate = code(text); fill = шаблон с code-преобразованием
+                     текстов; analysis = валидный JSON {"items": []};
   fill_garbage     — fill отвечает не-XML (триггер on_fill_failed);
   translate_empty  — translate отвечает пустой строкой;
   http500          — все запросы → HTTP 500;
-  timeout          — сервер не отвечает дольше таймаута клиента (сценарий таймаута).
+  timeout          — сервер не отвечает дольше таймаута клиента (сценарий таймаута);
+  empty            — analysis отвечает пустой строкой (E4.6);
+  bad_json         — analysis отвечает некорректным JSON (E4.6);
+  refuse           — analysis отвечает повторяющимся отказом (E4.6).
+
+Сценарии, помеченные «analysis», действуют только на запросы вида analysis
+(системный промпт начинается с "You are an analysis engine"); на translate/fill
+они не влияют (эти запросы обрабатываются как в ok).
 
 code() — по-символьный детерминированный сдвиг латиницы (rot3): перевод отличается от
 оригинала, сохраняя структуру и длину; коммутирует с конкатенацией и нормализацией,
@@ -118,6 +126,46 @@ def _count_prompt_tokens(messages: list[dict[str, str]]) -> int:
     return total
 
 
+def _analysis_response(scenario: str) -> str:
+    """Ответ для запросов вида analysis (E4.6: детерминированные сценарии)."""
+    if scenario == "empty":
+        return ""
+    if scenario == "bad_json":
+        return '{"items": [unterminated — not valid JSON'
+    if scenario == "refuse":
+        return "I'm sorry, I cannot help you with that request."
+    return json.dumps({"items": []})
+
+
+def _detect_kind(system: str) -> str:
+    """Вид запроса по системному промпту (translate / analysis / fill)."""
+    if system.startswith("You are a translator"):
+        return "translate"
+    if system.startswith("You are an analysis engine"):
+        return "analysis"
+    return "fill"
+
+
+def _fill_response(user: str, scenario: str) -> str:
+    if scenario == "fill_garbage":
+        return "Sorry, I cannot produce the requested XML structure."
+    match = _FILL_TEMPLATE_RE.search(user)
+    if match is None:
+        return "I cannot produce the requested XML structure."
+    root = ET.fromstring(match.group(1))
+    _apply_code_to_element(root)
+    return ET.tostring(root, encoding="unicode")
+
+
+def _build_response(kind: str, scenario: str, user: str) -> str:
+    """Детерминированный ответ на запрос вида kind в сценарии scenario."""
+    if kind == "translate":
+        return "" if scenario == "translate_empty" else code(user)
+    if kind == "analysis":
+        return _analysis_response(scenario)
+    return _fill_response(user, scenario)
+
+
 def _build_server(
     state: _State, _httpd_ref: Callable[[], ThreadingHTTPServer | None]
 ) -> ThreadingHTTPServer:
@@ -168,7 +216,7 @@ def _build_server(
             ]
             system = str(messages[0].get("content", "")) if messages else ""
             user = str(messages[-1].get("content", "")) if messages else ""
-            kind = "translate" if system.startswith("You are a translator") else "fill"
+            kind = _detect_kind(system)
 
             with state.lock:
                 scenario = state.scenario
@@ -185,18 +233,7 @@ def _build_server(
             if scenario == "timeout":
                 time.sleep(30)
 
-            if kind == "translate":
-                response = "" if scenario == "translate_empty" else code(user)
-            elif scenario == "fill_garbage":
-                response = "Sorry, I cannot produce the requested XML structure."
-            else:
-                match = _FILL_TEMPLATE_RE.search(user)
-                if match is None:
-                    response = "I cannot produce the requested XML structure."
-                else:
-                    root = ET.fromstring(match.group(1))
-                    _apply_code_to_element(root)
-                    response = ET.tostring(root, encoding="unicode")
+            response = _build_response(kind, scenario, user)
 
             prompt_tokens = _count_prompt_tokens(messages)
             encoding = tiktoken.get_encoding("cl100k_base")
@@ -219,7 +256,36 @@ def _build_server(
                 )
 
             model_name = str(body.get("model", "probe-model"))
-            self._send_sse(response, model_name, prompt_tokens, completion_tokens)
+            if body.get("stream"):
+                self._send_sse(response, model_name, prompt_tokens, completion_tokens)
+            else:
+                # Не-streaming (OpenAI-совместимо): один JSON-ответ с usage.
+                # Его использует клиент анализа (тракт A, E4.4).
+                self._send_json(
+                    200,
+                    json.dumps(
+                        {
+                            "id": f"chatcmpl-{uuid.uuid4().hex[:12]}",
+                            "object": "chat.completion",
+                            "created": int(time.time()),
+                            "model": model_name,
+                            "choices": [
+                                {
+                                    "index": 0,
+                                    "message": {"role": "assistant", "content": response},
+                                    "finish_reason": "stop",
+                                }
+                            ],
+                            "usage": {
+                                "prompt_tokens": prompt_tokens,
+                                "completion_tokens": completion_tokens,
+                                "total_tokens": prompt_tokens + completion_tokens,
+                                "prompt_tokens_details": {"cached_tokens": 0},
+                            },
+                        },
+                        ensure_ascii=False,
+                    ),
+                )
 
         def _send_sse(
             self, response: str, model: str, prompt_tokens: int, completion_tokens: int
@@ -262,4 +328,7 @@ def _build_server(
             self.wfile.write(b"data: [DONE]\n\n")
             self.wfile.flush()
 
-    return ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    # Потоки-хендлеры — демоны: сценарий timeout (сон 30 с) не держит выход процесса.
+    httpd.daemon_threads = True
+    return httpd

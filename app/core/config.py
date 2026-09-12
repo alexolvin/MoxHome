@@ -1,10 +1,13 @@
 """Конфигурация приложения — ЕДИНСТВЕННЫЙ слой чтения .env и YAML (Rule 1).
 
-Разделение (E0.3): секреты и адреса — в .env; всё структурное — в YAML.
-Прямое чтение os.environ вне этого модуля запрещено.
+Разделение: секреты (API-ключи) и адрес бинда — в .env; всё остальное
+(включая адреса/модели LLM, E4.1) — в YAML. Прямое чтение os.environ вне
+этого модуля запрещено.
 
-Обязательные параметры без значений по умолчанию (E0.5):
-server.bind_address, llm.base_url, llm.model, storage.root.
+Обязательные параметры без значений по умолчанию (E0.5, E4.1):
+server.bind_address (.env), llm.profiles.*.base_url и llm.profiles.*.model (YAML),
+storage.root (YAML). E4.1: адрес и модель LLM задаются ТОЛЬКО в YAML-профилях —
+второго места не существует; в .env остаются только секреты (API-ключи).
 Бинд на 0.0.0.0 — только при явном ALLOW_WILDCARD_BIND=true (E0.6).
 """
 
@@ -27,20 +30,17 @@ from pydantic import (
 
 from app.core.errors import ConfigurationError
 
-#: Все переменные окружения, которые знает приложение (секреты и адреса).
+#: Все переменные окружения, которые знает приложение (E4.1: только секреты
+#: и адрес бинда; адреса/модели LLM — в YAML-профилях, не здесь).
 ALL_ENV_KEYS: tuple[str, ...] = (
     "SERVER_BIND_ADDRESS",
     "SERVER_AUTH_SECRET",
     "ALLOW_WILDCARD_BIND",
-    "LLM_BASE_URL",
-    "LLM_MODEL",
     "LLM_API_KEY",
-    "LLM_ANALYSIS_BASE_URL",
-    "LLM_ANALYSIS_MODEL",
     "LLM_ANALYSIS_API_KEY",
 )
 #: Обязательные переменные окружения (без них — отказ старта).
-REQUIRED_ENV_KEYS: tuple[str, ...] = ("SERVER_BIND_ADDRESS", "LLM_BASE_URL", "LLM_MODEL")
+REQUIRED_ENV_KEYS: tuple[str, ...] = ("SERVER_BIND_ADDRESS",)
 #: Имена профилей LLM (E4): фиксированный набор, не язык/модель, а архитектура.
 PROFILE_NAMES: tuple[str, ...] = ("translation", "fill", "analysis")
 #: Значение, требующее явного разрешения (E0.6). Константа спецификации ТЗ.
@@ -48,10 +48,17 @@ WILDCARD_ADDRESS = "0.0.0.0"
 
 
 class LLMProfile(BaseModel):
-    """Настройки одного LLM-профиля (структурная часть, YAML)."""
+    """Настройки одного LLM-профиля. ЕДИНСТВЕННЫЙ источник адреса и модели (E4.1).
+
+    `base_url` и `model` задаются здесь (YAML) и нигде больше не задаются
+    (Rule 1, E4.1; «второго места не существует»). Секреты (API-ключи) — в .env.
+    Опциональные цены (E4.7): без них стоимость показывается как `Cost: unknown`.
+    """
 
     model_config = ConfigDict(frozen=True)
 
+    base_url: str = Field(min_length=1)
+    model: str = Field(min_length=1)
     token_encoding: str = Field(default="cl100k_base", min_length=1)
     temperature: float = Field(default=0.2, ge=0.0, le=2.0)
     timeout_seconds: float = Field(default=300.0, gt=0.0)
@@ -59,19 +66,26 @@ class LLMProfile(BaseModel):
     max_retries: int = Field(default=5, ge=1)
     concurrency: int = Field(default=1, ge=1)
     max_group_tokens: int = Field(default=2600, gt=0)
+    input_price_per_mtok: float | None = Field(default=None, ge=0.0)
+    output_price_per_mtok: float | None = Field(default=None, ge=0.0)
+
+    @property
+    def cost_defined(self) -> bool:
+        """Цена задана полностью (вход и выход) — иначе `Cost: unknown` (E4-6)."""
+        return self.input_price_per_mtok is not None and self.output_price_per_mtok is not None
 
 
 class LLMSection(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    base_url: str = Field(min_length=1)
-    model: str = Field(min_length=1)
+    #: Секрет профилей translation/fill (LLM_API_KEY в .env).
     api_key: str = ""
-    #: Опциональные переопределения для профиля analysis (T-E4-8).
-    analysis_base_url: str = ""
-    analysis_model: str = ""
+    #: Секрет профиля analysis (LLM_ANALYSIS_API_KEY в .env); пусто → api_key.
     analysis_api_key: str = ""
     profiles: dict[str, LLMProfile]
+    #: Корень внешних промптов (E4.5), относительно storage.root:
+    #: prompts/<task>/<source>/<target>/vN.yaml.
+    prompts_root: str = Field(default="prompts", min_length=1)
 
     def profile(self, name: str) -> LLMProfile:
         try:
@@ -79,15 +93,16 @@ class LLMSection(BaseModel):
         except KeyError as exc:
             raise ConfigurationError(f"LLM-профиль не найден: {name}") from exc
 
+    def api_key_for(self, name: str) -> str:
+        """API-ключ профиля: analysis может иметь собственный (T-E4-8)."""
+        if name == "analysis":
+            return self.analysis_api_key or self.api_key
+        return self.api_key
+
     def endpoint(self, name: str) -> tuple[str, str, str]:
-        """(base_url, model, api_key) профиля с учётом переопределений analysis."""
-        if name == "analysis" and self.analysis_base_url and self.analysis_model:
-            return (
-                self.analysis_base_url,
-                self.analysis_model,
-                self.analysis_api_key or self.api_key,
-            )
-        return self.base_url, self.model, self.api_key
+        """(base_url, model, api_key) профиля — адрес и модель только из YAML (E4.1)."""
+        p = self.profile(name)
+        return p.base_url, p.model, self.api_key_for(name)
 
 
 class ServerSection(BaseModel):
@@ -233,6 +248,11 @@ class Settings(BaseModel):
     def data_dir(self) -> Path:
         return self.storage.root / self.storage.dirs.data
 
+    @property
+    def prompts_dir(self) -> Path:
+        """Корень внешних промптов (E4.5): <storage.root>/<llm.prompts_root>."""
+        return self.storage.root / self.llm.prompts_root
+
     def all_data_dirs(self) -> list[Path]:
         return [
             self.input_dir,
@@ -288,8 +308,8 @@ def load_settings(config_yaml: Path, env_file: Path) -> Settings:
     problems: list[str] = []
     if not env_file.is_file():
         problems.append(
-            f"не найден файл .env: {env_file} (секреты и адреса: LLM_BASE_URL, LLM_MODEL, "
-            "SERVER_BIND_ADDRESS)"
+            f"не найден файл .env: {env_file} (секреты: LLM_API_KEY, LLM_ANALYSIS_API_KEY; "
+            "адрес бинда: SERVER_BIND_ADDRESS)"
         )
     else:
         load_dotenv(env_file, override=False)
@@ -307,6 +327,14 @@ def load_settings(config_yaml: Path, env_file: Path) -> Settings:
     root_raw = storage_sub.get("root")
     if not isinstance(root_raw, str) or not root_raw.strip():
         missing.append("storage.root (YAML-конфиг)")
+    # E4.1: адрес и модель — только в YAML-профилях; второго места нет.
+    profiles_sub = _sub(_sub(data, "llm"), "profiles")
+    for name in PROFILE_NAMES:
+        profile_sub = _sub(profiles_sub, name)
+        for field in ("base_url", "model"):
+            value = profile_sub.get(field)
+            if not isinstance(value, str) or not value.strip():
+                missing.append(f"llm.profiles.{name}.{field} (YAML-конфиг)")
     if missing:
         raise ConfigurationError(
             "не заданы обязательные параметры конфигурации (молчаливых значений по умолчанию нет)",
@@ -316,14 +344,8 @@ def load_settings(config_yaml: Path, env_file: Path) -> Settings:
     root_path = Path(str(root_raw)).expanduser().resolve()
 
     try:
-        llm_sub = _sub(data, "llm")
-        profiles_sub = _sub(llm_sub, "profiles")
         llm_section = LLMSection(
-            base_url=env["LLM_BASE_URL"],
-            model=env["LLM_MODEL"],
             api_key=env["LLM_API_KEY"],
-            analysis_base_url=env["LLM_ANALYSIS_BASE_URL"],
-            analysis_model=env["LLM_ANALYSIS_MODEL"],
             analysis_api_key=env["LLM_ANALYSIS_API_KEY"],
             profiles={
                 name: LLMProfile.model_validate(_sub(profiles_sub, name)) for name in PROFILE_NAMES

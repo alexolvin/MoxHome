@@ -162,15 +162,30 @@ class Pipeline:
             log_dir_path=self.job_dir(job.id) / "engine_log" / "fill",
         )
 
-        counters = {"translation": 0, "fill": 0}
+        counters: dict[str, dict[str, int]] = {
+            "translation": {"total": 0, "input": 0, "input_cache": 0, "output": 0},
+            "fill": {"total": 0, "input": 0, "input_cache": 0, "output": 0},
+        }
 
         def _flush_tokens() -> None:
-            delta_t = int(translation_llm.total_tokens) - counters["translation"]
-            delta_f = int(fill_llm.total_tokens) - counters["fill"]
-            counters["translation"] = int(translation_llm.total_tokens)
-            counters["fill"] = int(fill_llm.total_tokens)
-            repo.add_tokens(job.id, "translation", delta_t)
-            repo.add_tokens(job.id, "fill", delta_f)
+            # E4.7 (тракт T): из llm.total_tokens/input_tokens/input_cache_tokens/output_tokens.
+            for name, llm in (("translation", translation_llm), ("fill", fill_llm)):
+                now = {
+                    "total": int(llm.total_tokens),
+                    "input": int(llm.input_tokens),
+                    "input_cache": int(llm.input_cache_tokens),
+                    "output": int(llm.output_tokens),
+                }
+                prev = counters[name]
+                repo.add_tokens(job.id, name, now["total"] - prev["total"])
+                repo.add_profile_tokens(
+                    job.id,
+                    name,
+                    now["input"] - prev["input"],
+                    now["input_cache"] - prev["input_cache"],
+                    now["output"] - prev["output"],
+                )
+                prev.update(now)
 
         def _on_progress(progress: float) -> None:
             repo.set_progress(job.id, progress)
@@ -202,7 +217,7 @@ class Pipeline:
             "translating",
             self.input_hash(job),
             str(target),
-            tokens=counters["translation"] + counters["fill"],
+            tokens=counters["translation"]["total"] + counters["fill"]["total"],
         )
         return len(fill_failures)
 

@@ -1,0 +1,16 @@
+# Generic-промпт (уровень: generic) задачи analysis_grammar.
+# Разрешение: пара → язык → generic; версия — наибольший N (E4.5).
+# Переменные шаблона: {text}, {source_language}, {target_language}.
+system: |
+  You analyze a text for grammar observations for a language-learning course.
+  Return ONLY a JSON object: {"items": [{"rule", "example", "explanation"}]}.
+  - "rule": short name of the grammar pattern observed;
+  - "example": the source sentence (verbatim) illustrating it;
+  - "explanation": one short explanation in the target language.
+  Only patterns actually present in the text.
+user_template: |
+  Source language: {source_language}
+  Target language: {target_language}
+
+  Text:
+  {text}
