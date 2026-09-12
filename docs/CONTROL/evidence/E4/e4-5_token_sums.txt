@@ -1,0 +1,18 @@
+##### E4-5: сумма токенов по профилям == сумма по заданию (verbatim)
+дата: 2026-09-12 21:34:11
+job_id: j-20260912T183411Z-397e71
+полный прогон (validating → planning → translating), mock ok
+
+tokens_translation : 1896
+tokens_fill        : 8078
+tokens_analysis    : 0
+сумма по профилям  : 9974
+tokens_total (job) : 9974
+расхождение        : 0
+
+разбивка по профилям (таблица job_tokens, E4.7; тракт T — из
+llm.input_tokens/input_cache_tokens/output_tokens):
+  fill         input=6345   input_cache=0    output=1733   input+output=8078
+  translation  input=744    input_cache=0    output=1152   input+output=1896
+для каждого профиля input + output == сумма профиля (см. колонки)
+— разбивка не расходится с итогами.

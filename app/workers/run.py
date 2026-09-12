@@ -16,6 +16,8 @@ from pathlib import Path
 from app.core.config import load_settings
 from app.core.errors import ConfigurationError
 from app.core.logging import setup_logging
+from app.llm.cost import job_cost_summary
+from app.llm.profiles import describe_profiles
 from app.storage.database import Database
 from app.storage.jobs_repo import JobRepository
 from app.workers.worker import Worker
@@ -37,6 +39,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return exc.exit_code
 
     setup_logging(settings.logs_dir, secrets=settings.secrets())
+    # E4.3: перед стартом задания CLI показывает провайдер/эндпоинт/модель по профилям.
+    print(describe_profiles(settings))
     with Database(settings.jobs_db_path, settings.storage.busy_timeout_ms) as db:
         repo = JobRepository(db)
         worker = Worker(settings, repo)
@@ -44,15 +48,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             worker.run_forever()
             return 0
         job = worker.run_once()
-
-    if job is None:
-        print("worker: нет доступных заданий (очередь пуста)")
-    else:
+        if job is None:
+            print("worker: нет доступных заданий (очередь пуста)")
+            return 0
         print(
             f"worker: job={job.id} status={job.status.value} "
-            f"progress={job.progress:.2f} "
-            f"tokens={job.tokens_translation + job.tokens_fill + job.tokens_analysis}"
+            f"progress={job.progress:.2f} tokens_total={job.tokens_total}"
         )
+        # E4.6: стоимость — только при заданных ценах, иначе Cost: unknown.
+        print(job_cost_summary(settings, repo, job))
     return 0
 
 

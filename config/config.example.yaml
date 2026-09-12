@@ -1,6 +1,6 @@
-# EpubTranslator — пример YAML-конфигурации (структурные параметры).
-# Секреты и адреса (LLM_BASE_URL, LLM_MODEL, LLM_API_KEY, SERVER_BIND_ADDRESS)
-# находятся в .env — см. .env.example.
+# EpubTranslator — пример YAML-конфигурации.
+# E4.1: адреса и модели LLM задаются ТОЛЬКО здесь (в профилях) — это единственный
+# источник; в .env — только секреты (API-ключи) и адрес бинда (см. .env.example).
 #
 # Установка: cp config/config.example.yaml config/config.yaml
 
@@ -25,9 +25,15 @@ storage:
   #   data: data
 
 llm:
-  # Базовые URL/модель — в .env; здесь только структурные параметры профилей.
+  # E4.1: base_url и model — единственный источник настроек LLM (любые
+  # OpenAI-совместимые эндпоинты: vLLM, Ollama, ...; привязка к серверу запрещена).
+  # API-ключи — в .env (LLM_API_KEY; опционально LLM_ANALYSIS_API_KEY).
+  # Опционально: цены за 1M токенов (input_price_per_mtok / output_price_per_mtok);
+  # без них стоимость показывается как `Cost: unknown` (E4-6).
   profiles:
     translation:
+      base_url: http://localhost:8000/v1
+      model: example-model
       token_encoding: cl100k_base
       temperature: 0.2
       timeout_seconds: 300
@@ -36,6 +42,8 @@ llm:
       concurrency: 1
       max_group_tokens: 2600
     fill:
+      base_url: http://localhost:8000/v1
+      model: example-model
       token_encoding: cl100k_base
       temperature: 0.2
       timeout_seconds: 300
@@ -44,6 +52,8 @@ llm:
       concurrency: 1
       max_group_tokens: 2600
     analysis:
+      base_url: http://localhost:8000/v1
+      model: example-model
       token_encoding: cl100k_base
       temperature: 0.1
       timeout_seconds: 120

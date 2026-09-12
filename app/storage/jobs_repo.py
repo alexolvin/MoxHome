@@ -61,6 +61,32 @@ class TransitionRecord:
     actor: str
 
 
+@dataclass(frozen=True)
+class ProfileTokens:
+    """Токены профиля по заданию (разбивка, E4.7). input_cache ⊆ input."""
+
+    profile: str
+    input_tokens: int
+    input_cache_tokens: int
+    output_tokens: int
+
+    @property
+    def total(self) -> int:
+        return self.input_tokens + self.output_tokens
+
+
+@dataclass(frozen=True)
+class ResolvedPrompt:
+    """Фактически применённый промпт задачи (E4-2: файл + версия, 100% задач)."""
+
+    job_id: str
+    task: str
+    file: str
+    version: int
+    level: str  # pair | source | generic
+    created_at: float
+
+
 def _now() -> float:
     return time.time()
 
@@ -392,7 +418,87 @@ class JobRepository:
             f"UPDATE jobs SET {column} = {column} + ?, updated_at = ? WHERE id = ?",
             (delta, _now(), job_id),
         )
+        # Инвариант E4-5: tokens_total всегда равен сумме по профилям. Отдельное
+        # UPDATE: в SQLite правые части SET вычисляются от исходных значений строки,
+        # поэтому пересчёт в том же выражении недоучёл бы прирост.
+        self._db.conn.execute(
+            "UPDATE jobs SET tokens_total = tokens_translation + tokens_fill + tokens_analysis "
+            "WHERE id = ?",
+            (job_id,),
+        )
         self._db.conn.commit()
+
+    def add_profile_tokens(
+        self,
+        job_id: str,
+        profile: str,
+        input_delta: int,
+        input_cache_delta: int,
+        output_delta: int,
+    ) -> None:
+        """Разбивка токенов профиля (E4.7): накопление по job_tokens."""
+        if input_delta <= 0 and input_cache_delta <= 0 and output_delta <= 0:
+            return
+        if profile not in ("translation", "fill", "analysis"):
+            raise JobStateError(f"неизвестный профиль токенов: {profile}")
+        self._db.conn.execute(
+            """
+            INSERT INTO job_tokens
+                (job_id, profile, input_tokens, input_cache_tokens, output_tokens)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(job_id, profile) DO UPDATE SET
+                input_tokens = input_tokens + excluded.input_tokens,
+                input_cache_tokens = input_cache_tokens + excluded.input_cache_tokens,
+                output_tokens = output_tokens + excluded.output_tokens
+            """,
+            (job_id, profile, input_delta, input_cache_delta, output_delta),
+        )
+        self._db.conn.commit()
+
+    def profile_tokens(self, job_id: str) -> dict[str, ProfileTokens]:
+        """Суммы токенов по профилям задания (разбивка, E4.7)."""
+        rows = self._db.conn.execute(
+            "SELECT * FROM job_tokens WHERE job_id = ?", (job_id,)
+        ).fetchall()
+        return {
+            row["profile"]: ProfileTokens(
+                profile=row["profile"],
+                input_tokens=row["input_tokens"],
+                input_cache_tokens=row["input_cache_tokens"],
+                output_tokens=row["output_tokens"],
+            )
+            for row in rows
+        }
+
+    # ------------------------------------------------------------------ промпты (E4-2)
+
+    def record_resolved_prompt(
+        self, job_id: str, task: str, file: str, version: int, level: str
+    ) -> None:
+        """Фактически применённый промпт задачи (E4-2: записывается в задание)."""
+        self._db.conn.execute(
+            "INSERT INTO resolved_prompts (job_id, task, file, version, level, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (job_id, task, file, version, level, _now()),
+        )
+        self._db.conn.commit()
+
+    def list_resolved_prompts(self, job_id: str) -> list[ResolvedPrompt]:
+        rows = self._db.conn.execute(
+            "SELECT * FROM resolved_prompts WHERE job_id = ? ORDER BY created_at, task",
+            (job_id,),
+        ).fetchall()
+        return [
+            ResolvedPrompt(
+                job_id=row["job_id"],
+                task=row["task"],
+                file=row["file"],
+                version=row["version"],
+                level=row["level"],
+                created_at=row["created_at"],
+            )
+            for row in rows
+        ]
 
     def set_error(self, job_id: str, message: str) -> None:
         self._db.conn.execute(
@@ -468,5 +574,6 @@ class JobRepository:
             tokens_translation=row["tokens_translation"],
             tokens_fill=row["tokens_fill"],
             tokens_analysis=row["tokens_analysis"],
+            tokens_total=row["tokens_total"],
             error_message=row["error_message"],
         )

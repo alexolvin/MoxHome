@@ -1,0 +1,19 @@
+##### E4-4: невалидный JSON от модели (mock bad_json) (verbatim)
+дата: 2026-09-12 21:34:11
+job_id: j-20260912T183411Z-595b14
+сценарий mock: bad_json (ответ 200 с некорректным JSON), попыток: 3
+
+выброшена ошибка задачи:
+  AnalysisTaskError: задача analysis_vocabulary не выполнена: после 3 попыток ответ невалиден (последняя проблема: ответ модели не является JSON: Expecting value: line 1 column 12 (char 11)); пустой артефакт не создаётся (E4-4)
+
+пустой артефакт analysis/analysis_vocabulary.json создан: False
+сырые ответы попыток в jobs/<job_id>/raw/ (полное сохранение, E4.4):
+  analysis_vocabulary_attempt_1.json
+  analysis_vocabulary_attempt_2.json
+  analysis_vocabulary_attempt_3.json
+токены неудачных попыток учтены в задании (analysis): 1002
+
+механизм: ответ валидируется jsonschema-схемой задачи; при сбое —
+повтор (ограничено profile.retry_times); после исчерпания — ошибка
+задачи, артефакт результата НЕ создаётся; каждая попытка хранится
+в raw/ для аудита.

@@ -1,0 +1,107 @@
+"""Реестр задач анализа (тракт A, E4): имя → JSON-схема ответа + pair_required.
+
+JSON-схема — контракт структурированного ответа модели: клиент анализа
+обязательно валидирует ответ по схеме (jsonschema); невалидный ответ после
+исчерпания повторов — ошибка задачи, а не пустой результат (E4.4).
+
+Задачи — анализ, который будет исполняться на этапах L1/L2 (словарь, грамматика,
+глоссарий); E4 закладывает их контракты и инфраструктуру исполнения.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
+
+
+@dataclass(frozen=True)
+class TaskSpec:
+    name: str
+    description: str
+    pair_required: bool
+    schema: dict[str, Any]
+
+
+def _object_schema(items_schema: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "type": "object",
+        "required": ["items"],
+        "additionalProperties": False,
+        "properties": {"items": {"type": "array", "items": items_schema}},
+    }
+
+
+_VOCABULARY_SCHEMA = _object_schema(
+    {
+        "type": "object",
+        "required": ["term", "translation", "sentence"],
+        "additionalProperties": False,
+        "properties": {
+            "term": {"type": "string", "minLength": 1},
+            "translation": {"type": "string", "minLength": 1},
+            "sentence": {"type": "string", "minLength": 1},
+            "note": {"type": ["string", "null"]},
+        },
+    }
+)
+
+_GRAMMAR_SCHEMA = _object_schema(
+    {
+        "type": "object",
+        "required": ["rule", "example", "explanation"],
+        "additionalProperties": False,
+        "properties": {
+            "rule": {"type": "string", "minLength": 1},
+            "example": {"type": "string", "minLength": 1},
+            "explanation": {"type": "string", "minLength": 1},
+        },
+    }
+)
+
+_GLOSSARY_SCHEMA = _object_schema(
+    {
+        "type": "object",
+        "required": ["term", "translation", "justification"],
+        "additionalProperties": False,
+        "properties": {
+            "term": {"type": "string", "minLength": 1},
+            "translation": {"type": "string", "minLength": 1},
+            "justification": {"type": "string", "minLength": 1},
+        },
+    }
+)
+
+_TASKS: dict[str, TaskSpec] = {
+    "analysis_vocabulary": TaskSpec(
+        name="analysis_vocabulary",
+        description="Извлечение ключевой лексики из текста (карточки: термин, перевод, пример).",
+        pair_required=False,
+        schema=_VOCABULARY_SCHEMA,
+    ),
+    "analysis_grammar": TaskSpec(
+        name="analysis_grammar",
+        description="Извлечение грамматических наблюдений (правило, пример, объяснение).",
+        pair_required=False,
+        schema=_GRAMMAR_SCHEMA,
+    ),
+    "analysis_glossary": TaskSpec(
+        name="analysis_glossary",
+        description=(
+            "Извлечение терминов/имён, требующих согласованного перевода (глоссарий). "
+            "pair_required: выбор терминов зависит от пары языков."
+        ),
+        pair_required=True,
+        schema=_GLOSSARY_SCHEMA,
+    ),
+}
+
+
+def task(name: str) -> TaskSpec:
+    try:
+        return _TASKS[name]
+    except KeyError as exc:
+        raise KeyError(f"неизвестная задача анализа: {name}") from exc
+
+
+def all_tasks() -> tuple[TaskSpec, ...]:
+    return tuple(_TASKS.values())

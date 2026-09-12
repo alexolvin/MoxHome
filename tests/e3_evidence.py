@@ -64,15 +64,22 @@ def evidence(name: str, content: str) -> None:
 def _make_env_storage(work: Path, server: MockLLMServer) -> tuple[Settings, Path, Path]:
     work.mkdir(parents=True, exist_ok=True)
     env_file = work / "test.env"
+    # E4.1: в .env — только секреты и адрес бинда.
     env_file.write_text(
         "SERVER_BIND_ADDRESS=127.0.0.1\n"
-        f"LLM_BASE_URL={server.url}\n"
-        "LLM_MODEL=test-model\n"
         "LLM_API_KEY=test-key-value-000\n",
         encoding="utf-8",
     )
+    # E4.1: адрес и модель LLM — только в YAML-профилях.
+    profile_lines = "\n".join(
+        f"    {name}:\n      base_url: {server.url}\n      model: test-model"
+        for name in ("translation", "fill", "analysis")
+    )
     cfg_file = work / "config.yaml"
-    cfg_file.write_text(f"storage:\n  root: {work}\n{SERVER_EXTRA}", encoding="utf-8")
+    cfg_file.write_text(
+        f"storage:\n  root: {work}\nllm:\n  profiles:\n{profile_lines}\n{SERVER_EXTRA}",
+        encoding="utf-8",
+    )
     settings = load_settings(cfg_file, env_file)
     return settings, cfg_file, env_file
 

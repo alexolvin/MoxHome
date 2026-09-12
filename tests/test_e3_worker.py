@@ -54,6 +54,9 @@ SERVER_EXTRA = f"server:\n  heartbeat_seconds: {HEARTBEAT}\n  lease_seconds: {LE
 #: 1.5 с → фаза перевода ~6 с, kill гарантированно позже истечения исходной
 #: аренды (1.0 с): без продления heartbeat арена на момент kill была бы истекшей.
 KILL_DELAY = 1.5
+#: Адрес по умолчанию для YAML-профилей, когда mock-сервер не нужен
+#: (совпадает с константой conftest — тестовая фикстура, не production-значение).
+DEFAULT_LLM_BASE_URL = "http://127.0.0.1:9999/v1"
 
 _COMPLEX = FIXTURES / "complex.epub"
 _SUSPICIOUS = FIXTURES / "lang_de.epub"
@@ -75,14 +78,22 @@ def mock_server() -> Iterator[MockLLMServer]:
 def _settings_for(
     tmp_path: Path,
     make_env: Callable[[Mapping[str, str | None] | None], Path],
-    make_yaml: Callable[[str, str], Path],
+    make_yaml: Callable[..., Path],
     server: MockLLMServer | None = None,
 ) -> tuple[Settings, Database, JobRepository]:
-    """Настройки + БД + репозиторий на изолированном storage.root."""
-    cfg = make_yaml(str(tmp_path / "storage"), SERVER_EXTRA)
-    env = make_env({"LLM_BASE_URL": server.url} if server is not None else None)
+    """Настройки + БД + репозиторий на изолированном storage.root.
+
+    E4.1: адрес LLM задаётся в YAML-профилях (base_url в make_yaml), в .env —
+    только секреты и адрес бинда.
+    """
+    cfg = make_yaml(
+        str(tmp_path / "storage"),
+        SERVER_EXTRA,
+        base_url=server.url if server is not None else DEFAULT_LLM_BASE_URL,
+    )
+    env = make_env(None)
     settings = load_settings(cfg, env)
-    db = Database(settings.jobs_dir / "jobs.db", settings.storage.busy_timeout_ms)
+    db = Database(settings.jobs_db_path, settings.storage.busy_timeout_ms)
     return settings, db, JobRepository(db)
 
 

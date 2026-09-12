@@ -131,4 +131,6 @@ class Job:
     tokens_translation: int = 0
     tokens_fill: int = 0
     tokens_analysis: int = 0
+    #: Инвариант (E4-5): tokens_total == tokens_translation + tokens_fill + tokens_analysis.
+    tokens_total: int = 0
     error_message: str | None = None
