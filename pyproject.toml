@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Self-hosted pipeline: EPUB translation and learning materials generation"
 requires-python = ">=3.11,<3.14"
 dependencies = [
+    "epub-translator>=0.1.10",
     "fastapi>=0.141.1",
     "httpx>=0.28.1",
     "jinja2>=3.1.6",
@@ -31,11 +32,20 @@ ignore = [
     "RUF003",
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# XHTML-строки фикстур — данные, не код
+"tests/fixtures/epub/build.py" = ["E501"]
+
 [tool.mypy]
 python_version = "3.11"
 strict = true
 warn_unreachable = true
 pretty = true
+
+[[tool.mypy.overrides]]
+# epub-translator 0.1.10 не публикует py.typed — импорты не типизированы
+module = ["epub_translator", "epub_translator.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
