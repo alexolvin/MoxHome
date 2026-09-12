@@ -1,0 +1,21 @@
+##### E2-1: стабильность segment_id (verbatim)
+дата: 2026-09-12 05:49:46Z
+фикстура: complex.epub; два независимых запуска (work-каталоги run_a, run_b)
+запуск A: сегментов=26
+запуск B: сегментов=26
+совпадение списков segment_id (порядок+значения): True
+уникальных в A: 26 из 26
+
+первые 5 segment_id запуска A:
+  dcc71c16f50e7ea9eac721842b97629877adb1468c80df0d16035622898f6993
+  74532f11acff83466987863de28562ad07baa393783b6fa7b473785ea40fb056
+  ee4344f023ca911316fc3b7af0e742c8241ef7b5527e3ee98317ecaebf53d5c2
+  501069c57519a1342f4da8a1f4474c8991ecfcf04eea9c840ba0e77ee61d9cc7
+  2425caf5804001fc9ed4eb99ad68e30ad3465be545f6b243c12f1bb1e07c146b
+
+первые 5 segment_id запуска B:
+  dcc71c16f50e7ea9eac721842b97629877adb1468c80df0d16035622898f6993
+  74532f11acff83466987863de28562ad07baa393783b6fa7b473785ea40fb056
+  ee4344f023ca911316fc3b7af0e742c8241ef7b5527e3ee98317ecaebf53d5c2
+  501069c57519a1342f4da8a1f4474c8991ecfcf04eea9c840ba0e77ee61d9cc7
+  2425caf5804001fc9ed4eb99ad68e30ad3465be545f6b243c12f1bb1e07c146b

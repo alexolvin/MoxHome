@@ -7,10 +7,35 @@
 
 ## Текущее состояние (2026-09-12)
 
-- **Завершено:** E0 (фундамент) — CONTROL PASS 5/5; **E1 (ENGINE_PROBE)** — CONTROL PASS 6/6,
-  19/19 тестов. Отчёт `docs/ENGINE_PROBE.md`, evidence `docs/CONTROL/evidence/E1/`.
-- **Далее:** **E2 — «Ридер EPUB и сегментатор»** (собственный EPUB-ридер + сегментатор,
-  тракт A, исключения Rule 8 — D14; фикстуры complex/drm/broken × 5 языков).
+- **Завершено:** E0 (фундамент) — CONTROL PASS 5/5; **E1 (ENGINE_PROBE)** — CONTROL PASS 6/6;
+  **E2 (Ридер EPUB и сегментатор)** — CONTROL PASS 6/6, 27/27 тестов.
+  Отчёты: `docs/ENGINE_PROBE.md`, `docs/CONTROL/E2.md`;
+  evidence: `docs/CONTROL/evidence/E1/`, `docs/CONTROL/evidence/E2/`.
+- **Далее:** **E3 — «Job, воркер, возобновление»** (состояние заданий вне процесса Python:
+  SQLite WAL, lease, восстановление после падения; машина состояний из ТЗ §E3).
+
+## Сделано в E2
+
+- `app/domain/book.py`: неизменяемые модели `Book → Chapter → Segment` + `BookStats`
+  (главы, spine-документы, сегменты, символы, слова, изображения, таблицы, сноски,
+  has_drm, token_estimate).
+- `app/epub/segmenter.py`: блочные элементы из **настраиваемого** множества
+  (`settings.segmentation.block_tags`); `segment_id = sha256(путь в архиве + позиционный
+  XPath + нормализованный текст NFC/схлопывание пробелов)`; `marked_text` — внутренняя
+  разметка без namespace-деклараций lxml (`_plain_copy`).
+- `app/epub/reader.py`: валидация до LLM: ZIP → mimetype первой записью →
+  **DRM до распаковки** (отказ, work-каталог не создаётся) → container.xml → распаковка
+  (защита от zip-slip) → OPF → manifest → spine (порядок глав = spine, не имена файлов) →
+  разбор каждого spine-XHTML; нечитаемый документ — `InputValidationError` (exit_code=3).
+  `token_estimate` — tiktoken тем же `token_encoding`, что у движка (cl100k_base).
+  Флаг `suspicious`: `zero_segments`, `single_spine_document` (подтверждение — в E3).
+- Фикстуры (`tests/fixtures/epub/build.py`, D9): `complex.epub` (3 главы, имена файлов
+  перемешаны относительно spine, таблица/dl/img/сноска; эталон 8/13/5=26), `drm.epub`,
+  `broken.epub` (обрезанный OPF), `lang_de/fr/nl/it.epub` (Rule 4).
+- Стробы `stubs/lxml/etree.pyi` для mypy (lxml без py.typed); `tiktoken` — явная зависимость.
+- Измерено: `complex.epub` → 26 сегментов, 2270 симв./425 слов, 1 img, 1 table, 1 сноска,
+  оценка 516 токенов; движок на этой книге — **2 группы** (2 translate-запроса, 237+237) →
+  «фактический расход» для E2-5 считается суммой по всем translate-запросам (отклонение 8.9%).
 
 ## Сделано в E1
 
@@ -77,7 +102,14 @@ evidence побайтово. E1-2: тёплый кэш B/A = 0.00% (порог �
 E1-3: смена языка C/A = 100.00% (порог ≥90%). E1-4: разметка APPEND_BLOCK зафиксирована
 (sibling + копируются тег/атрибуты + `id__translated`). E1-5: `APIConnectionError` за 1.279 s,
 `target_path` = валидный ZIP с одной записью `['mimetype']`. E1-6: concurrency 1 vs 4 —
-главы побайтово одинаковы. Итого по инструментарию: ruff 0, mypy 0 (14 файлов), pytest 19/19.
+главы побайтово одинаковы. Итого по инструментарию после E1: ruff 0, mypy 0 (14 файлов),
+pytest 19/19.
+
+E2-1: 26/26 segment_id идентичны между запусками (уникальных 26/26). E2-2: 8/13/5 = 26
+(точное совпадение с ручным эталоном). E2-3: 1/1 отклонение DRM до распаковки
+(work-каталог не создан). E2-4: 100% совпадение порядка с spine. E2-5: оценка 516 vs
+факт 474 (237+237, 2 группы движка) — отклонение 8.9% (порог ≤15%). E2-6: 5/5 языков.
+Итого по инструментарию после E2: ruff 0, mypy 0 (21 файл), pytest 27/27.
 
 ## Открытые дефекты / ограничения
 

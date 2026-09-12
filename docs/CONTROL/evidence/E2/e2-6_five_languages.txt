@@ -1,0 +1,8 @@
+##### E2-6: разбор фикстур на 5 языках (verbatim)
+дата: 2026-09-12 05:49:46Z
+probe.en.epub: dc:language=en (ожид. en) — глав=2, сегментов=15, ошибок=0
+lang_de.epub: dc:language=de (ожид. de) — глав=1, сегментов=3, ошибок=0
+lang_fr.epub: dc:language=fr (ожид. fr) — глав=1, сегментов=3, ошибок=0
+lang_nl.epub: dc:language=nl (ожид. nl) — глав=1, сегментов=3, ошибок=0
+lang_it.epub: dc:language=it (ожид. it) — глав=1, сегментов=3, ошибок=0
+итого: 5/5 без ошибок
