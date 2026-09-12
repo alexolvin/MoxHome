@@ -24,7 +24,14 @@ CONTAINER_PATH = "META-INF/container.xml"
 PACKAGE_MEDIA_TYPE = "application/oebps-package+xml"
 OPF_NS = "http://www.idpf.org/2007/opf"
 DC_NS = "http://purl.org/dc/elements/1.1/"
+EPUB_OPS_NS = "http://www.idpf.org/2007/ops"
+NCX_MEDIA_TYPE = "application/x-dtbncx+xml"
 CHAPTER_MEDIA_TYPES = ("application/xhtml+xml", "text/html")
+#: metadata-поля, которые движок epub-translator 0.1.10 НЕ переводит
+#: (SKIP_FIELDS пакета, по localname) — семантика для has_translatable_metadata.
+_METADATA_SKIP_LOCALNAMES = frozenset(
+    {"language", "identifier", "date", "meta", "contributor"}
+)
 
 
 def read_epub(source: Path, work_dir: Path, settings: Settings) -> Book:
@@ -33,7 +40,8 @@ def read_epub(source: Path, work_dir: Path, settings: Settings) -> Book:
     base_dir = work_dir.resolve()
     opf_file = _locate_opf(base_dir, opf_path)
     opf = _parse_xml(opf_file.read_bytes(), opf_path)
-    spine = _spine_items(opf, _parse_manifest(opf))
+    manifest = _parse_manifest(opf)
+    spine = _spine_items(opf, manifest)
 
     block_tags = frozenset(settings.segmentation.block_tags)
     chapters, segments, image_count, table_count, footnote_count = _build_chapters(
@@ -67,6 +75,8 @@ def read_epub(source: Path, work_dir: Path, settings: Settings) -> Book:
         stats=stats,
         suspicious=bool(reasons),
         suspicious_reasons=tuple(reasons),
+        toc_entries=_count_toc_entries(base_dir, opf_file.parent, opf, manifest),
+        has_translatable_metadata=_has_translatable_metadata(opf),
     )
 
 
@@ -267,3 +277,91 @@ def _dc_text(opf: etree._Element, field: str) -> str | None:
         if element.tag == f"{{{DC_NS}}}{field}" and element.text:
             return element.text.strip()
     return None
+
+
+# ------------------------------------------------------------- TOC / metadata (E5.3)
+
+
+def _count_toc_entries(
+    base_dir: Path, opf_dir: Path, opf: etree._Element, manifest: dict[str, etree._Element]
+) -> int:
+    """Вхождения TOC — семантика движка epub-translator 0.1.10 (E5.3, «реальные единицы»).
+
+    EPUB3: nav-документ (properties="nav") → <nav type="toc"> → первый <ol> →
+    прямые <li> с <a>. EPUB2: NCX → navPoint с content@src. Движок вызывает
+    on_progress для TOC только при непустом списке.
+    """
+    version = opf.get("version") or "2.0"
+    toc_item: etree._Element | None = None
+    for item in manifest.values():
+        if not isinstance(item.tag, str):
+            continue
+        if version.startswith("3"):
+            if "nav" in (item.get("properties") or "").split():
+                toc_item = item
+        elif item.get("media-type") == NCX_MEDIA_TYPE:
+            toc_item = item
+    toc_href = toc_item.get("href") if toc_item is not None else None
+    if not toc_href:
+        return 0
+    doc_file = (opf_dir / toc_href).resolve()
+    if not doc_file.is_relative_to(base_dir) or not doc_file.is_file():
+        return 0
+    root = _parse_xml(doc_file.read_bytes(), doc_file.name)
+    if version.startswith("3"):
+        return _count_nav_entries(root)
+    return _count_ncx_entries(root)
+
+
+def _count_nav_entries(root: etree._Element) -> int:
+    for nav in root.iter():
+        if not isinstance(nav.tag, str) or segmenter.localname(nav) != "nav":
+            continue
+        if nav.get(f"{{{EPUB_OPS_NS}}}type") != "toc" and nav.get("type") != "toc":
+            continue
+        ol = next(
+            (
+                child
+                for child in nav.iter()
+                if isinstance(child.tag, str) and segmenter.localname(child) == "ol"
+            ),
+            None,
+        )
+        if ol is None:
+            return 0
+        return sum(
+            1
+            for li in ol
+            if isinstance(li.tag, str)
+            and segmenter.localname(li) == "li"
+            and any(isinstance(a.tag, str) and segmenter.localname(a) == "a" for a in li)
+        )
+    return 0
+
+
+def _count_ncx_entries(root: etree._Element) -> int:
+    return sum(
+        1
+        for nav_point in root.iter()
+        if isinstance(nav_point.tag, str)
+        and segmenter.localname(nav_point) == "navPoint"
+        and any(
+            isinstance(c.tag, str) and segmenter.localname(c) == "content" and c.get("src")
+            for c in nav_point.iter()
+        )
+    )
+
+
+def _has_translatable_metadata(opf: etree._Element) -> bool:
+    """Есть ли в OPF поля metadata, которые движок переводит (E5.3, семантика движка)."""
+    metadata = opf.find(f"{{{OPF_NS}}}metadata")
+    if metadata is None:
+        return False
+    for child in metadata:
+        if not isinstance(child.tag, str):
+            continue
+        if segmenter.localname(child) in _METADATA_SKIP_LOCALNAMES:
+            continue
+        if child.text and child.text.strip():
+            return True
+    return False

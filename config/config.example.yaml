@@ -77,4 +77,14 @@ language_detection:
   min_confidence: 0.6
 
 epubcheck:
+  # Путь к EPUBCheck-jar (E5). Распределение W3C 5.x: каталог <каталог-jar>/lib
+  # рядом с jar — класспасс собирается автоматически. Отсутствие jar/Java →
+  # задание не станет COMPLETED: COMPLETED_WITH_WARNINGS (VALIDATION_UNAVAILABLE, Rule 6).
   jar_path: data/tools/epubcheck.jar
+  timeout_seconds: 300
+
+translation:
+  # Режим перевода задания (E5.2): translation → REPLACE (движок),
+  # bilingual → значение ниже. APPEND_BLOCK по умолчанию; APPEND_TEXT доступен
+  # настройкой, но не используется по умолчанию (ухудшает выравнивание).
+  submit_mode_bilingual: APPEND_BLOCK

@@ -113,6 +113,8 @@ class Job:
     status: JobStatus
     source_path: str
     target_language: str
+    #: Режим задания (E5.2): "bilingual" (APPEND_BLOCK по умолчанию) | "translation" (REPLACE).
+    mode: str = "bilingual"
     priority: int = 0
     progress: float = 0.0
     created_at: float = 0.0

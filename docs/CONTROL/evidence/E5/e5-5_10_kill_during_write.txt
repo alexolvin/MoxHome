@@ -1,0 +1,24 @@
+##### E5-5/E5-10: kill -9 в момент записи выхода, ×10 (verbatim)
+дата: 2026-09-12 23:52:31
+
+метод: воркер-процесс (python -m app.workers.run), mock delay=1.0 с,
+ожидание progress ≥ 0.1 (стадия TRANSLATING — движок пишет
+target.epub.partial progressively), затем SIGKILL.
+
+  iter=0  job=j-20260912T205246Z-f68e3f progress=0.100 status=TRANSLATING exit=-9 target=отсутствует partial=1018 B
+  iter=1  job=j-20260912T205250Z-07e2b6 progress=0.100 status=TRANSLATING exit=-9 target=отсутствует partial=1018 B
+  iter=2  job=j-20260912T205253Z-1ea11c progress=0.100 status=TRANSLATING exit=-9 target=отсутствует partial=1018 B
+  iter=3  job=j-20260912T205256Z-e66f25 progress=0.100 status=TRANSLATING exit=-9 target=отсутствует partial=1018 B
+  iter=4  job=j-20260912T205259Z-5d1db0 progress=0.100 status=TRANSLATING exit=-9 target=отсутствует partial=1018 B
+  iter=5  job=j-20260912T205302Z-105f3f progress=0.100 status=TRANSLATING exit=-9 target=отсутствует partial=1018 B
+  iter=6  job=j-20260912T205305Z-92e405 progress=0.100 status=TRANSLATING exit=-9 target=отсутствует partial=1018 B
+  iter=7  job=j-20260912T205309Z-ee3d68 progress=0.100 status=TRANSLATING exit=-9 target=отсутствует partial=1018 B
+  iter=8  job=j-20260912T205312Z-3db736 progress=0.100 status=TRANSLATING exit=-9 target=отсутствует partial=1018 B
+  iter=9  job=j-20260912T205315Z-3ba49f progress=0.100 status=TRANSLATING exit=-9 target=отсутствует partial=1018 B
+
+повреждённых принятых target.epub: 0 из 10
+
+механизм (E5.6): движок пишет только .partial; принятый target.epub
+появляется исключительно атомарным os.replace ПОСЛЕ внутренней
+валидации и EPUBCheck. kill -9 в любой момент записи → target.epub
+отсутствует (свежее задание) или остаётся прежним валидным результатом.

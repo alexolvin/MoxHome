@@ -189,11 +189,19 @@ class Worker:
             self._repo.transition(
                 job_id, JobStatus.CANCELLED, reason="отмена (кооперативная, E3.8)"
             )
-        target = self._pipeline.job_dir(job_id) / "target.epub"
+        # E5.6: движок пишет результат только через `.partial` → `os.replace`,
+        # поэтому в момент отмены незавершённый файл уже помечен (`.partial`),
+        # а существующий target.epub — предыдущий ВАЛИДНЫЙ результат: не трогаем.
+        job_dir = self._pipeline.job_dir(job_id)
+        partial = job_dir / "target.epub.partial"
+        target = job_dir / "target.epub"
+        if partial.exists():
+            logger.warning(
+                "незавершённый артефакт оставлен без изменений: %s (не является результатом, E5.6)",
+                partial.name,
+            )
         if target.exists():
-            partial = target.with_name("target.epub.partial")
-            target.rename(partial)
-            logger.warning("частичный артефакт помечен: %s", partial.name)
+            logger.info("существующий валидный результат сохранён: %s", target.name)
         logger.info("задание отменено: %s", job_id)
 
     def _finalize_paused(self, job_id: str) -> None:

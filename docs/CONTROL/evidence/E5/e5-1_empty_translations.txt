@@ -1,0 +1,11 @@
+##### E5-1: пустые переводы на фикстурах = 0 (verbatim)
+дата: 2026-09-12 23:52:31 · mock ok (D3, rot3) · EPUBCheck: реальный jar (D4)
+
+QC п.3 (3_empty_translations) по книге:
+  complex (en→de)  count=0  items=[]
+  lang_de (de→en)  count=0  items=[]
+  lang_fr (fr→en)  count=0  items=[]
+  lang_it (it→en)  count=0  items=[]
+  lang_nl (nl→en)  count=0  items=[]
+
+итого пустых переводов: 0 (5/5 книг)
