@@ -14,6 +14,7 @@ storage.root (YAML). E4.1: адрес и модель LLM задаются ТО�
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -151,9 +152,37 @@ class LimitsSection(BaseModel):
 
 
 class AlignmentSection(BaseModel):
+    """Пороги и критерии выравнивания оригинал ↔ перевод (E6)."""
+
     model_config = ConfigDict(frozen=True)
 
+    #: Ниже порога — задание `COMPLETED_WITH_WARNINGS` (E6.5); учебные этапы
+    #: работают только по выровненному подмножеству и указывают охват.
     min_coverage: float = Field(default=0.995, gt=0.0, le=1.0)
+    #: Критерий белого списка «идентичен оригиналу» (E6.3): перевод,
+    #: совпадающий с оригиналом, нарушением НЕ является, если нормализованный
+    #: текст целиком соответствует шаблону (числа, имена собственные без
+    #: склонения и т.п. — настраиваемый критерий).
+    identical_whitelist_pattern: str = Field(
+        default=r"^[\d\s.,;:()\-\u2013\u2014/%$€]+$", min_length=1
+    )
+
+    @field_validator("identical_whitelist_pattern")
+    @classmethod
+    def _check_whitelist_pattern(cls, value: str) -> str:
+        try:
+            re.compile(value)
+        except re.error as exc:
+            raise ValueError(
+                "alignment.identical_whitelist_pattern: некорректный регулярный "
+                f"шаблон: {exc}"
+            ) from exc
+        return value
+
+    @property
+    def identical_whitelist(self) -> re.Pattern[str]:
+        """Скомпилированный шаблон (fullmatch по нормализованному тексту)."""
+        return re.compile(self.identical_whitelist_pattern)
 
 
 class SegmentationSection(BaseModel):

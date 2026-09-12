@@ -1,0 +1,12 @@
+##### E6-5: повторный прогон → побитово идентичный отчёт (verbatim)
+дата: 2026-09-13 01:39:36
+
+прогон 1 (module-базовый, job-1):
+  file: /mdisk/EpubTranslator/.qwen/tmp/e6_evidence/inproc/jobs/j-20260912T223936Z-3fb9e1/alignment_report.json
+  bytes: 13479  sha256: 8c081ec36f94403ad2d2dcbc4cee340e40a6a9fffa1dce018a6036a97d3d0ddc
+
+прогон 2 (свежее задание, тот же вход, job-2):
+  file: /mdisk/EpubTranslator/.qwen/tmp/e6_evidence/inproc/jobs/j-20260912T223938Z-38fe12/alignment_report.json
+  bytes: 13479  sha256: 8c081ec36f94403ad2d2dcbc4cee340e40a6a9fffa1dce018a6036a97d3d0ddc
+
+побитово идентичны: True

@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     tokens_fill INTEGER NOT NULL DEFAULT 0,
     tokens_analysis INTEGER NOT NULL DEFAULT 0,
     tokens_total INTEGER NOT NULL DEFAULT 0,
+    alignment_coverage REAL,
     error_message TEXT
 );
 
@@ -91,6 +92,8 @@ _MIGRATED_JOB_COLUMNS: dict[str, str] = {
     "tokens_total": "INTEGER NOT NULL DEFAULT 0",
     # E3-базы: все задания исполнялись в APPEND_BLOCK = режим "bilingual" (E5).
     "mode": "TEXT NOT NULL DEFAULT 'bilingual'",
+    # E5-базы: выравнивание (E6) до этапа не измерялось — NULL.
+    "alignment_coverage": "REAL",
 }
 
 

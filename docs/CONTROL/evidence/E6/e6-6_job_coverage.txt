@@ -1,0 +1,22 @@
+##### E6-6: охват — единственный источник (job == quality == отчёт)
+дата: 2026-09-13 01:39:36 · jobs.alignment_coverage (колонка E6, миграция E5-баз)
+
+clean-прогоны (5 книг):
+  complex (en→de)  job=1.0 quality=1.0 report=1.0 diff(job-quality)=0.0 diff(job-report)=0.0
+  lang_de (de→en)  job=1.0 quality=1.0 report=1.0 diff(job-quality)=0.0 diff(job-report)=0.0
+  lang_fr (fr→en)  job=1.0 quality=1.0 report=1.0 diff(job-quality)=0.0 diff(job-report)=0.0
+  lang_it (it→en)  job=1.0 quality=1.0 report=1.0 diff(job-quality)=0.0 diff(job-report)=0.0
+  lang_nl (nl→en)  job=1.0 quality=1.0 report=1.0 diff(job-quality)=0.0 diff(job-report)=0.0
+
+разность (job − quality) и (job − report): 0.0 для всех 5 книг.
+UI-показ — U1 (один и тот же столбец jobs.alignment_coverage).
+
+--- ниже порога (TZ E6.5): повреждённый выход, свежее задание
+  job=j-20260912T223938Z-b64ae6  target: удалён c1-p1__translated
+  job.alignment_coverage = 0.961538
+  min_coverage           = 0.995
+  E6-предупреждение (verbatim):
+    E6: выравнивание ниже порога: 25/26 (96.2% < 99.5%): OEBPS/z_alpha.xhtml /htmlbody[1]p[1] (missing_translation)
+  статус: предупреждения → COMPLETED_WITH_WARNINGS (логика воркера,
+  доказана в E5: test_e5 T-E5-11 и семантика _run_stage).
+  quality['warnings'] == возвращённый набор: True

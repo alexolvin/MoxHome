@@ -135,4 +135,7 @@ class Job:
     tokens_analysis: int = 0
     #: Инвариант (E4-5): tokens_total == tokens_translation + tokens_fill + tokens_analysis.
     tokens_total: int = 0
+    #: Доля выровненных сегментов (E6.5) — в статусе задания; ниже порога
+    #: (alignment.min_coverage) — COMPLETED_WITH_WARNINGS. None — не измерялась.
+    alignment_coverage: float | None = None
     error_message: str | None = None

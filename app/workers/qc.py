@@ -3,10 +3,11 @@
 Работает в стадии validating_output по финальному выходу (target.epub) и
 оригиналу (source_path). Всё — факты поимённо (документ, позиция XPath,
 фрагмент текста); нарушение → предупреждение (COMPLETED_WITH_WARNINGS),
-а не тишина. Полное выравнивание (E6) здесь не строится: пара
-«исходный блок ↔ перевод» определяется консервативно по измеренной разметке
-движка (E1): APPEND_BLOCK — перевод = вставленный sibling/внутренний блок,
-REPLACE/APPEND_TEXT — перевод = изменение элемента на месте.
+а не тишина. Полная карта выравнивания (E6) строится отдельно
+(`alignment_report.json`): пара «исходный блок ↔ перевод» определяется
+консервативно по измеренной разметке движка (E1) — общим ядром
+(app/epub/aligner.py): APPEND_BLOCK — перевод = вставленный
+sibling/внутренний блок, REPLACE/APPEND_TEXT — изменение элемента на месте.
 
 10 пунктов (ТЗ E5.8, п.8):
   1 число исходных сегментов; 2 число переведённых блоков; 3 пустые переводы;
@@ -45,13 +46,11 @@ import lxml.etree
 from app.adapters.epub_engine.validation import find_broken_links
 from app.core.config import Settings
 from app.domain.book import Book
-from app.epub import segmenter
+from app.epub import aligner, segmenter
 from app.epub.reader import CONTAINER_PATH, DC_NS, EPUB_OPS_NS, OPF_NS
 
 #: Порог охвата переведённых блоков (E5-2).
 COVERAGE_THRESHOLD = 0.995
-
-_MARKER = "__translated"
 
 #: Известное поведение движка epub-translator 0.1.10 (измерено в E1 и
 #: E3-прогоне 2026-09-12): при ресериализации spine-документа с корневой
@@ -297,13 +296,6 @@ def _short(item: dict[str, Any]) -> str:
     return f"{item.get('doc', '?')} {item.get('where', '')} {item.get('issue', '')}".strip()
 
 
-def _blocks(root: lxml.etree._Element, tags: frozenset[str]) -> list[lxml.etree._Element]:
-    body = segmenter.find_body(root)
-    if body is None:
-        return []
-    return [el for el in body.iter() if segmenter.localname(el) in tags]
-
-
 def _text(el: lxml.etree._Element) -> str:
     return segmenter.normalize_text(segmenter.full_text(el))
 
@@ -336,17 +328,28 @@ def _pair_append(
     Сопоставление оригинала в выходе: по id (если есть) либо по (тег, текст)
     монотонно по порядку документа — вставленный блок всегда ПОСЛЕ оригинала
     (измерено, E1). Помеченные `id__translated` блоки — вставки, не оригиналы.
+    Ядро пар — общий с E6-выравниванием механизм (app/epub/aligner.py).
     """
-    src_blocks = _blocks(src_root, tags)
-    out_blocks = _blocks(out_root, tags)
+    src_blocks = aligner.blocks(src_root, tags)
+    out_blocks = aligner.blocks(out_root, tags)
     res.src_count = len(src_blocks)
-    pairs, used = _match_originals(src_blocks, out_blocks, res, doc_name)
+    pairs = aligner.match_originals(src_blocks, out_blocks, tags)
+    out_pos = {id(el): i for i, el in enumerate(out_blocks)}
+    used = {out_pos[id(out_el)] for _, out_el in pairs if out_el is not None}
     insertions = {id(el) for i, el in enumerate(out_blocks) if i not in used}
     trans_list: list[lxml.etree._Element] = []
     for src_el, out_el in pairs:
         if out_el is None:
+            res.shortfall.append(
+                {
+                    "doc": doc_name,
+                    "where": _where(src_el),
+                    "issue": f"оригинал не найден в выходе ({segmenter.localname(src_el)})",
+                    "text": _text(src_el)[:60],
+                }
+            )
             continue
-        trans, how = _find_translation(src_el, out_el, tags, insertions)
+        trans, how = aligner.find_translation(out_el, tags, insertions)
         if trans is None:
             res.shortfall.append(
                 {
@@ -384,62 +387,6 @@ def _pair_append(
 
     # 7: структура (вставки удалены из выхода перед сравнением)
     res.structure.extend(_structure_diff(src_root, out_root, insertions, doc_name))
-
-
-def _match_originals(
-    src_blocks: list[lxml.etree._Element],
-    out_blocks: list[lxml.etree._Element],
-    res: _DocResult,
-    doc_name: str,
-) -> tuple[list[tuple[lxml.etree._Element, lxml.etree._Element | None]], set[int]]:
-    """Сопоставление оригиналов выхода с исходными блоками (APPEND_BLOCK).
-
-    По id (если есть) либо по (тег, текст) монотонно по порядку документа —
-    вставленный блок всегда ПОСЛЕ оригинала (измерено, E1). Помеченные
-    `id__translated` блоки — вставки, не оригиналы. Возвращает (пары,
-    индексы использованных блоков выхода).
-    """
-    pairs: list[tuple[lxml.etree._Element, lxml.etree._Element | None]] = []
-    out_pos = {id(el): i for i, el in enumerate(out_blocks)}
-    used: set[int] = set()
-    last_pos = -1
-
-    for src_el in src_blocks:
-        src_tag = segmenter.localname(src_el)
-        src_text = _text(src_el)
-        src_id = src_el.get("id")
-        matched: lxml.etree._Element | None = None
-        for i, out_el in enumerate(out_blocks):
-            if i <= last_pos or i in used:
-                continue
-            if (out_el.get("id") or "").endswith(_MARKER):
-                continue
-            if src_id is not None:
-                if out_el.get("id") == src_id:
-                    matched = out_el
-                    break
-            elif (
-                segmenter.localname(out_el) == src_tag
-                and _text(out_el) == src_text
-                and not out_el.get("id")
-            ):
-                matched = out_el
-                break
-        if matched is None:
-            pairs.append((src_el, None))
-            res.shortfall.append(
-                {
-                    "doc": doc_name,
-                    "where": _where(src_el),
-                    "issue": f"оригинал не найден в выходе ({src_tag})",
-                    "text": src_text[:60],
-                }
-            )
-            continue
-        used.add(out_pos[id(matched)])
-        last_pos = out_pos[id(matched)]
-        pairs.append((src_el, matched))
-    return pairs, used
 
 
 def _dup_checks(
@@ -487,35 +434,6 @@ def _dup_checks(
             )
 
 
-def _find_translation(
-    src_el: lxml.etree._Element,
-    out_el: lxml.etree._Element,
-    tags: frozenset[str],
-    insertions: set[int],
-) -> tuple[lxml.etree._Element | None, str]:
-    """Перевод для пары (исходный блок, его оригинал в выходе).
-
-    1) следующий sibling (тот же родитель) — обычная вставка и деформированная
-       таблица (ячейка-перевод в том же <tr>);
-    2) вставленный дочерний блок — blockquote (перевод внутрь, E1).
-    """
-    del src_el
-    parent = out_el.getparent()
-    nxt = out_el.getnext()
-    if (
-        parent is not None
-        and nxt is not None
-        and nxt.getparent() is parent
-        and id(nxt) in insertions
-        and segmenter.localname(nxt) in tags
-    ):
-        return nxt, "sibling"
-    for child in out_el:
-        if id(child) in insertions and segmenter.localname(child) in tags:
-            return child, "inside"
-    return None, ""
-
-
 def _pair_inplace(
     src_root: lxml.etree._Element,
     out_root: lxml.etree._Element,
@@ -524,8 +442,8 @@ def _pair_inplace(
     doc_name: str,
 ) -> None:
     """REPLACE / APPEND_TEXT: перевод = изменение элемента на месте (по позиции)."""
-    src_blocks = _blocks(src_root, tags)
-    out_blocks = _blocks(out_root, tags)
+    src_blocks = aligner.blocks(src_root, tags)
+    out_blocks = aligner.blocks(out_root, tags)
     res.src_count = len(src_blocks)
     if len(src_blocks) != len(out_blocks):
         res.structure.append(

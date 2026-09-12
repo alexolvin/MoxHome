@@ -5,16 +5,69 @@
 
 ---
 
-## Текущее состояние (2026-09-12)
+## Текущее состояние (2026-09-13)
 
 - **Завершено:** E0 (фундамент) — CONTROL PASS 5/5; **E1 (ENGINE_PROBE)** — CONTROL PASS 6/6;
   **E2 (Ридер EPUB и сегментатор)** — CONTROL PASS 6/6; **E3 (Job, воркер, возобновление)** —
   CONTROL PASS 6/6; **E4 (Слой LLM)** — CONTROL PASS 6/6; **E5 (Тракт T: перевод)** —
-  CONTROL PASS 8/8, 85/85 теста (на mock, BLOCKER-1 — реальные прогоны не заявляются).
+  CONTROL PASS 8/8; **E6 (Выравнивание оригинал ↔ перевод)** — CONTROL PASS 7/7
+  (+T-E6-8), 95/95 теста (на mock, BLOCKER-1 — реальные прогоны не заявляются).
   Отчёты: `docs/ENGINE_PROBE.md`, `docs/CONTROL/E2.md`, `docs/CONTROL/E3.md`,
-  `docs/CONTROL/E4.md`, `docs/CONTROL/E5.md`; evidence: `docs/CONTROL/evidence/E1…E5/`.
-- **Далее:** **E6 — «Выравнивание оригинал ↔ перевод»** (мин. покрытие 0.995,
-  `alignment_report.json`, перестановка блоков в выходе — тест).
+  `docs/CONTROL/E4.md`, `docs/CONTROL/E5.md`, `docs/CONTROL/E6.md`;
+  evidence: `docs/CONTROL/evidence/E1…E6/`.
+- **Далее:** **L0 — «Реестр языков, матрица пар, определение языка»** (TZ_02:
+  `langdetect` с фиксированным seed, сверка с `dc:language`, резолвер ресурсов пары
+  supported/degraded/unsupported; CONTROL L0-1…L0-6, тесты T-L0-1…T-L0-8).
+
+## Сделано в E6
+
+- **`app/epub/aligner.py`** (новое, ядро E6 + общее с QC, Rule 8 / D32): пары
+  `(segment_id источника, текст перевода)`. Механизм — по разметке E1 §3: оригинал в
+  выходе — по `id`, иначе по документному порядку `(тег, оригинальный текст)` с пропуском
+  `__translated` (порядковый номер — не единственный критерий, TZ E6.2); перевод —
+  sibling / inside (контейнеры) / inplace (REPLACE). Идентичность = (doc, позиционный
+  XPath сегментации, нормализованный текст); `segment_id` пересчитывается из выходного
+  элемента (текст — БЕЗ вставленных поддеревьев, `original_text`, D33) и сверяется —
+  несовпадение → `xpath_mismatch`, пары нет.
+- **`text_root` (D34):** корень сегмента движка (E1 §3 п.5 `block_parent`) — для
+  blockquote это внутренний `<p>`: тег перевода, маркер `id__translated` и ожидаемая
+  позиция (`sibling`/`inside`) берутся с него. Позиция `inside` исключает «уверенные
+  неверные пары» со stray-sibling'ом после контейнера.
+- **`resolve_positional_xpath`:** парсер реального формата позиционного XPath
+  (`/htmlbody[1]p[3]` — без разделителей, корень без индекса) + разрешение на элемент;
+  карта хранит ИЗМЕРЕННЫЙ XPath перевода — адресация для L3 (E6-7: 38/38 пар).
+- **Причины (TZ E6.4, фиксированный набор):** `missing_translation`, `xpath_mismatch`,
+  `empty`, `identical`, `extra_block`; невыровненные — поимённо в
+  `alignment_report.json` с `detail`, отбрасывания нет. Честность extra (D37):
+  смещённый оригинал — `xpath_mismatch`, не «вставка».
+- **Статус и охват (TZ E6.5, D36):** `jobs.alignment_coverage` (колонка, миграция для
+  E5-баз) — единый источник (S-стадии/UI читают его, diff 0 с `quality.json` и отчётом);
+  ниже `alignment.min_coverage` (YAML, дефолт 0.995) — предупреждение
+  «E6: выравнивание ниже порога: …» → `COMPLETED_WITH_WARNINGS` (готовой логикой
+  воркера E5). UI-показ — U1.
+- **Белый список (TZ E6.3, D35):** `alignment.identical_whitelist_pattern` — regex
+  fullmatch по нормализованному переводу (дефолт — цифры/пунктуация); неверный regex →
+  `ConfigurationError` при загрузке (fail closed).
+- **QC (E5) переиспользует ядро спаривания** (`blocks`/`match_originals`/
+  `find_translation` из aligner; `find_translation` по умолчанию `expect="any"` —
+  поведение QC не изменилось).
+- **Измерено (evidence E6, `docs/CONTROL/evidence/E6/`):** coverage 1.0 ×5 (26/26 +
+  3/3×4), identity 0; невыровненные 1/1 с причиной; перестановка 5/5 вариантов
+  обнаружена (неверных пар нет; честно: межамена двух no-id переводов одного тега —
+  не обнаруживается, E1 «без id — только позиция»); повтор → побитово идентичный
+  отчёт (sha256); ниже порога 25/26 = 0.961538 + предупреждение verbatim; 38/38 (100%)
+  XPath разрешимы (включая deformed table — td sibling в том же `<tr>`, сноска,
+  blockquote inside); REPLACE: 26/26 inplace, источник — исходный файл (T-E6-8).
+- **Измеренный факт:** позиционные XPath оригиналов в выходе СДВИГАЮТСЯ вставленными
+  sibling'ами — «тот же XPath в выходе» не существует; справка = (doc, src-xpath,
+  текст из выхода) (D31).
+- Тесты: 10 функций в `tests/test_e6_alignment.py`; evidence-скрипт
+  `tests/e6_evidence.py` (воспроизводит 7 verbatim-файлов); полный прогон 95 passed,
+  ruff 0, mypy 0 (54 файла).
+- Дефекты этапа (Rule 3, подробно в `docs/CONTROL/E6.md`): контейнерные пары —
+  `original_text` (D33); тег/маркер — `text_root` (D34); формат позиционного XPath
+  (первая `resolve_positional_xpath` — 0/38); extra/`_is_original` (D37); латентный E5:
+  `quality.json["warnings"]` не совпадал со статусом (исправлен: полный набор).
 
 ## Сделано в E5
 
@@ -215,6 +268,7 @@ cd /mdisk/EpubTranslator
 .venv/bin/python tests/e3_evidence.py   # сборка verbatim-evidence CONTROL E3
 .venv/bin/python tests/e4_evidence.py   # сборка verbatim-evidence CONTROL E4
 .venv/bin/python tests/e5_evidence.py   # сборка verbatim-evidence CONTROL E5
+.venv/bin/python tests/e6_evidence.py   # сборка verbatim-evidence CONTROL E6
 ```
 
 Новые пакеты: `uv add <pkg>` (runtime) / `uv add --dev <pkg>`; lock обновляется автоматически.
@@ -272,11 +326,30 @@ prompt_chars=280, truncated=true; топ-11 в system-сообщении transla
 VALIDATION_UNAVAILABLE, результат выдан.
 Итого по инструментарию после E5: ruff 0, mypy 0 (51 файл), pytest 85/85.
 
+E6-1: coverage 1.0 на всех 5 фикстурах (complex 26/26, lang_de/fr/it/nl 3/3),
+`min_coverage=0.995`. E6-2: `identity_mismatches=0` ×5. E6-3: невыровненные 1/1
+(100%) с причиной `missing_translation` + detail. E6-4: 5/5 вариантов перестановки
+обнаружены (a: 2× missing_translation + 2 extra; b: 1× missing_translation + 1 extra;
+c: 1× missing_translation; d: 1× xpath_mismatch + 1 extra; e: 4× xpath_mismatch +
+3 extra; неверных пар нет). E6-5: повтор (свежее задание) → побитово идентичный
+отчёт, 13479 байт, sha256 `8c081ec3…`. E6-6: diff(job−quality)=0.0 и
+diff(job−report)=0.0 ×5; ниже порога: 25/26 = 0.961538 < 0.995 → предупреждение
+«E6: выравнивание ниже порога: 25/26 (96.2% < 99.5%): OEBPS/z_alpha.xhtml
+/htmlbody[1]p[1] (missing_translation)» → COMPLETED_WITH_WARNINGS. E6-7: 38/38 (100%)
+пар с разрешимым XPath перевода (тег+текст сверены); T-E6-7: td (deformed table)
+sibling в том же `<tr>`, сноска, blockquote inside — вложенные не сломаны.
+T-E6-8: REPLACE — 26/26 `how=inplace`, `translation_xpath==source_xpath`,
+source_text из исходного файла, исходная фраза в выходе отсутствует.
+Итого по инструментарию после E6: ruff 0, mypy 0 (54 файла), pytest 95/95.
+
 ## Открытые дефекты / ограничения
 
 - Сервер ещё не запускается (этап U1) — `python -m app` пока только валидирует конфиг.
 - Воркер запускается автономно (`python -m app.workers.run --config … --env …`);
   интеграция «сервер создаёт задания + воркер их исполняет» — в U1.
+- Показ доли выравнивания в UI (E6-6, «показан в UI») — в U1: данные готовы
+  (единая колонка `jobs.alignment_coverage`, diff 0 с `quality.json` и
+  `alignment_report.json`; ниже порога → `COMPLETED_WITH_WARNINGS`).
 - Стадия `analyzing` в pipeline — заглушка (E4): клиент анализа, реестр задач и промпты
   v1 готовы, исполнение задач в конвейере — этапы L1/L2; профиль `analysis` не входит
   в `config_hash` (D21) — смена analysis-настроек не инвалидирует готовый перевод.

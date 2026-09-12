@@ -1,0 +1,14 @@
+##### E6-1/E6-2: доля выравнивания; пар с несовпадающим segment_id (verbatim)
+дата: 2026-09-13 01:39:36 · mock ok (D3, rot3) · EPUBCheck: реальный jar (D4)
+
+alignment_report.json по книге (in-process Pipeline):
+  complex (en→de)  aligned=26/26 coverage=1.0 identity_mismatches=0 min=0.995
+  lang_de (de→en)  aligned=3/3 coverage=1.0 identity_mismatches=0 min=0.995
+  lang_fr (fr→en)  aligned=3/3 coverage=1.0 identity_mismatches=0 min=0.995
+  lang_it (it→en)  aligned=3/3 coverage=1.0 identity_mismatches=0 min=0.995
+  lang_nl (nl→en)  aligned=3/3 coverage=1.0 identity_mismatches=0 min=0.995
+
+итого: на каждой из 5 фикстур coverage ≥ 0.995 (факт: 1.0),
+identity_mismatches = 0 (5/5 книг).
+
+Честно: PASS на mock (D3). Реальные прогоны не заявляются — BLOCKER-1.

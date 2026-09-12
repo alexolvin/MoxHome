@@ -10,7 +10,10 @@
   сбой тракт T → `LLMUnavailableError` (endpoint/model в сообщении, T-E5-9);
   кооперативные исключения контроля (E3.8) не заглатываются.
 - analyzing / generating: в E3 — явные плейсхолдеры (реализация — L1/S-этапы).
-- validating_output: ридер (E2) + 10-пунктный QC (E5.8) → quality.json.
+- validating_output: ридер (E2) + 10-пунктный QC (E5.8) + выравнивание
+  оригинал ↔ перевод (E6, app/epub/aligner.py) → quality.json +
+  alignment_report.json; доля выравнивания — в статусе задания
+  (jobs.alignment_coverage), ниже порога — предупреждение (E6.5).
 
 Идемпотентность (E3.6): результат этапа адресуется ключом
 hash(входные данные + конфигурация + версия промпта); повтор с тем же ключом —
@@ -40,6 +43,7 @@ from app.core.config import Settings
 from app.core.errors import LLMUnavailableError, OutputValidationFailed
 from app.core.logging import QUALITY_LOGGER
 from app.domain.job import Job
+from app.epub import aligner
 from app.epub.reader import read_epub
 from app.workers.controls import LeaseLost, WorkerCancelled, WorkerPaused
 from app.workers.qc import QcInput, run_qc
@@ -430,7 +434,49 @@ class Pipeline:
         warnings = list(qc_warnings)
         if out_book.stats.segment_count == 0:
             warnings.append("в выходной книге нет сегментов")
-        quality = {**report, "checks": checks}
+
+        # E6: выравнивание оригинал ↔ перевод — карта (адресация для L3) +
+        # доля в статусе задания; ниже порога — предупреждение (E6.5).
+        alignment = aligner.build_alignment_report(
+            book=src_book,
+            source_path=Path(job.source_path),
+            target_path=target,
+            submit_mode=str(tr.get("submit_mode", "APPEND_BLOCK")),
+            block_tags=frozenset(self._settings.segmentation.block_tags),
+            min_coverage=self._settings.alignment.min_coverage,
+            identical_whitelist=self._settings.alignment.identical_whitelist,
+        )
+        self._write_json(job_dir / "alignment_report.json", aligner.report_to_dict(alignment))
+        repo.set_alignment_coverage(job.id, alignment.coverage)
+        if alignment.coverage < self._settings.alignment.min_coverage:
+            first = [
+                f"{u.doc} {u.source_xpath} ({u.reason})"
+                for d in alignment.docs
+                for u in d.unaligned
+            ][:10]
+            warnings.append(
+                f"E6: выравнивание ниже порога: {alignment.aligned_count}/{alignment.total} "
+                f"({alignment.coverage:.1%} < {self._settings.alignment.min_coverage:.1%}): "
+                + "; ".join(first)
+            )
+
+        quality = {
+            **report,
+            "checks": checks,
+            # Все предупреждения (QC + E6) — статус задания и quality.json
+            # согласованы (в E5 предупреждение «нет сегментов» в отчёт не
+            # попадало — дефект, исправлен в E6).
+            "warnings": warnings,
+            "alignment": {
+                "coverage": alignment.coverage,
+                "aligned": alignment.aligned_count,
+                "total": alignment.total,
+                "unaligned": alignment.unaligned_count,
+                "extra_blocks": alignment.extra_count,
+                "min_coverage": self._settings.alignment.min_coverage,
+                "report": "alignment_report.json",
+            },
+        }
         self._write_json(job_dir / "quality.json", quality)
         quality_logger = logging.getLogger(QUALITY_LOGGER)
         quality_logger.info("QC выхода: %s", json.dumps(quality, ensure_ascii=False))
