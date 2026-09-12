@@ -23,14 +23,18 @@ from app.storage.jobs_repo import JobRepository
 #: Версия промптов (E4: prompts/<task>/<src>/<tgt>/vN.yaml). В E3 единая версия.
 PROMPT_VERSION = "v0"
 
+#: Режимы задания (E5.2). translation → REPLACE, bilingual → submit из YAML.
+JOB_MODES: tuple[str, ...] = ("bilingual", "translation")
 
-def config_hash(settings: Settings, target_language: str) -> str:
+
+def config_hash(settings: Settings, target_language: str, mode: str) -> str:
     """Хэш конфигурации, влияющей на результат (часть ключа идемпотентности, E3.6).
 
-    Другая конфигурация LLM или другой целевой язык — другой ключ: кэш и результаты
-    задания не переиспользуются (E3.7). E4.1: адрес и модель — только в
-    YAML-профилях, поэтому в хэше участвуют сами профили (translation/fill);
+    Другая конфигурация LLM, другой целевой язык или другой режим — другой ключ:
+    кэш и результаты задания не переиспользуются (E3.7). E4.1: адрес и модель —
+    только в YAML-профилях, поэтому в хэше участвуют сами профили (translation/fill);
     анализ в хэш не входит, пока стадия analyzing — заглушка (E4, CONTROL E4).
+    E5.2: режим задания и движковый submit-режим bilingual влияют на результат.
     """
     payload = {
         "profiles": {
@@ -39,6 +43,8 @@ def config_hash(settings: Settings, target_language: str) -> str:
         },
         "segmentation": settings.segmentation.block_tags,
         "target_language": target_language,
+        "mode": mode,
+        "submit_mode_bilingual": settings.translation.submit_mode_bilingual,
         "prompt_version": PROMPT_VERSION,
     }
     blob = json.dumps(payload, sort_keys=True, ensure_ascii=False)
@@ -52,8 +58,13 @@ def create_job(
     source_path: Path,
     target_language: str,
     priority: int = 0,
+    mode: str = "bilingual",
 ) -> Job:
     """Создание задания (CREATED). Лёгкая предпроверка: файл существует и это ZIP."""
+    if mode not in JOB_MODES:
+        raise InputValidationError(
+            f"недопустимый режим задания: {mode!r} (допустимы: {', '.join(JOB_MODES)})"
+        )
     if not source_path.is_file():
         raise InputValidationError(f"файл-источник не найден: {source_path}")
     if not zipfile.is_zipfile(source_path):
@@ -64,11 +75,12 @@ def create_job(
         status=JobStatus.CREATED,
         source_path=str(source_path),
         target_language=target_language,
+        mode=mode,
         priority=priority,
         created_at=now,
         updated_at=now,
         input_sha256=hashlib.sha256(source_path.read_bytes()).hexdigest(),
-        config_sha256=config_hash(settings, target_language),
+        config_sha256=config_hash(settings, target_language, mode),
         prompt_version=PROMPT_VERSION,
     )
     repo.create(job)

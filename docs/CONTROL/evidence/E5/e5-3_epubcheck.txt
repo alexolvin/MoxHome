@@ -1,0 +1,20 @@
+##### E5-3: EPUBCheck на выходе всех фикстур — 0 ошибок ERROR (verbatim)
+дата: 2026-09-12 23:52:31
+
+ВЫХОД (quality.json → epubcheck; проверки выполнены в адаптере до
+os.replace, E5.6):
+  complex (en→de)  version=EPUBCheck v5.3.0 available=True errors=0 warnings=0 unavailable_reason=None
+  lang_de (de→en)  version=EPUBCheck v5.3.0 available=True errors=0 warnings=0 unavailable_reason=None
+  lang_fr (fr→en)  version=EPUBCheck v5.3.0 available=True errors=0 warnings=0 unavailable_reason=None
+  lang_it (it→en)  version=EPUBCheck v5.3.0 available=True errors=0 warnings=0 unavailable_reason=None
+  lang_nl (nl→en)  version=EPUBCheck v5.3.0 available=True errors=0 warnings=0 unavailable_reason=None
+
+ИСХОДНЫЕ фикстуры (контроль: сами эталоны тоже чистые):
+  complex (en→de)  version=EPUBCheck v5.3.0 available=True fatals=0 errors=0 warnings=0
+  lang_de (de→en)  version=EPUBCheck v5.3.0 available=True fatals=0 errors=0 warnings=0
+  lang_fr (fr→en)  version=EPUBCheck v5.3.0 available=True fatals=0 errors=0 warnings=0
+  lang_it (it→en)  version=EPUBCheck v5.3.0 available=True fatals=0 errors=0 warnings=0
+  lang_nl (nl→en)  version=EPUBCheck v5.3.0 available=True fatals=0 errors=0 warnings=0
+
+версия зафиксирована в отчёте (требование E5.7): EPUBCheck v5.3.0 (D4).
+ошибок уровня ERROR на выходе всех 5 фикстур: 0.

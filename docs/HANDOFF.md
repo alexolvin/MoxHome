@@ -9,16 +9,61 @@
 
 - **Завершено:** E0 (фундамент) — CONTROL PASS 5/5; **E1 (ENGINE_PROBE)** — CONTROL PASS 6/6;
   **E2 (Ридер EPUB и сегментатор)** — CONTROL PASS 6/6; **E3 (Job, воркер, возобновление)** —
-  CONTROL PASS 6/6; **E4 (Слой LLM)** — CONTROL PASS 6/6, 53/53 теста. Отчёты:
-  `docs/ENGINE_PROBE.md`, `docs/CONTROL/E2.md`, `docs/CONTROL/E3.md`, `docs/CONTROL/E4.md`;
-  evidence: `docs/CONTROL/evidence/E1…E4/`.
-- **Далее:** **E5 — «Движок: адаптер и атомарный выход»** (адаптер `TranslationEngine`
-  вместо прямого импорта D17; режимы REPLACE/APPEND_BLOCK; атомарность
-  `target.epub.partial` → validate → `os.replace` → fsync; EPUBCheck (jar + Java 17),
-  отсутствие → `COMPLETED_WITH_WARNINGS`/`VALIDATION_UNAVAILABLE`; 10-пунктный
-  детерминированный QC; глоссарий через user_prompt с лимитом и записью усечения;
-  `on_fill_failed(over_maximum_retries)` → errors.log + QC по именам; исходный EPUB
-  не изменяется, бэкап перед перезаписью).
+  CONTROL PASS 6/6; **E4 (Слой LLM)** — CONTROL PASS 6/6; **E5 (Тракт T: перевод)** —
+  CONTROL PASS 8/8, 85/85 теста (на mock, BLOCKER-1 — реальные прогоны не заявляются).
+  Отчёты: `docs/ENGINE_PROBE.md`, `docs/CONTROL/E2.md`, `docs/CONTROL/E3.md`,
+  `docs/CONTROL/E4.md`, `docs/CONTROL/E5.md`; evidence: `docs/CONTROL/evidence/E1…E5/`.
+- **Далее:** **E6 — «Выравнивание оригинал ↔ перевод»** (мин. покрытие 0.995,
+  `alignment_report.json`, перестановка блоков в выходе — тест).
+
+## Сделано в E5
+
+- **Адаптер `app/adapters/epub_engine/`** (D2/D17 снят): `TranslationEngine` (Protocol) +
+  `EpubTranslatorEngine` — единственный шов над `epub-translator 0.1.10`; прикладной код
+  движок не импортирует. `_make_llms` — кэш LLM-клиентов по модели (каталоги
+  `engine_cache/<модель>/`, D15); адаптер НЕ переинтерпретирует исключения движка —
+  семантику «тракт T недоступен» (`LLMUnavailableError` с endpoint/model) назначает
+  конвейер `run_translating`, кооперативные `WorkerCancelled/WorkerPaused/LeaseLost`
+  проходят без поглощения (D23).
+- **Режимы (E5.2):** `translation` → `SubmitKind.REPLACE`, `bilingual` →
+  `APPEND_BLOCK` (по умолчанию; `APPEND_TEXT` — только явной настройкой
+  `translation.submit_mode_bilingual`, дефолт APPEND_BLOCK).
+- **Атомарный выход (E5.6):** движок пишет `target.epub.partial` (финальное имя не
+  получает); финализация `_finalize`: fsync → внутренняя валидация (`validate_output_epub`
+  + `find_broken_links`) → EPUBCheck (реальный jar 5.3.0, classpath-режим, версия в
+  отчёте) → бэкап `target.epub.bak-<ts>` перед перезаписью → `os.replace` → fsync каталога.
+  EPUBCheck недоступен → `COMPLETED_WITH_WARNINGS` + `VALIDATION_UNAVAILABLE`, результат
+  всё же выдан (T-E5-11).
+- **QC (E5 п.8, `app/workers/qc.py`, 10 пунктов):** пустые переводы, покрытие
+  (поимённая недостача), дублирование пп.5–6 (ожидание = оригиналы+переводы, D25),
+  сломанные ссылки (по имени), TOC, метаданные, прогресс (progress_mapping), структура
+  (теги/атрибуты Clark + текст; ns-декларации и whitespace-tail не сравниваются, D24;
+  известная ресериализация = корневой `lang`), fill-события (все, критические отдельно,
+  D26), глоссарий (усечение записано, E5-7).
+- **Прогресс в реальных единицах (E5 п.3, D27):** «глава k / N, сегментов A / B (doc)» —
+  из последовательности `on_progress` ([TOC][meta]+главы) и кумулятива
+  `per_chapter_segments` из `validation.json`; в job.log.
+- **Глоссарий (E5 п.5):** `glossary_provider` → `build_glossary_prompt` (лимит
+  `limits.glossary_max_user_prompt_chars`, приоритет = число вхождений, детерминизм по
+  термину); `user_prompt` движок кладёт в `<rules>` системного сообщения translate (D30);
+  усечение → QC-предупреждение с числами.
+- **Отмена (D28):** `_finalize_cancelled` не переименовывает — прежний `target.epub`
+  (валидный результат) сохраняется, `.partial` = пометка незавершённости.
+- **Фикстуры:** `dcterms:modified` добавлено в OPF (EPUBCheck RSC-005 на исходниках);
+  комплексная + 4 языковых, эталоны 26/3 сегментов.
+- Измерено (evidence E5, `docs/CONTROL/evidence/E5/`): пустые 0×5; покрытие 26/26 +
+  3/3×4 (1.0); EPUBCheck v5.3.0 0 ERROR ×5 выходов (исходники 0/0); mimetype первой
+  Stored ×5; kill -9 ×10 → 0 повреждённых (target отсутствует, .partial 1018 B);
+  fill_garbage: 12 событий (2 критических: TOC + глава 1) = 12 строк errors.log,
+  расхождение 0; глоссарий 30→11 (лимит 300, prompt 280) + топ-11 в запросе;
+  5/5 книг завершены, sha256 исходников 10/10; сбой LLM → FAILED без выхода;
+  без EPUBCheck → COMPLETED_WITH_WARNINGS.
+- Тесты: 13 функций (32 запуска) в `tests/test_e5_translation.py`; evidence-скрипт
+  `tests/e5_evidence.py` (воспроизводит 8 верbatim-файлов); полный прогон 85 passed,
+  ruff 0, mypy 0 (51 файл).
+- Дефекты этапа (Rule 3, подробно в `docs/CONTROL/E5.md`): QC п.6 ложные 24 (D25);
+  QC п.7 ложные 65 = 49 nsmap + 16 tail (D24); адаптер поглощал `WorkerCancelled`
+  (CANCELLED→FAILED) (D23); RSC-005 в фикстурах (build.py).
 
 ## Сделано в E4
 
@@ -169,6 +214,7 @@ cd /mdisk/EpubTranslator
 .venv/bin/python -m app.workers.run --config config/config.yaml --env .env  # воркер (E3)
 .venv/bin/python tests/e3_evidence.py   # сборка verbatim-evidence CONTROL E3
 .venv/bin/python tests/e4_evidence.py   # сборка verbatim-evidence CONTROL E4
+.venv/bin/python tests/e5_evidence.py   # сборка verbatim-evidence CONTROL E5
 ```
 
 Новые пакеты: `uv add <pkg>` (runtime) / `uv add --dev <pkg>`; lock обновляется автоматически.
@@ -211,19 +257,33 @@ E4-5: 1896 (translation) + 8078 (fill) + 0 (analysis) = 9974 = `tokens_total`,
 `Cost: unknown` (цены не заданы); с ценами 2.0/8.0 $/Mtok → `Cost: 0.0025 USD`.
 Итого по инструментарию после E4: ruff 0, mypy 0 (42 файла), pytest 53/53.
 
+E5-1: пустых переводов 0 на всех 5 фикстурах. E5-2: покрытие 26/26 + 3/3×4 = 1.0
+(≥ 99.5%), `shortfall=[]`. E5-3: EPUBCheck v5.3.0 available=True, errors=0 warnings=0
+×5 выходов (исходные фикстуры тоже 0/0). E5-4: `mimetype` первой записью Stored ×5
+(zipinfo verbatim `stor`). E5-5/T-E5-10: kill -9 ×10 в TRANSLATING (progress=0.100,
+exit=-9) → `target.epub` отсутствует, `.partial` 1018 B; повреждённых принятых 0.
+E5-6: fill-события 12 (критических 2: TOC + глава 1), строк errors.log 12, расхождение 0,
+предупреждение QC выдано. E5-7: 30 терминов, лимит 300 → включено 11, отброшено 19,
+prompt_chars=280, truncated=true; топ-11 в system-сообщении translate-запроса,
+отброшенных нет. E5-8: 5/5 завершены (complex 5276 B / 5 progress-вызовов, lang 1787–
+1836 B / 3), sha256 исходников 10/10. T-E5-9: мёртвый порт → FAILED,
+«тракт T недоступен (endpoint http://127.0.0.1:1/v1, model test-model)», выхода нет,
+ключ API не в сообщении. T-E5-11: без EPUBCheck → COMPLETED_WITH_WARNINGS +
+VALIDATION_UNAVAILABLE, результат выдан.
+Итого по инструментарию после E5: ruff 0, mypy 0 (51 файл), pytest 85/85.
+
 ## Открытые дефекты / ограничения
 
 - Сервер ещё не запускается (этап U1) — `python -m app` пока только валидирует конфиг.
 - Воркер запускается автономно (`python -m app.workers.run --config … --env …`);
   интеграция «сервер создаёт задания + воркер их исполняет» — в U1.
-- Конвейер E3 импортирует `epub_translator` напрямую (D17) — временный шов, адаптер
-  `TranslationEngine` с атомарным выходом (`.partial` → `os.replace`) появится в E5.
 - Стадия `analyzing` в pipeline — заглушка (E4): клиент анализа, реестр задач и промпты
   v1 готовы, исполнение задач в конвейере — этапы L1/L2; профиль `analysis` не входит
   в `config_hash` (D21) — смена analysis-настроек не инвалидирует готовый перевод.
 - LLM-эндпоинт — плейсхолдер (`http://127.0.0.1:9999/v1`, модель `probe-model`) до **BLOCKER-1**
-  (нужен реальный OpenAI-совместимый эндпоинт от владельца).
-- EPUBCheck-джар ещё не скачан (нужен для E5; Java 17 на месте).
+  (нужен реальный OpenAI-совместимый эндпоинт от владельца). Весь тракт T (E5) проверен
+  на mock — PASS реальных прогонов не заявлен; соблюдение глоссария моделью — гарантия
+  только с L3 (жёсткая проверка/правка).
 - На E3 найден и исправлен реальный дефект: heartbeat-поток использовал
   `sqlite3.Connection` главной нити → `ProgrammingError`, аренда не продлевалась.
   Регрессия зафиксирована в T-E3-1 (kill позже истечения исходной аренды +

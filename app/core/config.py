@@ -185,6 +185,29 @@ class EpubcheckSection(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     jar_path: str = Field(default="data/tools/epubcheck.jar", min_length=1)
+    timeout_seconds: float = Field(default=300.0, gt=0.0)
+
+
+class TranslationSection(BaseModel):
+    """Режимы перевода задания (E5.2): translation → REPLACE, bilingual → submit из YAML.
+
+    `submit_mode_bilingual` — движковый режим режима bilingual: по умолчанию
+    APPEND_BLOCK; APPEND_TEXT доступен настройкой, но не используется по
+    умолчанию (ухудшает последующее выравнивание, ТЗ E5 п.2).
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    submit_mode_bilingual: str = Field(default="APPEND_BLOCK")
+
+    @field_validator("submit_mode_bilingual")
+    @classmethod
+    def _check_submit_mode(cls, value: str) -> str:
+        if value not in ("APPEND_BLOCK", "APPEND_TEXT"):
+            raise ValueError(
+                "translation.submit_mode_bilingual: допустимы APPEND_BLOCK | APPEND_TEXT"
+            )
+        return value
 
 
 class Settings(BaseModel):
@@ -198,6 +221,7 @@ class Settings(BaseModel):
     segmentation: SegmentationSection
     language_detection: LanguageDetectionSection
     epubcheck: EpubcheckSection
+    translation: TranslationSection
 
     @model_validator(mode="after")
     def _check_lease_heartbeat(self) -> Settings:
@@ -252,6 +276,12 @@ class Settings(BaseModel):
     def prompts_dir(self) -> Path:
         """Корень внешних промптов (E4.5): <storage.root>/<llm.prompts_root>."""
         return self.storage.root / self.llm.prompts_root
+
+    @property
+    def epubcheck_jar_path(self) -> Path:
+        """Путь к EPUBCheck-jar (E5): относительно storage.root, если не абсолютный."""
+        path = Path(self.epubcheck.jar_path)
+        return path if path.is_absolute() else self.storage.root / path
 
     def all_data_dirs(self) -> list[Path]:
         return [
@@ -368,6 +398,7 @@ def load_settings(config_yaml: Path, env_file: Path) -> Settings:
             _sub(data, "language_detection")
         )
         epubcheck_section = EpubcheckSection.model_validate(_sub(data, "epubcheck"))
+        translation_section = TranslationSection.model_validate(_sub(data, "translation"))
     except ValidationError as exc:
         raise ConfigurationError(
             "конфигурация не прошла валидацию", details={"errors": _format_validation_errors(exc)}
@@ -382,6 +413,7 @@ def load_settings(config_yaml: Path, env_file: Path) -> Settings:
         segmentation=segmentation_section,
         language_detection=detection_section,
         epubcheck=epubcheck_section,
+        translation=translation_section,
     )
 
     if settings.server.bind_address == WILDCARD_ADDRESS and not settings.server.allow_wildcard_bind:

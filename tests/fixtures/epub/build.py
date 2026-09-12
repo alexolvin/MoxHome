@@ -164,6 +164,7 @@ COMPLEX_OPF = """<?xml version="1.0" encoding="utf-8"?>
     <dc:description>A reader fixture with shuffled file names, tables, lists and a footnote.</dc:description>
     <dc:language>en</dc:language>
     <dc:date>2026-01-01</dc:date>
+    <meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>
   </metadata>
   <manifest>
     <item id="ch1" href="z_alpha.xhtml" media-type="application/xhtml+xml"/>
@@ -399,6 +400,7 @@ def _lang_opf(title: str, lang: str, uid: str) -> str:
     <dc:creator>Language Fixture Author</dc:creator>
     <dc:language>{lang}</dc:language>
     <dc:date>2026-01-01</dc:date>
+    <meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>
   </metadata>
   <manifest>
     <item id="ch1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>

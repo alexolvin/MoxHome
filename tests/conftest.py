@@ -21,6 +21,13 @@ DEFAULT_ENV: dict[str, str] = {
 #: Тестовые адрес/модель по умолчанию для YAML-профилей (тестовая фикстура).
 DEFAULT_LLM_BASE_URL = "http://127.0.0.1:9999/v1"
 DEFAULT_LLM_MODEL = "test-model"
+#: EPUBCheck (D4): локальная установка инструмента в data/tools (gitignored).
+#: Без доступного EPUBCheck прогон завершается COMPLETED_WITH_WARNINGS
+#: (VALIDATION_UNAVAILABLE, E5.7), поэтому по умолчанию фикстура указывает на
+#: реальный jar; E5-11 переопределяет путь на несуществующий.
+DEFAULT_EPUBCHECK_JAR = str(
+    Path(__file__).resolve().parents[1] / "data" / "tools" / "epubcheck-5.3.0" / "epubcheck.jar"
+)
 
 
 @pytest.fixture(autouse=True)
@@ -73,6 +80,7 @@ def make_yaml(
         base_url: str = DEFAULT_LLM_BASE_URL,
         model: str = DEFAULT_LLM_MODEL,
         profile_overrides: Mapping[str, Mapping[str, object]] | None = None,
+        epubcheck_jar: str = DEFAULT_EPUBCHECK_JAR,
     ) -> Path:
         overrides = profile_overrides or {}
         profile_lines: list[str] = []
@@ -82,11 +90,15 @@ def make_yaml(
             profile_lines.append(f"    {name}:")
             for key, value in fields.items():
                 profile_lines.append(f"      {key}: {_yaml_scalar(value)}")
+        epubcheck_lines = (
+            f"epubcheck:\n  jar_path: {_yaml_scalar(epubcheck_jar)}\n" if epubcheck_jar else ""
+        )
         path = tmp_path / "config.yaml"
         path.write_text(
             f"storage:\n  root: {root}\nllm:\n  profiles:\n"
             + "\n".join(profile_lines)
             + "\n"
+            + epubcheck_lines
             + extra,
             encoding="utf-8",
         )

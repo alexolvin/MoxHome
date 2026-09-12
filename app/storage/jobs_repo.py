@@ -103,15 +103,16 @@ class JobRepository:
             conn.execute(
                 """
                 INSERT INTO jobs (
-                    id, status, source_path, target_language, priority, progress,
+                    id, status, source_path, target_language, mode, priority, progress,
                     created_at, updated_at, input_sha256, config_sha256, prompt_version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     job.id,
                     job.status.value,
                     job.source_path,
                     job.target_language,
+                    job.mode,
                     job.priority,
                     job.progress,
                     job.created_at,
@@ -554,6 +555,7 @@ class JobRepository:
             status=JobStatus(row["status"]),
             source_path=row["source_path"],
             target_language=row["target_language"],
+            mode=row["mode"],
             priority=row["priority"],
             progress=row["progress"],
             created_at=row["created_at"],

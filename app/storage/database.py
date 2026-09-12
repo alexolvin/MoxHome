@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     status TEXT NOT NULL,
     source_path TEXT NOT NULL,
     target_language TEXT NOT NULL,
+    mode TEXT NOT NULL DEFAULT 'bilingual',
     priority INTEGER NOT NULL DEFAULT 0,
     progress REAL NOT NULL DEFAULT 0.0,
     created_at REAL NOT NULL,
@@ -88,6 +89,8 @@ CREATE INDEX IF NOT EXISTS idx_resolved_prompts_job ON resolved_prompts (job_id,
 #: Колонки jobs, добавляемые миграциями (имя → DDL ALTER TABLE).
 _MIGRATED_JOB_COLUMNS: dict[str, str] = {
     "tokens_total": "INTEGER NOT NULL DEFAULT 0",
+    # E3-базы: все задания исполнялись в APPEND_BLOCK = режим "bilingual" (E5).
+    "mode": "TEXT NOT NULL DEFAULT 'bilingual'",
 }
 
 

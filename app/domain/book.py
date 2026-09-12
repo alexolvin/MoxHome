@@ -55,3 +55,9 @@ class Book:
     stats: BookStats
     suspicious: bool
     suspicious_reasons: tuple[str, ...]
+    #: Вхождений в TOC (nav ol>li / NCX navPoint) — семантика движка (E5.3:
+    #: «реальные единицы» прогресса). 0 — TOC пуст/отсутствует.
+    toc_entries: int = 0
+    #: Есть ли в OPF metadata-поля, которые движок переводит (title/creator/...)
+    #: — семантика движка (E5.3: маппинг progress-вызовов).
+    has_translatable_metadata: bool = False
