@@ -8,11 +8,45 @@
 ## Текущее состояние (2026-09-12)
 
 - **Завершено:** E0 (фундамент) — CONTROL PASS 5/5; **E1 (ENGINE_PROBE)** — CONTROL PASS 6/6;
-  **E2 (Ридер EPUB и сегментатор)** — CONTROL PASS 6/6, 27/27 тестов.
-  Отчёты: `docs/ENGINE_PROBE.md`, `docs/CONTROL/E2.md`;
-  evidence: `docs/CONTROL/evidence/E1/`, `docs/CONTROL/evidence/E2/`.
-- **Далее:** **E3 — «Job, воркер, возобновление»** (состояние заданий вне процесса Python:
-  SQLite WAL, lease, восстановление после падения; машина состояний из ТЗ §E3).
+  **E2 (Ридер EPUB и сегментатор)** — CONTROL PASS 6/6; **E3 (Job, воркер, возобновление)** —
+  CONTROL PASS 6/6, 34/34 теста. Отчёты: `docs/ENGINE_PROBE.md`, `docs/CONTROL/E2.md`,
+  `docs/CONTROL/E3.md`; evidence: `docs/CONTROL/evidence/E1…E3/`.
+- **Далее:** **E4 — «Слой LLM»** (профили как единый источник настроек, собственный
+  analysis-клиент тракта A с JSON-схемой и `raw/`, разрешение промптов
+  `prompts/<task>/<src>/<tgt>/vN.yaml` пар→source→generic + `pair_required`, 6-сценарный
+  mock, суммы токенов по профилям, `Cost: unknown` до реального прайса).
+
+## Сделано в E3
+
+- `app/domain/job.py`: машина состояний (14 статусов), явная таблица `TRANSITIONS`,
+  `NEXT_STAGE`, `WORKING_STATES`, `CLAIMABLE_STATES`; resume только в сохранённый `*_from`.
+- `app/storage/database.py` + `app/storage/jobs_repo.py`: SQLite WAL (единственный
+  писатель — воркер), `PRAGMA busy_timeout`/`foreign_keys`, миграции; атомарные переходы
+  (недопустимый → `JobStateError` + запись WARNING), `transitions`-журнал,
+  lease/heartbeat, восстановление истёкших арен **только при старте воркера**,
+  очередь FIFO+priority, идемпотентные ключи этапов (`stage_results`),
+  `request_cancel/pause/resume`, прогресс и токены (flush в `on_progress`).
+- `app/workers/worker.py` + `run.py`: цикл claim→stages→done; heartbeat-поток с
+  **собственным thread-local подключением** (дефект `check_same_thread` найден и исправлен,
+  регрессия — в T-E3-1); кооперативная отмена/пауза на границах групп;
+  `target.epub → target.epub.partial` при отмене; job-логи `job.log/errors.log/quality.log`.
+- `app/workers/pipeline.py`: стадии validating (ридер, статистика, `suspicious` →
+  `NEEDS_CONFIRMATION`) → planning → translating (движок, кэш в `jobs/<id>/engine_cache`) →
+  analyzing → generating → validating_output; идемпотентный ключ
+  `sha256(input+config+prompt_version+target_language)`, совпадение → пропуск этапа
+  (повторный перевод не порождается); персист `fill_failures.json`.
+  Прямой импорт движка — временный шов (D17, адаптер в E5).
+- `app/services/jobs.py`: `create_job` (стадиальный статус по `suspicious`), `confirm_job`.
+- Конфиг: `server.heartbeat_seconds`/`lease_seconds` (валидатор `lease ≤ 2×heartbeat`, D18),
+  `Settings.jobs_db_path` (единый источник пути БД).
+- Измерено (evidence E3): окно осиротения 0.574 с ≤ 2×heartbeat; 152/152 недопустимых
+  переходов отклонены (44 допущено, строк в `transitions` = 44); повтор этапа — 0 запросов,
+  хэш артефакта идентичен; retranslation share 0.0000% (X=4970, Y=5004, Z=9974); отмена
+  за 0.392 с с пометкой `target.epub.partial`; 1 исполнитель из 2 воркеров.
+- Тесты: 7 в `tests/test_e3_worker.py` (T-E3-1..4 + идемпотентность, отмена, подтверждение);
+  точка kill — по токенам в БД, не по progress (движок пишет 0.4/0.7/1.0 пачкой в конце
+  фазы — замеры; см. «Замечания» в `docs/CONTROL/E3.md`).
+- Фикстуры `lang_*.epub` получили `nav.xhtml` (движок требует TOC, `read_toc` → ValueError).
 
 ## Сделано в E2
 
@@ -88,6 +122,8 @@ cd /mdisk/EpubTranslator
 .venv/bin/ruff check .      # линтер
 .venv/bin/mypy app tests    # типы
 .venv/bin/python -m app --config config/config.yaml --env .env   # bootstrap (E0)
+.venv/bin/python -m app.workers.run --config config/config.yaml --env .env  # воркер (E3)
+.venv/bin/python tests/e3_evidence.py   # сборка verbatim-evidence CONTROL E3
 ```
 
 Новые пакеты: `uv add <pkg>` (runtime) / `uv add --dev <pkg>`; lock обновляется автоматически.
@@ -111,12 +147,29 @@ E2-1: 26/26 segment_id идентичны между запусками (уни�
 факт 474 (237+237, 2 группы движка) — отклонение 8.9% (порог ≤15%). E2-6: 5/5 языков.
 Итого по инструментарию после E2: ruff 0, mypy 0 (21 файл), pytest 27/27.
 
+E3-1: 1/1 kill -9 → INTERRUPTED; окно осиротения 0.574 с ≤ 1.0 с (2×heartbeat);
+арена действовала на момент kill (heartbeat продлевал). E3-2: 152/152 недопустимых пар
+отклонены + WARNING-лог; допущено 44, строк в transitions = 44. E3-3: хэш `target.epub`
+идентичен, 2-й запуск этапа — 0 LLM-запросов (1-й — 4). E3-4: X=4970, Y=5004, Z=9974,
+share = 0.0000% (порог ≤5%). E3-5: CANCELLED за 0.392 с (порог ≤30 с),
+`target.epub.partial` создан, непомеченного `target.epub` нет. E3-6: 1 исполнитель из 2
+воркеров, 1 переход CREATED→VALIDATING, 4 LLM-запроса (2 translate).
+Итого по инструментарию после E3: ruff 0, mypy 0 (34 файла), pytest 34/34.
+
 ## Открытые дефекты / ограничения
 
 - Сервер ещё не запускается (этап U1) — `python -m app` пока только валидирует конфиг.
+- Воркер запускается автономно (`python -m app.workers.run --config … --env …`);
+  интеграция «сервер создаёт задания + воркер их исполняет» — в U1.
+- Конвейер E3 импортирует `epub_translator` напрямую (D17) — временный шов, адаптер
+  `TranslationEngine` с атомарным выходом (`.partial` → `os.replace`) появится в E5.
 - LLM-эндпоинт — плейсхолдер (`http://127.0.0.1:9999/v1`, модель `probe-model`) до **BLOCKER-1**
   (нужен реальный OpenAI-совместимый эндпоинт от владельца).
 - EPUBCheck-джар ещё не скачан (нужен для E5; Java 17 на месте).
+- На E3 найден и исправлен реальный дефект: heartbeat-поток использовал
+  `sqlite3.Connection` главной нити → `ProgrammingError`, аренда не продлевалась.
+  Регрессия зафиксирована в T-E3-1 (kill позже истечения исходной аренды +
+  проверка `lease_expires_at ≥ t_kill`).
 
 ## Среда машины (verbatim-снимок 2026-09-12)
 

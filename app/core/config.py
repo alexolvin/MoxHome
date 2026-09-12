@@ -16,7 +16,14 @@ from typing import Any
 
 import yaml
 from dotenv import load_dotenv
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 from app.core.errors import ConfigurationError
 
@@ -91,7 +98,8 @@ class ServerSection(BaseModel):
     allow_wildcard_bind: bool = False
     auth_secret: str = ""
     heartbeat_seconds: float = Field(default=15.0, gt=0.0)
-    lease_seconds: float = Field(default=45.0, gt=0.0)
+    #: ≤ 2× heartbeat: осиротевшее задание обнаруживается за ≤ 2 периодов heartbeat (E3-1).
+    lease_seconds: float = Field(default=30.0, gt=0.0)
 
 
 class StorageDirs(BaseModel):
@@ -176,6 +184,15 @@ class Settings(BaseModel):
     language_detection: LanguageDetectionSection
     epubcheck: EpubcheckSection
 
+    @model_validator(mode="after")
+    def _check_lease_heartbeat(self) -> Settings:
+        if self.server.lease_seconds > 2 * self.server.heartbeat_seconds:
+            raise ValueError(
+                "server.lease_seconds должен быть ≤ 2× server.heartbeat_seconds "
+                "(E3-1: осиротевшее задание обнаруживается не позже чем за 2 периода heartbeat)"
+            )
+        return self
+
     @property
     def input_dir(self) -> Path:
         return self.storage.root / self.storage.dirs.input
@@ -191,6 +208,10 @@ class Settings(BaseModel):
     @property
     def jobs_dir(self) -> Path:
         return self.storage.root / self.storage.dirs.jobs
+
+    @property
+    def jobs_db_path(self) -> Path:
+        return self.jobs_dir / "jobs.db"
 
     @property
     def cache_dir(self) -> Path:

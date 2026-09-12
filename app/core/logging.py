@@ -78,3 +78,52 @@ def setup_logging(logs_dir: Path, level: str = "INFO", secrets: Sequence[str] = 
     root.handlers.clear()
     root.addHandler(file_handler)
     root.addHandler(stream_handler)
+
+
+#: Отдельный логгер для записей качества (quality.log задания, E3.9).
+QUALITY_LOGGER = "app.quality"
+
+
+def attach_job_logs(job_dir: Path, secrets: Sequence[str] = ()) -> list[logging.Handler]:
+    """Логи задания (E3.9): job.log (всё), errors.log (ERROR+), quality.log (только app.quality).
+
+    Файлы создаются сразу, чтобы существовать даже при пустых содержимом.
+    Возвращает обработчики для detach_job_logs.
+    """
+    job_dir.mkdir(parents=True, exist_ok=True)
+    formatter = RedactingJsonFormatter(secrets)
+    handlers: list[logging.Handler] = []
+
+    job_handler = logging.FileHandler(job_dir / "job.log", encoding="utf-8")
+    job_handler.setFormatter(formatter)
+    job_handler.setLevel(logging.INFO)
+    handlers.append(job_handler)
+
+    errors_handler = logging.FileHandler(job_dir / "errors.log", encoding="utf-8")
+    errors_handler.setFormatter(formatter)
+    errors_handler.setLevel(logging.ERROR)
+    handlers.append(errors_handler)
+
+    quality_logger = logging.getLogger(QUALITY_LOGGER)
+    quality_handler = logging.FileHandler(job_dir / "quality.log", encoding="utf-8")
+    quality_handler.setFormatter(formatter)
+    quality_logger.setLevel(logging.INFO)
+    quality_logger.handlers.clear()
+    quality_logger.addHandler(quality_handler)
+    handlers.append(quality_handler)
+
+    root = logging.getLogger()
+    root.addHandler(job_handler)
+    root.addHandler(errors_handler)
+    return handlers
+
+
+def detach_job_logs(handlers: Sequence[logging.Handler]) -> None:
+    root = logging.getLogger()
+    quality_logger = logging.getLogger(QUALITY_LOGGER)
+    for handler in handlers:
+        if handler in root.handlers:
+            root.removeHandler(handler)
+        elif handler in quality_logger.handlers:
+            quality_logger.removeHandler(handler)
+        handler.close()
