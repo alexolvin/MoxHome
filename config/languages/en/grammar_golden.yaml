@@ -1,0 +1,47 @@
+# Golden-набор S3 (ТЗ_03 §S3, CONTROL S3-6): 20 размеченных вручную
+# предложений обязательных грамматических явлений языка. expected — id
+# из phenomena.yaml; unit не используется (это поле S2).
+# Конвенция (как S2): предложение = сегмент golden-{i}; повторяемость
+# (min_occurrences) считается на всю «книгу» — 20 предложений набора,
+# поэтому у шаблонов с фильтром поверхность повторяется ≥ 2 раз.
+grammar:
+  - text: "She has finished her work."
+    expected: [{id: EN-PERFECT}]
+  - text: "She has finished the job."
+    expected: [{id: EN-PERFECT}]
+  - text: "The bridge was built in 1900."
+    expected: [{id: EN-PASSIVE}]
+  - text: "The road was built by workers."
+    expected: [{id: EN-PASSIVE}]
+  - text: "They have been waiting for hours."
+    expected: [{id: EN-PERFECT-CONT}]
+  - text: "We have been waiting all day."
+    expected: [{id: EN-PERFECT-CONT}]
+  - text: "She must have forgotten the key."
+    expected: [{id: EN-MODAL-PERFECT}]
+  - text: "He must have forgotten his bag."
+    expected: [{id: EN-MODAL-PERFECT}]
+  - text: "If I were you, I would leave."
+    expected: [{id: EN-COND-2}]
+  - text: "If she had known, she would have come."
+    expected: [{id: EN-COND-2}, {id: EN-COND-3}]
+  - text: "If they had asked, they would have come."
+    expected: [{id: EN-COND-2}, {id: EN-COND-3}]
+  - text: "I enjoy swimming every day."
+    expected: [{id: EN-GERUND-VS-INF}]
+  - text: "I enjoy swimming in the lake."
+    expected: [{id: EN-GERUND-VS-INF}]
+  - text: "I want to swim in the lake."
+    expected: [{id: EN-GERUND-VS-INF}]
+  - text: "I want to swim with them."
+    expected: [{id: EN-GERUND-VS-INF}]
+  - text: "You should have called earlier."
+    expected: [{id: EN-MODAL-PERFECT}]
+  - text: "We should have called sooner."
+    expected: [{id: EN-MODAL-PERFECT}]
+  - text: "The house was built last year."
+    expected: [{id: EN-PASSIVE}]
+  - text: "She had finished before lunch."
+    expected: [{id: EN-PERFECT}]
+  - text: "They had finished their work."
+    expected: [{id: EN-PERFECT}]

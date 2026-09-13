@@ -1,14 +1,19 @@
-"""S2 (ТЗ_03): идиомы, устойчивые сочетания и языкоспецифичные MWE — в
-терминах таксономии языка-источника (механизм двухступенчатый, как S1).
+"""S2/S3 (ТЗ_03): идиомы, устойчивые сочетания, языкоспецифичные MWE (S2) и
+грамматические явления (S3) — в терминах таксономии языка-источника
+(механизм двухступенчатый, как S1).
 
-Детерминированный предотбор (S2.3): морфосинтаксические шаблоны spaCy —
+Детерминированный предотбор (S2.3/S3.5): морфосинтаксические шаблоны spaCy —
 данные (`patterns` в phenomena.yaml; типы: `sequence` — смежные POS-
 последовательности, `wrap` — два маркера в одном предложении,
-`separable_units` — механизм L1 `lexical_units`, Rule 8) + повторяемость
-(вхождения на всю книгу; жёсткий фильтр — только у широких POS-шаблонов,
-`min_occurrences`, данные). LLM (задача `mwe_note`) кандидатов не
-выдвигает — только уточняет и объясняет: тип (id таксономии), канонический
-вид, значение, перевод (ТЗ_03 S2.3: порядок стадий обратным запрещён).
+`separable_units` — механизм L1 `lexical_units`, `token` — один токен по
+морфологическим признакам/словоформам, Rule 8) + повторяемость (вхождения на
+всю книгу; жёсткий фильтр — только у широких POS-шаблонов, `min_occurrences`,
+данные). LLM (задачи `mwe_note`/`grammar_note`) кандидатов не выдвигает —
+только уточняет и объясняет: тип (id таксономии), канонический вид/пояснение
+(ТЗ_03 S2.3: порядок стадий обратным запрещён).
+
+Скоп подстадии — поле `stages` таксономии (for_stage): движок агностичен к
+стадиям (Rule 8: один механизм для S2 и S3).
 
 Запись (S2.4): поверхностная форма в тексте, части с позициями, канонический
 вид, id типа из таксономии языка, значение, перевод, пример из книги,
@@ -43,7 +48,13 @@ from app.epub.aligner import AlignedPair
 from app.glossary.consistency import contains_form
 from app.languages.frequency import normalize_text
 from app.languages.nlp import lexical_units
-from app.languages.phenomena import Pattern, PatternMarker, PhenomenaTaxonomy, Phenomenon
+from app.languages.phenomena import (
+    Pattern,
+    PatternMarker,
+    PhenomenaTaxonomy,
+    Phenomenon,
+    TokenCriterion,
+)
 from app.languages.registry import PackSpec
 
 
@@ -191,7 +202,59 @@ def _sequence_hits(
 def _marker_ok(token: Token, marker: PatternMarker) -> bool:
     if marker.text and token.text.casefold() not in marker.text:
         return False
-    return marker.pos is None or token.pos_ == marker.pos
+    if marker.pos and token.pos_ not in marker.pos:
+        return False
+    return _morph_ok(token, marker.mood, marker.tense, marker.aspect)
+
+
+def _morph_value(token: Token, feature: str) -> tuple[str, ...]:
+    """Значение универсальной фичи spaCy (Mood/Tense/Aspect): `Morphl.get`
+    отдаёт список значений (измерено: «Mood» в de-модели — ['Sub']);
+    фича отсутствует — None/пустой список."""
+    value = token.morph.get(feature, None)
+    return tuple(value) if value else ()
+
+
+def _morph_ok(
+    token: Token,
+    mood: tuple[str, ...],
+    tense: tuple[str, ...],
+    aspect: tuple[str, ...],
+) -> bool:
+    """Универсальные морфологические признаки (spaCy): пустой набор — без
+    требования (Rule 1: значения — данные таксономии)."""
+    if mood and not set(_morph_value(token, "Mood")) & set(mood):
+        return False
+    if tense and not set(_morph_value(token, "Tense")) & set(tense):
+        return False
+    return not aspect or bool(set(_morph_value(token, "Aspect")) & set(aspect))
+
+
+def _criterion_ok(token: Token, criterion: TokenCriterion, index: int) -> bool:
+    """Критерий шаблона `token`: И заданных полей; поле не задано — без
+    требования. ``index`` — позиция токена в ПРЕДЛОЖЕНИИ (criterion.position
+    считается по предложению, не по документу)."""
+    if criterion.pos and token.pos_ not in criterion.pos:
+        return False
+    if criterion.text and token.text.casefold() not in criterion.text:
+        return False
+    if not _morph_ok(token, criterion.mood, criterion.tense, criterion.aspect):
+        return False
+    return criterion.position is None or index == criterion.position
+
+
+def _token_hits(
+    tokens: list[Token], pattern: Pattern
+) -> tuple[tuple[str, tuple[MwePart, ...]], ...]:
+    """Одно срабатывание на подходящий токен (ИЛИ критериев); поверхность —
+    сам токен, часть — (текст, индекс в предложении, как у прочих частей)."""
+    hits: list[tuple[str, tuple[MwePart, ...]]] = []
+    for index, token in enumerate(tokens):
+        if any(
+            _criterion_ok(token, criterion, index) for criterion in pattern.criteria
+        ):
+            hits.append((token.text, (MwePart(token.text, index),)))
+    return tuple(hits)
 
 
 def _wrap_hits(
@@ -276,6 +339,56 @@ def _separable_hits(doc: Doc, pack: PackSpec) -> tuple[MweHit, ...]:
     return tuple(hits)
 
 
+def _pattern_hits(
+    pattern: Pattern,
+    *,
+    doc: Doc,
+    pair: AlignedPair,
+    phenomenon_id: str,
+    pack: PackSpec,
+) -> list[MweHit]:
+    """Хиты одного шаблона в одном документе (dispatch по `type` — данные
+    таксономии; `separable_units` — механизм L1, остальные — по предложениям
+    в окне pack.yaml)."""
+    min_chars = pack.sentence_split.min_chars
+    max_chars = pack.sentence_split.max_chars
+    if pattern.type == "separable_units":
+        return [
+            MweHit(
+                sentence=hit.sentence,
+                segment_id=pair.segment_id,
+                phenomenon_id=phenomenon_id,
+                surface=hit.surface,
+                parts=hit.parts,
+                unit_lemma=hit.unit_lemma,
+            )
+            for hit in _separable_hits(doc, pack)
+        ]
+    hits: list[MweHit] = []
+    for sent in doc.sents:
+        if not _sent_ok(sent.text, min_chars, max_chars):
+            continue
+        tokens = list(sent)
+        if pattern.type == "sequence":
+            span_hits = _sequence_hits(tokens, pattern)
+        elif pattern.type == "token":
+            span_hits = _token_hits(tokens, pattern)
+        else:  # wrap
+            span_hits = _wrap_hits(tokens, pattern)
+        for surface, parts in span_hits:
+            hits.append(
+                MweHit(
+                    sentence=sent.text,
+                    segment_id=pair.segment_id,
+                    phenomenon_id=phenomenon_id,
+                    surface=surface,
+                    parts=parts,
+                    unit_lemma=None,
+                )
+            )
+    return hits
+
+
 def mwe_hits(
     *,
     pairs: Sequence[AlignedPair],
@@ -295,8 +408,6 @@ def mwe_hits(
     }
     if not pattern_map:
         return ()
-    min_chars = pack.sentence_split.min_chars
-    max_chars = pack.sentence_split.max_chars
     hits: list[MweHit] = []
     for pair in pairs:
         if not pair.source_text.strip():
@@ -304,38 +415,11 @@ def mwe_hits(
         doc = nlp(pair.source_text)
         for phenomenon_id, patterns in pattern_map.items():
             for pattern in patterns:
-                if pattern.type == "separable_units":
-                    for hit in _separable_hits(doc, pack):
-                        hits.append(
-                            MweHit(
-                                sentence=hit.sentence,
-                                segment_id=pair.segment_id,
-                                phenomenon_id=phenomenon_id,
-                                surface=hit.surface,
-                                parts=hit.parts,
-                                unit_lemma=hit.unit_lemma,
-                            )
-                        )
-                    continue
-                for sent in doc.sents:
-                    if not _sent_ok(sent.text, min_chars, max_chars):
-                        continue
-                    tokens = list(sent)
-                    if pattern.type == "sequence":
-                        span_hits = _sequence_hits(tokens, pattern)
-                    else:  # wrap
-                        span_hits = _wrap_hits(tokens, pattern)
-                    for surface, parts in span_hits:
-                        hits.append(
-                            MweHit(
-                                sentence=sent.text,
-                                segment_id=pair.segment_id,
-                                phenomenon_id=phenomenon_id,
-                                surface=surface,
-                                parts=parts,
-                                unit_lemma=None,
-                            )
-                        )
+                hits.extend(
+                    _pattern_hits(
+                        pattern, doc=doc, pair=pair, phenomenon_id=phenomenon_id, pack=pack
+                    )
+                )
     return tuple(hits)
 
 

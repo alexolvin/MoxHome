@@ -3,6 +3,8 @@
 # списка (жёсткое правило ТЗ L1 п.5); идентификатор вне таксономии — ошибка
 # валидации, артефакт отклоняется (L1-6). name/description — данные (S1-промпты
 # собираются из них). kind: grammar | mwe | morphology.
+# stages — подстадии ТЗ_03, в которых явление детерминированно отбирается
+# (обязательно вместе с patterns; s2 — MWE, s3 — грамматические заметки).
 phenomena:
   - id: EN-PHRASAL-VERB
     kind: mwe
@@ -18,6 +20,7 @@ phenomena:
         pos: [VERB, ADV]
         texts: {1: [away, back, "off", out, up, down]}
         min_occurrences: 2
+    stages: [s2]
   - id: EN-IDIOM
     kind: mwe
     name: "Идиоматическое выражение"
@@ -33,35 +36,97 @@ phenomena:
       - type: sequence
         pos: [VERB, DET, NOUN]
         min_occurrences: 2
+    stages: [s2]
   - id: EN-COND-2
     kind: grammar
     name: "Второе условное (Second Conditional)"
     description: "Нереальное/маловероятное условие настоящего: if + past simple … would + инфинитив (If I were you, I would leave)."
+    patterns:
+      # Измерено: «would» — AUX/MD. Ограничение: wrap не различает COND-2
+      # и COND-3 («if … would have come» тоже попадает — честный предел,
+      # CONTROL S3).
+      - type: wrap
+        start: {text: [if]}
+        end: {text: [would, could, should]}
+    stages: [s3]
   - id: EN-COND-3
     kind: grammar
     name: "Третье условное (Third Conditional)"
     description: "Нереальное условие прошлого: if + past perfect … would have + причастие (If she had known, she would have come)."
+    patterns:
+      # Измерено: «would have come» — AUX/MD AUX/VB VERB/VBN (pos_ VERB,
+      # НЕ PART).
+      - type: sequence
+        pos: [AUX, AUX, VERB]
+        texts: {0: [would]}
+        min_occurrences: 2
+    stages: [s3]
   - id: EN-PERFECT
     kind: grammar
     name: "Perfect-время"
     description: "have/has/had + причастие II (present/past perfect): She has finished her work."
+    patterns:
+      # Измерено: «has finished» — AUX/VBZ + VERB/VBN (pos_ VERB, НЕ PART).
+      # Поднабор «have forgotten» внутри «must have forgotten» тоже
+      # попадает (честный предел — CONTROL S3).
+      - type: sequence
+        pos: [AUX, VERB]
+        texts: {0: [have, has, had]}
+        min_occurrences: 2
+    stages: [s3]
   - id: EN-PERFECT-CONT
     kind: grammar
     name: "Perfect Continuous"
     description: "have been + -ing: длительность к моменту (They have been waiting for hours)."
+    patterns:
+      # Измерено: «have been waiting» — AUX/VBP AUX/VBN VERB/VBG.
+      - type: sequence
+        pos: [AUX, AUX, VERB]
+        texts: {0: [have, has, had]}
+        min_occurrences: 2
+    stages: [s3]
   - id: EN-PASSIVE
     kind: grammar
     name: "Пассивный залог"
     description: "be + причастие II: The bridge was built in 1900."
+    patterns:
+      # Измерено: «was built» — AUX/VBD + VERB/VBN Aspect=Perf; прогрессив
+      # «is running» — Aspect=Prog — маркер end с aspect: [Perf] его
+      # исключает.
+      - type: wrap
+        start: {pos: AUX, text: [am, is, are, was, were, been, being, be]}
+        end: {pos: VERB, aspect: [Perf]}
+    stages: [s3]
   - id: EN-REPORTED-SPEECH
     kind: grammar
     name: "Неспрямая речь"
     description: "Перевод прямой речи с backshift: He said that he was tired."
+    # Без шаблона: backshift — семантическое преобразование, токенами не
+    # выражается — детерминированно не отбирается (честный предел).
   - id: EN-MODAL-PERFECT
     kind: grammar
     name: "Модальный глагол + perfect"
     description: "модальный + have + причастие II (вывод о прошлом): She must have forgotten."
+    patterns:
+      # Измерено: «must have forgotten» — AUX/MD AUX/VB VERB/VBN.
+      - type: sequence
+        pos: [AUX, AUX, VERB]
+        texts: {0: [must, can, could, may, might, shall, should, need, dare,
+                   ought]}
+        min_occurrences: 2
+    stages: [s3]
   - id: EN-GERUND-VS-INF
     kind: grammar
     name: "Герундий vs инфинитив"
     description: "Глагол управляет -ing или to-инфинитивом с разницей значений: I enjoy swimming / I want to swim."
+    patterns:
+      # Измерено: «enjoy swimming» — VERB/VBP VERB/VBG; «want to swim» —
+      # VERB/VBP PART/TO VERB/VB.
+      - type: sequence
+        pos: [VERB, VERB]
+        min_occurrences: 2
+      - type: sequence
+        pos: [VERB, PART, VERB]
+        texts: {1: [to]}
+        min_occurrences: 2
+    stages: [s3]

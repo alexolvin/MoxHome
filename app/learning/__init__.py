@@ -17,4 +17,5 @@ from collections.abc import Mapping
 SUBSTAGE_LEVELS: Mapping[str, frozenset[str]] = {
     "s1": frozenset({"Balanced", "Learning", "Intensive"}),
     "s2": frozenset({"Learning", "Intensive"}),
+    "s3": frozenset({"Learning", "Intensive"}),
 }

@@ -2,15 +2,36 @@
 # Идентификатор — стабильная строка: LLM возвращает ТОЛЬКО идентификаторы из этого
 # списка; идентификатор вне таксономии — ошибка валидации, артефакт отклоняется
 # (L1-6). name/description — данные (S1-промпты собираются из них).
+# stages — подстадии ТЗ_03, в которых явление детерминированно отбирается
+# (обязательно вместе с patterns; s2 — MWE, s3 — грамматические заметки).
 phenomena:
   - id: IT-CONGIUNTIVO
     kind: grammar
     name: "Конъюнктив (congiuntivo)"
     description: "Наклонение прилагательного/мнения: Spero che tu venga, credo che sia vero."
+    patterns:
+      # Измерено: «venga» — VERB/V Mood=Sub, «sia» — AUX/V Mood=Sub,
+      # «venisse» — VERB/V Mood=Sub Tense=Imp. НЕСТАБИЛЬНО: «parta»/«fossi»
+      # модель размечает Mood=Ind (честный предел — CONTROL S3).
+      - type: token
+        criteria:
+          - pos: [VERB, AUX]
+            mood: [Sub]
+    stages: [s3]
   - id: IT-PASSATO-REMOTO
     kind: grammar
     name: "Passato remoto"
     description: "Завершённое далёкое прошлое (литературное): Ieri entrai in casa e mi sedetti."
+    patterns:
+      # Измерено: «entrai»/«sedetti» — Tense=Pres (модель размечает passato
+      # remoto как настоящее) — СПИСОК ДАННЫХ с частыми формами (Rule 1).
+      - type: token
+        criteria:
+          - text: [andai, andò, entrai, entrò, disse, dissì, vidi, vide,
+                   videi, fece, volle, volli, credetti, seppi, sedetti,
+                   tornai, tornò, partii, partì, arrivai, arrivò, restai,
+                   restò, finii, finì, aprii, apri, andarono]
+    stages: [s3]
   - id: IT-PRONOMI-COMBINATI
     kind: grammar
     name: "Слитные местоимения"
@@ -22,27 +43,52 @@ phenomena:
       - type: sequence
         pos: [PRON, PRON, VERB]
         min_occurrences: 2
+    stages: [s2, s3]
   - id: IT-VERBI-PRONOMINALI
     kind: grammar
     name: "Возвратные глаголы"
     description: "Verbi pronominali (reflexivi): Mi sono svegliato tardi; anche с изменением значения: accorgersi."
     patterns:
       # Клитика + глагол (измерено: Mi/PRON piace/VERB; Ti/PRON dico/VERB).
+      # Широкий шаблон → фильтр повторяемости (подлежащее+глагол «tu venga»
+      # тоже попадает — честный предел, CONTROL S3).
       - type: sequence
         pos: [PRON, VERB]
         min_occurrences: 2
+    stages: [s2, s3]
   - id: IT-CONCORDANZA-PARTICIPIO
     kind: grammar
     name: "Согласование причастия"
     description: "Participio passato согласуется с CD перед глаголом при avere: Le ho lette, l'ho vista."
+    # Без шаблона: согласование — черта написания формы (letto/letta),
+    # токенами не выражается — детерминированно не отбирается.
   - id: IT-PERIODO-IPOTETICO
     kind: grammar
     name: "Условный период (periodo ipotetico)"
     description: "Три типа условных: Se avessi tempo, verrei (II/III tipo)."
+    patterns:
+      # Измерено: «verrei» — VERB/V Mood=Cnd; «Vorrei» — Mood=Cnd.
+      # Конъюнктив условной части («avessi») модель размечает Mood=Ind —
+      # сигнал — условное наклонение главной части (Mood=Cnd).
+      - type: token
+        criteria:
+          - pos: [VERB, AUX]
+            mood: [Cnd]
+    stages: [s3]
   - id: IT-GERUNDIO
     kind: grammar
     name: "Герундий (gerundio)"
     description: "Cantando, si distrae; + avendo (gerundio composto): Avevano finito, se ne andarono."
+    patterns:
+      # Измерено: «Cantando» — ADV/B (модель размечает герундий как
+      # наречие) — СПИСОК ДАННЫХ с частыми формами (Rule 1).
+      - type: token
+        criteria:
+          - text: [cantando, andando, essendo, avendo, facendo, prendendo,
+                   parlando, girando, dormendo, lavorando, scrivendo,
+                   vivendo, passando, tornando, arrivando, partendo,
+                   finendo, aprendendo]
+    stages: [s3]
   - id: IT-ESPRESSIONE-IDIOMATICA
     kind: mwe
     name: "Идиоматическое выражение"
@@ -57,3 +103,4 @@ phenomena:
       - type: sequence
         pos: [VERB, ADP]
         min_occurrences: 2
+    stages: [s2]

@@ -1,0 +1,48 @@
+# Golden-набор S3 (ТЗ_03 §S3, CONTROL S3-6): 20 размеченных вручную
+# предложений обязательных грамматических явлений языка. expected — id
+# из phenomena.yaml; unit не используется (это поле S2).
+# Конвенция (как S2): предложение = сегмент golden-{i}; повторяемость
+# (min_occurrences) считается на всё «книгу» — 20 предложений набора.
+grammar:
+  - text: "Ich weiß, dass er morgen kommt."
+    expected: [{id: DE-NEBENSATZ-VERBLETZT}]
+  - text: "Ich frage, ob sie da ist."
+    expected: [{id: DE-NEBENSATZ-VERBLETZT}]
+  - text: "Er hilft mir, wenn er kann."
+    expected: [{id: DE-NEBENSATZ-VERBLETZT}]
+  - text: "Wir gehen, weil es regnet."
+    expected: [{id: DE-NEBENSATZ-VERBLETZT}]
+  - text: "Er sagt, er sei krank."
+    expected: [{id: DE-KONJUNKTIV-I}]
+  - text: "Sie meinte, sie hätte keine Zeit."
+    expected: [{id: DE-KONJUNKTIV-II}]
+  # Придаточное вынесено в начало — глагол всё равно на конце придаточного
+  # (шаблон wrap с fallback'ом на первый глагол после союза находит «hätte»).
+  - text: "Wenn ich Zeit hätte, käme ich."
+    expected: [{id: DE-NEBENSATZ-VERBLETZT}, {id: DE-KONJUNKTIV-II}]
+  - text: "Das Fenster wurde von dem Wind geöffnet."
+    expected: [{id: DE-PASSIV-WERDEN}]
+  - text: "Die Tür wurde gestern geschlossen."
+    expected: [{id: DE-PASSIV-WERDEN}]
+  - text: "Die Brücke ist 1900 gebaut."
+    expected: [{id: DE-PASSIV-SEIN}]
+  - text: "Das Haus ist frisch gestrichen."
+    expected: [{id: DE-PASSIV-SEIN}]
+  - text: "Ich warte auf den Zug."
+    expected: [{id: DE-KASUS-REKTION}]
+  - text: "Ich warte auf dich."
+    expected: [{id: DE-KASUS-REKTION}]
+  - text: "Ich warte auf den Bus."
+    expected: [{id: DE-KASUS-REKTION}]
+  - text: "Das ist doch klar."
+    expected: [{id: DE-MODALPARTIKEL}]
+  - text: "Komm mal her."
+    expected: [{id: DE-MODALPARTIKEL}]
+  - text: "Es war wohl schwer."
+    expected: [{id: DE-MODALPARTIKEL}]
+  - text: "Ich bin noch nicht fertig."
+    expected: [{id: DE-MODALPARTIKEL}]
+  - text: "Die Musik war ja wunderbar."
+    expected: [{id: DE-MODALPARTIKEL}]
+  - text: "Das ist halt so."
+    expected: [{id: DE-MODALPARTIKEL}]

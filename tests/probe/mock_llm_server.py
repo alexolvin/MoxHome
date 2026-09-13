@@ -29,7 +29,14 @@
                      → отклонение по card_schema.json, выпускается 0);
   mwe_bad_id            — S2-1: у первой записи mwe_note phenomenon_id вне
                      таксономии языка (ZZ-S2-FAKE) → детерминированная
-                     валидация отклоняет, принятых 0 с этим id.
+                     валидация отклоняет, принятых 0 с этим id;
+  grammar_bad_id        — S3-1: у первой заметки grammar_note phenomenon_id
+                     вне таксономии языка (ZZ-S3-FAKE) → отклонение;
+  grammar_bad_quote     — S3-2: у первой заметки surface не среди
+                     детерминированных кандидатов («подброшенная» цитата) →
+                     отклонение;
+  grammar_note_too_long — T-S3-10: у первой заметки explanation длиннее
+                     лимита → отклонение, а не тихая усечка.
 
 Сценарии, помеченные «analysis», действуют только на запросы вида analysis
 (системный промпт начинается с "You are an analysis engine"); на translate/fill
@@ -442,6 +449,60 @@ def _mwe_note_response(user: str, scenario: str) -> str:
     return json.dumps({"items": items}, ensure_ascii=False)
 
 
+_GRAMMAR_PAYLOAD_MARKER = "Grammar payload (JSON):\n"
+#: S3-5: пояснение mock-заметки — ТОЛЬКО русский текст (без латинских
+#: цитат: langdetect с фикс. сидом чувствителен к длинным вкраплениям
+#: латиницы в русском предложении — детерминированно, S3-5).
+_GRAMMAR_EXPLANATION = (
+    "Пояснение: эта грамматическая форма встречается в тексте книги и "
+    "соответствует уровню пользователя."
+)
+#: T-S3-10: заведомо длиннее лимита grammar_note_max_chars (300).
+_GRAMMAR_EXPLANATION_TOO_LONG = (
+    "Пояснение: эта грамматическая форма встречается в тексте книги и важна "
+    "для понимания структуры предложений. Она соответствует уровню "
+    "пользователя, поэтому рекомендуется обратить внимание на порядок слов, "
+    "наклонение глагола и падежные сочетания в подобных конструкциях. Форма "
+    "повторяется в нескольких сегментах и стоит в начале списка приоритетов "
+    "главы, потому что её понимание необходимо для прочтения следующих глав."
+)
+
+
+def _grammar_note_response(user: str, scenario: str) -> str:
+    """Ответ задачи grammar_note (S3): детерминированно по кандидатам — по
+    одному item на кандидата, эхо surface, эхо phenomenon_id; explanation —
+    фиксированный русский шаблон. Сценарии: grammar_bad_id — у первой
+    заметки phenomenon_id вне таксономии (ZZ-S3-FAKE, S3-1);
+    grammar_bad_quote — у первой заметки surface не среди кандидатов
+    (цитата «подброшена», S3-2); grammar_note_too_long — у первой заметки
+    explanation длиннее лимита (T-S3-10: отклонение, не усечка)."""
+    start = user.find(_GRAMMAR_PAYLOAD_MARKER)
+    if start == -1:
+        return json.dumps({"items": []})
+    try:
+        payload = json.loads(user[start + len(_GRAMMAR_PAYLOAD_MARKER) :].strip())
+    except json.JSONDecodeError:
+        return json.dumps({"items": []})
+    items: list[dict[str, object]] = []
+    for index, cand in enumerate(payload.get("candidates", ())):
+        if not isinstance(cand, dict):
+            continue
+        surface = str(cand.get("surface", ""))
+        phenomenon_id = str(cand.get("phenomenon_id", ""))
+        explanation = _GRAMMAR_EXPLANATION
+        if index == 0:
+            if scenario == "grammar_bad_id":
+                phenomenon_id = "ZZ-S3-FAKE"
+            elif scenario == "grammar_bad_quote":
+                surface = "Qwzxw"
+            elif scenario == "grammar_note_too_long":
+                explanation = _GRAMMAR_EXPLANATION_TOO_LONG
+        items.append(
+            {"surface": surface, "phenomenon_id": phenomenon_id, "explanation": explanation}
+        )
+    return json.dumps({"items": items}, ensure_ascii=False)
+
+
 _CANNED_ANALYSIS = {
     "empty": "",
     "bad_json": '{"items": [unterminated — not valid JSON',
@@ -463,6 +524,7 @@ def _analysis_response(scenario: str, system: str, user: str) -> str:
         "glossary_fix": lambda: _glossary_fix_response(user, scenario),
         "vocabulary_card": lambda: _vocabulary_card_response(user, scenario),
         "mwe_note": lambda: _mwe_note_response(user, scenario),
+        "grammar_note": lambda: _grammar_note_response(user, scenario),
     }
     handler = handlers.get(task)
     if handler is not None:

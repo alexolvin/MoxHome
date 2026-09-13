@@ -2,6 +2,8 @@
 # Идентификатор — стабильная строка: LLM возвращает ТОЛЬКО идентификаторы из этого
 # списка; идентификатор вне таксономии — ошибка валидации, артефакт отклоняется
 # (L1-6). name/description — данные (S1-промпты собираются из них).
+# stages — подстадии ТЗ_03, в которых явление детерминированно отбирается
+# (обязательно вместе с patterns; s2 — MWE, s3 — грамматические заметки).
 phenomena:
   - id: DE-TRENNBAR
     kind: mwe
@@ -9,40 +11,102 @@ phenomena:
     description: "Глагол с отделяемой приставкой: приставка уходит на конец предложения (Er steht früh auf = aufstehen). Разбирается как единая лексическая единица."
     patterns:
       # Механизм L1 lexical_units: приставки — данные pack.yaml (Rule 8:
-      # один механизм, измерен T-L1-11).
+      # один механизм, измерено T-L1-11).
       - type: separable_units
+    stages: [s2]
   - id: DE-KONJUNKTIV-I
     kind: grammar
     name: "Konjunktiv I (косвенная речь)"
     description: "Условное наклонение I для косвенной речи: Er sagt, er sei müde."
+    patterns:
+      # Измерено (spaCy de): «sei» — AUX/VAFIN Mood=Sub Tense=Pres;
+      # глагольные формы K-I — VERB/VVFIN с теми же признаками.
+      - type: token
+        criteria:
+          - pos: [VERB, AUX]
+            mood: [Sub]
+            tense: [Pres]
+    stages: [s3]
   - id: DE-KONJUNKTIV-II
     kind: grammar
     name: "Konjunktiv II (нереальность)"
     description: "Условное наклонение II для нереального/вежливого: Wenn ich Zeit hätte, käme ich."
+    patterns:
+      # Измерено: «hätte» — VERB/VAFIN Mood=Sub Tense=Past, «käme» —
+      # VERB/VVFIN Mood=Sub Tense=Past. K-I/K-II различаются временем.
+      - type: token
+        criteria:
+          - pos: [VERB, AUX]
+            mood: [Sub]
+            tense: [Past]
+    stages: [s3]
   - id: DE-NEBENSATZ-VERBLETZT
     kind: grammar
     name: "Придаточное с вынесением глагола"
     description: "В придаточном предложном союзе finiten глагол стоит на конце: Ich weiß, dass er morgen kommt."
+    patterns:
+      # Измерено: «dass» — SCONJ/KOUS; глагол на конце — «kommt» VERB/VVFIN,
+      # «ist» AUX/VAFIN (pos — два). Покрытие: придаточное в КОНЦЕ
+      # предложения (end_final); придаточное в середине — честно в CONTROL.
+      - type: wrap
+        start: {text: [dass, weil, wenn, als, ob, obwohl, daß]}
+        end: {pos: [VERB, AUX]}
+        end_final: true
+    stages: [s3]
   - id: DE-KASUS-REKTION
     kind: grammar
     name: "Падежная рекция"
     description: "Глагол/существительное управляет определённым падежом: denken an + Akk/Dat, warten auf + Akk."
+    patterns:
+      # Измерено: «warte auf» — VERB/ADP. Широкий шаблон → фильтр
+      # повторяемости (ТЗ_03 S2.3).
+      - type: sequence
+        pos: [VERB, ADP]
+        texts: {1: [an, auf, für, über, mit, ohne, von, zu, bei]}
+        min_occurrences: 2
+    stages: [s3]
   - id: DE-PARTIZIP-ATTRIBUT
     kind: grammar
     name: "Причастный атрибут"
     description: "Причастие II как определяющее: das von Stürmen gezeichnete Haus."
+    # Без шаблона: причастие (VVPP, pos VERB) перед существительным не
+    # отличимо от любой пары VERB+NOUN — детерминированно не отбирается
+    # (честный предел механизма — CONTROL S3).
   - id: DE-PASSIV-WERDEN
     kind: grammar
     name: "Процессуальный пассив (Vorgangspassiv)"
     description: "werden + причастие II: Das Fenster wurde von dem Wind geöffnet."
+    patterns:
+      # Измерено: «wurde» — AUX/VAFIN; причастие «geöffnet» — pos VERB
+      # (VVPP, НЕ PART), на конце предложения.
+      - type: wrap
+        start: {pos: AUX, text: [wird, wurde, werden]}
+        end: {pos: VERB}
+        end_final: true
+    stages: [s3]
   - id: DE-PASSIV-SEIN
     kind: grammar
     name: "Результативный пассив (Zustandspassiv)"
     description: "sein + причастие II: Die Brücke ist 1900 gebaut."
+    patterns:
+      # Измерено: «ist» — AUX/VAFIN; причастие — pos VERB на конце.
+      # «Er ist müde» не попадает (конец — ADV) — end_final VERB.
+      - type: wrap
+        start: {pos: AUX, text: [ist, sind, war, waren]}
+        end: {pos: VERB}
+        end_final: true
+    stages: [s3]
   - id: DE-MODALPARTIKEL
     kind: grammar
     name: "Модальные частицы"
     description: "doch, mal, ja, eben, halt, noch, wohl — тон и оценка высказывания: Das ist doch klar."
+    patterns:
+      # Измерено: doch/mal/wohl — ADV/ADV (НЕ PART) — список словоформ.
+      - type: token
+        criteria:
+          - pos: [ADV]
+            text: [doch, mal, ja, eben, halt, wohl, noch]
+    stages: [s3]
   - id: DE-FESTE-WENDUNG
     kind: mwe
     name: "Устойчивое выражение"
@@ -57,6 +121,7 @@ phenomena:
       - type: sequence
         pos: [NOUN, VERB]
         min_occurrences: 2
+    stages: [s2]
   - id: DE-WORTBILDUNG-KOMPOSITUM
     kind: morphology
     name: "Сложение слов (Kompositum)"
