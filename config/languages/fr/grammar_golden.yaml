@@ -1,0 +1,46 @@
+# Golden-набор S3 (ТЗ_03 §S3, CONTROL S3-6): 20 размеченных вручную
+# предложений обязательных грамматических явлений языка. expected — id
+# из phenomena.yaml; unit не используется (это поле S2).
+# Конвенция (как S2): предложение = сегмент golden-{i}; повторяемость
+# (min_occurrences) считается на всю «книгу» — 20 предложений набора.
+grammar:
+  - text: "Je souhaite que tu viennes."
+    expected: [{id: FR-SUBJONCTIF}]
+  - text: "Il faut que tu fasses tes devoirs."
+    expected: [{id: FR-SUBJONCTIF}]
+  - text: "J'aimerais qu'elle parte."
+    expected: [{id: FR-SUBJONCTIF}]
+  - text: "Qu'il soit content de voir ses amis."
+    expected: [{id: FR-SUBJONCTIF}]
+  - text: "Nous voulons qu'ils aient le temps."
+    expected: [{id: FR-SUBJONCTIF}]
+  - text: "Il entra dans la pièce."
+    expected: [{id: FR-PASSE-SIMPLE}]
+  - text: "Elle vit une lumière dans le ciel."
+    expected: [{id: FR-PASSE-SIMPLE}]
+  - text: "Il fut très heureux de la revoir."
+    expected: [{id: FR-PASSE-SIMPLE}]
+  - text: "Quand il est entré, je dormais."
+    expected: [{id: FR-IMPARFAIT-VS-PASSE-COMPOSE}]
+  - text: "Elle parlait doucement à l'enfant."
+    expected: [{id: FR-IMPARFAIT-VS-PASSE-COMPOSE}]
+  - text: "Nous allions au marché chaque jour."
+    expected: [{id: FR-IMPARFAIT-VS-PASSE-COMPOSE}]
+  - text: "En marchant, il a vu la maison."
+    expected: [{id: FR-GERONDIF}]
+  - text: "En dormant, il rêvait des voyages."
+    expected: [{id: FR-GERONDIF}]
+  - text: "Je me le rappelle très bien."
+    expected: [{id: FR-PRONOMS-CLITIQUES}]
+  - text: "Je me le dis souvent."
+    expected: [{id: FR-PRONOMS-CLITIQUES}]
+  - text: "Il se les met toujours."
+    expected: [{id: FR-PRONOMS-CLITIQUES}]
+  - text: "Elle ne parle plus jamais."
+    expected: [{id: FR-NEGATION-COMPLEXE}]
+  - text: "Je ne sais rien de lui."
+    expected: [{id: FR-NEGATION-COMPLEXE}]
+  - text: "Il ne reste personne dans la salle."
+    expected: [{id: FR-NEGATION-COMPLEXE}]
+  - text: "Je ne veux jamais sortir le soir."
+    expected: [{id: FR-NEGATION-COMPLEXE}]

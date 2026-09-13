@@ -1,0 +1,20 @@
+дата: 2026-09-13 17:14:25
+версии: python=3.11.13 spacy=3.8.16
+
+s3_en.epub (Learning, mock ok): явление объясняется ОДИН раз развёрнуто; развёрнутых: 6, ссылок: 4
+
+развёрнутые заметки (verbatim):
+  EN-COND-3 'would have come' seg=935c2bbab3e076bbc10d3d0711e394c1895434440c4d3e05247fcbbe48e5b6ce len=99
+  EN-PASSIVE 'was built' seg=e08146dc6aa33b6ff41fff32750d22558811d1894244cae102889804c6e69703 len=99
+  EN-PERFECT 'has finished' seg=83e9bcdcf6e989b23808e442af1c1bfbf5a552b845a30c7dc0f5a327c0772ed5 len=99
+  EN-COND-2 'If I were you, I would' seg=ff5c6c5c13ca3a44434630e611dc8de9db144f305b431915bef8c31c3470740f len=99
+  EN-GERUND-VS-INF 'enjoy swimming' seg=b7c7481958e1014fc62d70a1e0b112e041b2b7289d5802e405ff67911e94125f len=99
+  EN-MODAL-PERFECT 'must have forgotten' seg=8065a07a7e235517d4cdd5c47ed9dcef62d4d79d75a00cf158ab8b33c151636a len=99
+
+заметки-ссылки (verbatim; LLM не участвует — model пусто):
+  EN-PERFECT 'have come' → seg=83e9bcdcf6e989b23808e442af1c1bfbf5a552b845a30c7dc0f5a327c0772ed5: 'Повторение: см. первую заметку об этом явлении.' (model='')
+  EN-COND-2 'If she had known, she would' → seg=ff5c6c5c13ca3a44434630e611dc8de9db144f305b431915bef8c31c3470740f: 'Повторение: см. первую заметку об этом явлении.' (model='')
+  EN-COND-2 'If they had asked, they would' → seg=ff5c6c5c13ca3a44434630e611dc8de9db144f305b431915bef8c31c3470740f: 'Повторение: см. первую заметку об этом явлении.' (model='')
+  EN-GERUND-VS-INF 'want to swim' → seg=b7c7481958e1014fc62d70a1e0b112e041b2b7289d5802e405ff67911e94125f: 'Повторение: см. первую заметку об этом явлении.' (model='')
+
+S3-4: PASS — повторных развёрнутых объяснений одного явления: 0; остальные — ссылки на первую заметку

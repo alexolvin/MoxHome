@@ -2,27 +2,75 @@
 # Идентификатор — стабильная строка: LLM возвращает ТОЛЬКО идентификаторы из этого
 # списка; идентификатор вне таксономии — ошибка валидации, артефакт отклоняется
 # (L1-6). name/description — данные (S1-промпты собираются из них).
+# stages — подстадии ТЗ_03, в которых явление детерминированно отбирается
+# (обязательно вместе с patterns; s2 — MWE, s3 — грамматические заметки).
 phenomena:
   - id: FR-SUBJONCTIF
     kind: grammar
     name: "Субъунктив (subjonctif)"
     description: "Наклонение субъективного отношения: Je souhaite que tu viennes, il faut que tu fasses."
+    patterns:
+      # fr_core_news_sm без теггера: глагольные формы субъюнктива
+      # размечаются неверно (измерено: «viennes» — NOUN, «fasses» — NOUN,
+      # «soit» — AUX Mood=Sub) — СПИСОК ДАННЫХ с частыми формами (Rule 1).
+      # Критерий только по словоформе (POS модели на этих формах ненадёжен).
+      - type: token
+        criteria:
+          - text: [sois, soit, soyons, soyez, soient, aie, aies, ait, ayons,
+                   ayez, aient, fasse, fasses, fassions, fassiez, fassent,
+                   parte, partes, partions, partiez, partent, vienne, viennes,
+                   venions, veniez, viennent]
+    stages: [s3]
   - id: FR-ACCORD-PARTICIPE
     kind: grammar
     name: "Согласование причастия"
     description: "Accord du participe passé (в т.ч. с avoir при прямом дополнении перед глаголом): Elle a mangé une pomme rouge / Elle les a mangées."
+    # Без шаблона: согласование — черта написания формы (mangé/mangées),
+    # токенами не выражается — детерминированно не отбирается.
   - id: FR-PRONOMS-CLITIQUES
     kind: grammar
     name: "Клитические местоимения"
     description: "je/me/m' me le/m'y — порядок и формы: Je me le rappelle."
+    patterns:
+      # Измерено: POS второго клитика контекстно НЕСТАБИЛЬНО — «le» тагуется
+      # и PRON, и DET, и VERB (разные контексты; fr-теггер слаб на клитиках) —
+      # три варианта POS в шаблонах; первый клитик стабильно PRON.
+      - type: sequence
+        pos: [PRON, PRON]
+        texts: {0: [me, m', te, t', se, s'], 1: [le, les, l', lui, leur]}
+      - type: sequence
+        pos: [PRON, DET]
+        texts: {0: [me, m', te, t', se, s'], 1: [le, les, l', lui, leur]}
+      - type: sequence
+        pos: [PRON, VERB]
+        texts: {0: [me, m', te, t', se, s'], 1: [le, les, l', lui, leur]}
+    stages: [s3]
   - id: FR-PASSE-SIMPLE
     kind: grammar
     name: "Passé simple"
     description: "Литературное прошедшее: Il entra dans la pièce."
+    patterns:
+      # Измерено: «entra» — VERB Tense=Pres (модель размечает passé simple
+      # как настоящее) — СПИСОК ДАННЫХ с частыми формами (Rule 1).
+      - type: token
+        criteria:
+          - text: [entrai, entras, entra, entrèrent, vit, vînt, fut, eut, dit,
+                   fit, crut, partit, tomba, vint, prit, voulut, put, dut, sut]
+    stages: [s3]
   - id: FR-IMPARFAIT-VS-PASSE-COMPOSE
     kind: grammar
     name: "Imparfait vs passé composé"
     description: "Фоновое vs точечное действие: Quand il est entré, je dormais."
+    patterns:
+      # Измерено: «dormais» — Tense=Pres (модель размечает imparfait как
+      # настоящее) — СПИСОК ДАННЫХ с частыми формами (Rule 1).
+      - type: token
+        criteria:
+          - text: [dormais, dormait, dormions, dormiez, dormaient, parlais,
+                   parlait, parlions, faisais, faisait, allais, allait,
+                   allions, venais, venait, savais, savait, étais, était,
+                   étions, étiez, étaient, voulais, voulait]
+    stages: [s3]
   - id: FR-NEGATION-COMPLEXE
     kind: grammar
     name: "Сложное отрицание"
@@ -32,12 +80,23 @@ phenomena:
       # второй элемент отрицания (jamais/plus — ADV, rien — PRON,
       # personne — ADJ: по тексту, POS не ограничивает).
       - type: wrap
-        start: {text: ["ne", "n'"]}
+        start: {text: [ne, "n'"]}
         end: {text: [jamais, plus, rien, personne]}
+    stages: [s2, s3]
   - id: FR-GERONDIF
     kind: grammar
     name: "Герундий (gérondif)"
     description: "en + present participle: En marchant, il a vu la maison."
+    patterns:
+      # Измерено: «marchant» — NOUN (модель размечает -ant причастие как
+      # существительное) — СПИСОК ДАННЫХ с частыми формами (Rule 1).
+      - type: token
+        criteria:
+          - text: [marchant, courant, dormant, aimant, faisant, parlant,
+                   allant, venant, étant, ayant, chantant, regardant,
+                   travaillant, vivant, passant, finissant, apprenant,
+                   retournant]
+    stages: [s3]
   - id: FR-LOCUTION-VERBALE
     kind: mwe
     name: "Глагольная фраза (locution verbale)"
@@ -49,6 +108,7 @@ phenomena:
         pos: [PRON, VERB]
         texts: {0: [se, s', me, m', te, t']}
         min_occurrences: 2
+    stages: [s2]
   - id: FR-EXPRESSION-IDIOMATIQUE
     kind: mwe
     name: "Идиоматическое выражение"

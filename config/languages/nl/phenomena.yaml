@@ -2,6 +2,8 @@
 # Идентификатор — стабильная строка: LLM возвращает ТОЛЬКО идентификаторы из этого
 # списка; идентификатор вне таксономии — ошибка валидации, артефакт отклоняется
 # (L1-6). name/description — данные (S1-промпты собираются из них).
+# stages — подстадии ТЗ_03, в которых явление детерминированно отбирается
+# (обязательно вместе с patterns; s2 — MWE, s3 — грамматические заметки).
 phenomena:
   - id: NL-SCHEIDBAAR
     kind: mwe
@@ -10,18 +12,39 @@ phenomena:
     patterns:
       # Механизм L1 lexical_units: приставки — данные pack.yaml (Rule 8).
       - type: separable_units
+    stages: [s2]
   - id: NL-WERKWOORDELIJKE-EINDGROEP
     kind: grammar
     name: "Глагольная конечная группа"
     description: "Финитный глагол + инфинитивы/причастия в конце main clause: Hij heeft het boek gelezen (verbale eindgroep)."
+    patterns:
+      # Измерено: «gaat» — VERB (Fin), «lopen» — VERB (Inf) на конце;
+      # причастия — pos VERB (VerbForm=Part, НЕ PART). Модальные расщеплены
+      # моделью: wil/willen — VERB, kunnen/moeten — AUX (честный предел —
+      # CONTROL S3: AUX-модальные группы шаблоном не покрываются).
+      - type: wrap
+        start: {pos: VERB}
+        end: {pos: VERB}
+        end_final: true
+    stages: [s3]
   - id: NL-V2-WOORDVOLGORDE
     kind: grammar
     name: "Порядок слов V2"
     description: "Во втором положении main clause — finiten глагол: Gisteren ging hij naar school."
+    patterns:
+      # Измерено: «Gisteren ging hij» — финитный глагол (VERB) на индексе
+      # 1 предложения (индекс считается с пунктуацией).
+      - type: token
+        criteria:
+          - pos: [VERB]
+            position: 1
+    stages: [s3]
   - id: NL-DE-HET
     kind: grammar
     name: "Артикль de/het"
     description: "Выбор артикля по роду: het huis (het), de tafel (de); влияет на склонение прилагательных."
+    # Без шаблона: выбор артикля — лексическое свойство существительного
+    # (род не размечен spaCy nl) — детерминированно не отбирается.
   - id: NL-ER-CONSTRUCTIE
     kind: grammar
     name: "Er-конструкция"
@@ -37,14 +60,30 @@ phenomena:
       - type: sequence
         pos: [PRON, VERB]
         texts: {0: [er]}
+    stages: [s2, s3]
   - id: NL-MODALE-PARTIKELS
     kind: grammar
     name: "Модальные частицы"
     description: "toch, maar, wel, even, toch nog — оценка и тон: Dat is toch leuk!"
+    patterns:
+      # Измерено: «toch» — ADV/BW (НЕ PART) — список словоформ.
+      - type: token
+        criteria:
+          - pos: [ADV]
+            text: [toch, wel, even, ook, maar]
+    stages: [s3]
   - id: NL-PERFECTUM-HEBBEN-ZIJN
     kind: grammar
     name: "Perfectum: hebben/zijn"
     description: "Выбор вспомогательного глагола в perfectum: Hij is gisteren gelopen (zijn — движение) / Ik heb gezwommen (hebben)."
+    patterns:
+      # Измерено: «is»/«heb» — AUX; причастие — pos VERB на конце
+      # (VerbForm=Part, НЕ PART).
+      - type: wrap
+        start: {pos: AUX, text: [heb, hebt, heeft, is, zijn, was, waren]}
+        end: {pos: VERB}
+        end_final: true
+    stages: [s3]
   - id: NL-VASTE-UITDRUKKING
     kind: mwe
     name: "Устойчивое выражение"
@@ -53,3 +92,5 @@ phenomena:
     kind: morphology
     name: "Уменьшительная форма"
     description: "Суффиксы -je/-ie/-tje: huisje (от huis), vriendje (от vriend) — с изменениями основы."
+    # Без шаблона: суффиксальная морфема не выражается токенами —
+    # детерминированно не отбирается (честный предел механизма).

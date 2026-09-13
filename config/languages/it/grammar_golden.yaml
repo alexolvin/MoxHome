@@ -1,0 +1,54 @@
+# Golden-набор S3 (ТЗ_03 §S3, CONTROL S3-6): 20 размеченных вручную
+# предложений обязательных грамматических явлений языка. expected — id
+# из phenomena.yaml; unit не используется (это поле S2).
+# Конвенция (как S2): предложение = сегмент golden-{i}; повторяемость
+# (min_occurrences) считается на всю «книгу» — 20 предложений набора.
+# Конъюнктив — только формы, которые модель стабильно размечает Mood=Sub
+# (venga/sia/venisse; parta/fossi модель размечает Mood=Ind — честно в
+# CONTROL S3).
+grammar:
+  - text: "Spero che venga presto."
+    expected: [{id: IT-CONGIUNTIVO}]
+  - text: "Credo che sia vero."
+    expected: [{id: IT-CONGIUNTIVO}]
+  - text: "Penso che sia contento."
+    expected: [{id: IT-CONGIUNTIVO}]
+  - text: "Se venisse, lo avviserei."
+    expected: [{id: IT-CONGIUNTIVO}, {id: IT-PERIODO-IPOTETICO}]
+  - text: "Se avessi tempo, verrei con te."
+    expected: [{id: IT-PERIODO-IPOTETICO}]
+  - text: "Ieri entrai in casa e mi sedetti."
+    expected: [{id: IT-PASSATO-REMOTO}]
+  - text: "Lui disse che era tardi."
+    expected: [{id: IT-PASSATO-REMOTO}]
+  # «vidi» — и passato remoto, и congiuntivo imperfetto (модель размечает
+  # Mood=Sub — ложный CONGIUNTIVO), поэтому — однозначная форма «entrai»
+  # (измерено в этом контексте: Mood=Ind).
+  - text: "Allora entrai nella stanza."
+    expected: [{id: IT-PASSATO-REMOTO}]
+  - text: "Cantando, si distrae."
+    expected: [{id: IT-GERUNDIO}]
+  - text: "Andando a piedi, respira meglio."
+    expected: [{id: IT-GERUNDIO}]
+  - text: "Mi ci vuole un po' di tempo."
+    expected: [{id: IT-PRONOMI-COMBINATI}]
+  - text: "Mi ci vuole pazienza."
+    expected: [{id: IT-PRONOMI-COMBINATI}]
+  - text: "Mi piace il caffè del mattino."
+    expected: [{id: IT-VERBI-PRONOMINALI}]
+  - text: "Mi piace il tè freddo."
+    expected: [{id: IT-VERBI-PRONOMINALI}]
+  - text: "Ti dico la verità."
+    expected: [{id: IT-VERBI-PRONOMINALI}]
+  - text: "Ti dico subito tutto."
+    expected: [{id: IT-VERBI-PRONOMINALI}]
+  - text: "Spero che sia felice."
+    expected: [{id: IT-CONGIUNTIVO}]
+  # «verrei» — Mood=Cnd в этом контексте (измерено); «andrei» тагуется
+  # Mood=Imp — контекстно нестабильно, поэтому форма из первого примера.
+  - text: "Se potessi, verrei al mare."
+    expected: [{id: IT-PERIODO-IPOTETICO}]
+  - text: "Lavorando sodo, impara in fretta."
+    expected: [{id: IT-GERUNDIO}]
+  - text: "Tornando a casa, canta sempre."
+    expected: [{id: IT-GERUNDIO}]

@@ -1,0 +1,31 @@
+# Generic-промпт (уровень: generic) задачи grammar_note (S3, ТЗ_03).
+# Задача pair_required=false: уровня generic достаточно (контекст пары,
+# кандидаты и лимит длины — в payload).
+# ВАЖНО (ТЗ_03 S3.5): список кандидатов уже отобран детерминированно
+# (морфологические признаки spaCy — шаблоны таксономии языка). Модель НЕ
+# ищет, не добавляет и не исключает кандидатов — она возвращает ровно один
+# item на кандидата (эхо "surface") и объясняет: тип (phenomenon_id — ТОЛЬКО
+# из таксономии языка-источника; id вне таксономии — ошибка валидации,
+# S3-1), краткое пояснение на ЦЕЛЕВОМ языке, длина ≤ max_explanation_chars
+# (превышение — отклонение заметки, усечение запрещено, S3.1).
+# Переменные шаблона: {text}, {source_language}, {target_language}.
+system: |
+  You explain grammatical phenomena for language learners, from a
+  PRE-SELECTED list of candidates (found deterministically by
+  morphosyntactic patterns). The list was produced by the engine; do NOT
+  search for, add, merge or drop candidates: return exactly one item per
+  candidate, with the candidate's "surface" echoed verbatim in "surface".
+  Return ONLY a JSON object: {"items": [{"surface", "phenomenon_id",
+  "explanation"}]}.
+  - "phenomenon_id": the phenomenon from the source language taxonomy;
+    use the candidate's suggested id unless you are certain it is wrong
+    (an id outside the taxonomy is a validation error);
+  - "explanation": a SHORT explanation written in the TARGET language
+    ONLY (no other language allowed), at most max_explanation_chars
+    characters (longer answers are rejected, not truncated).
+user_template: |
+  Source language: {source_language}
+  Target language: {target_language}
+
+  Grammar payload (JSON):
+  {text}

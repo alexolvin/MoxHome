@@ -38,7 +38,7 @@ from app.epub.aligner import AlignedPair
 from app.glossary.consistency import contains_form
 from app.languages.frequency import normalize_text
 from app.languages.nlp import load_nlp
-from app.languages.phenomena import PhenomenaTaxonomy, load_phenomena
+from app.languages.phenomena import PhenomenaTaxonomy, for_stage, load_phenomena
 from app.languages.registry import load_registry
 from app.learning.mwe import (
     MweCandidate,
@@ -190,7 +190,7 @@ def _engine_golden(
     settings = s2_env.settings_of("main")
     pack = load_registry(settings.languages_root)[code]
     nlp = load_nlp(pack)
-    phenomena = load_phenomena(settings.languages_root / code)
+    phenomena = for_stage(load_phenomena(settings.languages_root / code), "s2")
     golden = load_mwe_golden(settings.languages_root / code)
     assert golden, f"{code}: golden-набор S2 пуст"
     book, pairs = _golden_book(code, tuple(entry.text for entry in golden))
@@ -360,7 +360,7 @@ def test_s2_5_reproducible_selection(s2_env: S1Env) -> None:
     settings = s2_env.settings_of("main")
     pack = load_registry(settings.languages_root)["de"]
     nlp = load_nlp(pack)
-    phenomena = load_phenomena(settings.languages_root / "de")
+    phenomena = for_stage(load_phenomena(settings.languages_root / "de"), "s2")
     golden = load_mwe_golden(settings.languages_root / "de")
     book, pairs = _golden_book("de", tuple(entry.text for entry in golden))
     first = select_mwe_candidates(

@@ -216,6 +216,24 @@ _MWE_NOTE_SCHEMA = _object_schema(
     }
 )
 
+#: S3 (ТЗ_03): объяснение детерминированных грамматических кандидатов
+#: (S3.5: список кандидатов моделью не выдвигается — эхо "surface";
+#: phenomenon_id — ТОЛЬКО из таксономии языка-источника; explanation —
+#: текст на ЦЕЛЕВОМ языке в пределах лимита (payload: max_explanation_chars);
+#: превышение/чужой язык — ошибка детерминированной валидации, S3-1/S3-5).
+_GRAMMAR_NOTE_SCHEMA = _object_schema(
+    {
+        "type": "object",
+        "required": ["surface", "phenomenon_id", "explanation"],
+        "additionalProperties": False,
+        "properties": {
+            "surface": {"type": "string", "minLength": 1},
+            "phenomenon_id": {"type": "string", "minLength": 1},
+            "explanation": {"type": "string", "minLength": 1},
+        },
+    }
+)
+
 _TASKS: dict[str, TaskSpec] = {
     "analysis_vocabulary": TaskSpec(
         name="analysis_vocabulary",
@@ -288,6 +306,19 @@ _TASKS: dict[str, TaskSpec] = {
         ),
         pair_required=False,
         schema=_MWE_NOTE_SCHEMA,
+    ),
+    "grammar_note": TaskSpec(
+        name="grammar_note",
+        description=(
+            "S3 (ТЗ_03): объяснить детерминированных грамматических "
+            "кандидатов (тип из таксономии языка-источника, краткое "
+            "пояснение на ЦЕЛЕВОМ языке в пределах лимита; эхо surface — "
+            "один item на кандидата). Выдвижение явлений моделью НЕ "
+            "выполняется (S3.5). pair_required=false: контекст (языки, "
+            "уровень пользователя, кандидаты, лимит длины) — в payload."
+        ),
+        pair_required=False,
+        schema=_GRAMMAR_NOTE_SCHEMA,
     ),
 }
 

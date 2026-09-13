@@ -1,0 +1,35 @@
+дата: 2026-09-13 17:14:25
+версии: python=3.11.13 spacy=3.8.16
+
+s3_en.epub (Learning, mock ok): кандидатов 16 > лимит главы K=10
+
+отобранные кандидаты (отчёт, verbatim):
+  EN-COND-3 'would have come' occ=8
+  EN-PASSIVE 'was built' occ=8
+  EN-PERFECT 'has finished' occ=8
+  EN-PERFECT 'have come' occ=8
+  EN-COND-2 'If I were you, I would' occ=4
+  EN-COND-2 'If she had known, she would' occ=4
+  EN-COND-2 'If they had asked, they would' occ=4
+  EN-GERUND-VS-INF 'enjoy swimming' occ=4
+  EN-GERUND-VS-INF 'want to swim' occ=4
+  EN-MODAL-PERFECT 'must have forgotten' occ=4
+  EN-MODAL-PERFECT 'should have called' occ=4
+  EN-PERFECT 'had asked' occ=4
+  EN-PERFECT 'had known' occ=4
+  EN-PERFECT 'have called' occ=4
+  EN-PERFECT 'have forgotten' occ=4
+  EN-PERFECT-CONT 'have been waiting' occ=4
+
+заметок выпущено: 10; не отобранных: 6 (записаны, verbatim):
+  'should have called' (EN-MODAL-PERFECT)
+  'had asked' (EN-PERFECT)
+  'had known' (EN-PERFECT)
+  'have called' (EN-PERFECT)
+  'have forgotten' (EN-PERFECT)
+  'have been waiting' (EN-PERFECT-CONT)
+
+заметок по главам (лимит 10):
+  ch1: 10
+
+S3-3: PASS — ≤K заметок на главу; не отобранные — записаны

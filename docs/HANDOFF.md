@@ -20,33 +20,44 @@
   **S1 (Отбор лексики, ТЗ_03)** — CONTROL PASS 7/7 (S1-1…S1-7 + T-S1-1…10);
   **S2 (Устойчивые выражения и MWE, ТЗ_03)** — CONTROL PASS 6/6 (S2-1…S2-6 +
   T-S2-1…7), 202/202 теста (на mock, BLOCKER-1 — реальные прогоны не
+  заявляются);
+  **S3 (Грамматические заметки, ТЗ_03)** — CONTROL PASS 7/7 (S3-1…S3-7 +
+  T-S3-1…10), 223/223 теста (на mock, BLOCKER-1 — реальные прогоны не
   заявляются).
   Отчёты: `docs/ENGINE_PROBE.md`, `docs/CONTROL/E2.md`, `docs/CONTROL/E3.md`,
   `docs/CONTROL/E4.md`, `docs/CONTROL/E5.md`, `docs/CONTROL/E6.md`, `docs/CONTROL/L0.md`,
   `docs/CONTROL/L1.md`, `docs/CONTROL/L2.md`, `docs/CONTROL/L3.md`,
-  `docs/CONTROL/S1.md`, `docs/CONTROL/S2.md`; evidence:
+  `docs/CONTROL/S1.md`, `docs/CONTROL/S2.md`, `docs/CONTROL/S3.md`; evidence:
   `docs/CONTROL/evidence/E1…E6/`, `docs/CONTROL/evidence/L0/`,
   `docs/CONTROL/evidence/L1/`, `docs/CONTROL/evidence/L2/`,
   `docs/CONTROL/evidence/L3/`, `docs/CONTROL/evidence/S1/`,
-  `docs/CONTROL/evidence/S2/`.
-- **Далее:** **S3 — грамматические заметки (ТЗ_03 §S3)**, затем S4 (резюме +
-  вопросы + упражнения: вопросы — на Learning, упражнения — на Intensive),
-  S5 (учебный EPUB-аугмент + экспорты + kill ×10) и TZ_04
-  (U1, U2, V1). S3 (ТЗ_03 §S3): контекстные короткие пояснения
-  грамматических явлений языка-источника (id из `phenomena.yaml`,
-  `kind: grammar`), текст на целевом языке (лимит длины — конфиг); заметка
-  привязана к `segment_id` и цитирует фрагмент — обязан присутствовать в
-  сегменте; не более K на главу (`limits.grammar_max_notes_per_chapter` = 10,
-  уже в конфиге); приоритет — явления уровня пользователя, повторяющиеся в
-  книге; повторяющееся явление — один раз развёрнуто, далее краткая ссылка на
-  первую заметку; детерминированный предотбор по морфологическим признакам
-  spaCy там, где возможно (LLM объясняет найденное, не ищет); валидация: id ∈
-  таксономии, цитата ∈ сегменте, длина ≤ лимита, язык = целевой. CONTROL
-  S3-1…S3-7 (S3-6: golden 20/язык обязательных явлений ≥ 75%), T-S3-8 — de
-  фикстура с придаточным (DE-NEBENSATZ-VERBLETZT). Подстадия `s3_grammar` в
-  `run_learning` (гейт `SUBSTAGE_LEVELS` расширить; Learning/Intensive),
+  `docs/CONTROL/evidence/S2/`, `docs/CONTROL/evidence/S3/`.
+- **Далее:** **S4 — summary, вопросы, упражнения (ТЗ_03 §S4)**, затем S5
+  (учебный EPUB-аугмент + экспорты + kill ×10) и TZ_04
+  (U1, U2, V1). S4 (ТЗ_03 §S4): summary только по фактическому тексту главы
+  (по названию — запрещено; пустая/нечитаемая глава — не создаётся,
+  пропуск зафиксирован); вопросы на понимание трёх уровней (Easy — 5
+  фактических / Standard — 5–10 на содержание / Advanced — вывод, намерение
+  автора, аргументация); упражнения: множественный выбор, верно/неверно,
+  заполнение пропуска, перевод, лексика, грамматика, свободный ответ
+  (состав типов — конфигурация); ответы — отдельная сущность (не в теле
+  главы); детерминированная валидация: пропуск — удалённое слово в
+  исходном предложении; выбор — ровно один правильный, без дублей,
+  правильный не выделяется длиной (распределение длин); верно/неверно —
+  сопоставимо с текстом главы по сущностям; вопросы по отсутствующим
+  сущностям — отклоняются; лексические/грамматические упражнения — из
+  выпущенных S1-карточек и S3-заметок (не порождают новый материал). CONTROL
+  S4-1…S4-7 (S4-1: пустая глава — 100% без summary, пропуск зафиксирован;
+  S4-2: пропусков вне предложения — 0; S4-3: выбор с числом правильных ≠ 1 —
+  0; S4-4: вопросы по отсутствующим сущностям — 0; S4-5: ответы в теле
+  главы — 0 вхождений; S4-6: лексические упражнения из выпущенных карточек —
+  100%; S4-7: 5 языков), T-S4-8 — глава-изображение без текста, T-S4-9 —
+  распределение длин вариантов (100 вопросов). Гейт уровней (таблица
+  ТЗ_03): вопросы — `Learning`, упражнения — `Intensive`; подстадия/подстадии
+  S4 в `run_learning` (гейт `SUBSTAGE_LEVELS` расширить),
   ключ идемпотентности `sha256(input_hash | glossary_hash | level | cefr)`,
-  LLM-задача по главам батчами, `quality.json`-секция, версионные поля. Общие требования TZ_03 (неизменны для S3–S5):
+  LLM-задача по главам батчами, `quality.json`-секция, версионные поля.
+  Общие требования TZ_03 (неизменны для S4–S5):
   только по выровненному подмножеству E6 и тексту ПОСЛЕ L3; привязка к
   `chapter_id`/`segment_id`/`source_text_hash` + версии (промпт, профиль,
   модель, пара, уровень, timestamp, хэш глоссария); уровни
@@ -54,6 +65,75 @@
   генераторы поглавные (никогда не вся книга в запрос); ответы хранятся
   отдельно от заданий. Протокол этапов как в E/L-стадиях (ветка stage/<S>,
   явные пути в коммите, merge --no-ff, гейты, CONTROL + evidence, DECISIONS).
+
+## Сделано в S3
+
+- **`app/learning/grammar.py` (новое):** `load_grammar_golden`
+  (`grammar_golden.yaml` пакета: text + expected ids; отсутствует/пуст —
+  пустой набор, как mwe_golden S2; `unit` — ошибка), `reference_explanation`
+  (детерминированная ссылка S3.4, hex-id segment в текст не встраивается —
+  langdetect сдвигает ru-фразу на bg), `check_grammar_notes` — 5-пунктная
+  детерминированная валидация (id ∈ таксономии языка S3-1; поверхность
+  среди детерминированных кандидатов — S1.5/S2.6; surface в сегменте
+  `contains_form` S3-2; пояснение непустое и ≤ `grammar_note_max_chars` —
+  превышение отклоняется, а не усекается S3.1/T-S3-10; язык = целевой
+  (langdetect, seed из конфига) S3-5).
+- **`app/languages/phenomena.py` (расширение, D66):** поле `stages`
+  таксономии (обязательно ВМЕСТЕ с `patterns`; `for_stage(phenomena,
+  "s3")` — скоп подстадии, движок агностичен к стадиям, Rule 8); новый тип
+  шаблона `token` (`TokenCriterion`: И полей `pos`/`text`/`mood`/`tense`/
+  `aspect`/`position` — морфология spaCy, TЗ_03 S3.5); wrap-маркеры
+  расширены mood/tense/aspect; значения морфологии — данные (Rule 1).
+- **`app/learning/mwe.py` (расширение):** движок отбора стал общим S2/S3
+  (Rule 8): `_morph_value`/`_morph_ok` (универсальные фичи spaCy),
+  `_criterion_ok` (шаблон `token`), wrap-маркеры с морфологией; `MweCandidate`
+  переиспользуется S3 (unit не ожидается).
+- **`app/workers/pipeline.py`:** подстадия `s3_grammar` в `run_learning`
+  (`SUBSTAGE_LEVELS["s3"] = {Learning, Intensive}`): `select_mwe_candidates`
+  со скопом `for_stage(…, "s3")` → `_s3_split_candidates` (лимит ≤K на главу,
+  топ-K по (−вхождения, id, поверхность), K = `limits.grammar_max_notes_per_chapter`)
+  → `_s3_explain_once` (первый кандидат явления — развёрнуто, остальные —
+  ссылки) → LLM `grammar_note` (батчи по главам `grammar_llm_batch=25`) →
+  `check_grammar_notes` → дедупликация по surface → `_s3_build_notes`
+  (развёрнутая отклонена — ссылающиеся отклоняются) →
+  `grammar_notes.json` + секция `s3` в `quality.json` (per_chapter,
+  detailed/reference, not_selected, rejected с причинами) +
+  `record_stage_result("s3_grammar", …)`.
+- **`app/llm/tasks.py`:** задача `grammar_note` (`pair_required=false`,
+  JSON-схема surface/phenomenon_id/explanation; лимит длины — payload
+  `max_explanation_chars`).
+- **Данные:** `config/languages/*/grammar_golden.yaml` (en 20, de 21,
+  nl 31, fr 20, it 21 предложений; 95 пар «предложение → id», 100% покрытие
+  s3-таксономий); `phenomena.yaml` — `stages: [s3]` у грамматических явлений
+  + шаблоны (`token`/`wrap` с морфологией; DE-NEBENSATZ-VERBLETZT —
+  dass/weil/wenn/als/ob/obwohl → VERB/AUX `end_final`); конфиг
+  `limits.grammar_max_notes_per_chapter` (10), `limits.grammar_note_max_chars`
+  (300), `limits.grammar_llm_batch` (25) + `config.example.yaml`.
+- **Промпты:** `prompts/grammar_note/v1.yaml` (generic).
+- **Mock:** сценарии `grammar_bad_id` (ZZ-S3-FAKE вне таксономии),
+  `grammar_bad_quote` (surface 'Qwzxw' вне кандидатов).
+- **Измерено (evidence S3, `docs/CONTROL/evidence/S3/`, 7 файлов):** 0
+  принятых с id вне таксономии (инъекция отклонена, verbatim); 0 цитат вне
+  сегмента (инъекция + unit-проверка); 16 кандидатов → 10 выпущенных (ch1: 10
+  ≤ K=10, 6 not_selected verbatim); 6 detailed + 4 reference (ссылки
+  `model=''`), повторных развёрнутых 0; 10/10 пояснений ru conf=1.00;
+  recall golden 1.000 ×5 (de 21/21, nl 31/31, en 22/22, fr 20/20, it 21/21)
+  ≥ 0.75 (precision справочно 1.000/1.000/0.786/1.000/0.913); 5/5 языков до
+  LEARNING (en 303/16/10, de 155/3/3, fr 43/1/1, it 35/1/1, nl 67/3/3) +
+  гейт уровней (Minimal/Balanced — без s3).
+- Тесты: 21 запуск в `tests/test_s3_grammar.py` (T-S3-1…T-S3-10; T-S3-8 —
+  de придаточное DE-NEBENSATZ-VERBLETZT; T-S3-9 — it IT-CONGIUNTIVO + fr
+  FR-SUBJONCTIF; T-S3-10 — превышение лимита отклоняется). Evidence-скрипт
+  `tests/s3_evidence.py` (7 verbatim-файлов). Полный прогон 223/223 (202 +
+  21), ruff 0, mypy 0 (63 файла).
+- Дефекты этапа: не обнаружено. Честные пределы механизма (в CONTROL S3):
+  DE-NEBENSATZ-VERBLETZT — только придаточное в конце предложения
+  (`end_final`); приоритет по уровню пользователя не реализован (CEFR-уровень
+  грамматических явлений в таксономии не заведён — приоритет =
+  повторяемость); EN-PERFECT ⊂ modal-perfect/cond-3 — дополнительные
+  кандидаты (precision справочно); it CONGIUNTIVO — по Mood=Subj, fr
+  SUBJONCTIF — по словоформам (fr-теггер без морфологии); LLM — mock
+  (BLOCKER-1).
 
 ## Сделано в L2
 

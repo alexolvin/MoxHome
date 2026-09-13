@@ -91,11 +91,12 @@ from app.languages.cefr import CefrSource
 from app.languages.detect import LanguageReport, detect_book
 from app.languages.frequency import normalize_text
 from app.languages.nlp import load_nlp, nlp_report
-from app.languages.phenomena import PhenomenaTaxonomy, load_phenomena
+from app.languages.phenomena import PhenomenaTaxonomy, for_stage, load_phenomena
 from app.languages.registry import PackSpec, aliases_map, load_registry
 from app.languages.resolver import PairReport, PairResolver, PairStatus
 from app.learning import SUBSTAGE_LEVELS
 from app.learning.cards import assemble_card, check_vocab_cards
+from app.learning.grammar import check_grammar_notes, reference_explanation
 from app.learning.mwe import MweCandidate, check_mwe_records, select_mwe_candidates
 from app.learning.selection import select_lexis_candidates
 from app.llm.analysis import AnalysisClient
@@ -913,6 +914,7 @@ class Pipeline:
         substages = (
             ("s1_vocabulary", SUBSTAGE_LEVELS["s1"], self._s1_vocabulary),
             ("s2_mwe", SUBSTAGE_LEVELS["s2"], self._s2_mwe),
+            ("s3_grammar", SUBSTAGE_LEVELS["s3"], self._s3_grammar),
         )
         for stage_key, allowed_levels, run_substage in substages:
             if level not in allowed_levels:
@@ -1194,7 +1196,11 @@ class Pipeline:
         phenomena = load_phenomena(pack_dir)
         taxonomy = PhenomenaTaxonomy(phenomena)
         candidates = select_mwe_candidates(
-            book=book, pairs=pairs, pack=source_pack, nlp=nlp, phenomena=phenomena
+            book=book,
+            pairs=pairs,
+            pack=source_pack,
+            nlp=nlp,
+            phenomena=for_stage(phenomena, "s2"),
         )
 
         items, prompt_file, prompt_version = self._s2_llm_items(
@@ -1399,6 +1405,348 @@ class Pipeline:
         self._write_json(quality_path, quality)
         quality_logger = logging.getLogger(QUALITY_LOGGER)
         quality_logger.info("QC после S2: %s", json.dumps(quality, ensure_ascii=False))
+        return list(quality["warnings"])
+
+    @staticmethod
+    def _s3_split_candidates(
+        candidates: tuple[MweCandidate, ...],
+        book: Book,
+        max_per_chapter: int,
+    ) -> tuple[list[MweCandidate], list[MweCandidate]]:
+        """Лимит ≤K на главу (S3.3): топ-K по (-вхождения, id, поверхность);
+        приоритет = повторяемость в книге (уровень пользователя в таксономии
+        для грамматических явлений не заведён — честный предел). Остальные —
+        not_selected (фактический счёт для отчёта)."""
+        by_chapter: dict[str, list[MweCandidate]] = {}
+        for candidate in candidates:
+            by_chapter.setdefault(candidate.chapter_id, []).append(candidate)
+        selected: list[MweCandidate] = []
+        not_selected: list[MweCandidate] = []
+        for chapter in book.chapters:
+            chapter_cands = sorted(
+                by_chapter.get(chapter.chapter_id, ()),
+                key=lambda c: (-c.occurrences, c.phenomenon_id, c.surface.casefold()),
+            )
+            selected.extend(chapter_cands[:max_per_chapter])
+            not_selected.extend(chapter_cands[max_per_chapter:])
+        return selected, not_selected
+
+    @staticmethod
+    def _s3_explain_once(
+        selected: list[MweCandidate],
+    ) -> tuple[list[MweCandidate], dict[str, MweCandidate]]:
+        """Объяснить один раз (S3.4): первый отобранный кандидат явления
+        (порядок книги) — развёрнуто (LLM); остальные — краткие ссылки."""
+        detailed: list[MweCandidate] = []
+        first_by_pid: dict[str, MweCandidate] = {}
+        for candidate in selected:
+            if candidate.phenomenon_id not in first_by_pid:
+                first_by_pid[candidate.phenomenon_id] = candidate
+                detailed.append(candidate)
+        return detailed, first_by_pid
+
+    @staticmethod
+    def _s3_build_notes(
+        selected: list[MweCandidate],
+        first_by_pid: dict[str, MweCandidate],
+        detailed_by_surface: dict[str, tuple[Mapping[str, Any], MweCandidate]],
+        rejected: list[dict[str, Any]],
+        record: Callable[[MweCandidate, str, str, str | None], dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Сборка записей: развёрнутая — пояснение LLM (первый кандидат
+        явления); остальные — ссылки (S3.4). Развёрнутая отклонена — запись
+        нет (уже в `rejected`); ссылка на отклонённую первую — сама
+        отклоняется (ссылка некорректна)."""
+        notes: list[dict[str, Any]] = []
+        for candidate in selected:
+            first = first_by_pid[candidate.phenomenon_id]
+            if candidate is first:
+                pair = detailed_by_surface.get(candidate.surface.casefold())
+                if pair is None:
+                    continue
+                item, _ = pair
+                notes.append(
+                    record(candidate, str(item.get("explanation", "")), "detailed", None)
+                )
+                continue
+            if first.surface.casefold() not in detailed_by_surface:
+                rejected.append(
+                    {
+                        "surface": candidate.surface,
+                        "phenomenon_id": candidate.phenomenon_id,
+                        "reasons": [
+                            "первая заметка явления отклонена — ссылка некорректна (S3.4)"
+                        ],
+                    }
+                )
+                continue
+            notes.append(
+                record(
+                    candidate,
+                    reference_explanation(),
+                    "reference",
+                    first.first_segment_id,
+                )
+            )
+        return notes
+
+    def _s3_grammar(
+        self, repo: JobRepository, job: Job, job_dir: Path, key: str, glossary_hash: str
+    ) -> list[str]:
+        """S3 (ТЗ_03): контекстные короткие пояснения грамматических явлений
+        в терминах таксономии языка-источника. Детерминированный предотбор по
+        морфологическим признакам (phenomena.yaml, скоп `stages: [s3]`,
+        app/learning/mwe.py) → лимит ≤K заметок на главу (S3.3) → явление
+        объясняется ОДИН раз развёрнуто (grammar_note), далее — краткая
+        ссылка (S3.4) → детерминированная валидация (S3.6) →
+        grammar_notes.json + секция s3 в quality.json."""
+        settings = self._settings
+        book, pairs, source_pack, pack_dir, nlp, source_code = self._learning_context(job)
+        phenomena = load_phenomena(pack_dir)
+        taxonomy = PhenomenaTaxonomy(phenomena)
+        candidates = select_mwe_candidates(
+            book=book,
+            pairs=pairs,
+            pack=source_pack,
+            nlp=nlp,
+            phenomena=for_stage(phenomena, "s3"),
+        )
+
+        max_per_chapter = settings.limits.grammar_max_notes_per_chapter
+        selected, not_selected = self._s3_split_candidates(
+            candidates, book, max_per_chapter
+        )
+        detailed, first_by_pid = self._s3_explain_once(selected)
+
+        items, prompt_file, prompt_version = self._s3_llm_items(
+            repo, job, book, tuple(detailed), source_code
+        )
+        _, model, _ = settings.llm.endpoint("analysis")
+        seg_texts = {
+            seg.segment_id: seg.plain_text for ch in book.chapters for seg in ch.segments
+        }
+
+        def _normalize(text: str) -> str:
+            return normalize_text(text, source_pack.normalization)
+
+        candidates_by_surface = {
+            _normalize(candidate.surface): candidate for candidate in selected
+        }
+        validated, rejected = check_grammar_notes(
+            items=items,
+            candidates=candidates_by_surface,
+            taxonomy=taxonomy,
+            seg_texts=seg_texts,
+            normalize=_normalize,
+            max_chars=settings.limits.grammar_note_max_chars,
+            target_language=job.target_language,
+            seed=settings.language_detection.seed,
+        )
+        # Дубли поверхности в ответе LLM: первая заметка остаётся, остальные —
+        # отклонение (дедупликация на всю книгу, механизм S1.2/S2.4).
+        seen: set[str] = set()
+        dedup_validated: list[tuple[Mapping[str, Any], MweCandidate]] = []
+        for item, candidate in validated:
+            surface_key = candidate.surface.casefold()
+            if surface_key in seen:
+                rejected.append(
+                    {
+                        "surface": candidate.surface,
+                        "phenomenon_id": candidate.phenomenon_id,
+                        "reasons": ["дублирующая заметка (S3.3)"],
+                    }
+                )
+                continue
+            seen.add(surface_key)
+            dedup_validated.append((item, candidate))
+        dedup_validated.sort(
+            key=lambda pair: (
+                -pair[1].occurrences,
+                pair[1].phenomenon_id,
+                pair[1].surface.casefold(),
+            )
+        )
+
+        timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        detailed_by_surface = {
+            candidate.surface.casefold(): (item, candidate)
+            for item, candidate in dedup_validated
+        }
+
+        def _note_record(
+            candidate: MweCandidate,
+            explanation: str,
+            note_type: str,
+            reference_to: str | None,
+        ) -> dict[str, Any]:
+            return {
+                "phenomenon_id": candidate.phenomenon_id,
+                "surface": candidate.surface,
+                "segment_id": candidate.first_segment_id,
+                "chapter_id": candidate.chapter_id,
+                "explanation": explanation,
+                "note_type": note_type,
+                "reference_to": reference_to,
+                "occurrences": candidate.occurrences,
+                "example_sentence": candidate.example_sentence,
+                "source_text_hash": candidate.source_text_hash,
+                "source_language": source_code,
+                "target_language": job.target_language,
+                "user_level": job.learning_level,
+                "user_cefr": job.learning_cefr,
+                "glossary_hash": glossary_hash,
+                # Ссылка — детерминированная (LLM не участвует): версии пусты.
+                "prompt_file": prompt_file if note_type == "detailed" else "",
+                "prompt_version": prompt_version if note_type == "detailed" else 0,
+                "model": model if note_type == "detailed" else "",
+                "profile": "analysis" if note_type == "detailed" else "",
+                "timestamp": timestamp,
+            }
+
+        notes = self._s3_build_notes(
+            selected, first_by_pid, detailed_by_surface, rejected, _note_record
+        )
+
+        per_chapter_issued: dict[str, int] = {}
+        for note in notes:
+            per_chapter_issued[note["chapter_id"]] = (
+                per_chapter_issued.get(note["chapter_id"], 0) + 1
+            )
+        seg_word_count = {
+            seg.segment_id: seg.word_count for ch in book.chapters for seg in ch.segments
+        }
+        total_words = sum(seg_word_count.get(p.segment_id, 0) for p in pairs)
+        report: dict[str, Any] = {
+            "stage": "S3",
+            "enabled": True,
+            "source_language": source_code,
+            "target_language": job.target_language,
+            "user_level": job.learning_level,
+            "user_cefr": job.learning_cefr,
+            "book_words": total_words,
+            "candidates_total": len(candidates),
+            "notes_issued": len(notes),
+            "notes_rejected": len(rejected),
+            "notes_not_selected": len(not_selected),
+            "detailed_notes": sum(1 for note in notes if note["note_type"] == "detailed"),
+            "reference_notes": sum(1 for note in notes if note["note_type"] == "reference"),
+            "max_notes_per_chapter": max_per_chapter,
+            "per_chapter": dict(sorted(per_chapter_issued.items())),
+            "glossary_hash": glossary_hash,
+            "prompt_file": prompt_file,
+            "prompt_version": prompt_version,
+            "model": model,
+            "profile": "analysis",
+            "timestamp": timestamp,
+            "idempotency_key": key,
+            "candidates": [asdict(candidate) for candidate in candidates],
+            "notes": notes,
+            "rejected": rejected,
+            "not_selected": [
+                {"surface": c.surface, "phenomenon_id": c.phenomenon_id}
+                for c in not_selected
+            ],
+        }
+        self._write_json(job_dir / "grammar_notes.json", report)
+        final_warnings = self._s3_finalize_quality(job_dir, report=report, rejected=rejected)
+        repo.record_stage_result(
+            job.id, "s3_grammar", key, str(job_dir / "grammar_notes.json")
+        )
+        return final_warnings
+
+    def _s3_llm_items(
+        self,
+        repo: JobRepository,
+        job: Job,
+        book: Book,
+        candidates: tuple[MweCandidate, ...],
+        source_code: str,
+    ) -> tuple[list[dict[str, Any]], str, int]:
+        """S3.5: LLM-объяснение развёрнутых кандидатов по главам, батчами
+        (конфиг). Возвращает (items, prompt_file, prompt_version) — промпт
+        первого вызова (единый для всех батчей, E4-2)."""
+        settings = self._settings
+        client = AnalysisClient(settings, repo, job.id)
+        spec = llm_task("grammar_note")
+        batch_size = settings.limits.grammar_llm_batch
+        by_chapter: dict[str, list[MweCandidate]] = {}
+        for candidate in candidates:
+            by_chapter.setdefault(candidate.chapter_id, []).append(candidate)
+        prompt_file, prompt_version = "", 0
+        items: list[dict[str, Any]] = []
+        for chapter in book.chapters:
+            chapter_cands = by_chapter.get(chapter.chapter_id)
+            if not chapter_cands:
+                continue
+            for start in range(0, len(chapter_cands), batch_size):
+                batch = chapter_cands[start : start + batch_size]
+                payload = {
+                    "source_language": source_code,
+                    "target_language": job.target_language,
+                    "user_level": job.learning_level,
+                    "user_cefr": job.learning_cefr,
+                    "chapter_id": chapter.chapter_id,
+                    "max_explanation_chars": settings.limits.grammar_note_max_chars,
+                    "candidates": [
+                        {
+                            "surface": candidate.surface,
+                            "parts": [[part.text, part.index] for part in candidate.parts],
+                            "phenomenon_id": candidate.phenomenon_id,
+                            "occurrences": candidate.occurrences,
+                            "segment_id": candidate.first_segment_id,
+                            "source_sentence": candidate.example_sentence,
+                        }
+                        for candidate in batch
+                    ],
+                }
+                outcome = client.run_task(
+                    spec,
+                    source_code,
+                    job.target_language,
+                    json.dumps(payload, ensure_ascii=False, sort_keys=True),
+                )
+                if prompt_file == "":
+                    prompt_file, prompt_version = outcome.prompt.file, outcome.prompt.version
+                raw_items = outcome.payload.get("items")
+                if not isinstance(raw_items, list):
+                    raise AppError("S3: ответ LLM — items отсутствует или не массив")
+                for raw in raw_items:
+                    if not isinstance(raw, dict):
+                        raise AppError("S3: ответ LLM — элемент items не объект")
+                    items.append(raw)
+        return items, prompt_file, prompt_version
+
+    def _s3_finalize_quality(
+        self, job_dir: Path, *, report: dict[str, Any], rejected: list[dict[str, Any]]
+    ) -> list[str]:
+        """Секция s3 в quality.json + ФИНАЛЬНЫЕ предупреждения стадии (QC +
+        отклонённые заметки + нулевой отбор — S3-1/S3-3)."""
+        quality_path = job_dir / "quality.json"
+        quality = self._read_json(quality_path) if quality_path.is_file() else {}
+        base_warnings = list(quality.get("warnings", ()))
+        quality["s3"] = {
+            "enabled": True,
+            "book_words": report["book_words"],
+            "candidates": report["candidates_total"],
+            "issued": report["notes_issued"],
+            "rejected": report["notes_rejected"],
+            "detailed": report["detailed_notes"],
+            "reference": report["reference_notes"],
+            "not_selected": report["notes_not_selected"],
+            "max_per_chapter": report["max_notes_per_chapter"],
+            "per_chapter": report["per_chapter"],
+            "report": "grammar_notes.json",
+        }
+        stage_warnings: list[str] = []
+        if report["candidates_total"] == 0:
+            stage_warnings.append("S3: грамматические кандидаты не отобраны (0) — заметок нет")
+        if rejected:
+            first = [f"{r['surface']}: {r['reasons'][0]}" for r in rejected[:10]]
+            stage_warnings.append(f"S3: {len(rejected)} заметок отклонено: " + "; ".join(first))
+        quality["warnings"] = [*base_warnings, *stage_warnings]
+        self._write_json(quality_path, quality)
+        quality_logger = logging.getLogger(QUALITY_LOGGER)
+        quality_logger.info("QC после S3: %s", json.dumps(quality, ensure_ascii=False))
         return list(quality["warnings"])
 
     def _learning_no_op(

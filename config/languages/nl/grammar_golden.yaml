@@ -1,0 +1,50 @@
+# Golden-набор S3 (ТЗ_03 §S3, CONTROL S3-6): 20 размеченных вручную
+# предложений обязательных грамматических явлений языка. expected — id
+# из phenomena.yaml; unit не используется (это поле S2).
+# Конвенция (как S2): предложение = сегмент golden-{i}; повторяемость
+# (min_occurrences) считается на всю «книгу» — 20 предложений набора.
+grammar:
+  - text: "Hij is gisteren gelopen."
+    expected: [{id: NL-PERFECTUM-HEBBEN-ZIJN}]
+  - text: "Ik heb het boek gelezen."
+    expected: [{id: NL-PERFECTUM-HEBBEN-ZIJN}]
+  - text: "Zij zijn gisteren vertrokken."
+    expected: [{id: NL-PERFECTUM-HEBBEN-ZIJN}]
+  - text: "Hij gaat morgen lopen."
+    expected: [{id: NL-WERKWOORDELIJKE-EINDGROEP}, {id: NL-V2-WOORDVOLGORDE}]
+  - text: "Ik wil hem helpen."
+    expected: [{id: NL-WERKWOORDELIJKE-EINDGROEP}, {id: NL-V2-WOORDVOLGORDE}]
+  - text: "Ze willen hier blijven."
+    expected: [{id: NL-WERKWOORDELIJKE-EINDGROEP}, {id: NL-V2-WOORDVOLGORDE}]
+  - text: "Gisteren ging hij naar school."
+    expected: [{id: NL-V2-WOORDVOLGORDE}]
+  - text: "Er staat een man bij de deur."
+    expected: [{id: NL-V2-WOORDVOLGORDE}, {id: NL-ER-CONSTRUCTIE}]
+  - text: "Er zit een hond in de tuin."
+    expected: [{id: NL-V2-WOORDVOLGORDE}, {id: NL-ER-CONSTRUCTIE}]
+  - text: "Dat is toch leuk."
+    expected: [{id: NL-MODALE-PARTIKELS}]
+  - text: "Kom even langs."
+    expected: [{id: NL-MODALE-PARTIKELS}]
+  - text: "Dat is wel grappig."
+    expected: [{id: NL-MODALE-PARTIKELS}]
+  - text: "Hij heeft het wel verdiend."
+    expected: [{id: NL-PERFECTUM-HEBBEN-ZIJN}, {id: NL-MODALE-PARTIKELS}]
+  - text: "Vroeger ging ze elke dag zwemmen."
+    expected: [{id: NL-V2-WOORDVOLGORDE}, {id: NL-WERKWOORDELIJKE-EINDGROEP}]
+  - text: "Ik was het wel eens."
+    expected: [{id: NL-MODALE-PARTIKELS}]
+  - text: "Ze is gisteren vertrokken."
+    expected: [{id: NL-PERFECTUM-HEBBEN-ZIJN}]
+  - text: "Ik heb het toch gezegd."
+    expected: [{id: NL-PERFECTUM-HEBBEN-ZIJN}, {id: NL-MODALE-PARTIKELS}]
+  - text: "Er komt een kind aanlopen."
+    expected: [
+      {id: NL-V2-WOORDVOLGORDE},
+      {id: NL-WERKWOORDELIJKE-EINDGROEP},
+      {id: NL-ER-CONSTRUCTIE},
+    ]
+  - text: "Hij durft het niet te doen."
+    expected: [{id: NL-V2-WOORDVOLGORDE}, {id: NL-WERKWOORDELIJKE-EINDGROEP}]
+  - text: "Ze gingen alvast naar huis."
+    expected: [{id: NL-V2-WOORDVOLGORDE}]
