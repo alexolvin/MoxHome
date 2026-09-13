@@ -119,6 +119,22 @@ _BOOK_STYLE_SCHEMA = _object_schema(
     }
 )
 
+#: L3.3: точечная перепись ОДНОГО сегмента перевода с обязательным
+#: употреблением термина глоссария. Ответ — XHTML блока целиком (внутренняя
+#: разметка сохраняется; замена подстрокой запрещена — ТЗ L3.3).
+_GLOSSARY_FIX_SCHEMA = _object_schema(
+    {
+        "type": "object",
+        "required": ["segment_id", "html"],
+        "additionalProperties": False,
+        "properties": {
+            "segment_id": {"type": "string", "minLength": 1},
+            # XHTML переписанного блока (тот же корневой тег и атрибуты).
+            "html": {"type": "string", "minLength": 1},
+        },
+    }
+)
+
 _TASKS: dict[str, TaskSpec] = {
     "analysis_vocabulary": TaskSpec(
         name="analysis_vocabulary",
@@ -156,6 +172,17 @@ _TASKS: dict[str, TaskSpec] = {
         description="Л2: стилевой профиль книги (formal/neutral/literary/conversational).",
         pair_required=False,
         schema=_BOOK_STYLE_SCHEMA,
+    ),
+    "glossary_fix": TaskSpec(
+        name="glossary_fix",
+        description=(
+            "L3: переписать ОДИН сегмент перевода, употребив требуемый термин "
+            "глоссария в грамматически верной форме; внутренний XHTML "
+            "(ссылки, выделения, сноски) сохранить; замена подстрокой запрещена "
+            "(ТЗ L3.3). pair_required=false: контекст пары — в payload."
+        ),
+        pair_required=False,
+        schema=_GLOSSARY_FIX_SCHEMA,
     ),
 }
 

@@ -1,0 +1,13 @@
+дата: 2026-09-13 11:41:24
+версии: python=3.11.13 spacy=3.8.16
+
+quality.log → записи glossary_fix (wexley_fix, verbatim):
+  {"kind": "glossary_fix", "segment_id": "533ccc006c8a97c149a60c74ed02f9fcdcdb93241776c7d784454e36dcc4c179", "doc": "OEBPS/chapter1.xhtml", "term": "Wexley", "old_variant": "Wkh yloodjh ri Xrongy vwrrg ehiruh gdzq.", "new_variant": "Wkh yloodjh ri Zhaohb vwrrg ehiruh gdzq.", "prompt_file": "glossary_fix/v1.yaml", "prompt_version": "1", "model": "test-model", "timestamp": "2026-09-13T08:41:26Z"}
+  {"kind": "glossary_fix", "segment_id": "759ecabc3d20304bab278c1c2fc39ae78a741957f82ed20c0ad2ee81ddf9a66d", "doc": "OEBPS/chapter1.xhtml", "term": "Wexley", "old_variant": "Hyhub pruqlqj Xrongy zrnh wr wkh vrxqg ri zdwhu.", "new_variant": "Hyhub pruqlqj Zhaohb zrnh wr wkh vrxqg ri zdwhu.", "prompt_file": "glossary_fix/v1.yaml", "prompt_version": "1", "model": "test-model", "timestamp": "2026-09-13T08:41:26Z"}
+  {"kind": "glossary_fix", "segment_id": "2489455fc18ac6b23ac296bbdb1f0ec4e083597b3078d90508f9346839d2d95a", "doc": "OEBPS/chapter1.xhtml", "term": "Wexley", "old_variant": "Idu iurp wkh flwb, Xrongy nhsw lwv vlohqfh.", "new_variant": "Idu iurp wkh flwb, Zhaohb nhsw lwv vlohqfh.", "prompt_file": "glossary_fix/v1.yaml", "prompt_version": "1", "model": "test-model", "timestamp": "2026-09-13T08:41:26Z"}
+
+записей: 3, применено: 3, совпадение segment_id: True
+
+wexley20: записей = 20, applied = 20
+
+L3-2: PASS — 0 правок без записи (по одной записи на правку)

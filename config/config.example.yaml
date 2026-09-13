@@ -83,6 +83,11 @@ glossary:
   style_sample_chars: 5000  # проба текста для стилевого профиля (L2.7)
   annotation_batch_size: 25 # кандидатов на один вызов LLM
   consistency_min_share: 0.95  # L2-4: ниже — предупреждение QC
+  # L3: правка расхождений в выходном EPUB (ТЗ_02 §L3). По умолчанию выключена;
+  # расхождения при этом по-прежнему обнаруживаются и сообщаются (L2.6).
+  fix_enabled: false
+  fix_max_segment_share: 0.5  # L3-6: выше — остановка задания с отчётом
+  fix_sentence_delta: 1       # L3.4: допуск изменения числа предложений
 
 alignment:
   min_coverage: 0.995

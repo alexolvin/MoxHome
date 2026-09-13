@@ -38,13 +38,17 @@ from app.domain.glossary import (
 from app.epub.aligner import AlignmentReport
 
 
-def _norm(text: str) -> str:
+def norm_text(text: str) -> str:
     """Нормализация сравнения: NFC + casefold (как при отборе кандидатов)."""
     return unicodedata.normalize("NFC", text).casefold()
 
 
-def _contains_word(haystack: str, needle: str) -> bool:
-    """`needle` в `haystack` по границе слова (оба нормализованы)."""
+def contains_form(haystack: str, needle: str) -> bool:
+    """`needle` в `haystack` по границе слова (оба нормализованы).
+
+    Публичный контракт условия вхождения (L2.6/L3.2): то же самое сравнение
+    используют и проверка согласованности, и отбор сегментов к правке L3
+    (Rule 8: один механизм)."""
     return re.search(r"(?<!\w)" + re.escape(needle) + r"(?!\w)", haystack) is not None
 
 
@@ -60,8 +64,8 @@ def check_consistency(glossary: Glossary, alignment: AlignmentReport) -> Consist
             pairs.append(
                 (
                     p.segment_id,
-                    _norm(p.source_text),
-                    _norm(p.translation_text),
+                    norm_text(p.source_text),
+                    norm_text(p.translation_text),
                     p.source_text,
                     p.translation_text,
                 )
@@ -74,21 +78,21 @@ def check_consistency(glossary: Glossary, alignment: AlignmentReport) -> Consist
     mismatches: list[TermMismatch] = []
 
     for term in glossary.terms:
-        source_forms = tuple(dict.fromkeys(_norm(f) for f in term.source_forms))
+        source_forms = tuple(dict.fromkeys(norm_text(f) for f in term.source_forms))
         if not source_forms:
             continue
         terms_checked += 1
-        expected = tuple(dict.fromkeys(_norm(f) for f in term.expected_forms()))
+        expected = tuple(dict.fromkeys(norm_text(f) for f in term.expected_forms()))
         seen_variants: list[str] = []
         mismatch_segments: list[str] = []
         occurrences = 0
         consistent = 0
         for segment_id, src, dst, src_raw, dst_raw in pairs:
-            if not any(_contains_word(src, form) for form in source_forms):
+            if not any(contains_form(src, form) for form in source_forms):
                 continue
             occurrences += 1
             occurrences_checked += 1
-            found = [form for form in expected if _contains_word(dst, form)]
+            found = [form for form in expected if contains_form(dst, form)]
             if found:
                 consistent += 1
                 consistent_occurrences += 1

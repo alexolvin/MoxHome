@@ -1,0 +1,29 @@
+дата: 2026-09-13 11:41:24
+версии: python=3.11.13 spacy=3.8.16
+
+wexley_fix.epub (3 из 7 сегментов с Wexley, сценарий glossary_inconsistent):
+
+l3_fix_report.json (выборка, verbatim):
+{
+  "mismatches_input": 3,
+  "total_segments": 7,
+  "fixable_segment_share": 0.428571,
+  "max_segment_share": 0.5,
+  "attempted": 3,
+  "applied": 3,
+  "rejected": 0,
+  "editable_share_before": 0.0,
+  "editable_share_after": 1.0
+}
+
+target.epub после L3: «Zhaohb» = 3, «Xrongy» = 0
+l3bak (доправки):          «Xrongy» = 3
+
+T-L3-11 — wexley20.epub (20 вхождений, три разных неверных варианта в доправки файле):
+  варианты до правки: {'Xrongy': 8, 'Yrrqjz': 8, 'Zssabw': 4} (различных: 3)
+  attempted/applied/rejected = 20/20/0
+  target после L3: «Zhaohb» = 20, неверные = 0
+  записей в quality.log: 20 (≤20), отклонений: 0
+  editable_share_after = 1.0
+
+L3-1: PASS — 100% правимого множества (3/3 и 20/20); unverified — отдельный перечень (l3-9)

@@ -1,0 +1,32 @@
+# Generic-промпт (уровень: generic) задачи glossary_fix (L3).
+# Задача pair_required=false: уровня generic достаточно; контекст пары
+# (исходный/целевой языки, парадигма термина) — в payload.
+# ВАЖНО (ТЗ L3.3): правится ТОЛЬКО переданный сегмент перевода, и только
+# употребление термина — замена подстрокой ЗАПРЕЩЕНА (ломает согласование и
+# порядок слов): модель переписывает сегмент целиком, в грамматически
+# верной форме целевого языка, сохранив весь внутренний XHTML (ссылки,
+# выделения, сноски) без изменений.
+# Переменные шаблона: {text}, {source_language}, {target_language}.
+system: |
+  You fix ONE translated paragraph of an EPUB book.
+  The paragraph is missing the required glossary term (or uses a wrong
+  variant). Rewrite the WHOLE paragraph in the target language so that the
+  required term is used in a grammatically correct form, keeping the rest of
+  the meaning intact.
+  Rules:
+  - Rewrite the paragraph as a whole; do NOT return a substring or a diff.
+  - Preserve ALL inline markup exactly as given (links, highlights,
+    footnotes, attributes): keep every element, tag and attribute.
+  - Keep the same root element with its id and other attributes.
+  - Keep the number of sentences the same (or within +/-1).
+  - Use the canonical term form given in the payload (or a form of its
+    paradigm) at least once, in a grammatically correct form.
+  Return ONLY a JSON object: {"items": [{"segment_id", "html"}]} where
+  "segment_id" is echoed verbatim and "html" is the full rewritten block
+  (root element included, no surrounding text).
+user_template: |
+  Source language: {source_language}
+  Target language: {target_language}
+
+  Fix payload (JSON):
+  {text}

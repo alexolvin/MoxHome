@@ -178,6 +178,15 @@ class GlossarySection(BaseModel):
     annotation_batch_size: int = Field(default=25, ge=1)
     #: Доля согласованных вхождений терминов (L2-4): ниже — предупреждение QC.
     consistency_min_share: float = Field(default=0.95, gt=0.0, le=1.0)
+    #: L3: автоматическая правка расхождений в выходном EPUB. По умолчанию
+    #: ВЫКЛЮЧЕНА (T-L3-10): расхождения при этом обнаруживаются и сообщаются
+    #: (L2.6) — тихого отключения обнаружения нет.
+    fix_enabled: bool = False
+    #: L3-6: максимальная доля сегментов, правимых за один прогон. Превышение
+    #: — системная проблема: задание останавливается с отчётом (fail closed).
+    fix_max_segment_share: float = Field(default=0.5, gt=0.0, le=1.0)
+    #: L3.4: порог различия числа предложений в переписанном сегменте.
+    fix_sentence_delta: int = Field(default=1, ge=0)
 
     @model_validator(mode="after")
     def _check_ngram_range(self) -> GlossarySection:

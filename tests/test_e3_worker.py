@@ -332,7 +332,7 @@ def test_e3_2_transition_table_exhaustive(
     make_yaml: Callable[[str, str], Path],
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """T-E3-2 (E3-2): полный перебор 14×14 пар; каждое отклонение — ошибка + запись в лог."""
+    """T-E3-2 (E3-2): полный перебор 15×15 пар; каждое отклонение — ошибка + запись в лог."""
     settings, db, repo = _settings_for(tmp_path, make_env, make_yaml, None)
     job = create_job(repo, settings, source_path=_COMPLEX, target_language="de")
     try:
@@ -350,9 +350,9 @@ def test_e3_2_transition_table_exhaustive(
                             repo.transition(job.id, to_status, reason="полный перебор")
                         rejected += 1
         assert allowed + rejected == len(JobStatus) ** 2
-        # точный перебор: 44 допустимые, 152 отклонённые пары (таблица + resume-правило)
-        assert allowed == 44
-        assert rejected == 152
+        # точный перебор: 49 допустимые, 176 отклонённых пар (таблица + resume-правило)
+        assert allowed == 49
+        assert rejected == 176
         # E3-2: каждое отклонение зафиксировано в логе
         logged = [r for r in caplog.records if "недопустимый переход отклонён" in r.getMessage()]
         assert len(logged) == rejected

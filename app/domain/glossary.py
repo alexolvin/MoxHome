@@ -82,9 +82,13 @@ class GlossaryTerm:
         """Ожидаемые формы перевода в выходном тексте (L2.6, с учётом парадигмы):
         каноническая форма + формы проверенной парадигмы. `paradigm_unverified`
         даёт только каноническую форму (строже; в автоправку L3 термин не
-        входит)."""
+        входит).
+
+        Сравнение статуса — по ЗНАЧЕНИЮ (`==`): после roundtrip через
+        хранилище (YAML) строка — новый объект, идентичность (`is`) не
+        гарантирована (D63)."""
         forms = [self.translation]
-        if self.paradigm is not None and self.paradigm_status is PARADIGM_VERIFIED:
+        if self.paradigm is not None and self.paradigm_status == PARADIGM_VERIFIED:
             forms.extend(self.paradigm.forms)
         return tuple(dict.fromkeys(forms))
 

@@ -1,0 +1,27 @@
+дата: 2026-09-13 11:41:24
+версии: python=3.11.13 spacy=3.8.16
+
+unverif.epub: Badparadigm (mock: 12 идентичных форм → парадигма unverified)
+
+l3_fix_report.json (выборка, verbatim):
+{
+  "mismatches_input": 2,
+  "attempted": 0,
+  "applied": 0,
+  "unverified_terms": [
+    {
+      "term": "Badparadigm",
+      "translation_expected": "Edgsdudgljp",
+      "occurrences": 2,
+      "consistent": 0
+    }
+  ],
+  "unverified_share": 0.0
+}
+предупреждения (verbatim):
+  L2: согласованность терминов ниже порога: 0/2 (0.0% < 95.0%): Badparadigm (2900fe620757258f9e0fa995ac274b63b38a1c7ca88b4f9dc864bd5c298018c2); Badparadigm (ca45ceec9941b84d20b432a7e9b5dbfe492e1055d61584bb764d3fe801601ea8)
+  L3: термины с не подтверждённой парадигмой (автоправки нет, только отчёт): Badparadigm; собственная доля 0/2 (0.0%)
+
+LLM-запросов = 0; target неизменён: True
+
+L3-9: PASS — 0 автоправок, 100% сообщено отдельным перечнем с собственной долей

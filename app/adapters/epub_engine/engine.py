@@ -21,9 +21,7 @@ metadata 5%, главы 90%). Адаптер лишь синхронизируе
 from __future__ import annotations
 
 import logging
-import os
 import re
-import time
 from pathlib import Path
 from typing import Any
 
@@ -32,7 +30,8 @@ from epub_translator.xml_translator.callbacks import (
     FillFailedEvent as _EngineFillFailedEvent,
 )
 
-from app.adapters.epub_engine.epubcheck import EpubcheckOutcome, run_epubcheck
+from app.adapters.epub_engine.atomic import atomic_finalize
+from app.adapters.epub_engine.epubcheck import EpubcheckOutcome
 from app.adapters.epub_engine.glossary import build_glossary_prompt
 from app.adapters.epub_engine.models import (
     EngineUsage,
@@ -42,9 +41,7 @@ from app.adapters.epub_engine.models import (
     TranslationResult,
     ValidationStatus,
 )
-from app.adapters.epub_engine.validation import validate_output_epub
 from app.core.config import Settings
-from app.core.errors import OutputValidationFailed
 
 logger = logging.getLogger("app.adapter.epub_engine")
 
@@ -61,22 +58,6 @@ _UNSAFE_MODEL_CHARS = re.compile(r"[^A-Za-z0-9._-]")
 def _safe_model_dir(model: str) -> str:
     """Имя каталога кэша по имени модели (без спецсимволов пути)."""
     return _UNSAFE_MODEL_CHARS.sub("_", model) or "model"
-
-
-def _fsync_file(path: Path) -> None:
-    fd = os.open(path, os.O_RDONLY)
-    try:
-        os.fsync(fd)
-    finally:
-        os.close(fd)
-
-
-def _fsync_dir(path: Path) -> None:
-    fd = os.open(path, os.O_RDONLY)
-    try:
-        os.fsync(fd)
-    finally:
-        os.close(fd)
 
 
 class EpubTranslatorEngine:
@@ -236,30 +217,6 @@ class EpubTranslatorEngine:
     def _finalize(
         self, partial: Path, target: Path, settings: Settings
     ) -> tuple[EpubcheckOutcome, Path | None]:
-        """Атомарное завершение (E5.6): fsync → валидация → EPUBCheck → бэкап
-        (E5.9) → `os.replace` → fsync каталога. Файл в состоянии записи не результат."""
-        _fsync_file(partial)
-        problems = validate_output_epub(partial, settings)
-        if problems:
-            raise OutputValidationFailed(
-                "внутренняя валидация выхода не пройдена: " + "; ".join(problems)
-            )
-        epubcheck = run_epubcheck(
-            settings.epubcheck_jar_path, partial, settings.epubcheck.timeout_seconds
-        )
-        if epubcheck.available and (epubcheck.fatals or epubcheck.errors):
-            sample = " | ".join((*epubcheck.fatals, *epubcheck.errors)[:5])
-            raise OutputValidationFailed(
-                f"EPUBCheck {epubcheck.version}: "
-                f"{len(epubcheck.fatals)} fatal / {len(epubcheck.errors)} error: {sample}"
-            )
-        backup_path: Path | None = None
-        if target.exists():
-            # E5.9: резервная копия перед перезаписью существующего результата.
-            stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
-            backup_path = target.with_name(f"{target.name}.bak-{stamp}")
-            backup_path.write_bytes(target.read_bytes())
-            logger.info("резервная копия существующего результата: %s", backup_path.name)
-        partial.replace(target)
-        _fsync_dir(target.parent)
-        return epubcheck, backup_path
+        """Атомарное завершение (E5.6): общий механизм (Rule 8) — см.
+        app/adapters/epub_engine/atomic.py; L3 пересобирает выход тем же путём."""
+        return atomic_finalize(partial, target, settings)
