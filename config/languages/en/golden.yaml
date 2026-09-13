@@ -1,17 +1,83 @@
-# Golden-набор (L0): семя эталонных предложений языка.
-# L1 (T-L1-10): расширение до 20 предложений с заранее размеченными явлениями.
-- text: "The quick brown fox jumps over the lazy dog near the river."
+# Golden-набор (L1/T-L1-10): 20 предложений с заранее размеченными явлениями.
+# `phenomena` — идентификаторы из phenomena.yaml этого языка (единый источник).
+# Разметка — эталонная аннотация (L1); все идентификаторы таксономии покрыты.
+- text: "He finally gave up the habit after years of trying."
   expected_language: en
-  source: "tests/fixtures/epub/complex.epub (z_alpha, c1-p1)"
-- text: "She visited the old mill on a cold morning."
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [EN-PHRASAL-VERB]
+- text: "When the storm hit, it was raining cats and dogs."
   expected_language: en
-  source: "tests/fixtures/epub/complex.epub (z_alpha, c1-p2)"
-- text: "First list item with emphasis."
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [EN-IDIOM]
+- text: "You should make a decision before the deadline."
   expected_language: en
-  source: "tests/fixtures/epub/complex.epub (z_alpha, c1-li1)"
-- text: "The fox said: patience is a virtue, but the river does not wait for anyone, and the mill does not turn by itself."
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [EN-COLLOCATION]
+- text: "If I were rich, I would travel the world."
   expected_language: en
-  source: "tests/fixtures/epub/complex.epub (z_alpha, c1-bq)"
-- text: "Footnote: the river was cold that year, colder than the miller remembered from the previous season."
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [EN-COND-2]
+- text: "If she had studied harder, she would have passed the exam."
   expected_language: en
-  source: "tests/fixtures/epub/complex.epub (m_mid, c2-fn1)"
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [EN-COND-3]
+- text: "She has finished her work for today."
+  expected_language: en
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [EN-PERFECT]
+- text: "They have been waiting for the bus for an hour."
+  expected_language: en
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [EN-PERFECT-CONT]
+- text: "The old bridge was built by engineers from the capital."
+  expected_language: en
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [EN-PASSIVE]
+- text: "He told me that he was tired of arguing."
+  expected_language: en
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [EN-REPORTED-SPEECH]
+- text: "You must have forgotten the key at home."
+  expected_language: en
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [EN-MODAL-PERFECT]
+- text: "I enjoy reading, but I prefer to swim in the morning."
+  expected_language: en
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [EN-GERUND-VS-INF]
+- text: "She broke into the house through the back window."
+  expected_language: en
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [EN-PHRASAL-VERB]
+- text: "Cross that bridge when you come to it."
+  expected_language: en
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [EN-IDIOM]
+- text: "The committee took a long time to reach a conclusion."
+  expected_language: en
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [EN-COLLOCATION]
+- text: "If you were taller, you could play on the team."
+  expected_language: en
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [EN-COND-2]
+- text: "If they had left earlier, they would have caught the train."
+  expected_language: en
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [EN-COND-3]
+- text: "The letters had been posted before noon."
+  expected_language: en
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [EN-PERFECT, EN-PASSIVE]
+- text: "We had been walking since dawn."
+  expected_language: en
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [EN-PERFECT-CONT]
+- text: "It is said that the village was founded in the ninth century."
+  expected_language: en
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [EN-PASSIVE]
+- text: "She must have called you before work."
+  expected_language: en
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [EN-MODAL-PERFECT]

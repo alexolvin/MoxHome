@@ -1,4 +1,4 @@
-# Языковой пакет (L0.1) — язык это данные, а не код (Rule 1).
+# Языковой пакет (L0.1/L1) — язык это данные, а не код (Rule 1).
 # Реестр обнаруживается по каталогу config/languages/<code>/ (списка языков
 # в коде Python нет). Резолвер (L0.2) вычисляет статус пары по фактическим
 # ресурсам — pack.yaml описывает, ЧТО должно быть, а не то, что есть.
@@ -6,10 +6,33 @@ code: en
 name: English
 aliases: [eng]
 spacy_model: en_core_web_sm  # NLP-пайплайн (L1); версия зафиксирована в docs/HANDOFF.md
-frequency_source: wordfreq  # источник частотности (L1: Zipf-шкала, bands в пакете)
-cefr_source: derived  # L0: объявлено; L1 — проверка фактического CEFR-лексикона и
-  # его лицензии (docs/LIMITATIONS.md); неясная лицензия → derived (тихая подмена
-  # источника запрещена, Rule 2)
+frequency_source: wordfreq  # источник частотности (L1: Zipf-шкала, bands ниже)
+cefr_source: derived  # L1: лексикон не включён в поставку (лицензия — docs/LIMITATIONS.md);
+  # уровень вычисляется из частотной полосы + LLM; UI — подпись "Estimated CEFR level"
 fixture: tests/fixtures/epub/complex.epub  # фикстура исходного языка (относительно корня проекта)
-# golden.yaml — golden-набор языка (L0: семя эталонных предложений;
-# L1/T-L1-10: расширение до 20 предложений с размеченными явлениями).
+# golden.yaml — golden-набор языка (20 предложений с размеченными явлениями, T-L1-10).
+# lemma_reference.yaml — эталонный набор 50 словоформ (L1-2, T-L1-2).
+# phenomena.yaml — таксономия грамматических явлений и MWE (L1.5).
+# card_schema.json — JSON-схема словарной карточки (L1.6); обязательные поля
+# по частям речи заданы в ней (единый источник — Rule 8), pack.yaml объявляет путь.
+card_schema: card_schema.json
+normalization:
+  unicode_form: NFC
+  casefold: false
+  collapse_whitespace: true
+sentence_split:
+  min_chars: 10
+  max_chars: 400
+prompt_tasks: [analysis_vocabulary, analysis_grammar, analysis_glossary]
+pos_select: [NOUN, VERB, ADJ]  # POS, участвующие в отборе лексики (S1)
+# Частотные полосы (L1.3): Zipf-шкала wordfreq (zipf = 1 + log2(rank));
+# граница = верхняя граница Zipf (включительно). C2: null — без верхней границы.
+# Полоса вычисляется из этих значений кодом без числовых порогов (L1-9).
+frequency_bands:
+  A1: 9.23   # rank ≤ 300  (1 + log2(300))
+  A2: 10.64  # rank ≤ 800
+  B1: 11.97  # rank ≤ 2000
+  B2: 13.29  # rank ≤ 5000
+  C1: 15.29  # rank ≤ 20000
+  C2: null
+separable_prefixes: []  # отделяемых приставок в en нет (T-L1-11 — de/nl)

@@ -1,0 +1,25 @@
+L1-1: пайплайны 5/5 — версии зафиксированы, один раз на процесс
+замер: 2026-09-13 04:58:18
+окружение: spacy=3.8.16 wordfreq=3.1.1 de_core_news_sm=3.8.0 en_core_web_sm=3.8.0 fr_core_news_sm=3.8.0 it_core_news_sm=3.8.0 nl_core_news_sm=3.8.0
+
+PASS en: model=en_core_web_sm model_version=3.8.0 spacy_version=3.8.16 once_per_process=True
+  компоненты: tok2vec, tagger, attribute_ruler, lemmatizer, sentencizer
+  отключены (L1.2): parser, ner
+  nlp_report (verbatim): {"model": "en_core_web_sm", "model_version": "3.8.0", "spacy_version": "3.8.16", "disabled_components": ["parser", "ner"], "sentence_split": {"min_chars": 10, "max_chars": 400}}
+PASS de: model=de_core_news_sm model_version=3.8.0 spacy_version=3.8.16 once_per_process=True
+  компоненты: tok2vec, tagger, morphologizer, lemmatizer, attribute_ruler, sentencizer
+  отключены (L1.2): parser, ner
+  nlp_report (verbatim): {"model": "de_core_news_sm", "model_version": "3.8.0", "spacy_version": "3.8.16", "disabled_components": ["parser", "ner"], "sentence_split": {"min_chars": 10, "max_chars": 400}}
+PASS nl: model=nl_core_news_sm model_version=3.8.0 spacy_version=3.8.16 once_per_process=True
+  компоненты: tok2vec, morphologizer, tagger, lemmatizer, attribute_ruler, sentencizer
+  отключены (L1.2): parser, ner
+  nlp_report (verbatim): {"model": "nl_core_news_sm", "model_version": "3.8.0", "spacy_version": "3.8.16", "disabled_components": ["parser", "ner"], "sentence_split": {"min_chars": 10, "max_chars": 400}}
+PASS fr: model=fr_core_news_sm model_version=3.8.0 spacy_version=3.8.16 once_per_process=True
+  компоненты: tok2vec, morphologizer, attribute_ruler, lemmatizer, sentencizer
+  отключены (L1.2): parser, ner
+  nlp_report (verbatim): {"model": "fr_core_news_sm", "model_version": "3.8.0", "spacy_version": "3.8.16", "disabled_components": ["parser", "ner"], "sentence_split": {"min_chars": 10, "max_chars": 400}}
+PASS it: model=it_core_news_sm model_version=3.8.0 spacy_version=3.8.16 once_per_process=True
+  компоненты: tok2vec, morphologizer, tagger, lemmatizer, attribute_ruler, sentencizer
+  отключены (L1.2): parser, ner
+  nlp_report (verbatim): {"model": "it_core_news_sm", "model_version": "3.8.0", "spacy_version": "3.8.16", "disabled_components": ["parser", "ner"], "sentence_split": {"min_chars": 10, "max_chars": 400}}
+итого: 5/5 загружены; версии зафиксированы; один раз на процесс: True

@@ -1,8 +1,83 @@
-# Golden-набор (L0): семя эталонных предложений языка.
-# L1 (T-L1-10): расширение до 20 предложений с заранее размеченными явлениями.
-- text: "Le rapide renard brun saute par-dessus le chien paresseux près de la rivière."
+# Golden-набор (L1/T-L1-10): 20 предложений с заранее размеченными явлениями.
+# `phenomena` — идентификаторы из phenomena.yaml этого языка (единый источник).
+# Разметка — эталонная аннотация (L1); все идентификаторы таксономии покрыты.
+- text: "Je souhaite que tu viennes à la réunion."
   expected_language: fr
-  source: "tests/fixtures/epub/lang_fr.epub (chapter1, l-p1)"
-- text: "Le moulin était immobile, et l'eau se déplaçait lentement."
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [FR-SUBJONCTIF]
+- text: "Elle a mangé les pommes qu'elle avait achetées."
   expected_language: fr
-  source: "tests/fixtures/epub/lang_fr.epub (chapter1, l-p2)"
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [FR-ACCORD-PARTICIPE]
+- text: "Je me le rappelle difficilement."
+  expected_language: fr
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [FR-PRONOMS-CLITIQUES]
+- text: "Il entra dans la pièce sans un mot."
+  expected_language: fr
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [FR-PASSE-SIMPLE]
+- text: "Quand il est entré, je dormais déjà."
+  expected_language: fr
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [FR-IMPARFAIT-VS-PASSE-COMPOSE]
+- text: "Je ne sais plus où j'ai posé mes clés."
+  expected_language: fr
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [FR-NEGATION-COMPLEXE]
+- text: "En marchant, il a aperçu la maison."
+  expected_language: fr
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [FR-GERONDIF]
+- text: "Elle fait semblant de dormir."
+  expected_language: fr
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [FR-LOCUTION-VERBALE]
+- text: "Il a la boule au ventre avant l'examen."
+  expected_language: fr
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [FR-EXPRESSION-IDIOMATIQUE]
+- text: "Il faut que tu finisses ce travail."
+  expected_language: fr
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [FR-SUBJONCTIF]
+- text: "Les lettres qu'il a envoyées hier sont arrivées."
+  expected_language: fr
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [FR-ACCORD-PARTICIPE]
+- text: "Il m'y invite ce soir."
+  expected_language: fr
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [FR-PRONOMS-CLITIQUES]
+- text: "Le train partit à l'heure, malgré l'orage."
+  expected_language: fr
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [FR-PASSE-SIMPLE]
+- text: "Quand elle est partie, il pleuvait."
+  expected_language: fr
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [FR-IMPARFAIT-VS-PASSE-COMPOSE]
+- text: "Personne n'est venu nous voir."
+  expected_language: fr
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [FR-NEGATION-COMPLEXE]
+- text: "En écrivant, elle se souvenait de son enfance."
+  expected_language: fr
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [FR-GERONDIF]
+- text: "Ils s'appellent Marie et Pierre."
+  expected_language: fr
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [FR-LOCUTION-VERBALE]
+- text: "C'est coudre des boutons, tout ça."
+  expected_language: fr
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [FR-EXPRESSION-IDIOMATIQUE]
+- text: "Il est important que tu sois attentif."
+  expected_language: fr
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [FR-SUBJONCTIF]
+- text: "Elle a fini les tâches qu'elle avait commencées."
+  expected_language: fr
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [FR-ACCORD-PARTICIPE]

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "card_schema.en",
+  "title": "Словарная карточка en (L1.6): обязательные поля зависят от языка и части речи",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["lemma", "word_form", "pos", "meaning", "translation", "example", "segment_id", "frequency_band", "cefr_level", "cefr_source"],
+  "properties": {
+    "lemma": {"type": "string", "minLength": 1},
+    "word_form": {"type": "string", "minLength": 1},
+    "pos": {"enum": ["noun", "verb", "adjective"]},
+    "meaning": {"type": "string", "minLength": 1},
+    "translation": {"type": "string", "minLength": 1},
+    "example": {"type": "string", "minLength": 1},
+    "segment_id": {"type": "string", "minLength": 1},
+    "frequency_band": {"enum": ["A1", "A2", "B1", "B2", "C1", "C2"]},
+    "cefr_level": {"enum": ["A1", "A2", "B1", "B2", "C1", "C2"]},
+    "cefr_source": {"type": "string", "minLength": 1},
+    "past_tense": {"type": ["string", "null"]},
+    "past_participle": {"type": ["string", "null"]}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"pos": {"const": "verb"}}, "required": ["pos"]},
+      "then": {"required": ["past_tense", "past_participle"]}
+    }
+  ]
+}

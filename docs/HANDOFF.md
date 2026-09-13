@@ -12,21 +12,122 @@
   CONTROL PASS 6/6; **E4 (Слой LLM)** — CONTROL PASS 6/6; **E5 (Тракт T: перевод)** —
   CONTROL PASS 8/8; **E6 (Выравнивание оригинал ↔ перевод)** — CONTROL PASS 7/7
   (+T-E6-8); **L0 (Реестр языков, матрица пар, определение языка)** — CONTROL PASS 8/8
-  (L0-1…L0-6 + T-L0-7/8), 116/116 тестов (на mock, BLOCKER-1 — реальные прогоны
-  не заявляются).
+  (L0-1…L0-6 + T-L0-7/8); **L1 (Языковые пакеты: NLP, таксономия, карточки, CEFR,
+  частотность)** — CONTROL PASS 9/9 (L1-1…L1-9 + T-L1-10/11/12), 143/143 теста
+  (на mock, BLOCKER-1 — реальные прогоны не заявляются).
   Отчёты: `docs/ENGINE_PROBE.md`, `docs/CONTROL/E2.md`, `docs/CONTROL/E3.md`,
-  `docs/CONTROL/E4.md`, `docs/CONTROL/E5.md`, `docs/CONTROL/E6.md`, `docs/CONTROL/L0.md`;
-  evidence: `docs/CONTROL/evidence/E1…E6/`, `docs/CONTROL/evidence/L0/`.
-- **Далее:** **L1 — «Языковые пакеты»** (TZ_02: `phenomena.yaml` + `card_schema.json`
-  в пакете языка; spaCy-пайплайны 5/5, версии зафиксированы (L1-1); лемматизация ≥90%
-  на 50 словоформах на язык (L1-2); CEFR: проверка наличия/лицензии лексиконов всех
-  5 языков → таблица в `docs/LIMITATIONS.md` (L1-7), неясная лицензия →
-  `cefr_source: derived` + метка `Estimated CEFR` (D6, L1-8); wordfreq — ограничение
-  в `LIMITATIONS.md` (снимок ~2021); частотные полосы — Zipf-шкала в `pack.yaml`
-  (L1-9: 0 числовых порогов в коде); таксономия явлений поязыковая, LLM — только
-  идентификаторы таксономии (L1-6); обязательные поля карточек по языку/POS
-  (L1-3…5); golden-наборы 20 предложений (T-L1-10), отделяемые глаголы de/nl
-  (T-L1-11), удаление лексикона → `derived` без падений (T-L1-12)).
+  `docs/CONTROL/E4.md`, `docs/CONTROL/E5.md`, `docs/CONTROL/E6.md`, `docs/CONTROL/L0.md`,
+  `docs/CONTROL/L1.md`; evidence: `docs/CONTROL/evidence/E1…E6/`,
+  `docs/CONTROL/evidence/L0/`, `docs/CONTROL/evidence/L1/`.
+- **Далее:** **L2 — «Глоссарий и терминология»** (TZ_02: детерминистичные кандидаты —
+  NER из spaCy (NER включается на этом этапе, сейчас parser/ner отключены в L1),
+  повторяющиеся многословные последовательности, аббревиатуры, единицы измерения,
+  слова с заглавной вне начала предложения (правило для `de` отключается в `pack.yaml`);
+  LLM — только перевод/пояснение отобранных (треб. 2); запись глоссария + **парадигма
+  целевого языка** (треб. 4: `inflected: true|false` в `pack.yaml`; для `ru` — 6 падежей
+  ед.+мн.ч. для сущ./имён; проверка парадигмы, `paradigm_unverified`); глоссарий в
+  `user_prompt` тракта T с фиксацией усечения (треб. 5, E5-7); проверка согласованности
+  ПОСЛЕ перевода — только обнаружение расхождений, текст на L2 не правится (треб. 6,
+  правка — L3); стилевой профиль книги (треб. 7: formal/neutral/literary/conversational);
+  привязка к версии книги по хэшу (треб. 8). CONTROL L2-1…8, тесты T-L2-1…11.
+
+## Сделано в L1
+
+- **`app/languages/nlp.py` (D46, D47):** `_NlpHolder` — один пайплайн на модель на
+  процесс (класс-держатель, без `global`); `load_nlp` (загрузка `spacy.load(model,
+  disable=["parser","ner"])` + добавление `sentencizer` без него `doc.sents` = E030);
+  `nlp_report` — секция `nlp` отчёта задания (модель, версии через
+  `importlib.metadata` — без загрузки пайплайна, D50; disabled-компоненты,
+  sentence_split); `lemma_of` (один токен); `lexical_units` — отделяемые глаголы
+  de/nl: голова = VERB + правило финитности (ранее в предложении другой VERB без
+  CCONJ/SCONJ/PUNCT — не финитный; nl-модель размечает «vroeg» как VERB «vragen» —
+  без правила ложная «opvragen»), приставка из `separable_prefixes` (данные:
+  de 21, nl 18), запрет именных constituents между глаголом и приставкой,
+  приставка-предлог с именным дополнением — не единица; окно
+  `sentence_split` (min_chars/max_chars из pack.yaml) — D46.
+- **`app/languages/phenomena.py` (L1.5/L1-6):** `load_phenomena` (`phenomena.yaml`
+  каталога пакета; отсутствует/пуст — отсутствующий ресурс, резолвер перечислит;
+  невалидный id/dup/пустые name/description → `ConfigurationError`),
+  `PhenomenaTaxonomy` (`.validate` → (валидные, невалидные)), `validate_golden`
+  (чужой id — ошибка; пустая таксономия — ошибка, а не молчание, Rule 6).
+- **`app/languages/cards.py` (L1.6, D51):** `load_card_schema` (JSON draft 2020-12,
+  `if/then` по части речи; невалидная схема → `ConfigurationError`), `validate_card`
+  (jsonschema + отдельная проверка плейсхолдеров Rule 5: `—`/`n/a`/пустая строка —
+  отклонение; JSON `null` — легитимно для nullable-полей), `issue_cards` →
+  (выпущенные, отклонённые с причинами) — счётчик QC.
+- **`app/languages/cefr.py` (L1.4, D45):** `CefrSource` (`lexicon:<имя>` —
+  `cefr/<имя>.json` маппинг слово→уровень; файл отсутствует → derived без исключения
+  (T-L1-12); невалидный JSON/уровень → `ConfigurationError`), `level_for`
+  (lexicon-hit → (уровень, источник, estimated=False); miss → уровень не
+  устанавливается; derived → (None, derived, True)), `label` — ЕДИНАЯ подпись
+  (L1-8): derived → `Estimated CEFR level`; lexicon → `CEFR level (<источник>):
+  <уровень|не установлен>`. UI (U1) читает только её.
+- **`app/languages/frequency.py` (L1.3, D48, D52):** `normalize_text` (NFC/NFD/NFKC/
+  NFKD + casefold + схлопывание — данные `pack.yaml: normalization`), `zipf_for`
+  (wordfreq 3.1.1: `zipf_frequency(word.casefold(), lang)`; wordlist-параметр снят,
+  `frequency_of_word` удалён — измерено), `band_for`/`frequency_band` — полосы
+  только из данных (`BandSpec`), 0 числовых порогов в коде (L1-9, проверено тестом),
+  `band_report` — справочное представление.
+- **`app/languages/registry.py` (расширение):** `NormalizationSpec`,
+  `SentenceSplitSpec` (max ≥ min), `BandSpec` (≥2 полосы, null-max — не более одной
+  и только последней, границы строго растут; YAML-маппинг {A1: 9.23, …} —
+  before-валидатор); `PackSpec` + `card_schema`, `normalization`, `sentence_split`,
+  `prompt_tasks` (валидация по реестру задач, D49), `pos_select` (universal tags),
+  `frequency_bands`, `separable_prefixes` (isalpha — ü в «zurück»); `GoldenEntry` +
+  `phenomena`; `LemmaEntry` + `load_lemma_reference` (отсутствует/пуст — ресурс,
+  не ошибка).
+- **`app/languages/resolver.py` (расширение, D49):** `_l1_resource_deficits` —
+  мягкие: нет таксономии/схемы карточки/эталонов лемматизации/частотных полос,
+  CEFR-лексикон не найден (только при `cefr_source: lexicon:` — переход в derived
+  зафиксирован в перечне, T-L1-12); golden без размеченных явлений — отдельное
+  сообщение (L1/T-L1-10); `prompt_tasks` пакета источника — пространство имён
+  промптов (нет пакета/список пуст — все задачи, поведение L0 без изменения).
+- **`app/workers/pipeline.py`:** `_nlp_section` — секция `nlp` в `validation.json`
+  (по accepted language; конфликт — None) и `plan.json` (по подтверждённому
+  источнику) — `nlp_report`, без загрузки пайплайна (D50).
+- **Данные (новые/перезаписанные, `config/languages/{en,de,fr,it,nl}/`):**
+  `phenomena.yaml` (en 11, de 12, nl 9, fr 9, it 9 id — id вида XX-NAME,
+  kind grammar/mwe/morphology, name/description — данные для S1-промптов);
+  `card_schema.json` (draft 2020-12, additionalProperties false, `if/then`:
+  de noun → article der/die/das + plural; de verb → auxiliary + main_forms +
+  separable; nl noun → article de/het + plural + diminutive (nullable); nl verb →
+  auxiliary + participle + separable; fr noun → gender; fr verb →
+  conjugation_group 1-4/irregular + auxiliary avoir/etre + irregular_forms
+  (nullable); it noun → gender + plural; it verb → group 1-3/irregular + auxiliary
+  avere/essere + irregular_forms; en verb → past_tense/past_participle (nullable —
+  регулярный глагол)); `pack.yaml` (per-языковые `card_schema`, `normalization`,
+  `sentence_split` 10–400, `prompt_tasks` ×3, `pos_select` [NOUN,VERB,ADJ],
+  `frequency_bands` A1≤9.23/A2≤10.64/B1≤11.97/B2≤13.29/C1≤15.29/C2 null —
+  Zipf-шкала `1+log2(rank)`, de `separable_prefixes` 21, nl 18); `golden.yaml`
+  (перезаписаны: по 20 предложений с размеченными явлениями, 100% покрытие
+  таксономии, de-1-е = «Er steht früh auf, bevor die Arbeit beginnt.» (DE-TRENNBAR),
+  nl-1-е = «Hij staat vroeg op om te joggen.» (NL-SCHEIDBAAR)); `lemma_reference.yaml`
+  (по 50 словоформ: 47 проходимых + 3 известных слабых формы — эталон = стандартная
+  грамматика, не вывод модели). `ru/pack.yaml` без изменений (дефолты новых полей).
+- **`docs/LIMITATIONS.md`:** CEFR-аудит 2026-09-13 — таблица 5/5 (en/de/fr/nl/it —
+  ресурс/лицензия/«нет»/`derived`), все 5 языков `derived` (D45); wordfreq 3.1.1 API
+  (wordlist снят, `frequency_of_word` удалён); NLP: 5/5 моделей, 94%×5 лемматизация,
+  слабые формы verbatim, parser/ner отключены.
+- **Измерено (evidence L1, `docs/CONTROL/evidence/L1/`, 12 файлов):** 5/5 пайплайнов
+  (5×3.8.0, spaCy 3.8.16, one-per-process); 47/50 (94%) ×5; de без article/plural → 0
+  выпущенных (причины verbatim); nl без de/het → 0, «der» → 0, diminutive=null → 1;
+  fr/it без auxiliary/group → 0; таксономии 11/12/9/9/9, чужой id → 0 принятых;
+  CEFR-таблица 5/5 verbatim; 5× `Estimated CEFR level`; границы из данных, в коде 0;
+  golden 20×5, покрытие 100%, чужой id отклонён verbatim; «Er steht früh auf» →
+  aufstehen (1), «Hij staat vroeg op» → opstaan (1), FP-предлоги → 0; удаление
+  lexicon → derived, метка `Estimated CEFR level`, 0 падений, резолвер перечисляет
+  «CEFR-лексикон не найден: xx/cefr/testlex.json».
+- Тесты: 27 запусков в `tests/test_l1_packages.py` (T-L1-1…12, параметризация
+  5 языков); evidence-скрипт `tests/l1_evidence.py` (12 verbatim-файлов).
+  Полный прогон 143/143 (116 + 27), ruff 0, mypy 0 (47 файлов).
+- Дефекты этапа (Rule 3, подробно в `docs/CONTROL/L1.md`): `doc.sents` без
+  сегментатора → E030 (добавлен sentencizer, D46); sentencizer не принимает
+  `max_len` (confection — D46: окно обработки вместо конфига); nl-модель
+  размечает «vroeg» как VERB «vragen» → ложная единица «opvragen» (правило
+  финитности головы, D47; первая попытка — «последний глагол» — неверна, исключала
+  истинную голову); `_PREFIX_RE [a-z]+` не совпадал с «zurück» (ü) → isalpha;
+  wordfreq 3.1.1 API (D48); CEFR-check резолвера срабатывал бы на `derived` (защита
+  `startswith("lexicon:")`); en-эталон 49 записей (добавлен rivers→river).
 
 ## Сделано в L0
 
@@ -334,6 +435,7 @@ cd /mdisk/EpubTranslator
 .venv/bin/python tests/e5_evidence.py   # сборка verbatim-evidence CONTROL E5
 .venv/bin/python tests/e6_evidence.py   # сборка verbatim-evidence CONTROL E6
 .venv/bin/python tests/l0_evidence.py   # сборка verbatim-evidence CONTROL L0
+.venv/bin/python tests/l1_evidence.py   # сборка verbatim-evidence CONTROL L1
 ```
 
 Новые пакеты: `uv add <pkg>` (runtime) / `uv add --dev <pkg>`; lock обновляется автоматически.
@@ -422,6 +524,31 @@ T-L0-8: bilingual.epub → подтверждение не требуется, `
 segment_id существуют в книге.
 Итого по инструментарию после L0: ruff 0, mypy 0, pytest 116/116 (95 + 21 L0).
 
+L1-1: 5/5 пайплайнов (en_core_web_sm / de_core_news_sm / fr_core_news_sm /
+nl_core_news_sm / it_core_news_sm — все 3.8.0; spaCy 3.8.16), one-per-process.
+L1-2: лемматизация en/de/nl/fr/it — 47/50 (94%) на каждый; слабые формы verbatim
+(en: drank/swam/higher; de: isst/aß/schlief; nl: honden/stoelen/las; fr:
+parles→parle/viens→vien/fait; it: mangiamo→mangare/vengo→vengare/sei).
+L1-3: de noun без article → 0 выпущенных («'article' is a required property»),
+без plural → 0, плейсхолдер «—» → 0 (Rule 5). L1-4: nl noun без de/het → 0,
+«der» → 0 (enum), diminutive=null → 1 (легитимно). L1-5: fr/it verb без
+auxiliary → 0, без conjugation_group → 0. L1-6: таксономии en 11 / de 12 / nl 9 /
+fr 9 / it 9; чужой id (EN-PHRASAL-VERB у de) → принято 0. L1-7: CEFR-аудит —
+5/5 строк LIMITATIONS verbatim, все `derived`, 0 лексиконов в поставку.
+L1-8: 5× `Estimated CEFR level` (единая точка `cefr.label`). L1-9: границы
+A1≤9.23/A2≤10.64/B1≤11.97/B2≤13.29/C1≤15.29/C2 null — из pack.yaml; в коде
+app/languages/*.py — 0; примеры: de «der» zipf=7.46→A1, «Häuser» 4.57→A1,
+en «the» 7.73→A1, «ubiquitous» 3.42→A1. T-L1-10: golden 20×5, покрытие
+таксономии 11/11, 12/12, 9/9, 9/9, 9/9, чужой id отклонён verbatim.
+T-L1-11: «Er steht früh auf, bevor die Arbeit beginnt.» → 1 единица
+(steht+auf→aufstehen); «Hij staat vroeg op om te joggen.» → 1 (staat+op→opstaan);
+FP «Das steht auf der Bank…» → 0, «Hij gaat naar huis…» → 0.
+T-L1-12: lexicon hit → `CEFR level (lexicon:testlex): A1`; miss → «не установлен»;
+после unlink → derived + `Estimated CEFR level`, 0 исключений, резолвер:
+«CEFR-лексикон не найден: xx/cefr/testlex.json».
+Итого по инструментарию после L1: ruff 0, mypy 0 (47 файлов), pytest 143/143
+(116 + 27 L1).
+
 ## Открытые дефекты / ограничения
 
 - Сервер ещё не запускается (этап U1) — `python -m app` пока только валидирует конфиг.
@@ -431,15 +558,33 @@ segment_id существуют в книге.
   фикстурах — не гарантия на реальных книгах: страховка — правила L0.5 (конфликт
   детектора и `dc:language` → подтверждение, авто-выбор запрещён) и порог
   `min_confidence` (YAML); по сегментам — только ≥ `segment_min_chars` (D44).
-  Нейро-NLP (spaCy) подключается в L1 (лемматизация, POS).
+  Нейро-NLP (spaCy) подключено в L1 (лемматизация, POS, sentencizer; parser/ner —
+  в L2).
+- L1: `lexical_units` (отделяемые глаголы) детектирует только главную конструкцию
+  с приставкой СПРАВА от глагола; финитность головы — эвристика на POS (без
+  парсера): правило «ранее в предложении другой VERB без CCONJ/SCONJ/PUNCT — не
+  финитный» измерено на nl «vroeg» (модель размечает наречие как VERB «vragen») и
+  FP-сценариях; придаточные и начальная позиция («Aufstehen ist…») — не
+  детектируются (заявлено в CONTROL L1).
+- L1: лемматизация fr/it слаба на ряде форм спряжения (fr: parles→parle,
+  viens→vien; it: mangiamo→mangare — verbatim в L1-2): S1 при отборе лексики
+  не обязан опираться на лемму глагола как единственный ключ (есть `word_form`).
+- L1: CEFR — все 5 языков `derived` (аудит 2026-09-13, D45: лицензионно-чистого
+  машиночитаемого лексикона не найдено) — в UI (U1) везде, где показан уровень,
+  обязательная метка `Estimated CEFR level` (единая точка `app.languages.cefr.label`).
+  CEFR никогда не подаётся как истина (TЗ L1 п.4).
+- L1: `wordfreq` 3.1.1 — замороженный снимок ~2021 (wordlist-параметр снят,
+  `frequency_of_word` удалён — D48): приемлемо для ранжирования полос частотности,
+  нет — для утверждений о «современной употребительности» (LIMITATIONS).
 - Воркер запускается автономно (`python -m app.workers.run --config … --env …`);
   интеграция «сервер создаёт задания + воркер их исполняет» — в U1.
 - Показ доли выравнивания в UI (E6-6, «показан в UI») — в U1: данные готовы
   (единая колонка `jobs.alignment_coverage`, diff 0 с `quality.json` и
   `alignment_report.json`; ниже порога → `COMPLETED_WITH_WARNINGS`).
 - Стадия `analyzing` в pipeline — заглушка (E4): клиент анализа, реестр задач и промпты
-  v1 готовы, исполнение задач в конвейере — этапы L1/L2; профиль `analysis` не входит
-  в `config_hash` (D21) — смена analysis-настроек не инвалидирует готовый перевод.
+  v1 готовы, исполнение задач в конвейере — этап L2 и далее; профиль `analysis` не
+  входит в `config_hash` (D21) — смена analysis-настроек не инвалидирует готовый
+  перевод.
 - LLM-эндпоинт — плейсхолдер (`http://127.0.0.1:9999/v1`, модель `probe-model`) до **BLOCKER-1**
   (нужен реальный OpenAI-совместимый эндпоинт от владельца). Весь тракт T (E5) проверен
   на mock — PASS реальных прогонов не заявлен; соблюдение глоссария моделью — гарантия

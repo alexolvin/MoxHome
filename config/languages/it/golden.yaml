@@ -1,8 +1,83 @@
-# Golden-набор (L0): семя эталонных предложений языка.
-# L1 (T-L1-10): расширение до 20 предложений с заранее размеченными явлениями.
-- text: "La volpe marrone veloce salta sopra il cane pigro vicino al fiume."
+# Golden-набор (L1/T-L1-10): 20 предложений с заранее размеченными явлениями.
+# `phenomena` — идентификаторы из phenomena.yaml этого языка (единый источник).
+# Разметка — эталонная аннотация (L1); все идентификаторы таксономии покрыты.
+- text: "Spero che tu venga alla festa."
   expected_language: it
-  source: "tests/fixtures/epub/lang_it.epub (chapter1, l-p1)"
-- text: "Il mulino era fermo, e l'acqua si muoveva lentamente."
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [IT-CONGIUNTIVO]
+- text: "Ieri entrai in casa e mi sedetti sul divano."
   expected_language: it
-  source: "tests/fixtures/epub/lang_it.epub (chapter1, l-p2)"
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [IT-PASSATO-REMOTO]
+- text: "Me lo ricordo ancora perfettamente."
+  expected_language: it
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [IT-PRONOMI-COMBINATI]
+- text: "Mi sono svegliato molto tardi stamattina."
+  expected_language: it
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [IT-VERBI-PRONOMINALI]
+- text: "Le ho lette tutte in una settimana."
+  expected_language: it
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [IT-CONCORDANZA-PARTICIPIO]
+- text: "Se avessi più tempo, verrei a trovarti."
+  expected_language: it
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [IT-PERIODO-IPOTETICO]
+- text: "Cantando, si distrae facilmente."
+  expected_language: it
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [IT-GERUNDIO]
+- text: "Piangere a dirotto non risolve i problemi."
+  expected_language: it
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [IT-ESPRESSIONE-IDIOMATICA]
+- text: "Hanno freddo in quel palazzo vuoto."
+  expected_language: it
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [IT-VERBI-SINTAGMATICI]
+- text: "Credo che sia davvero stanco."
+  expected_language: it
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [IT-CONGIUNTIVO]
+- text: "Quando entrai, il film era già cominciato."
+  expected_language: it
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [IT-PASSATO-REMOTO]
+- text: "Gliel'ho detto subito dopo."
+  expected_language: it
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [IT-PRONOMI-COMBINATI]
+- text: "Ci sono trasferiti a Milano l'anno scorso."
+  expected_language: it
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [IT-VERBI-PRONOMINALI]
+- text: "L'ho vista appena prima di pranzo."
+  expected_language: it
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [IT-CONCORDANZA-PARTICIPIO]
+- text: "Se fossi in te, accetterei l'offerta."
+  expected_language: it
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [IT-PERIODO-IPOTETICO]
+- text: "Avevano finito, se ne andarono in silenzio."
+  expected_language: it
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [IT-GERUNDIO]
+- text: "Avere il pollice verde aiuta nel giardino."
+  expected_language: it
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [IT-ESPRESSIONE-IDIOMATICA]
+- text: "Fare la spesa ogni sabato è un'abitudine."
+  expected_language: it
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [IT-VERBI-SINTAGMATICI]
+- text: "Penso che sia un'ottima idea."
+  expected_language: it
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [IT-CONGIUNTIVO]
+- text: "Prestare attenzione ai dettagli conta molto."
+  expected_language: it
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [IT-VERBI-SINTAGMATICI]

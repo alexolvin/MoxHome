@@ -51,7 +51,8 @@ from app.domain.job import Job
 from app.epub import aligner
 from app.epub.reader import read_epub
 from app.languages.detect import LanguageReport, detect_book
-from app.languages.registry import aliases_map, load_registry
+from app.languages.nlp import nlp_report
+from app.languages.registry import PackSpec, aliases_map, load_registry
 from app.languages.resolver import PairReport, PairResolver, PairStatus
 from app.workers.controls import LeaseLost, WorkerCancelled, WorkerPaused
 from app.workers.qc import QcInput, run_qc
@@ -140,6 +141,17 @@ class Pipeline:
         )
         return resolver.resolve_pair(source, target)
 
+    def _nlp_section(self, code: str | None) -> dict[str, Any] | None:
+        """Секция `nlp` отчёта задания (L1.2): версии пайплайна исходного языка
+        зафиксированы в отчёте каждого задания (статическая фиксация —
+        docs/HANDOFF.md). None — язык неизвестен или пайплайн не объявлен."""
+        if code is None:
+            return None
+        pack: PackSpec | None = load_registry(self._settings.languages_root).get(code)
+        if pack is None or pack.spacy_model is None:
+            return None
+        return nlp_report(pack)
+
     def validation(self, job_id: str) -> dict[str, Any]:
         """validation.json задания (L0: секция language_detection; воркер строит
         причину NEEDS_CONFIRMATION из неё же — единый источник, Rule 8)."""
@@ -170,6 +182,8 @@ class Pipeline:
             "language": book.language,
             # L0: решение по исходному языку (детектор + dc:language, L0.5).
             "language_detection": _language_detection_payload(report),
+            # L1.2: версии NLP-пайплайна исходного языка (None — язык не принят).
+            "nlp": self._nlp_section(report.accepted_language),
             "suspicious": book.suspicious,
             "suspicious_reasons": list(book.suspicious_reasons),
             "stats": asdict(book.stats),
@@ -214,6 +228,8 @@ class Pipeline:
             "target_language": job.target_language,
             "mode": job.mode,
             "submit_mode": self._submit_mode(job.mode).value,
+            # L1.2: версии NLP-пайплайна подтверждённого исходного языка.
+            "nlp": self._nlp_section(job.source_language),
             "glossary": {"limit_chars": self._settings.limits.glossary_max_user_prompt_chars},
             "engine": {
                 "max_group_tokens": profile.max_group_tokens,

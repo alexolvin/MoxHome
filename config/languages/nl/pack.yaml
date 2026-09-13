@@ -1,8 +1,31 @@
-# Языковой пакет (L0.1) — язык это данные, а не код (Rule 1).
+# Языковой пакет (L0.1/L1) — язык это данные, а не код (Rule 1).
 code: nl
 name: Dutch
 aliases: [nld]
 spacy_model: nl_core_news_sm  # NLP-пайплайн (L1); версия зафиксирована в docs/HANDOFF.md
-frequency_source: wordfreq  # источник частотности (L1: Zipf-шкала, bands в пакете)
-cefr_source: derived  # L0: объявлено; L1 — проверка CEFR-лексикона и лицензии
+frequency_source: wordfreq  # источник частотности (L1: Zipf-шкала, bands ниже)
+cefr_source: derived  # L1: лексикон не включён в поставку (лицензия — docs/LIMITATIONS.md)
 fixture: tests/fixtures/epub/lang_nl.epub  # фикстура исходного языка (относительно корня проекта)
+# golden.yaml — 20 предложений с явлениями (T-L1-10); lemma_reference.yaml — 50 словоформ
+# (L1-2); phenomena.yaml — таксономия (L1.5); card_schema.json — схема карточки (L1.6).
+card_schema: card_schema.json
+normalization:
+  unicode_form: NFC
+  casefold: false
+  collapse_whitespace: true
+sentence_split:
+  min_chars: 10
+  max_chars: 400
+prompt_tasks: [analysis_vocabulary, analysis_grammar, analysis_glossary]
+pos_select: [NOUN, VERB, ADJ]
+frequency_bands:
+  A1: 9.23   # rank ≤ 300  (1 + log2(300))
+  A2: 10.64  # rank ≤ 800
+  B1: 11.97  # rank ≤ 2000
+  B2: 13.29  # rank ≤ 5000
+  C1: 15.29  # rank ≤ 20000
+  C2: null
+# Разделяемые приставки (L1.5, T-L1-11): данные, не код. Механизм
+# lexical_units() связывает глагол и приставку в единую лексическую единицу.
+separable_prefixes:
+  [af, aan, bij, door, heen, mee, naar, om, op, over, samen, terug, uit, weg, van, via, toe, tot]

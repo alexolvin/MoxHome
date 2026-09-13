@@ -1,0 +1,41 @@
+# Таксономия грамматических явлений и типов MWE (L1.5) — язык это данные (Rule 1).
+# Идентификатор — стабильная строка: LLM возвращает ТОЛЬКО идентификаторы из этого
+# списка; идентификатор вне таксономии — ошибка валидации, артефакт отклоняется
+# (L1-6). name/description — данные (S1-промпты собираются из них).
+phenomena:
+  - id: NL-SCHEIDBAAR
+    kind: mwe
+    name: "Разделяемый глагол (scheidbaar)"
+    description: "Глагол с разделяемой приставкой: приставка уходит в конец (Hij staat vroeg op = opstaan). Разбирается как единая лексическая единица."
+  - id: NL-WERKWOORDELIJKE-EINDGROEP
+    kind: grammar
+    name: "Глагольная конечная группа"
+    description: "Финитный глагол + инфинитивы/причастия в конце main clause: Hij heeft het boek gelezen (verbale eindgroep)."
+  - id: NL-V2-WOORDVOLGORDE
+    kind: grammar
+    name: "Порядок слов V2"
+    description: "Во втором положении main clause — finiten глагол: Gisteren ging hij naar school."
+  - id: NL-DE-HET
+    kind: grammar
+    name: "Артикль de/het"
+    description: "Выбор артикля по роду: het huis (het), de tafel (de); влияет на склонение прилагательных."
+  - id: NL-ER-CONSTRUCTIE
+    kind: grammar
+    name: "Er-конструкция"
+    description: "Формальный подлежащее er: Er staat een man bij de deur."
+  - id: NL-MODALE-PARTIKELS
+    kind: grammar
+    name: "Модальные частицы"
+    description: "toch, maar, wel, even, toch nog — оценка и тон: Dat is toch leuk!"
+  - id: NL-PERFECTUM-HEBBEN-ZIJN
+    kind: grammar
+    name: "Perfectum: hebben/zijn"
+    description: "Выбор вспомогательного глагола в perfectum: Hij is gisteren gelopen (zijn — движение) / Ik heb gezwommen (hebben)."
+  - id: NL-VASTE-UITDRUKKING
+    kind: mwe
+    name: "Устойчивое выражение"
+    description: "Фиксированное идиоматическое выражение: de das om (смертельно уставший), voor de vogels zijn."
+  - id: NL-VERKLEINWOORD
+    kind: morphology
+    name: "Уменьшительная форма"
+    description: "Суффиксы -je/-ie/-tje: huisje (от huis), vriendje (от vriend) — с изменениями основы."

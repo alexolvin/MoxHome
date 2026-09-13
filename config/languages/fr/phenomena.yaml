@@ -1,0 +1,41 @@
+# Таксономия грамматических явлений и типов MWE (L1.5) — язык это данные (Rule 1).
+# Идентификатор — стабильная строка: LLM возвращает ТОЛЬКО идентификаторы из этого
+# списка; идентификатор вне таксономии — ошибка валидации, артефакт отклоняется
+# (L1-6). name/description — данные (S1-промпты собираются из них).
+phenomena:
+  - id: FR-SUBJONCTIF
+    kind: grammar
+    name: "Субъунктив (subjonctif)"
+    description: "Наклонение субъективного отношения: Je souhaite que tu viennes, il faut que tu fasses."
+  - id: FR-ACCORD-PARTICIPE
+    kind: grammar
+    name: "Согласование причастия"
+    description: "Accord du participe passé (в т.ч. с avoir при прямом дополнении перед глаголом): Elle a mangé une pomme rouge / Elle les a mangées."
+  - id: FR-PRONOMS-CLITIQUES
+    kind: grammar
+    name: "Клитические местоимения"
+    description: "je/me/m' me le/m'y — порядок и формы: Je me le rappelle."
+  - id: FR-PASSE-SIMPLE
+    kind: grammar
+    name: "Passé simple"
+    description: "Литературное прошедшее: Il entra dans la pièce."
+  - id: FR-IMPARFAIT-VS-PASSE-COMPOSE
+    kind: grammar
+    name: "Imparfait vs passé composé"
+    description: "Фоновое vs точечное действие: Quand il est entré, je dormais."
+  - id: FR-NEGATION-COMPLEXE
+    kind: grammar
+    name: "Сложное отрицание"
+    description: "ne + plus/jamais/rien/personne…: Je ne sais plus, il n'y a personne."
+  - id: FR-GERONDIF
+    kind: grammar
+    name: "Герундий (gérondif)"
+    description: "en + present participle: En marchant, il a vu la maison."
+  - id: FR-LOCUTION-VERBALE
+    kind: mwe
+    name: "Глагольная фраза (locution verbale)"
+    description: "Глагол + частица/предлог как единое действие: s'appeler, faire semblant de, arriver à."
+  - id: FR-EXPRESSION-IDIOMATIQUE
+    kind: mwe
+    name: "Идиоматическое выражение"
+    description: "Значение не сводится к словам: avoir la boule au ventre, coudre des boutons."
