@@ -234,6 +234,93 @@ _GRAMMAR_NOTE_SCHEMA = _object_schema(
     }
 )
 
+#: S4 (ТЗ_03): summary главы — ТОЛЬКО по переданному тексту главы
+#: (генерация по названию запрещена — в payload нет названия; пустая/
+#: нечитаемая глава не вызывается конвейером — пропуск, S4-1). Ответ —
+#: ОДИН объект на главу (не items-массив).
+_CHAPTER_SUMMARY_SCHEMA = {
+    "type": "object",
+    "required": ["brief", "extended", "key_events", "entities", "themes", "concepts"],
+    "additionalProperties": False,
+    "properties": {
+        "brief": {"type": "string", "minLength": 1},
+        "extended": {"type": "string", "minLength": 1},
+        "key_events": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "entities": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "themes": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "concepts": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    },
+}
+
+_MC_OPTION_SCHEMA = {
+    "type": "object",
+    "required": ["text", "correct"],
+    "additionalProperties": False,
+    "properties": {
+        "text": {"type": "string", "minLength": 1},
+        "correct": {"type": "boolean"},
+    },
+}
+
+#: S4 (ТЗ_03): вопрос на понимание. `answer` — правильный ответ, который
+#: конвейер ОТСЕКАЕТ в отдельную сущность answers.json (S4.4) и не
+#: публикует в теле главы (S4-5). gap: original_sentence — дословно из
+#: текста главы, sentence_with_blank — с одним «____» (S4.2); mc: ровно
+#: один correct (S4.3); entities — слова, присутствующие в тексте главы
+#: (S4.4).
+_QUESTION_ITEM_SCHEMA = {
+    "type": "object",
+    "required": ["question", "type", "level", "segment_id", "entities", "answer"],
+    "additionalProperties": False,
+    "properties": {
+        "question": {"type": "string", "minLength": 1},
+        "type": {"enum": ["free", "mc", "tf", "gap"]},
+        "level": {"enum": ["easy", "standard", "advanced"]},
+        "segment_id": {"type": "string", "minLength": 1},
+        "entities": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "answer": {"type": "string", "minLength": 1},
+        "options": {"type": ["array", "null"], "items": _MC_OPTION_SCHEMA},
+        "original_sentence": {"type": ["string", "null"]},
+        "sentence_with_blank": {"type": ["string", "null"]},
+    },
+}
+
+_CHAPTER_QUESTIONS_SCHEMA = _object_schema(_QUESTION_ITEM_SCHEMA)
+
+_SOURCE_REF_SCHEMA = {
+    "type": ["object", "null"],
+    "required": ["kind", "id"],
+    "additionalProperties": False,
+    "properties": {
+        "kind": {"type": "string", "enum": ["card", "note"]},
+        "id": {"type": "string", "minLength": 1},
+    },
+}
+
+#: S4 (ТЗ_03): упражнение. vocab — ТОЛЬКО из выпущенных S1-карточек
+#: (source_ref → id = lemma), grammar — ТОЛЬКО из выпущенных S3-заметок
+#: (source_ref → id = surface) — новый материал не порождают (S4.6);
+#: перевод — предложение дословно из главы; тип — из конфига
+#: (payload: exercise_types, limits.exercises_types).
+_EXERCISE_ITEM_SCHEMA = {
+    "type": "object",
+    "required": ["type", "prompt", "answer", "segment_id", "source_ref"],
+    "additionalProperties": False,
+    "properties": {
+        "type": {"enum": ["mc", "tf", "gap", "translation", "vocab", "grammar", "free"]},
+        "prompt": {"type": "string", "minLength": 1},
+        "answer": {"type": "string", "minLength": 1},
+        "segment_id": {"type": "string", "minLength": 1},
+        "source_ref": _SOURCE_REF_SCHEMA,
+        "options": {"type": ["array", "null"], "items": _MC_OPTION_SCHEMA},
+        "original_sentence": {"type": ["string", "null"]},
+        "sentence_with_blank": {"type": ["string", "null"]},
+        "entities": {"type": ["array", "null"], "items": {"type": "string", "minLength": 1}},
+    },
+}
+
+_CHAPTER_EXERCISES_SCHEMA = _object_schema(_EXERCISE_ITEM_SCHEMA)
+
 _TASKS: dict[str, TaskSpec] = {
     "analysis_vocabulary": TaskSpec(
         name="analysis_vocabulary",
@@ -319,6 +406,49 @@ _TASKS: dict[str, TaskSpec] = {
         ),
         pair_required=False,
         schema=_GRAMMAR_NOTE_SCHEMA,
+    ),
+    "chapter_summary": TaskSpec(
+        name="chapter_summary",
+        description=(
+            "S4 (ТЗ_03): summary главы (краткое и расширенное изложение, "
+            "ключевые события, сущности, темы, понятия) на ЦЕЛЕВОМ языке — "
+            "ТОЛЬКО по переданному тексту главы; генерация по названию "
+            "запрещена (название не передаётся). Ответ — один объект на "
+            "главу. pair_required=false: контекст (языки, уровень, текст "
+            "главы) — в payload."
+        ),
+        pair_required=False,
+        schema=_CHAPTER_SUMMARY_SCHEMA,
+    ),
+    "chapter_questions": TaskSpec(
+        name="chapter_questions",
+        description=(
+            "S4 (ТЗ_03): вопросы на понимание трёх уровней (easy — "
+            "фактические, standard — на содержание, advanced — вывод/ "
+            "намерение автора) по тексту главы; каждый вопрос привязан к "
+            "segment_id, сущности — из текста главы; gap-вопрос несёт "
+            "исходное предложение дословно и предложение с одним "
+            "пропуском; mc — 2–4 варианта с ровно одним correct. Правильный "
+            "ответ (answer) конвейер отсекает в отдельный answers.json — "
+            "в тело главы ответы не попадают. pair_required=false: контекст "
+            "(языки, уровень, сегменты главы, квоты уровней) — в payload."
+        ),
+        pair_required=False,
+        schema=_CHAPTER_QUESTIONS_SCHEMA,
+    ),
+    "chapter_exercises": TaskSpec(
+        name="chapter_exercises",
+        description=(
+            "S4 (ТЗ_03): упражнения главы (mc, tf, gap, translation, "
+            "vocab, grammar, free — состав из payload: exercise_types). "
+            "vocab — ТОЛЬКО из переданных выпущенных S1-карточек, grammar — "
+            "ТОЛЬКО из переданных выпущенных S3-заметок (новый материал не "
+            "порождать); translation — предложение дословно из главы. "
+            "pair_required=false: контекст (языки, уровень, сегменты, "
+            "карточки, заметки, типы) — в payload."
+        ),
+        pair_required=False,
+        schema=_CHAPTER_EXERCISES_SCHEMA,
     ),
 }
 

@@ -1,0 +1,42 @@
+# Generic-промпт (уровень: generic) задачи chapter_exercises (S4, ТЗ_03).
+# Задача pair_required=false. ВАЖНО (ТЗ_03 S4.6): лексические и
+# грамматические упражнения строятся ТОЛЬКО из переданных уже выпущенных
+# карточек (cards) и заметок (notes) — новый материал не порождать
+# (source_ref обязан указывать на переданный id); translation —
+# предложение дословно из переданных сегментов; состав типов — из payload
+# (exercise_types, конфиг limits.exercises_types). Ответы конвейер хранит
+# отдельно (answers.json) — в тело главы не попадают (S4.4).
+# Переменные шаблона: {text}, {source_language}, {target_language}.
+system: |
+  You generate practice exercises for ONE book chapter, prompts in the
+  TARGET language ONLY, strictly from the provided segments, cards and
+  notes. Use only the exercise types listed in the payload
+  ("exercise_types"):
+  - "mc": multiple choice — 3–4 options, EXACTLY ONE "correct": true, no
+    duplicate option texts, similar option lengths;
+  - "tf": true/false — a statement checkable against the provided
+    sentences (list the cited words in "entities");
+  - "gap": a verbatim source sentence with one word removed —
+    "original_sentence" verbatim from the payload, "sentence_with_blank"
+    with the first occurrence replaced by "____", "answer" the removed
+    word;
+  - "translation": "prompt" a sentence copied VERBATIM from the provided
+    segments, "answer" its translation;
+  - "vocab": ONLY from the provided "cards" — "source_ref" =
+    {"kind": "card", "id": <card id>}, "prompt" asks for the meaning,
+    "answer" the card's translation;
+  - "grammar": ONLY from the provided "notes" — "source_ref" =
+    {"kind": "note", "id": <note id>}, "prompt" asks about the
+    construction, "answer" the note's explanation;
+  - "free": a short composition task on a chapter entity, with a short
+    reference "answer".
+  Every item: {"type", "prompt", "answer", "segment_id", "source_ref"
+  (object for vocab/grammar, null otherwise), plus per-type fields}.
+  Do NOT invent cards or notes that are not in the payload.
+  Return ONLY a JSON object: {"items": [...]}.
+user_template: |
+  Source language: {source_language}
+  Target language: {target_language}
+
+  Exercises payload (JSON):
+  {text}

@@ -1,0 +1,12 @@
+дата: 2026-09-13 22:52:26
+версии: python=3.11.13 spacy=3.8.16
+
+s4_en1.epub (Learning, сценарий s4_entity_ghost: у первого вопроса entities = [«QwzxwGhost»] — слова нет в главе)
+
+вопросов выпущено: 14; отклонено: 1
+
+отклонения с причиной S4-4 (verbatim):
+  question='Вставьте пропущенное слово: The harbor near the anchor kept the lighthouse steady while the buoy rose over the ____.' reasons=['сущность отсутствует в главе (S4.4): QwzxwGhost']
+«QwzxwGhost» среди выпущенных сущностей: False
+
+S4-4: PASS — вопрос с отсутствующей сущностью отклонён

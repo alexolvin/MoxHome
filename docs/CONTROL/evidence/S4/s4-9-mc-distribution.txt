@@ -1,0 +1,22 @@
+дата: 2026-09-13 22:52:26
+версии: python=3.11.13 spacy=3.8.16
+
+s4_en.epub (Intensive, mock ok): mc-вопросы всех 20 глав
+
+mc-вопросов: 100
+распределение позиций правильного варианта:
+  позиция 0: 26
+  позиция 1: 26
+  позиция 2: 24
+  позиция 3: 24
+доля топ-позиции: 26.0%
+правильный = самый длинный вариант: 38/100 = 38.0%
+
+примеры (verbatim):
+  options=['maps', 'marked', 'lighthouse', 'beside'] correct=0
+  options=['Traders', 'counted', 'buoy', 'harbor'] correct=1
+  options=['harbor', 'echoed', 'dusk', 'anchor'] correct=2
+  options=['harbor', 'anchor', 'kept', 'near'] correct=3
+  options=['lighthouse', 'Every', 'harbor', 'passed'] correct=0
+
+S4-9: PASS — ≥100 mc; правильный не систематически самый длинный, позиции распределены

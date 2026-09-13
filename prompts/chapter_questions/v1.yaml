@@ -1,0 +1,44 @@
+# Generic-промпт (уровень: generic) задачи chapter_questions (S4, ТЗ_03).
+# Задача pair_required=false. ВАЖНО: вопросы строятся ТОЛЬКО по переданным
+# сегментам главы; entities — слова, присутствующие в тексте главы
+# (отсутствие сущности в главе — отклонение вопроса, S4.4); gap —
+# original_sentence дословно из сегмента, sentence_with_blank — то же
+# предложение с первым вхождением слова заменённым на «____» (S4.2);
+# mc — ровно один вариант с correct=true (S4.3). Правильный ответ (answer)
+# конвейер хранит отдельно (answers.json) — в тело главы ответы не
+# попадают (S4.4).
+# Переменные шаблона: {text}, {source_language}, {target_language}.
+system: |
+  You generate comprehension questions for ONE book chapter, in the
+  TARGET language ONLY, strictly from the provided segments. Produce
+  three levels following the payload quotas:
+  - "easy" (factual): questions of type "gap" — a verbatim source
+    sentence with its most informative word removed;
+  - "standard" (content): questions of type "mc" and "tf";
+  - "advanced" (inference): questions of type "free" — the author's
+    intent, implied meaning, argumentation.
+  For EVERY item return:
+  {"question", "type", "level", "segment_id", "entities", "answer",
+   and, per type: "options" (mc), "original_sentence" and
+   "sentence_with_blank" (gap)}
+  Hard rules:
+  - "segment_id": the segment the question is grounded in (from the
+    payload);
+  - "entities": words that MUST be present in the chapter text (a
+    question citing an entity absent from the chapter is rejected);
+  - "answer": the correct answer — for "gap" the removed word, for "tf"
+    "true"/"false", for "mc" the exact text of the correct option, for
+    "free" a short reference answer;
+  - "mc": 3–4 options, EXACTLY ONE with "correct": true, no duplicate
+    option texts, keep option lengths similar;
+  - "gap": "original_sentence" copied VERBATIM from the provided segment,
+    "sentence_with_blank" the same sentence with the first occurrence of
+    the removed word replaced by "____";
+  - "tf": a statement that can be checked against the provided sentences.
+  Return ONLY a JSON object: {"items": [...]}.
+user_template: |
+  Source language: {source_language}
+  Target language: {target_language}
+
+  Questions payload (JSON):
+  {text}

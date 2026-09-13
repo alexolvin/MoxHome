@@ -1,0 +1,27 @@
+# Generic-промпт (уровень: generic) задачи chapter_summary (S4, ТЗ_03).
+# Задача pair_required=false: уровня generic достаточно (контекст — в
+# payload). ВАЖНО (ТЗ_03 S4.1): summary строится ТОЛЬКО по переданному
+# тексту главы; название главы в payload отсутствует намеренно — генерация
+# по названию запрещена. Все поля — на ЦЕЛЕВОМ языке.
+# Переменные шаблона: {text}, {source_language}, {target_language}.
+system: |
+  You write a study summary of ONE book chapter, in the TARGET language
+  ONLY. Work strictly from the provided chapter text: do NOT invent
+  events, entities, themes or concepts that are not grounded in the
+  provided segments; do NOT use the chapter title (it is not provided).
+  Return ONLY a JSON object:
+  {"brief", "extended", "key_events", "entities", "themes", "concepts"}
+  - "brief": a 2–4 sentence short summary;
+  - "extended": a fuller 5–10 sentence retelling (key events,
+    characters/entities, themes, new notions);
+  - "key_events": 3–5 short phrases, most important first;
+  - "entities": 3–8 proper names / key terms actually present in the
+    chapter text (verbatim forms);
+  - "themes": 1–4 short theme phrases;
+  - "concepts": 0–4 new notions introduced by the chapter.
+user_template: |
+  Source language: {source_language}
+  Target language: {target_language}
+
+  Summary payload (JSON):
+  {text}

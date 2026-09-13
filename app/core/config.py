@@ -167,6 +167,25 @@ class LimitsSection(BaseModel):
     #: (A1..C2) >= этого значения. Диапазон — не абсолютный фильтр: материал
     #: допускается с меткой cefr_out_of_range (ТЗ_03 общее требование 3).
     cefr_out_of_range_distance: int = Field(default=2, ge=1)
+    #: S4 (ТЗ_03 S4.3): состав типов упражнений главы — конфигурация; тип
+    #: вне списка отклоняется детерминированной валидацией.
+    exercises_types: tuple[str, ...] = (
+        "mc", "tf", "gap", "translation", "vocab", "grammar", "free"
+    )
+
+    @field_validator("exercises_types")
+    @classmethod
+    def _check_exercises_types(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        allowed = ("mc", "tf", "gap", "translation", "vocab", "grammar", "free")
+        unknown = [t for t in value if t not in allowed]
+        if unknown:
+            raise ValueError(
+                f"limits.exercises_types: неизвестные типы {unknown}; "
+                f"допустимы {list(allowed)}"
+            )
+        if not value:
+            raise ValueError("limits.exercises_types: пустой список недопустим")
+        return value
 
 
 class GlossarySection(BaseModel):
