@@ -11,9 +11,16 @@
   empty            — analysis отвечает пустой строкой (E4.6);
   bad_json         — analysis отвечает некорректным JSON (E4.6);
   refuse           — analysis отвечает повторяющимся отказом (E4.6);
-  glossary_inconsistent — T-L2-3: в ответе translate сентинел «Wexley»
+  glossary_inconsistent — T-L2-3/T-L3-1: в ответе translate сентинел «Wexley»
                      (rot3) заменяется на «Xrongy» → несогласованный перевод
-                     термина глоссария (analysis не затрагивается).
+                     термина глоссария (analysis не затрагивается);
+                     «Badparadigm» → «Pbadqw» (T-L3-9: unverified-термин с
+                     расхождением — автоправки нет);
+  glossary_inconsistent_triple — T-L3-11: «Wexley» заменяется на одну из трёх
+                     неверных форм (детерминированно по слову из сегмента);
+  glossary_fix_no_term — T-L3-14: как glossary_inconsistent, но ответ задачи
+                     glossary_fix не содержит требуемого термина (валидация
+                     п.1 срабатывает, правка отклоняется).
 
 Сценарии, помеченные «analysis», действуют только на запросы вида analysis
 (системный промпт начинается с "You are an analysis engine"); на translate/fill
@@ -40,6 +47,11 @@ import tiktoken
 
 _ROT = 3
 _FILL_TEMPLATE_RE = re.compile(r"```XML\n(.*?)\n```", re.DOTALL)
+
+# L3: сериализация графтованных блоков — в пространствах имён книги
+# (без ns0-префиксов; семантически не критично, чисто для читаемости).
+ET.register_namespace("", "http://www.w3.org/1999/xhtml")
+ET.register_namespace("epub", "http://www.idpf.org/2007/ops")
 
 
 def code(text: str) -> str:
@@ -142,11 +154,28 @@ _GLOSSARY_SENTINEL_INDECLINABLE = "indeclinable"
 _MOCK_PARADIGM_SUFFIXES = ("", "a", "u", "o2", "om", "e2", "i2", "ov", "am", "i3", "ami", "ax")
 
 #: L2/T-L2-3: сценарий «glossary_inconsistent» — инъекция несогласованного
-#: перевода: исходный термин-сентинел в ответе translate заменяется на
-#: «неправильную» форму (в выходе нет НИ ОДНОЙ формы глоссарийной парадигмы —
+#: перевода: исходные термины-сентинелы в ответе translate/fill заменяются на
+#: «неправильные» формы (в выходе нет НИ ОДНОЙ формы глоссарийной парадигмы —
 #: расхождение по критерию L3.2). Анализ (аннотация) при этом не меняется.
 _INCONSISTENT_TERM = "Wexley"
 _INCONSISTENT_WRONG = "Xrongy"
+#: T-L3-9: unverified-сентинел (badparadigm → 12 идентичных форм) с
+#: расхождением в переводе — автоправка запрещена, только отчёт (L3-9).
+_INCONSISTENT_MAP = {_INCONSISTENT_TERM: _INCONSISTENT_WRONG, "Badparadigm": "Pbadqw"}
+#: T-L3-11: три разные неверные формы имени (инъекция — по слову сегмента,
+#: детерминированно: одно и то же слово → одна и та же форма).
+_TRIPLE_WRONG = ("Xrongy", "Yrrqjz", "Zssabw")
+_TRIPLE_AROUND = code("around")
+_TRIPLE_RE = re.compile(
+    r"(\w+) " + re.escape(_TRIPLE_AROUND) + " " + re.escape(code(_INCONSISTENT_TERM))
+)
+
+
+def _triple_repl(match: re.Match[str]) -> str:
+    """Каждое вхождение — своя форма по предшествующему слову (T-L3-11:
+    «имя, переведённое тремя разными способами» — 20 слов → 3 формы)."""
+    index = sum(ord(c) for c in match.group(1)) % len(_TRIPLE_WRONG)
+    return f"{match.group(1)} {_TRIPLE_AROUND} {_TRIPLE_WRONG[index]}"
 
 
 def _mock_paradigm(translation: str, names: list[str]) -> dict[str, object]:
@@ -217,21 +246,72 @@ def _book_style_response() -> str:
     )
 
 
+def _graft_text(source: ET.Element, trans: ET.Element) -> None:
+    """Параллельная трансплантация текстовых узлов (L3, mock-модель):
+    text/tail ИСХОДНОГО блока → транслационный блок с code() (rot3).
+    Структура (теги, атрибуты, порядок) — транслационная; при несовпадении
+    структуры графт обрывается (валидация п.3/п.1 в этом случае честно
+    отклонит правку)."""
+    if source.text:
+        trans.text = code(source.text)
+    if len(source) != len(trans):
+        return
+    for s_child, t_child in zip(source, trans, strict=True):
+        _graft_text(s_child, t_child)
+        if s_child.tail:
+            t_child.tail = code(s_child.tail)
+
+
+def _glossary_fix_response(user: str, scenario: str) -> str:
+    """Ответ задачи glossary_fix (L3): графт исходных текстов в структуру
+    текущего перевода. Результат содержит каноническую форму парадигмы
+    (translation mock-аннотации = code(term)) и сохраняет внутреннюю
+    разметку транслационного блока."""
+    marker = "Fix payload (JSON):\n"
+    start = user.find(marker)
+    payload_raw = user[start + len(marker) :].strip() if start != -1 else ""
+    try:
+        payload = json.loads(payload_raw)
+    except json.JSONDecodeError:
+        return json.dumps({"items": []})
+    segment_id = str(payload.get("segment_id", ""))
+    term = str(payload.get("term", ""))
+    try:
+        source = ET.fromstring(str(payload.get("source_xml", "")))
+        trans = ET.fromstring(str(payload.get("translation_xml", "")))
+    except ET.ParseError:
+        return json.dumps({"items": []})
+    _graft_text(source, trans)
+    html = ET.tostring(trans, encoding="unicode")
+    if scenario == "glossary_fix_no_term":
+        # T-L3-14: модель вернула версию без требуемого термина — п.1
+        # валидации обязан сработать (правка отклоняется, без повтора).
+        html = html.replace(code(term), "Qwzxw")
+    return json.dumps(
+        {"items": [{"segment_id": segment_id, "html": html}]}, ensure_ascii=False
+    )
+
+
+_CANNED_ANALYSIS = {
+    "empty": "",
+    "bad_json": '{"items": [unterminated — not valid JSON',
+    "refuse": "I'm sorry, I cannot help you with that request.",
+}
+
+
 def _analysis_response(scenario: str, system: str, user: str) -> str:
     """Ответ для запросов вида analysis (E4.6: детерминированные сценарии;
-    L2: task-aware ответы glossary_annotation / book_style)."""
-    if scenario == "empty":
-        return ""
-    if scenario == "bad_json":
-        return '{"items": [unterminated — not valid JSON'
-    if scenario == "refuse":
-        return "I'm sorry, I cannot help you with that request."
+    L2: task-aware ответы glossary_annotation / book_style; L3: glossary_fix)."""
+    if scenario in _CANNED_ANALYSIS:
+        return _CANNED_ANALYSIS[scenario]
     task_match = _TASK_RE.search(system)
-    if task_match is not None:
-        if task_match.group(1) == "glossary_annotation":
-            return _glossary_annotation_response(user)
-        if task_match.group(1) == "book_style":
-            return _book_style_response()
+    task = task_match.group(1) if task_match is not None else ""
+    if task == "glossary_annotation":
+        return _glossary_annotation_response(user)
+    if task == "book_style":
+        return _book_style_response()
+    if task == "glossary_fix":
+        return _glossary_fix_response(user, scenario)
     return json.dumps({"items": []})
 
 
@@ -244,6 +324,22 @@ def _detect_kind(system: str) -> str:
     return "fill"
 
 
+def _inject_inconsistent(text: str, scenario: str) -> str:
+    """Инъекция несогласованных форм (fill — финальный текст в mock-мире:
+    translate-ответ структурно невалиден — code() сдвигает и буквы тегов)."""
+    if scenario == "glossary_inconsistent_triple":
+        # T-L3-11: форма — детерминированно по слову из сегмента (одно слово —
+        # одна форма; 20 слов → 3 разные формы вхождений). Каждое вхождение —
+        # отдельный sub: fill-ответ — один XML на документ (все сегменты).
+        return _TRIPLE_RE.sub(_triple_repl, text)
+    if scenario in ("glossary_inconsistent", "glossary_fix_no_term"):
+        # T-L2-3/T-L3: вхождение каждого сентинела — на «неправильную» форму
+        # (остальные слова — обычный rot3, согласованный с глоссарием).
+        for term, wrong in _INCONSISTENT_MAP.items():
+            text = text.replace(code(term), wrong)
+    return text
+
+
 def _fill_response(user: str, scenario: str) -> str:
     if scenario == "fill_garbage":
         return "Sorry, I cannot produce the requested XML structure."
@@ -253,12 +349,7 @@ def _fill_response(user: str, scenario: str) -> str:
     root = ET.fromstring(match.group(1))
     _apply_code_to_element(root)
     text = ET.tostring(root, encoding="unicode")
-    if scenario == "glossary_inconsistent":
-        # T-L2-3: финальный текст в mock-мире приходит из fill-пути (translate-
-        # ответ структурно невалиден — code() сдвигает и буквы тегов), поэтому
-        # инъекция применяется здесь же.
-        text = text.replace(code(_INCONSISTENT_TERM), _INCONSISTENT_WRONG)
-    return text
+    return _inject_inconsistent(text, scenario)
 
 
 def _build_response(kind: str, scenario: str, user: str, system: str) -> str:
@@ -266,12 +357,9 @@ def _build_response(kind: str, scenario: str, user: str, system: str) -> str:
     if kind == "translate":
         if scenario == "translate_empty":
             return ""
-        text = code(user)
-        if scenario == "glossary_inconsistent":
-            # T-L2-3: вхождение сентинела в переводе заменяется на «неправильную»
-            # форму (все остальные слова — обычный rot3, согласованный с глоссарием).
-            text = text.replace(code(_INCONSISTENT_TERM), _INCONSISTENT_WRONG)
-        return text
+        # T-L2-3/T-L3: вхождение сентинела в переводе — на «неправильную»
+        # форму (остальные слова — обычный rot3, согласованный с глоссарием).
+        return _inject_inconsistent(code(user), scenario)
     if kind == "analysis":
         return _analysis_response(scenario, system, user)
     return _fill_response(user, scenario)

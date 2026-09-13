@@ -1,0 +1,13 @@
+дата: 2026-09-13 11:41:24
+версии: python=3.11.13 spacy=3.8.16
+
+повтор стадии по исправленному файлу (wexley_fix):
+
+  mismatches_input = 0  attempted = 0  applied = 0
+  LLM-запросов на повторе = 0
+  sha256 target.epub после 1-го прогона = 8c5ce5117cebe7d5440ab9f9d59527d125e2f29fd6d471bcfc7305b71bc42b1f
+  sha256 target.epub после повтора     = 8c5ce5117cebe7d5440ab9f9d59527d125e2f29fd6d471bcfc7305b71bc42b1f
+  идентичны: True
+  записей glossary_fix в quality.log (без прироста): 3
+
+L3-5: PASS — 0 расхождений, 0 правок, файл побайтово тот же

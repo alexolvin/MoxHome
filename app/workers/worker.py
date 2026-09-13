@@ -131,7 +131,7 @@ class Worker:
         """Переход в `state` (до побочного эффекта, E3.3) → исполнение → следующее состояние.
 
         Возвращает None, если конвейер останавливается (NEEDS_CONFIRMATION или
-        терминальное состояние после VALIDATING_OUTPUT).
+        терминальное состояние после GLOSSARY_FIX — финального рабочего этапа).
         """
         current = self._repo.require(job_id).status
         if current is not state:
@@ -163,10 +163,15 @@ class Worker:
         elif state is JobStatus.GENERATING:
             self._pipeline.run_generating(self._repo, job)
             self._check_control(job_id)
-        else:  # VALIDATING_OUTPUT
-            warnings = self._pipeline.run_validating_output(self._repo, job)
+        elif state is JobStatus.VALIDATING_OUTPUT:
+            # Предупреждения записаны в quality.json стадией (единый источник);
+            # финальный статус — по итогам GLOSSARY_FIX (L3 может добавить свои).
+            self._pipeline.run_validating_output(self._repo, job)
+            self._check_control(job_id)
+        else:  # GLOSSARY_FIX — финальный этап: терминальный статус по итогам
+            warnings = self._pipeline.run_glossary_fix(self._repo, job)
             final = JobStatus.COMPLETED_WITH_WARNINGS if warnings else JobStatus.COMPLETED
-            self._repo.transition(job_id, final, reason="результат валидирован")
+            self._repo.transition(job_id, final, reason="результат валидирован (вкл. L3)")
             return None
         return NEXT_STAGE[state]
 

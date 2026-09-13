@@ -1,0 +1,27 @@
+дата: 2026-09-13 11:41:24
+версии: python=3.11.13 spacy=3.8.16
+
+5 исходных языков → ru (правка включена, mock ok):
+
+  lang5_en       terms=13  occ=46  mismatches=0 l3.applied=0 enabled=True error=False
+  lang5_de       terms=0   occ=0   mismatches=0 l3.applied=0 enabled=True error=False
+  lang5_fr       terms=0   occ=0   mismatches=0 l3.applied=0 enabled=True error=False
+  lang5_it       terms=0   occ=0   mismatches=0 l3.applied=0 enabled=True error=False
+  lang5_nl       terms=0   occ=0   mismatches=0 l3.applied=0 enabled=True error=False
+
+завершено со стадией L3: 5/5
+
+правка ВЫКЛЮЧЕНА (nofix-профиль, wexley_fix, glossary_inconsistent):
+l3_fix_report.json (verbatim):
+{
+  "stage": "L3",
+  "enabled": false,
+  "reason": "правка L3 выключена (L3.10)",
+  "note": "расхождения обнаруживаются и сообщаются (L2.6); автоправки нет"
+}
+  mismatches в quality.json = 3 (обнаружение не выключено)
+  предупреждений = 1 (расхождения сообщены)
+  target неизменён: True
+
+L3-10: PASS — 5/5; no-op при выключенной правке, обнаружение
+при этом не выключено

@@ -1,9 +1,11 @@
 """Модель задания (E3): статусы и явная таблица допустимых переходов (E3.2).
 
-Машина состояний — из ТЗ §E3:
+Машина состояний — из ТЗ §E3 (+ L3, ТЗ_02 §L3):
     CREATED → VALIDATING → [NEEDS_CONFIRMATION →] PLANNING → TRANSLATING
-    → ANALYZING → GENERATING → VALIDATING_OUTPUT → COMPLETED |
-    COMPLETED_WITH_WARNINGS | FAILED
+    → ANALYZING → GENERATING → VALIDATING_OUTPUT → GLOSSARY_FIX
+    → COMPLETED | COMPLETED_WITH_WARNINGS | FAILED
+GLOSSARY_FIX (L3) — правка перечисленных расхождений глоссария в выходном
+EPUB; стадия всегда существует (при выключенной правке — no-op, T-L3-10).
 Из любого рабочего состояния — CANCELLED / PAUSED / INTERRUPTED;
 INTERRUPTED/PAUSED → (resume) → состояние, с которого прервались
 (состояние проверяется: только сохранённый interrupted_from/paused_from).
@@ -26,6 +28,8 @@ class JobStatus(StrEnum):
     ANALYZING = "ANALYZING"
     GENERATING = "GENERATING"
     VALIDATING_OUTPUT = "VALIDATING_OUTPUT"
+    #: L3: правка перечисленных расхождений глоссария в выходном EPUB (ТЗ_02 §L3).
+    GLOSSARY_FIX = "GLOSSARY_FIX"
     COMPLETED = "COMPLETED"
     COMPLETED_WITH_WARNINGS = "COMPLETED_WITH_WARNINGS"
     FAILED = "FAILED"
@@ -43,6 +47,7 @@ WORKING_STATES: frozenset[JobStatus] = frozenset(
         JobStatus.ANALYZING,
         JobStatus.GENERATING,
         JobStatus.VALIDATING_OUTPUT,
+        JobStatus.GLOSSARY_FIX,
     }
 )
 #: Терминальные состояния (переходов из них нет).
@@ -66,6 +71,7 @@ NEXT_STAGE: Mapping[JobStatus, JobStatus] = {
     JobStatus.TRANSLATING: JobStatus.ANALYZING,
     JobStatus.ANALYZING: JobStatus.GENERATING,
     JobStatus.GENERATING: JobStatus.VALIDATING_OUTPUT,
+    JobStatus.VALIDATING_OUTPUT: JobStatus.GLOSSARY_FIX,
 }
 
 
@@ -92,7 +98,9 @@ TRANSITIONS: Mapping[JobStatus, frozenset[JobStatus]] = {
     JobStatus.TRANSLATING: _controls(JobStatus.ANALYZING, JobStatus.FAILED),
     JobStatus.ANALYZING: _controls(JobStatus.GENERATING, JobStatus.FAILED),
     JobStatus.GENERATING: _controls(JobStatus.VALIDATING_OUTPUT, JobStatus.FAILED),
-    JobStatus.VALIDATING_OUTPUT: _controls(
+    JobStatus.VALIDATING_OUTPUT: _controls(JobStatus.GLOSSARY_FIX, JobStatus.FAILED),
+    # L3: финальный рабочий этап — терминальный статус по итогам правки.
+    JobStatus.GLOSSARY_FIX: _controls(
         JobStatus.COMPLETED, JobStatus.COMPLETED_WITH_WARNINGS, JobStatus.FAILED
     ),
     # Resume: только в сохранённое *_from-состояние (проверяется в репозитории).

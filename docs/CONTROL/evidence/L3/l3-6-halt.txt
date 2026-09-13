@@ -1,0 +1,81 @@
+дата: 2026-09-13 11:41:24
+версии: python=3.11.13 spacy=3.8.16
+
+wexley60.epub: 6 из 11 сегментов с Wexley (60% > порога 50%)
+
+AppError (verbatim):
+  L3-6: доля правимых сегментов 54.5% превышает порог 50.0% (L3-6) — остановка с отчётом, массовая переписка книги не выполняется
+
+l3_fix_report.json (verbatim):
+{
+  "stage": "L3",
+  "enabled": true,
+  "halted": true,
+  "reason": "доля правимых сегментов 54.5% > порога 50.0% (L3-6): системная проблема — остановка с отчётом, правок 0",
+  "fixable_segment_share": 0.545455,
+  "max_segment_share": 0.5,
+  "total_segments": 11,
+  "fixable": [
+    {
+      "segment_id": "6ad9b88af321dfa4802e159e159eb2c92cff03159eb266ffca363b246f43e4db",
+      "doc": "OEBPS/chapter1.xhtml",
+      "term": "Wexley",
+      "source_xpath": "/htmlbody[1]p[5]",
+      "translation_xpath": "/htmlbody[1]p[10]",
+      "source_text": "The Wexley bells rang at noon.",
+      "translation_text": "Wkh Xrongy ehoov udqj dw qrrq."
+    },
+    {
+      "segment_id": "29db15f3853c915d68ba714679f3b351c8a04539315b15a0abe427ea1a3e0077",
+      "doc": "OEBPS/chapter1.xhtml",
+      "term": "Wexley",
+      "source_xpath": "/htmlbody[1]p[6]",
+      "translation_xpath": "/htmlbody[1]p[12]",
+      "source_text": "Old Wexley gates opened slowly.",
+      "translation_text": "Rog Xrongy jdwhv rshqhg vorzob."
+    },
+    {
+      "segment_id": "533ccc006c8a97c149a60c74ed02f9fcdcdb93241776c7d784454e36dcc4c179",
+      "doc": "OEBPS/chapter1.xhtml",
+      "term": "Wexley",
+      "source_xpath": "/htmlbody[1]p[1]",
+      "translation_xpath": "/htmlbody[1]p[2]",
+      "source_text": "The village of Wexley stood before dawn.",
+      "translation_text": "Wkh yloodjh ri Xrongy vwrrg ehiruh gdzq."
+    },
+    {
+      "segment_id": "759ecabc3d20304bab278c1c2fc39ae78a741957f82ed20c0ad2ee81ddf9a66d",
+      "doc": "OEBPS/chapter1.xhtml",
+      "term": "Wexley",
+      "source_xpath": "/htmlbody[1]p[2]",
+      "translation_xpath": "/htmlbody[1]p[4]",
+      "source_text": "Every morning Wexley woke to the sound of water.",
+      "translation_text": "Hyhub pruqlqj Xrongy zrnh wr wkh vrxqg ri zdwhu."
+    },
+    {
+      "segment_id": "2489455fc18ac6b23ac296bbdb1f0ec4e083597b3078d90508f9346839d2d95a",
+      "doc": "OEBPS/chapter1.xhtml",
+      "term": "Wexley",
+      "source_xpath": "/htmlbody[1]p[3]",
+      "translation_xpath": "/htmlbody[1]p[6]",
+      "source_text": "Far from the city, Wexley kept its silence.",
+      "translation_text": "Idu iurp wkh flwb, Xrongy nhsw lwv vlohqfh."
+    },
+    {
+      "segment_id": "2542cde553ad4d92eceb01757e2847015c526ad5c48d9694387514afeb623eaa",
+      "doc": "OEBPS/chapter1.xhtml",
+      "term": "Wexley",
+      "source_xpath": "/htmlbody[1]p[4]",
+      "translation_xpath": "/htmlbody[1]p[8]",
+      "source_text": "The well of Wexley never ran dry.",
+      "translation_text": "Wkh zhoo ri Xrongy qhyhu udq gub."
+    }
+  ],
+  "unverified_terms": []
+}
+sha256 target.epub: до    = 8742a7de25c10809b18d5b17993616ae4bd8308d0f9ec9b9ee9597ca3e8e64e1
+                   после = 8742a7de25c10809b18d5b17993616ae4bd8308d0f9ec9b9ee9597ca3e8e64e1
+LLM-запросов стадии = 0; l3bak существует: False
+
+L3-6: PASS — превышение порога → остановка с отчётом, 0 правок,
+книга не переписана, LLM не вызывался (порог ДО вызовов)

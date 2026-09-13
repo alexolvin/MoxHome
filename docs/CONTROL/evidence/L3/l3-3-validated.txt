@@ -1,0 +1,15 @@
+дата: 2026-09-13 11:41:24
+версии: python=3.11.13 spacy=3.8.16
+
+применённые правки (wexley_fix, verbatim-поля):
+  533ccc006c8a97c1… term=Wexley applied=True points=[] prompt=glossary_fix/v1.yaml v1 model=test-model
+  759ecabc3d20304b… term=Wexley applied=True points=[] prompt=glossary_fix/v1.yaml v1 model=test-model
+  2489455fc18ac6b2… term=Wexley applied=True points=[] prompt=glossary_fix/v1.yaml v1 model=test-model
+T-L3-14 (glossary_fix_no_term) — отклонённые, verbatim-поля:
+  533ccc006c8a97c1… applied=False points=[1] reason='новая версия не содержит форму парадигмы термина'
+  759ecabc3d20304b… applied=False points=[1] reason='новая версия не содержит форму парадигмы термина'
+  2489455fc18ac6b2… applied=False points=[1] reason='новая версия не содержит форму парадигмы термина'
+
+LLM-запросов на no_term-книге: 3 (3 сегмента, повторов нет)
+
+L3-3: PASS — у каждой ПРИМЕНЁННОЙ правки points == [] (отклонённые — только с указанием пунктов)

@@ -30,11 +30,12 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import time
 import zipfile
 from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NoReturn
 
 from app.adapters.epub_engine import (
     EngineUsage,
@@ -44,20 +45,42 @@ from app.adapters.epub_engine import (
     SubmitMode,
     TranslationRequest,
 )
+from app.adapters.epub_engine.atomic import atomic_finalize
+from app.adapters.epub_engine.epubcheck import run_epubcheck
 from app.core.config import Settings
 from app.core.errors import AppError, LLMUnavailableError, OutputValidationFailed
 from app.core.logging import QUALITY_LOGGER
-from app.domain.glossary import Glossary
+from app.domain.glossary import (
+    PARADIGM_VERIFIED,
+    Glossary,
+    TermMismatch,
+)
 from app.domain.job import Job
 from app.epub import aligner
+from app.epub.aligner import (
+    AlignedPair,
+    AlignmentReport,
+    DocAlignment,
+    ExtraBlock,
+    UnalignedSegment,
+)
 from app.epub.reader import read_epub
+from app.epub.rebuild import block_bytes, patch_block, rebuild_epub
 from app.glossary.consistency import check_consistency
+from app.glossary.fix import (
+    FixOutcome,
+    FixSelection,
+    GlossaryFixer,
+    UnverifiedTerm,
+    select_fixable,
+)
 from app.glossary.service import BookGlossaryBundle, ensure_book_glossary, glossary_prefix
 from app.glossary.store import BookStore, book_key_of
 from app.languages.detect import LanguageReport, detect_book
 from app.languages.nlp import nlp_report
 from app.languages.registry import PackSpec, aliases_map, load_registry
 from app.languages.resolver import PairReport, PairResolver, PairStatus
+from app.llm.tasks import task as llm_task
 from app.workers.controls import LeaseLost, WorkerCancelled, WorkerPaused
 from app.workers.qc import QcInput, run_qc
 
@@ -571,8 +594,40 @@ class Pipeline:
             raise OutputValidationFailed("выходной файл не создан: target.epub")
         if not zipfile.is_zipfile(target):
             raise OutputValidationFailed("выходной файл не является ZIP-архивом")
+        tr_file = job_dir / "translation_result.json"
+        tr: dict[str, Any] = self._read_json(tr_file) if tr_file.is_file() else {}
+        quality, warnings = self._measure_output(
+            repo, job, job_dir / "out_unpack", dict(tr.get("epubcheck", {}))
+        )
+        self._write_json(job_dir / "quality.json", quality)
+        quality_logger = logging.getLogger(QUALITY_LOGGER)
+        quality_logger.info("QC выхода: %s", json.dumps(quality, ensure_ascii=False))
+        repo.record_stage_result(
+            job.id,
+            "validating_output",
+            self.input_hash(job),
+            str(job_dir / "quality.json"),
+        )
+        return warnings
+
+    def _measure_output(
+        self,
+        repo: JobRepository,
+        job: Job,
+        out_unpack: Path,
+        epubcheck: dict[str, Any],
+    ) -> tuple[dict[str, Any], list[str]]:
+        """Измерение выхода: ридер (E2) + QC (E5.8) + выравнивание (E6) +
+        согласованность по глоссарию (L2.6) → (dict quality.json, warnings).
+
+        Единый механизм (Rule 8): используют и `run_validating_output`, и
+        пересчёт после правки L3 (D61/L3.9: выравнивание и детерминированный
+        QC выполняются заново по исправленному файлу).
+        """
+        job_dir = self.job_dir(job.id)
+        target = job_dir / "target.epub"
         try:
-            out_book = read_epub(target, job_dir / "out_unpack", self._settings)
+            out_book = read_epub(target, out_unpack, self._settings)
         except Exception as exc:
             raise OutputValidationFailed(f"выходной EPUB не читается ридером: {exc}") from exc
         try:
@@ -616,7 +671,7 @@ class Pipeline:
                 progress_call_count=int(tr.get("progress_call_count", 0)),
                 fill_failures=fill_events,
                 glossary=dict(tr.get("glossary", {})),
-                epubcheck=dict(tr.get("epubcheck", {})),
+                epubcheck=epubcheck,
             )
         )
         warnings = list(qc_warnings)
@@ -672,13 +727,538 @@ class Pipeline:
         }
         if consistency_section is not None:
             quality["glossary_consistency"] = consistency_section
-        self._write_json(job_dir / "quality.json", quality)
-        quality_logger = logging.getLogger(QUALITY_LOGGER)
-        quality_logger.info("QC выхода: %s", json.dumps(quality, ensure_ascii=False))
-        repo.record_stage_result(
-            job.id,
-            "validating_output",
-            self.input_hash(job),
-            str(job_dir / "quality.json"),
+        return quality, warnings
+
+    # ------------------------------------------------------------------ L3
+
+    def run_glossary_fix(self, repo: JobRepository, job: Job) -> list[str]:
+        """L3 (ТЗ_02 §L3): правка перечисленных L2 расхождений в выходном EPUB.
+
+        Стадия всегда существует (D63): глоссарий или правка выключены — no-op
+        (L3.10: обнаружение и сообщение при этом не выключаются). Возвращает
+        ФИНАЛЬНЫЕ предупреждения — по ним воркер выбирает COMPLETED /
+        COMPLETED_WITH_WARNINGS.
+
+        Порядок (ТЗ L3): отбор (3 условия, L3.2) → порог объёма ДО любых LLM-
+        вызовов (L3-6: превышение — остановка с отчётом) → правка анализом +
+        5-пунктная валидация (L3.3/L3.4) → патч по XPath + атомарная
+        пересборка (L3.5) → пересчёт выравнивания и QC по исправленному файлу
+        (L3.9/D61) → отчёт l3_fix_report.json + запись каждой правки в
+        quality.log (L3.7). Идемпотентность: ключ стадии включает хэш
+        глоссария (L3.8); повтор по исправленному файлу — 0 расхождений/правок
+        (расхождения переопределяются измерением ТЕКУЩЕГО файла, а не
+        доверяют устаревшему отчёту L2).
+        """
+        settings = self._settings
+        job_dir = self.job_dir(job.id)
+        glossary_cfg = settings.glossary
+
+        if not glossary_cfg.enabled or not glossary_cfg.fix_enabled:
+            reason = (
+                "глоссарий выключен"
+                if not glossary_cfg.enabled
+                else "правка L3 выключена (L3.10)"
+            )
+            return self._l3_no_op(repo, job, job_dir, enabled=False, reason=reason)
+
+        job = repo.require(job.id)
+        store = BookStore(settings.books_dir)
+        book_key = book_key_of(job.source_path)
+        glossary = store.load_glossary(book_key, job.input_sha256)
+        l2_path = job_dir / "glossary_consistency.json"
+        if glossary is None:
+            return self._l3_no_op(
+                repo,
+                job,
+                job_dir,
+                enabled=True,
+                reason="глоссарий книги не собран — расхождений нет",
+            )
+
+        target = job_dir / "target.epub"
+        if not target.is_file() or not zipfile.is_zipfile(target):
+            raise OutputValidationFailed("L3: target.epub отсутствует или не ZIP-архив")
+
+        # L3.10/D63: обнаружение никогда не выключается — свежее измерение
+        # ТЕКУЩЕГО файла (выравнивание + согласованность L2; Rule 8 — тот же
+        # механизм, что в validating_output). Первый прогон подтверждает
+        # измеренное validating_output; повтор/возобновление — единственный
+        # источник правды: исправленный файл даёт 0 расхождений (L3.8),
+        # неисправленный — актуальный список.
+        quality, _ = self._measure_output(
+            repo, job, job_dir / "out_unpack_l3", self._l3_epubcheck_now(job_dir)
         )
+        self._write_json(job_dir / "quality.json", quality)
+
+        l2_now = self._read_json(l2_path)
+        selection, mismatches = self._l3_selection(job_dir, glossary, l2_now)
+        cap = glossary_cfg.fix_max_segment_share
+        share = self._l3_share(selection)
+
+        # L3-6: порог объёма — ДО любого LLM-вызова: превышение = системная
+        # проблема (неверный глоссарий/модель/детектор) → остановка с отчётом,
+        # массовая переписка книги недопустима.
+        if share > cap:
+            self._l3_halt(repo, job, job_dir, selection=selection, share=share, cap=cap)
+
+        glossary_path = store.glossary_path(book_key, job.input_sha256)
+        glossary_hash = (
+            hashlib.sha256(glossary_path.read_bytes()).hexdigest()
+            if glossary_path.is_file()
+            else ""
+        )
+        key = hashlib.sha256(f"{self.input_hash(job)}|{glossary_hash}".encode()).hexdigest()
+
+        outcomes, changed_docs = self._l3_apply(repo, job, job_dir, glossary, selection)
+        applied = [o for o in outcomes if o.applied]
+        epubcheck_result = self._l3_rebuild(job_dir, applied, changed_docs)
+
+        # L3.9/D61: пересчёт по исправленному файлу — только если файл
+        # изменился; «до»-метрика — из свежего измерения выше (L3-1).
+        editable_before = self._editable_share(glossary, l2_path, l2_now)
+        if applied and epubcheck_result is not None:
+            quality, _ = self._measure_output(
+                repo, job, job_dir / "out_unpack_l3", epubcheck_result
+            )
+            self._write_json(job_dir / "quality.json", quality)
+            editable_after = self._editable_share(glossary, l2_path)
+        else:
+            editable_after = editable_before
+        final_warnings = self._l3_finalize_quality(
+            job_dir,
+            selection=selection,
+            outcomes=outcomes,
+            share=share,
+            cap=cap,
+            attempted=len(outcomes),
+            applied=len(applied),
+            editable_after=editable_after,
+        )
+
+        l3bak = job_dir / "target.epub.l3bak"
+        report = {
+            "stage": "L3",
+            "enabled": True,
+            "halted": False,
+            "fixable_segment_share": round(share, 6),
+            "max_segment_share": cap,
+            "total_segments": selection.total_segments,
+            "mismatches_input": len(mismatches),
+            "fixable": [asdict(f) for f in selection.fixable],
+            "unverified_terms": [asdict(u) for u in selection.unverified_terms],
+            "unverified_share": self._unverified_share(selection.unverified_terms),
+            "attempted": len(outcomes),
+            "applied": len(applied),
+            "rejected": len(outcomes) - len(applied),
+            "fixes": [asdict(o) for o in outcomes],
+            "editable_share_before": editable_before,
+            "editable_share_after": editable_after,
+            "glossary_hash": glossary_hash,
+            "idempotency_key": key,
+            "backup": l3bak.name if l3bak.exists() else None,
+            "rebuild": epubcheck_result,
+        }
+        self._write_json(job_dir / "l3_fix_report.json", report)
+        repo.record_stage_result(job.id, "glossary_fix", key, str(job_dir / "l3_fix_report.json"))
+        return final_warnings
+
+    # ------------------------------------------------------------- служебное L3
+
+    def _l3_no_op(
+        self, repo: JobRepository, job: Job, job_dir: Path, *, enabled: bool, reason: str
+    ) -> list[str]:
+        """no-op L3 (L3.10): отчёт + запись стадии; предупреждения — из
+        quality.json (расхождения обнаруживаются и сообщаются, автоправки нет)."""
+        report: dict[str, Any] = {
+            "stage": "L3",
+            "enabled": enabled,
+            "reason": reason,
+            "note": "расхождения обнаруживаются и сообщаются (L2.6); автоправки нет",
+        }
+        if enabled:
+            report["no_op"] = True
+        self._write_json(job_dir / "l3_fix_report.json", report)
+        self._record_l3(repo, job)
+        quality_path = job_dir / "quality.json"
+        if quality_path.is_file():
+            return list(self._read_json(quality_path)["warnings"])
+        return []
+
+    def _l3_selection(
+        self, job_dir: Path, glossary: Glossary, l2_before: dict[str, Any]
+    ) -> tuple[FixSelection, tuple[TermMismatch, ...]]:
+        """Отбор правимых сегментов (L3.2) из отчёта L2 + карты выравнивания E6."""
+        alignment = self._l3_alignment(self._read_json(job_dir / "alignment_report.json"))
+        pairs = {p.segment_id: p for d in alignment.docs for p in d.aligned}
+        mismatches = tuple(
+            TermMismatch(
+                term=str(m["term"]),
+                translation_expected=str(m["translation_expected"]),
+                segment_id=str(m["segment_id"]),
+                source_text=str(m["source_text"]),
+                translation_text=str(m["translation_text"]),
+            )
+            for m in l2_before.get("mismatches", ())
+        )
+        term_stats = {
+            str(t["term"]): (int(t["occurrences"]), int(t["consistent"]))
+            for t in l2_before.get("terms", ())
+        }
+        selection = select_fixable(glossary, pairs, mismatches, term_stats, alignment.total)
+        return selection, mismatches
+
+    @staticmethod
+    def _l3_share(selection: FixSelection) -> float:
+        """Доля правимых сегментов (L3-6): сегменты с ≥1 правимым расхождением
+        от общего числа исходных сегментов."""
+        if not selection.total_segments:
+            return 0.0
+        return len(selection.fixable_segment_ids) / selection.total_segments
+
+    def _l3_halt(
+        self,
+        repo: JobRepository,
+        job: Job,
+        job_dir: Path,
+        *,
+        selection: FixSelection,
+        share: float,
+        cap: float,
+    ) -> NoReturn:
+        """Остановка L3-6: отчёт о превышении + запись стадии + AppError
+        (воркер переводит задание в FAILED — fail closed; массовая переписка
+        книги недопустима)."""
+        report = {
+            "stage": "L3",
+            "enabled": True,
+            "halted": True,
+            "reason": (
+                f"доля правимых сегментов {share:.1%} > порога {cap:.1%} (L3-6): "
+                "системная проблема — остановка с отчётом, правок 0"
+            ),
+            "fixable_segment_share": round(share, 6),
+            "max_segment_share": cap,
+            "total_segments": selection.total_segments,
+            "fixable": [asdict(f) for f in selection.fixable],
+            "unverified_terms": [asdict(u) for u in selection.unverified_terms],
+        }
+        self._write_json(job_dir / "l3_fix_report.json", report)
+        self._record_l3(repo, job)
+        raise AppError(
+            f"L3-6: доля правимых сегментов {share:.1%} превышает порог "
+            f"{cap:.1%} (L3-6) — остановка с отчётом, массовая переписка "
+            "книги не выполняется"
+        )
+
+    def _l3_apply(
+        self,
+        repo: JobRepository,
+        job: Job,
+        job_dir: Path,
+        glossary: Glossary,
+        selection: FixSelection,
+    ) -> tuple[list[FixOutcome], dict[str, bytes]]:
+        """Правка каждого правимого сегмента (L3.3/L3.4) + применение
+        прошедших валидацию патчей к документам в памяти. L3.7: запись
+        каждой применённой правки в quality.log — в момент применения
+        (правок без записи — ноль)."""
+        settings = self._settings
+        store = BookStore(settings.books_dir)
+        book_key = book_key_of(job.source_path)
+        glossary_cfg = settings.glossary
+        style = store.load_style(book_key, job.input_sha256)
+        style_note = (
+            f"{style.style} ({style.region})"
+            if style is not None and style.region
+            else style.style if style is not None else ""
+        )
+        fixer = GlossaryFixer(
+            settings,
+            repo,
+            job.id,
+            source_lang=job.source_language or "",
+            target_lang=job.target_language,
+            spec=llm_task("glossary_fix"),
+            sentence_delta=glossary_cfg.fix_sentence_delta,
+            seed=settings.language_detection.seed,
+            min_confidence=settings.language_detection.min_confidence,
+            aliases=aliases_map(load_registry(settings.languages_root)),
+        )
+        quality_logger = logging.getLogger(QUALITY_LOGGER)
+        target = job_dir / "target.epub"
+        doc_state: dict[str, bytes] = {}
+        doc_original: dict[str, bytes] = {}
+        outcomes: list[FixOutcome] = []
+        with zipfile.ZipFile(target) as tz, zipfile.ZipFile(Path(job.source_path)) as sz:
+            for item in selection.fixable:
+                entry = glossary.term(item.term)
+                if item.doc not in doc_state:
+                    doc_state[item.doc] = tz.read(item.doc)
+                    doc_original[item.doc] = doc_state[item.doc]
+                if entry is None:
+                    outcomes.append(
+                        FixOutcome(
+                            segment_id=item.segment_id,
+                            doc=item.doc,
+                            term=item.term,
+                            applied=False,
+                            validation_points=(0,),
+                            reason="термин отсутствует в глоссарии (несогласованный вход)",
+                            old_text=item.translation_text,
+                        )
+                    )
+                    continue
+                try:
+                    translation_xml = block_bytes(doc_state[item.doc], item.translation_xpath)
+                    source_xml = block_bytes(sz.read(item.doc), item.source_xpath)
+                except AppError as exc:
+                    # Карта устарела (файл изменился с момента выравнивания):
+                    # правка невозможна — расхождение остаётся (fail closed).
+                    outcomes.append(
+                        FixOutcome(
+                            segment_id=item.segment_id,
+                            doc=item.doc,
+                            term=item.term,
+                            applied=False,
+                            validation_points=(0,),
+                            reason=f"адресация устарела: {exc.message}",
+                            old_text=item.translation_text,
+                        )
+                    )
+                    continue
+                outcome = fixer.fix_segment(
+                    segment_id=item.segment_id,
+                    doc=item.doc,
+                    entry=entry,
+                    source_xml=source_xml,
+                    translation_xml=translation_xml,
+                    style_note=style_note,
+                )
+                outcomes.append(outcome)
+                if outcome.applied and outcome.new_html is not None:
+                    doc_state[item.doc] = patch_block(
+                        doc_state[item.doc], item.translation_xpath,
+                        outcome.new_html.encode(),
+                    )
+                    quality_logger.info(
+                        "glossary_fix: %s",
+                        json.dumps(
+                            {
+                                "kind": "glossary_fix",
+                                "segment_id": item.segment_id,
+                                "doc": item.doc,
+                                "term": item.term,
+                                "old_variant": outcome.old_text,
+                                "new_variant": outcome.new_text,
+                                "prompt_file": outcome.prompt_file,
+                                "prompt_version": outcome.prompt_version,
+                                "model": outcome.model,
+                                "timestamp": time.strftime(
+                                    "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
+                                ),
+                            },
+                            ensure_ascii=False,
+                        ),
+                    )
+        changed_docs = {
+            doc: state
+            for doc, state in doc_state.items()
+            if state != doc_original.get(doc, state)
+        }
+        return outcomes, changed_docs
+
+    def _l3_rebuild(
+        self, job_dir: Path, applied: list[FixOutcome], changed_docs: dict[str, bytes]
+    ) -> dict[str, Any] | None:
+        """Атомарная пересборка (L3.5): pre-fix резервная копия (стабильная,
+        T-L3-15) → `.partial` → единый механизм публикации (Rule 8:
+        fsync → валидация → EPUBCheck → бэкап E5.9 → os.replace → fsync
+        каталога). Правок нет — пересборки нет (None)."""
+        if not applied:
+            return None
+        target = job_dir / "target.epub"
+        l3bak = job_dir / "target.epub.l3bak"
+        if not l3bak.exists():
+            l3bak.write_bytes(target.read_bytes())
+        partial = job_dir / "target.epub.partial"
+        rebuild_epub(target, changed_docs, partial)
+        epubcheck_out, _bak = atomic_finalize(partial, target, self._settings)
+        return {
+            "version": epubcheck_out.version,
+            "available": epubcheck_out.available,
+            "errors": len(epubcheck_out.errors),
+            "warnings": len(epubcheck_out.warnings),
+            "unavailable_reason": epubcheck_out.unavailable_reason,
+        }
+
+    def _l3_finalize_quality(
+        self,
+        job_dir: Path,
+        *,
+        selection: FixSelection,
+        outcomes: list[FixOutcome],
+        share: float,
+        cap: float,
+        attempted: int,
+        applied: int,
+        editable_after: float | None,
+    ) -> list[str]:
+        """Секция L3 в quality.json + ФИНАЛЬНЫЕ предупреждения стадии (QC +
+        отклонённые правки + unverified-термины, L3-1/L3-9)."""
+        quality_path = job_dir / "quality.json"
+        quality = self._read_json(quality_path) if quality_path.is_file() else {}
+        base_warnings = list(quality.get("warnings", ()))
+        quality["l3"] = {
+            "fixable_segment_share": round(share, 6),
+            "max_segment_share": cap,
+            "attempted": attempted,
+            "applied": applied,
+            "rejected": attempted - applied,
+            "editable_share_after": editable_after,
+            "report": "l3_fix_report.json",
+        }
+        quality["warnings"] = [*base_warnings, *self._l3_stage_warnings(selection, outcomes)]
+        self._write_json(quality_path, quality)
+        quality_logger = logging.getLogger(QUALITY_LOGGER)
+        quality_logger.info("QC после L3: %s", json.dumps(quality, ensure_ascii=False))
+        return list(quality["warnings"])
+
+    def _l3_epubcheck_now(self, job_dir: Path) -> dict[str, Any]:
+        """EPUBCheck-секция свежего измерения: результат стадии translating;
+        если правка уже опубликована (target отличается от l3bak — возобновление
+        после прерванной пересборки), файл перепроверяется заново (старый
+        результат больше не соответствует файлу)."""
+        target = job_dir / "target.epub"
+        l3bak = job_dir / "target.epub.l3bak"
+        fixed = False
+        if l3bak.is_file():
+            try:
+                fixed = l3bak.read_bytes() != target.read_bytes()
+            except OSError:
+                fixed = False
+        if not fixed:
+            return self._l3_epubcheck_fallback(job_dir)
+        outcome = run_epubcheck(self._settings.epubcheck_jar_path, target, 120)
+        return {
+            "version": outcome.version,
+            "available": outcome.available,
+            "errors": len(outcome.errors),
+            "warnings": len(outcome.warnings),
+            "unavailable_reason": outcome.unavailable_reason,
+        }
+
+    def _record_l3(self, repo: JobRepository, job: Job) -> None:
+        """Запись результата стадии L3 (no-op/halt: ключ = input_hash, L3.8)."""
+        repo.record_stage_result(
+            job.id, "glossary_fix", self.input_hash(job),
+            str(self.job_dir(job.id) / "l3_fix_report.json"),
+        )
+
+    @staticmethod
+    def _l3_alignment(data: dict[str, Any]) -> AlignmentReport:
+        """Карта выравнивания из alignment_report.json (переадресация L3 —
+        измеренные translation_xpath; после правки карта пересобирается —
+        E6.7, пересчитывается в L3.9)."""
+        docs: list[DocAlignment] = []
+        for d in data.get("docs", ()):
+            doc_name = str(d.get("doc", ""))
+            aligned = tuple(
+                AlignedPair(
+                    segment_id=str(p["segment_id"]),
+                    doc=doc_name,
+                    source_xpath=str(p["source_xpath"]),
+                    source_text=str(p["source_text"]),
+                    translation_xpath=str(p["translation_xpath"]),
+                    translation_text=str(p["translation_text"]),
+                    how=str(p["how"]),
+                )
+                for p in d.get("aligned", ())
+            )
+            unaligned = tuple(
+                UnalignedSegment(
+                    segment_id=str(u["segment_id"]),
+                    doc=doc_name,
+                    source_xpath=str(u["source_xpath"]),
+                    source_text=str(u["source_text"]),
+                    reason=str(u["reason"]),
+                    detail=str(u["detail"]),
+                )
+                for u in d.get("unaligned", ())
+            )
+            extra = tuple(
+                ExtraBlock(doc=doc_name, xpath=str(e["xpath"]), text=str(e["text"]))
+                for e in d.get("extra_blocks", ())
+            )
+            docs.append(
+                DocAlignment(doc=doc_name, aligned=aligned, unaligned=unaligned, extra_blocks=extra)
+            )
+        return AlignmentReport(
+            submit_mode=str(data.get("submit_mode", "")),
+            min_coverage=float(data.get("min_coverage", 0.0)),
+            total=int(data.get("total", 0)),
+            aligned_count=int(data.get("aligned", 0)),
+            unaligned_count=int(data.get("unaligned", 0)),
+            extra_count=int(data.get("extra_blocks", 0)),
+            coverage=float(data.get("coverage", 0.0)),
+            identity_mismatches=int(data.get("identity_mismatches", 0)),
+            docs=tuple(docs),
+        )
+
+    @staticmethod
+    def _l3_epubcheck_fallback(job_dir: Path) -> dict[str, Any]:
+        """EPUBCheck-секция для QC при пересчёте без пересборки (файл не
+        менялся — результат валиден по measurement'у стадии translating)."""
+        tr_file = job_dir / "translation_result.json"
+        if tr_file.is_file():
+            data: dict[str, Any] = json.loads(tr_file.read_text(encoding="utf-8"))
+            return dict(data.get("epubcheck", {}))
+        return {}
+
+    @staticmethod
+    def _l3_stage_warnings(selection: FixSelection, outcomes: list[FixOutcome]) -> list[str]:
+        """Предупреждения стадии L3 (в финальный статус задания)."""
+        warnings: list[str] = []
+        rejected = [o for o in outcomes if not o.applied]
+        if rejected:
+            first = [f"{o.term} ({o.segment_id}): {o.reason}" for o in rejected[:10]]
+            warnings.append(
+                f"L3: {len(rejected)} правка(и) не прошли валидацию — "
+                f"расхождения неустранены: " + "; ".join(first)
+            )
+        unverified_bad = [u for u in selection.unverified_terms if u.consistent < u.occurrences]
+        if unverified_bad:
+            occ = sum(u.occurrences for u in unverified_bad)
+            cons = sum(u.consistent for u in unverified_bad)
+            share = cons / occ if occ else 1.0
+            names = ", ".join(u.term for u in unverified_bad)
+            warnings.append(
+                f"L3: термины с не подтверждённой парадигмой (автоправки нет, "
+                f"только отчёт): {names}; собственная доля {cons}/{occ} ({share:.1%})"
+            )
         return warnings
+
+    @staticmethod
+    def _unverified_share(unverified: tuple[UnverifiedTerm, ...]) -> float | None:
+        occ = sum(u.occurrences for u in unverified)
+        if not occ:
+            return None
+        return round(sum(u.consistent for u in unverified) / occ, 6)
+
+    def _editable_share(
+        self, glossary: Glossary, l2_path: Path, snapshot: dict[str, Any] | None = None
+    ) -> float | None:
+        """L3-1: доля согласованных вхождений по ПРАВИМОМУ множеству (термины
+        с подтверждённой парадигмой); None — вхождений нет."""
+        data = snapshot if snapshot is not None else self._read_json(l2_path)
+        verified = {
+            t.term for t in glossary.terms if t.paradigm_status == PARADIGM_VERIFIED
+        }
+        occ = sum(
+            int(t["occurrences"]) for t in data.get("terms", ()) if t["term"] in verified
+        )
+        if not occ:
+            return None
+        cons = sum(
+            int(t["consistent"]) for t in data.get("terms", ()) if t["term"] in verified
+        )
+        return round(cons / occ, 6)
