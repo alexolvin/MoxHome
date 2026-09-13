@@ -23,8 +23,9 @@ from pathlib import Path
 from app.core.config import Settings
 from app.core.errors import InputValidationError
 from app.core.ids import new_job_id
-from app.domain.job import Job, JobStatus
+from app.domain.job import LEARNING_LEVELS, Job, JobStatus
 from app.epub.reader import read_dc_language
+from app.languages.cefr import CEFR_LEVELS
 from app.languages.resolver import PairResolver, PairStatus
 from app.storage.jobs_repo import JobRepository
 
@@ -67,11 +68,30 @@ def create_job(
     target_language: str,
     priority: int = 0,
     mode: str = "bilingual",
+    learning_level: str | None = None,
+    learning_cefr: str | None = None,
 ) -> Job:
-    """Создание задания (CREATED). Лёгкая предпроверка: файл существует и это ZIP."""
+    """Создание задания (CREATED). Лёгкая предпроверка: файл существует и это ZIP.
+
+    Learning (ТЗ_03): `learning_level` — уровень сложности материалов
+    (LEARNING_LEVELS), `learning_cefr` — CEFR-уровень пользователя (A1..C2).
+    Оба опциональны; None — learning не включён (стадия LEARNING существует,
+    no-op). Параметры не входят в config_hash: перевод не зависит от них, а
+    ключ подстадии S1 включает уровень/CEFR явно.
+    """
     if mode not in JOB_MODES:
         raise InputValidationError(
             f"недопустимый режим задания: {mode!r} (допустимы: {', '.join(JOB_MODES)})"
+        )
+    if learning_level is not None and learning_level not in LEARNING_LEVELS:
+        raise InputValidationError(
+            f"недопустимый learning-уровень: {learning_level!r} "
+            f"(допустимы: {', '.join(LEARNING_LEVELS)})"
+        )
+    if learning_cefr is not None and learning_cefr not in CEFR_LEVELS:
+        raise InputValidationError(
+            f"недопустимый CEFR-уровень пользователя: {learning_cefr!r} "
+            f"(допустимы: {', '.join(sorted(CEFR_LEVELS))})"
         )
     if not source_path.is_file():
         raise InputValidationError(f"файл-источник не найден: {source_path}")
@@ -103,6 +123,8 @@ def create_job(
         input_sha256=hashlib.sha256(source_path.read_bytes()).hexdigest(),
         config_sha256=config_hash(settings, target_language, mode),
         prompt_version=PROMPT_VERSION,
+        learning_level=learning_level,
+        learning_cefr=learning_cefr,
     )
     repo.create(job)
     return job

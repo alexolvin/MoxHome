@@ -41,6 +41,8 @@ CREATE TABLE IF NOT EXISTS jobs (
     tokens_total INTEGER NOT NULL DEFAULT 0,
     alignment_coverage REAL,
     source_language TEXT,
+    learning_level TEXT,
+    learning_cefr TEXT,
     error_message TEXT
 );
 
@@ -97,6 +99,9 @@ _MIGRATED_JOB_COLUMNS: dict[str, str] = {
     "alignment_coverage": "REAL",
     # L0-базы: исходный язык до L0 не хранился — NULL (подтверждается на validating).
     "source_language": "TEXT",
+    # S1-базы (ТЗ_03): learning не хранился — NULL = learning не включён (no-op).
+    "learning_level": "TEXT",
+    "learning_cefr": "TEXT",
 }
 
 

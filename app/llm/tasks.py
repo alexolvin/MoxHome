@@ -135,6 +135,68 @@ _GLOSSARY_FIX_SCHEMA = _object_schema(
     }
 )
 
+#: S1 (ТЗ_03): заполнение словарных карточек детерминированных кандидатов
+#: (S1.2). Обязательные поля карточки по языку/POS задаёт card_schema.json
+#: языка — валидация карточки идёт по ней (app/learning/cards.py); схема
+#: ответа ЛЮБЫХ языков включает опциональные POS-поля всех пяти схем
+#: (поле, чуждое POS/языку, провалит карточку по схеме языка — S1-4).
+_VOCABULARY_CARD_SCHEMA = _object_schema(
+    {
+        "type": "object",
+        "required": [
+            "lemma",
+            "meaning",
+            "translation",
+            "example",
+            "example_generated",
+            "usefulness",
+        ],
+        "additionalProperties": False,
+        "properties": {
+            "lemma": {"type": "string", "minLength": 1},
+            "meaning": {"type": "string", "minLength": 1},
+            "translation": {"type": "string", "minLength": 1},
+            "example": {"type": "string", "minLength": 1},
+            # Пример не из книги — ОБЯЗАТЕЛЕН флаг true (S1-6).
+            "example_generated": {"type": "boolean"},
+            "usefulness": {"type": "integer", "minimum": 1, "maximum": 10},
+            # POS-поля карточек (de/nl/fr/it/en, card_schema.json).
+            "article": {"type": ["string", "null"]},
+            "plural": {"type": ["string", "null"]},
+            "diminutive": {"type": ["string", "null"]},
+            "gender": {"type": ["string", "null"]},
+            "auxiliary": {"type": ["string", "null"]},
+            "conjugation_group": {"type": ["string", "null"]},
+            "irregular_forms": {
+                "type": ["array", "null"],
+                "items": {
+                    "type": "object",
+                    "required": ["tense", "form"],
+                    "additionalProperties": False,
+                    "properties": {
+                        "tense": {"type": "string", "minLength": 1},
+                        "form": {"type": "string", "minLength": 1},
+                    },
+                },
+            },
+            "main_forms": {
+                "type": ["object", "null"],
+                "required": ["infinitive", "past", "participle"],
+                "additionalProperties": False,
+                "properties": {
+                    "infinitive": {"type": "string", "minLength": 1},
+                    "past": {"type": "string", "minLength": 1},
+                    "participle": {"type": "string", "minLength": 1},
+                },
+            },
+            "separable": {"type": ["boolean", "null"]},
+            "past_tense": {"type": ["string", "null"]},
+            "past_participle": {"type": ["string", "null"]},
+            "participle": {"type": ["string", "null"]},
+        },
+    }
+)
+
 _TASKS: dict[str, TaskSpec] = {
     "analysis_vocabulary": TaskSpec(
         name="analysis_vocabulary",
@@ -183,6 +245,18 @@ _TASKS: dict[str, TaskSpec] = {
         ),
         pair_required=False,
         schema=_GLOSSARY_FIX_SCHEMA,
+    ),
+    "vocabulary_card": TaskSpec(
+        name="vocabulary_card",
+        description=(
+            "S1 (ТЗ_03): заполнить карточки детерминированных кандидатов "
+            "(значение, перевод, пример из книги или помеченный сгенерированным, "
+            "полезность 1..10, POS-поля по card_schema.json языка). Выдвижение "
+            "лексии моделью НЕ выполняется (S1.1/S1.2). pair_required=false: "
+            "контекст (языки, уровень пользователя, кандидаты) — в payload."
+        ),
+        pair_required=False,
+        schema=_VOCABULARY_CARD_SCHEMA,
     ),
 }
 

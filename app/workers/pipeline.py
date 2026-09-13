@@ -19,6 +19,11 @@
   оригинал ↔ перевод (E6, app/epub/aligner.py) → quality.json +
   alignment_report.json; доля выравнивания — в статусе задания
   (jobs.alignment_coverage), ниже порога — предупреждение (E6.5).
+- learning (S1–S5, ТЗ_03): материалы ТОЛЬКО по выровненному подмножеству E6
+  и тексту ПОСЛЕ L3. Реализовано S1: отбор лексики (детерминированная
+  стадия → LLM-карточки → детерминированная валидация → плотность ≤ N на
+  1000 слов) → vocabulary_cards.json + секция s1 в quality.json. Стадия
+  всегда существует: learning не включён (learning_level None) — no-op.
 
 Идемпотентность (E3.6): результат этапа адресуется ключом
 hash(входные данные + конфигурация + версия промпта); повтор с тем же ключом —
@@ -30,6 +35,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import math
 import time
 import zipfile
 from collections.abc import Callable
@@ -50,12 +56,14 @@ from app.adapters.epub_engine.epubcheck import run_epubcheck
 from app.core.config import Settings
 from app.core.errors import AppError, LLMUnavailableError, OutputValidationFailed
 from app.core.logging import QUALITY_LOGGER
+from app.domain.book import Book
 from app.domain.glossary import (
     PARADIGM_VERIFIED,
     Glossary,
     TermMismatch,
 )
 from app.domain.job import Job
+from app.domain.vocabulary import LexisCandidate
 from app.epub import aligner
 from app.epub.aligner import (
     AlignedPair,
@@ -76,10 +84,15 @@ from app.glossary.fix import (
 )
 from app.glossary.service import BookGlossaryBundle, ensure_book_glossary, glossary_prefix
 from app.glossary.store import BookStore, book_key_of
+from app.languages.cards import load_card_schema
+from app.languages.cefr import CefrSource
 from app.languages.detect import LanguageReport, detect_book
-from app.languages.nlp import nlp_report
+from app.languages.nlp import load_nlp, nlp_report
 from app.languages.registry import PackSpec, aliases_map, load_registry
 from app.languages.resolver import PairReport, PairResolver, PairStatus
+from app.learning.cards import assemble_card, check_vocab_cards
+from app.learning.selection import select_lexis_candidates
+from app.llm.analysis import AnalysisClient
 from app.llm.tasks import task as llm_task
 from app.workers.controls import LeaseLost, WorkerCancelled, WorkerPaused
 from app.workers.qc import QcInput, run_qc
@@ -861,6 +874,311 @@ class Pipeline:
         self._write_json(job_dir / "l3_fix_report.json", report)
         repo.record_stage_result(job.id, "glossary_fix", key, str(job_dir / "l3_fix_report.json"))
         return final_warnings
+
+    # ------------------------------------------------------------- learning (S1–S5)
+
+    def run_learning(self, repo: JobRepository, job: Job) -> list[str]:
+        """LEARNING (S1–S5, ТЗ_03): learning-материалы по тексту ПОСЛЕ L3.
+
+        Стадия всегда существует: learning не включён (learning_level None) —
+        no-op (аналог L3.10). Подстадии имеют собственные ключи
+        идемпотентности (stage_results: "s1_vocabulary", далее S2–S5).
+        Возвращает ФИНАЛЬНЫЕ предупреждения — по ним воркер выбирает
+        COMPLETED / COMPLETED_WITH_WARNINGS.
+        """
+        job = repo.require(job.id)
+        job_dir = self.job_dir(job.id)
+        if job.learning_level is None:
+            return self._learning_no_op(repo, job, job_dir)
+        glossary_hash = self._learning_glossary_hash(job)
+        key = hashlib.sha256(
+            "|".join(
+                (
+                    self.input_hash(job),
+                    glossary_hash,
+                    job.learning_level or "",
+                    job.learning_cefr or "",
+                )
+            ).encode()
+        ).hexdigest()
+        result = repo.get_stage_result(job.id, "s1_vocabulary")
+        if result is not None and result.input_hash == key:
+            quality_path = job_dir / "quality.json"
+            if quality_path.is_file():
+                return list(self._read_json(quality_path)["warnings"])
+            return []
+        return self._s1_vocabulary(repo, job, job_dir, key, glossary_hash)
+
+    def _s1_vocabulary(
+        self, repo: JobRepository, job: Job, job_dir: Path, key: str, glossary_hash: str
+    ) -> list[str]:
+        """S1 (ТЗ_03): отбор лексики. Детерминированная стадия (S1.1) →
+        LLM-заполнение/ранжирование по главам (S1.2, общее требование 5) →
+        5-пунктная валидация (S1.5) → плотность ≤ N на 1000 слов (S1-3) →
+        vocabulary_cards.json. Только выровненное подмножество E6."""
+        settings = self._settings
+        alignment = self._l3_alignment(self._read_json(job_dir / "alignment_report.json"))
+        pairs = tuple(p for d in alignment.docs for p in d.aligned)
+        book = read_epub(Path(job.source_path), job_dir / "unpack", settings)
+        registry = load_registry(settings.languages_root)
+        source_code = job.source_language
+        if source_code is None:
+            raise AppError("подтверждённый исходный язык не задан (L0.5) — S1 не строится")
+        source_pack = registry.get(source_code)
+        target_pack = registry.get(job.target_language)
+        if source_pack is None or target_pack is None:
+            raise AppError(f"язык не найден в реестре: {source_code} / {job.target_language}")
+        pack_dir = settings.languages_root / source_pack.code
+        card_schema = load_card_schema(pack_dir, source_pack)
+        nlp = load_nlp(source_pack)
+        cefr_source = CefrSource(source_pack, pack_dir)
+
+        candidates = select_lexis_candidates(
+            book=book, pairs=pairs, pack=source_pack, nlp=nlp, cefr_source=cefr_source
+        )
+        seg_word_count = {
+            seg.segment_id: seg.word_count for ch in book.chapters for seg in ch.segments
+        }
+        total_words = sum(seg_word_count.get(p.segment_id, 0) for p in pairs)
+        density_cap = settings.limits.vocabulary_max_cards_per_1000_words
+        max_cards = math.floor(density_cap * total_words / 1000.0)
+
+        # LLM: по главам (никогда не вся книга в запросе, общее требование 5).
+        items, prompt_file, prompt_version = self._s1_llm_items(
+            repo, job, book, candidates, source_code
+        )
+        _, model, _ = settings.llm.endpoint("analysis")
+
+        seg_texts = {
+            seg.segment_id: seg.plain_text for ch in book.chapters for seg in ch.segments
+        }
+        chapter_texts = {
+            ch.chapter_id: "\n\n".join(seg.plain_text for seg in ch.segments)
+            for ch in book.chapters
+        }
+        validated, rejected = check_vocab_cards(
+            items=items,
+            candidates={c.lemma: c for c in candidates},
+            seg_texts=seg_texts,
+            chapter_texts=chapter_texts,
+            card_schema=card_schema,
+            nlp=nlp,
+        )
+        # Дубли леммы в ответе LLM: первая карточка остаётся, остальные —
+        # отклонение (дедупликация по лемме на всю книгу, S1.2).
+        seen: set[str] = set()
+        dedup_validated: list[tuple[dict[str, Any], LexisCandidate]] = []
+        for item, candidate in validated:
+            if candidate.lemma in seen:
+                rejected.append(
+                    {"lemma": candidate.lemma, "reasons": ["дублирующая карточка леммы (S1.2)"]}
+                )
+                continue
+            seen.add(candidate.lemma)
+            dedup_validated.append((item, candidate))
+        # Ранжирование: полезность (LLM) → частота → Zipf → лемма
+        # (детерминированный тотальный порядок).
+        dedup_validated.sort(
+            key=lambda pair: (
+                -int(pair[0].get("usefulness", 0)),
+                -pair[1].occurrences,
+                pair[1].zipf,
+                pair[1].lemma.casefold(),
+            )
+        )
+        selected = dedup_validated[:max_cards]
+        not_selected = len(dedup_validated) - len(selected)
+
+        timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        cards: list[dict[str, Any]] = [
+            assemble_card(
+                candidate,
+                item,
+                user_level=job.learning_level,
+                user_cefr=job.learning_cefr,
+                source_language=source_code,
+                target_language=job.target_language,
+                glossary_hash=glossary_hash,
+                prompt_file=prompt_file,
+                prompt_version=prompt_version,
+                model=model,
+                profile="analysis",
+                timestamp=timestamp,
+                cefr_distance=settings.limits.cefr_out_of_range_distance,
+            )
+            for item, candidate in selected
+        ]
+        issued = len(cards)
+        generated = sum(1 for c in cards if c["example_generated"])
+        book_example_share = round((issued - generated) / issued, 6) if issued else None
+        density_actual = round(issued * 1000.0 / total_words, 6) if total_words else 0.0
+        rejected_lemmas = {r["lemma"] for r in rejected}
+        missing = [
+            c.lemma for c in candidates if c.lemma not in seen and c.lemma not in rejected_lemmas
+        ]
+
+        report: dict[str, Any] = {
+            "stage": "S1",
+            "enabled": True,
+            "source_language": source_code,
+            "target_language": job.target_language,
+            "user_level": job.learning_level,
+            "user_cefr": job.learning_cefr,
+            "book_words": total_words,
+            "density_cap_per_1000": density_cap,
+            "max_cards": max_cards,
+            "candidates_total": len(candidates),
+            "cards_issued": issued,
+            "cards_rejected": len(rejected),
+            "cards_not_selected": not_selected,
+            "cards_missing": len(missing),
+            "book_example_share": book_example_share,
+            "density_actual": density_actual,
+            "cefr_out_of_range": sum(1 for c in cards if c["cefr_out_of_range"]),
+            "glossary_hash": glossary_hash,
+            "prompt_file": prompt_file,
+            "prompt_version": prompt_version,
+            "model": model,
+            "profile": "analysis",
+            "timestamp": timestamp,
+            "idempotency_key": key,
+            "candidates": [asdict(c) for c in candidates],
+            "cards": cards,
+            "rejected": rejected,
+            "missing": missing,
+        }
+        self._write_json(job_dir / "vocabulary_cards.json", report)
+        final_warnings = self._s1_finalize_quality(
+            job_dir, report=report, rejected=rejected
+        )
+        repo.record_stage_result(
+            job.id, "s1_vocabulary", key, str(job_dir / "vocabulary_cards.json")
+        )
+        return final_warnings
+
+    def _s1_llm_items(
+        self,
+        repo: JobRepository,
+        job: Job,
+        book: Book,
+        candidates: tuple[LexisCandidate, ...],
+        source_code: str,
+    ) -> tuple[list[dict[str, Any]], str, int]:
+        """S1.2: LLM-заполнение карточек по главам, батчами (конфиг).
+        Возвращает (items, prompt_file, prompt_version) — промпт первого
+        вызова (единый для всех батчей, E4-2)."""
+        settings = self._settings
+        client = AnalysisClient(settings, repo, job.id)
+        spec = llm_task("vocabulary_card")
+        batch_size = settings.limits.vocabulary_llm_batch
+        by_chapter: dict[str, list[LexisCandidate]] = {}
+        for candidate in candidates:
+            by_chapter.setdefault(candidate.chapter_id, []).append(candidate)
+        prompt_file, prompt_version = "", 0
+        items: list[dict[str, Any]] = []
+        for chapter in book.chapters:
+            chapter_cands = by_chapter.get(chapter.chapter_id)
+            if not chapter_cands:
+                continue
+            for start in range(0, len(chapter_cands), batch_size):
+                batch = chapter_cands[start : start + batch_size]
+                payload = {
+                    "source_language": source_code,
+                    "target_language": job.target_language,
+                    "user_level": job.learning_level,
+                    "user_cefr": job.learning_cefr,
+                    "chapter_id": chapter.chapter_id,
+                    "candidates": [
+                        {
+                            "lemma": c.lemma,
+                            "word_form": c.word_form,
+                            "pos": c.pos,
+                            "occurrences": c.occurrences,
+                            "segment_id": c.first_segment_id,
+                            "source_sentence": c.example_sentence,
+                            "frequency_band": c.frequency_band,
+                            "cefr_level": c.cefr_level,
+                        }
+                        for c in batch
+                    ],
+                }
+                outcome = client.run_task(
+                    spec,
+                    source_code,
+                    job.target_language,
+                    json.dumps(payload, ensure_ascii=False, sort_keys=True),
+                )
+                if prompt_file == "":
+                    prompt_file, prompt_version = outcome.prompt.file, outcome.prompt.version
+                raw_items = outcome.payload.get("items")
+                if not isinstance(raw_items, list):
+                    raise AppError("S1: ответ LLM — items отсутствует или не массив")
+                for raw in raw_items:
+                    if not isinstance(raw, dict):
+                        raise AppError("S1: ответ LLM — элемент items не объект")
+                    items.append(raw)
+        return items, prompt_file, prompt_version
+
+    def _s1_finalize_quality(
+        self, job_dir: Path, *, report: dict[str, Any], rejected: list[dict[str, Any]]
+    ) -> list[str]:
+        """Секция s1 в quality.json + ФИНАЛЬНЫЕ предупреждения стадии (QC +
+        отклонённые карточки + нулевой отбор — S1-4/S1-6/S1-7)."""
+        quality_path = job_dir / "quality.json"
+        quality = self._read_json(quality_path) if quality_path.is_file() else {}
+        base_warnings = list(quality.get("warnings", ()))
+        quality["s1"] = {
+            "enabled": True,
+            "book_words": report["book_words"],
+            "max_cards": report["max_cards"],
+            "candidates": report["candidates_total"],
+            "issued": report["cards_issued"],
+            "rejected": report["cards_rejected"],
+            "not_selected": report["cards_not_selected"],
+            "missing": report["cards_missing"],
+            "book_example_share": report["book_example_share"],
+            "density_actual": report["density_actual"],
+            "report": "vocabulary_cards.json",
+        }
+        stage_warnings: list[str] = []
+        if report["candidates_total"] == 0:
+            stage_warnings.append("S1: лексические кандидаты не отобраны (0) — карточек нет")
+        if rejected:
+            first = [f"{r['lemma']}: {r['reasons'][0]}" for r in rejected[:10]]
+            stage_warnings.append(f"S1: {len(rejected)} карточек отклонено: " + "; ".join(first))
+        quality["warnings"] = [*base_warnings, *stage_warnings]
+        self._write_json(quality_path, quality)
+        quality_logger = logging.getLogger(QUALITY_LOGGER)
+        quality_logger.info("QC после S1: %s", json.dumps(quality, ensure_ascii=False))
+        return list(quality["warnings"])
+
+    def _learning_no_op(
+        self, repo: JobRepository, job: Job, job_dir: Path
+    ) -> list[str]:
+        """no-op learning (learning не включён): отчёт + запись стадии;
+        предупреждения — из quality.json (стадия всегда существует, ТЗ_03)."""
+        report: dict[str, Any] = {
+            "stage": "S1",
+            "enabled": False,
+            "reason": "learning не включён (learning_level не задан)",
+            "note": "S1–S5 исполняются только при заданном уровне; стадия существует",
+        }
+        self._write_json(job_dir / "learning_report.json", report)
+        repo.record_stage_result(
+            job.id, "learning", self.input_hash(job), str(job_dir / "learning_report.json")
+        )
+        quality_path = job_dir / "quality.json"
+        if quality_path.is_file():
+            return list(self._read_json(quality_path)["warnings"])
+        return []
+
+    def _learning_glossary_hash(self, job: Job) -> str:
+        """Хэш глоссария версии книги (ТЗ_03 общее требование 2); пустая
+        строка — глоссарий не собран (выключен и т.п.)."""
+        path = BookStore(self._settings.books_dir).glossary_path(
+            book_key_of(job.source_path), job.input_sha256
+        )
+        return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else ""
 
     # ------------------------------------------------------------- служебное L3
 

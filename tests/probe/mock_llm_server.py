@@ -20,7 +20,13 @@
                      неверных форм (детерминированно по слову из сегмента);
   glossary_fix_no_term — T-L3-14: как glossary_inconsistent, но ответ задачи
                      glossary_fix не содержит требуемого термина (валидация
-                     п.1 срабатывает, правка отклоняется).
+                     п.1 срабатывает, правка отклоняется);
+  vocab_ghost           — T-S1-8: ответ vocabulary_card содержит лишнюю
+                     «призрачную» карточку (лемма не среди кандидатов);
+  vocab_generated_example — S1-6: у первой карточки выдуманный пример с
+                     example_generated=true (помеченные допускаются);
+  vocab_schema_bad      — S1-4: у первой карточки translation="—" (плейсхолдер
+                     → отклонение по card_schema.json, выпускается 0).
 
 Сценарии, помеченные «analysis», действуют только на запросы вида analysis
 (системный промпт начинается с "You are an analysis engine"); на translate/fill
@@ -292,6 +298,109 @@ def _glossary_fix_response(user: str, scenario: str) -> str:
     )
 
 
+_VOCAB_PAYLOAD_MARKER = "Card payload (JSON):\n"
+
+
+def _vocab_pos_fields(lemma: str, pos: str, lang: str) -> dict[str, object]:
+    """POS-поля карточки (mock-модель): детерминированно по лемме
+    (сдвиг rot3 согласован с переводом mock-глоссария)."""
+    s = sum(ord(ch) for ch in lemma)
+    fields: dict[str, object] = {}
+    if pos == "noun":
+        if lang == "de":
+            fields["article"] = ("der", "die", "das")[s % 3]
+            fields["plural"] = code(lemma) + "en"
+        elif lang == "nl":
+            fields["article"] = ("de", "het")[s % 2]
+            fields["plural"] = code(lemma) + "s"
+            fields["diminutive"] = code(lemma) + "je"
+        elif lang == "fr":
+            fields["gender"] = ("masc", "fem")[s % 2]
+        elif lang == "it":
+            fields["gender"] = ("masc", "fem")[s % 2]
+            fields["plural"] = code(lemma) + "i"
+    elif pos == "verb":
+        if lang == "de":
+            fields["auxiliary"] = ("haben", "sein")[s % 2]
+            fields["main_forms"] = {
+                "infinitive": code(lemma),
+                "past": code(lemma) + "te",
+                "participle": "ge" + code(lemma) + "t",
+            }
+            fields["separable"] = s % 2 == 0
+        elif lang == "nl":
+            fields["auxiliary"] = ("hebben", "zijn")[s % 2]
+            fields["participle"] = "ge" + code(lemma) + "d"
+            fields["separable"] = s % 2 == 0
+        elif lang == "fr":
+            fields["conjugation_group"] = ("1", "2", "3", "4", "irregular")[s % 5]
+            fields["auxiliary"] = ("avoir", "etre")[s % 2]
+            fields["irregular_forms"] = None
+        elif lang == "it":
+            fields["conjugation_group"] = ("1", "2", "3", "irregular")[s % 4]
+            fields["auxiliary"] = ("avere", "essere")[s % 2]
+            fields["irregular_forms"] = None
+        elif lang == "en":
+            fields["past_tense"] = code(lemma) + "d"
+            fields["past_participle"] = code(lemma) + "ed"
+    return fields
+
+
+def _vocabulary_card_response(user: str, scenario: str) -> str:
+    """Ответ задачи vocabulary_card (S1): детерминированно по кандидатам —
+    по одному item на кандидата, эхо lemma, пример = source_sentence
+    (пример ИЗ КНИГИ), usefulness = f(лемма). Сценарии:
+    vocab_ghost — лишняя «призрачная» карточка (лемма не среди
+    кандидатов → детерминированная валидация обязана отклонить, T-S1-8);
+    vocab_generated_example — у первой карточки выдуманный пример с
+    example_generated=true (S1-6: помеченные — допускаются);
+    vocab_schema_bad — у первой карточки translation="—" (плейсхолдер →
+    отклонение по card_schema.json, S1-4)."""
+    start = user.find(_VOCAB_PAYLOAD_MARKER)
+    if start == -1:
+        return json.dumps({"items": []})
+    try:
+        payload = json.loads(user[start + len(_VOCAB_PAYLOAD_MARKER) :].strip())
+    except json.JSONDecodeError:
+        return json.dumps({"items": []})
+    lang = str(payload.get("source_language", ""))
+    items: list[dict[str, object]] = []
+    for cand in payload.get("candidates", ()):
+        if not isinstance(cand, dict):
+            continue
+        lemma = str(cand.get("lemma", ""))
+        item: dict[str, object] = {
+            "lemma": lemma,
+            "meaning": code(lemma),
+            "translation": code(lemma),
+            "example": str(cand.get("source_sentence", "")),
+            "example_generated": False,
+            "usefulness": (sum(ord(ch) for ch in lemma) % 10) + 1,
+        }
+        item.update(_vocab_pos_fields(lemma, str(cand.get("pos", "")), lang))
+        items.append(item)
+    if scenario == "vocab_ghost":
+        items.append(
+            {
+                "lemma": "Ghostlemma",
+                "meaning": "ghost word",
+                "translation": code("ghostlemma"),
+                "example": "A ghost sentence that is not in the book.",
+                "example_generated": True,
+                "usefulness": 10,
+            }
+        )
+    if scenario == "vocab_generated_example" and items:
+        items[0] = dict(
+            items[0],
+            example="This example was generated by the model, not taken from the book.",
+            example_generated=True,
+        )
+    if scenario == "vocab_schema_bad" and items:
+        items[0] = dict(items[0], translation="—")
+    return json.dumps({"items": items}, ensure_ascii=False)
+
+
 _CANNED_ANALYSIS = {
     "empty": "",
     "bad_json": '{"items": [unterminated — not valid JSON',
@@ -301,7 +410,8 @@ _CANNED_ANALYSIS = {
 
 def _analysis_response(scenario: str, system: str, user: str) -> str:
     """Ответ для запросов вида analysis (E4.6: детерминированные сценарии;
-    L2: task-aware ответы glossary_annotation / book_style; L3: glossary_fix)."""
+    L2: task-aware ответы glossary_annotation / book_style; L3: glossary_fix;
+    S1: vocabulary_card)."""
     if scenario in _CANNED_ANALYSIS:
         return _CANNED_ANALYSIS[scenario]
     task_match = _TASK_RE.search(system)
@@ -312,6 +422,8 @@ def _analysis_response(scenario: str, system: str, user: str) -> str:
         return _book_style_response()
     if task == "glossary_fix":
         return _glossary_fix_response(user, scenario)
+    if task == "vocabulary_card":
+        return _vocabulary_card_response(user, scenario)
     return json.dumps({"items": []})
 
 

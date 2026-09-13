@@ -149,6 +149,13 @@ class LimitsSection(BaseModel):
     vocabulary_max_cards_per_1000_words: float = Field(default=15.0, gt=0.0)
     grammar_max_notes_per_chapter: int = Field(default=10, ge=1)
     glossary_max_user_prompt_chars: int = Field(default=8000, gt=0)
+    #: S1 (ТЗ_03): размер батча LLM-вызова заполнения карточек (глава →
+    #: батчи; та же роль, что glossary.annotation_batch_size, для стадии S1).
+    vocabulary_llm_batch: int = Field(default=25, gt=0)
+    #: S1 (ТЗ_03): «вне CEFR-диапазона пользователя» — дистанция уровней
+    #: (A1..C2) >= этого значения. Диапазон — не абсолютный фильтр: материал
+    #: допускается с меткой cefr_out_of_range (ТЗ_03 общее требование 3).
+    cefr_out_of_range_distance: int = Field(default=2, ge=1)
 
 
 class GlossarySection(BaseModel):

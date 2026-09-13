@@ -25,7 +25,10 @@ from typing import Any
 from app.core.errors import ConfigurationError
 from app.languages.registry import PackSpec
 
-_CEFR_LEVELS: frozenset[str] = frozenset({"A1", "A2", "B1", "B2", "C1", "C2"})
+#: CEFR-уровни по возрастанию (L1.4; S1: «вне диапазона» — дистанция по порядку).
+CEFR_ORDER: tuple[str, ...] = ("A1", "A2", "B1", "B2", "C1", "C2")
+#: Допустимые уровни CEFR (L1.4; валидация выбора пользователя — S1, ТЗ_03).
+CEFR_LEVELS: frozenset[str] = frozenset(CEFR_ORDER)
 _DERIVED = "derived"
 
 
@@ -61,10 +64,10 @@ class CefrSource:
         if not isinstance(data, dict) or not data:
             raise ConfigurationError(f"CEFR-лексикон должен быть непустым JSON-объектом: {path}")
         for word, level in data.items():
-            if level not in _CEFR_LEVELS:
+            if level not in CEFR_LEVELS:
                 raise ConfigurationError(
                     f"CEFR-лексикон {path}: недопустимый уровень {level!r} для {word!r}",
-                    details={"allowed": sorted(_CEFR_LEVELS)},
+                    details={"allowed": list(CEFR_ORDER)},
                 )
         return data
 
