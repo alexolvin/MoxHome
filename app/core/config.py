@@ -364,7 +364,8 @@ class Settings(BaseModel):
 
     @property
     def prompts_dir(self) -> Path:
-        """Корень внешних промптов (E4.5): <storage.root>/<llm.prompts_root>."""
+        """Корень внешних промптов (E4.5, D62): <storage.root>/<llm.prompts_root>;
+        абсолютный llm.prompts_root — как есть."""
         return self.storage.root / self.llm.prompts_root
 
     @property
@@ -460,7 +461,8 @@ def load_settings(config_yaml: Path, env_file: Path) -> Settings:
     if not isinstance(root_raw, str) or not root_raw.strip():
         missing.append("storage.root (YAML-конфиг)")
     # E4.1: адрес и модель — только в YAML-профилях; второго места нет.
-    profiles_sub = _sub(_sub(data, "llm"), "profiles")
+    llm_sub = _sub(data, "llm")
+    profiles_sub = _sub(llm_sub, "profiles")
     for name in PROFILE_NAMES:
         profile_sub = _sub(profiles_sub, name)
         for field in ("base_url", "model"):
@@ -482,6 +484,7 @@ def load_settings(config_yaml: Path, env_file: Path) -> Settings:
             profiles={
                 name: LLMProfile.model_validate(_sub(profiles_sub, name)) for name in PROFILE_NAMES
             },
+            prompts_root=str(llm_sub.get("prompts_root", "prompts")),
         )
         server_section = ServerSection.model_validate(
             {
@@ -527,6 +530,18 @@ def load_settings(config_yaml: Path, env_file: Path) -> Settings:
             "отказ: бинд на 0.0.0.0 запрещён без явного разрешения. Задайте "
             "ALLOW_WILDCARD_BIND=true в .env, только если открытый доступ осознанно нужен",
             details={"bind_address": settings.server.bind_address},
+        )
+
+    # D62: явно заданный корень промптов проверяется на старте (fail closed):
+    # относительный — от storage.root, абсолютный — как есть. Дефолтный корень —
+    # часть storage-раскладки: отсутствие промптов в нём — не ошибка старта,
+    # оно обнаруживается пер-задачей явным PromptError/GlossaryError (E4.3/L2).
+    if "prompts_root" in llm_sub and not settings.prompts_dir.is_dir():
+        raise ConfigurationError(
+            f"каталог промптов не существует: {settings.prompts_dir} "
+            f"(llm.prompts_root={llm_section.prompts_root!r}) — создайте каталог "
+            "или исправьте значение",
+            details={"prompts_root": llm_section.prompts_root},
         )
 
     for directory in settings.all_data_dirs():

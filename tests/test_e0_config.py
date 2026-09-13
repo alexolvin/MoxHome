@@ -146,6 +146,46 @@ def test_env_file_missing(make_yaml: object, tmp_path: Path) -> None:
     assert "problems" in excinfo.value.details
 
 
+def test_prompts_root_default_is_storage_subdir(
+    make_env: object, make_yaml: object, tmp_path: Path
+) -> None:
+    # D62: без ключа — <storage.root>/prompts (семантика E4.5 сохраняется).
+    settings = load_settings(make_yaml(str(tmp_path / "data")), make_env())  # type: ignore[operator]
+    assert settings.llm.prompts_root == "prompts"
+    assert settings.prompts_dir == settings.storage.root / "prompts"
+
+
+def test_prompts_root_explicit_resolved(
+    make_env: object, make_yaml: object, tmp_path: Path
+) -> None:
+    # D62: YAML-ключ реально читается; абсолютный путь — как есть,
+    # относительный — от storage.root.
+    absolute = tmp_path / "custom_prompts"
+    absolute.mkdir()
+    settings = load_settings(  # type: ignore[operator]
+        make_yaml(str(tmp_path / "data"), prompts_root=str(absolute)), make_env()  # type: ignore[operator]
+    )
+    assert settings.prompts_dir == absolute.resolve()
+    root = tmp_path / "data2"
+    (root / "relative_prompts").mkdir(parents=True)
+    settings = load_settings(  # type: ignore[operator]
+        make_yaml(str(root), prompts_root="relative_prompts"), make_env()  # type: ignore[operator]
+    )
+    assert settings.prompts_dir == (root / "relative_prompts").resolve()
+
+
+def test_prompts_root_missing_dir_refused(
+    make_env: object, make_yaml: object, tmp_path: Path
+) -> None:
+    # D62: явно заданный несуществующий каталог — отказ старта (fail closed).
+    yaml_file = make_yaml(  # type: ignore[operator]
+        str(tmp_path / "data"), prompts_root=str(tmp_path / "no_such_prompts")
+    )
+    with pytest.raises(ConfigurationError) as excinfo:
+        load_settings(yaml_file, make_env())  # type: ignore[operator]
+    assert "prompts_root" in excinfo.value.message
+
+
 def test_yaml_file_missing(make_env: object, tmp_path: Path) -> None:
     with pytest.raises(ConfigurationError):
         load_settings(tmp_path / "absent.yaml", make_env())  # type: ignore[operator]

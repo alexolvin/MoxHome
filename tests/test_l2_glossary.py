@@ -360,9 +360,13 @@ def _make_storage(
     base: Path, name: str, server: MockLLMServer, extra: str = ""
 ) -> tuple[Settings, Database]:
     """Изолированный storage.root: конфиг (глоссарий включён, D60) + БД +
-    промпты (E4-паттерн: данные в <storage>/prompts)."""
+    промпты (D62: llm.prompts_root → временный каталог с репозиторийными
+    промптами; storage-раскладка промптами не засоряется)."""
     work = base / name
     work.mkdir(parents=True, exist_ok=True)
+    prompts_dir = base / "prompts"
+    if not prompts_dir.exists():
+        shutil.copytree(ROOT / "prompts", prompts_dir)
     (work / "test.env").write_text(
         "SERVER_BIND_ADDRESS=127.0.0.1\nLLM_API_KEY=test-key-value-000\n", encoding="utf-8"
     )
@@ -375,11 +379,10 @@ def _make_storage(
         f"epubcheck:\n  jar_path: {EPUBCHECK_JAR}\n"
         f"languages:\n  root: {ROOT / 'config' / 'languages'}\n"
         f"  matrix: {ROOT / 'config' / 'language_matrix.yaml'}\n"
-        f"llm:\n  profiles:\n{profiles}"
+        f"llm:\n  prompts_root: {prompts_dir}\n  profiles:\n{profiles}"
         f"glossary:\n  enabled: true\n{extra}",
         encoding="utf-8",
     )
-    shutil.copytree(ROOT / "prompts", work / "prompts")
     settings = load_settings(work / "config.yaml", work / "test.env")
     db = Database(settings.jobs_db_path, settings.storage.busy_timeout_ms)
     return settings, db

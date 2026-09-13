@@ -30,6 +30,10 @@ llm:
   # API-ключи — в .env (LLM_API_KEY; опционально LLM_ANALYSIS_API_KEY).
   # Опционально: цены за 1M токенов (input_price_per_mtok / output_price_per_mtok);
   # без них стоимость показывается как `Cost: unknown` (E4-6).
+  # D62: корень промптов — по умолчанию <storage.root>/prompts; относительный путь
+  # разрешается от storage.root, абсолютный — как есть. Явно заданный
+  # несуществующий каталог — отказ старта (ConfigurationError).
+  prompts_root: prompts
   profiles:
     translation:
       base_url: http://localhost:8000/v1
