@@ -5,7 +5,7 @@
 
 ---
 
-## Текущее состояние (2026-09-13)
+## Текущее состояние (2026-09-14)
 
 - **Завершено:** E0 (фундамент) — CONTROL PASS 5/5; **E1 (ENGINE_PROBE)** — CONTROL PASS 6/6;
   **E2 (Ридер EPUB и сегментатор)** — CONTROL PASS 6/6; **E3 (Job, воркер, возобновление)** —
@@ -26,50 +26,141 @@
   заявляются);
   **S4 (Summary, вопросы, упражнения, ТЗ_03)** — CONTROL PASS 7/7
   (S4-1…S4-7 + T-S4-8/9), 244/244 теста (на mock, BLOCKER-1 — реальные
-  прогоны не заявляются).
+  прогоны не заявляются);
+  **S5 (Сборка learning EPUB и экспорт карточек, ТЗ_03)** — CONTROL 8/9
+  PASS + S5-7 BLOCKER (Anki/pyanki отсутствуют в окружении — фактический
+  импорт не проводился; формат экспорта верифицирован структурно)
+  (S5-1…S5-9 + T-S5-10/11/12), 256/256 теста (на mock, BLOCKER-1 —
+  реальные прогоны не заявляются).
   Отчёты: `docs/ENGINE_PROBE.md`, `docs/CONTROL/E2.md`, `docs/CONTROL/E3.md`,
   `docs/CONTROL/E4.md`, `docs/CONTROL/E5.md`, `docs/CONTROL/E6.md`, `docs/CONTROL/L0.md`,
   `docs/CONTROL/L1.md`, `docs/CONTROL/L2.md`, `docs/CONTROL/L3.md`,
   `docs/CONTROL/S1.md`, `docs/CONTROL/S2.md`, `docs/CONTROL/S3.md`,
-  `docs/CONTROL/S4.md`; evidence:
+  `docs/CONTROL/S4.md`, `docs/CONTROL/S5.md`; evidence:
   `docs/CONTROL/evidence/E1…E6/`, `docs/CONTROL/evidence/L0/`,
   `docs/CONTROL/evidence/L1/`, `docs/CONTROL/evidence/L2/`,
   `docs/CONTROL/evidence/L3/`, `docs/CONTROL/evidence/S1/`,
   `docs/CONTROL/evidence/S2/`, `docs/CONTROL/evidence/S3/`,
-  `docs/CONTROL/evidence/S4/`.
-- **Далее:** **S5 — сборка learning EPUB и экспорт карточек (ТЗ_03 §S5)**,
-  затем TZ_04 (U1, U2, V1). S5 (ТЗ_03 §S5): метод сборки — ДОПОЛНЕНИЕ
-  выходного EPUB тракта T, а не создание с нуля: распаковка → вставка
-  XHTML-секций → правка `nav`/NCX и OPF `manifest`/`spine` → упаковка
-  (метаданные/обложка/изображения/стили/ссылки сохраняются по построению);
-  `mimetype` — первая запись архива БЕЗ сжатия, остальные сжаты, `zipinfo`
-  в отчёт verbatim; структура: текст главы, затем ОТДЕЛЬНЫЕ секции в конце
-  главы — ключевая лексика, выражения, грамматика, вопросы, упражнения
-  (смешивание учебного материала в поток запрещено); ответы — отдельная
-  секция в КОНЦЕ КНИГИ; состав секций — по уровню (Minimal…Intensive);
-  каждая добавленная секция — запись в оглавлении; экспорт карточек
-  CSV/Anki/JSON (свой формат не изобретать; поля по `card_schema.json`
-  языка: артикль de/nl и род fr/it обязаны попасть в экспорт, а не теряться
-  при выравнивании колонок); валидация — внутренние проверки + EPUBCheck
-  (нет валидатора — Rule 6); атомарная выдача `.partial` → валидация →
-  `os.replace`; фактический охват (доля E6, пропущенные главы) — в книге и
-  в UI, расхождение с отчётом E6 = 0. CONTROL S5-1…S5-9 (S5-1: EPUBCheck
-  0 ERROR на 5 языковых фикстурах; S5-2: mimetype первой записью, 100%;
-  S5-3: сохранность обложки/изображений/стилей/ссылок 100%, расхождения
-  перечислены; S5-4: записи в оглавлении для всех секций, 100%; S5-5:
-  ответы в теле глав — 0; S5-6: обязательные поля карточек — 100% строк;
-  S5-7: импорт экспорта в Anki без ошибок — фактически, verbatim; S5-8:
-  охват в книге = отчёт E6, расхождение 0; S5-9: kill на записи learning
-  EPUB ×10 — 0 повреждённых принятых файлов), T-S5-10 (Minimal: без секций
-  лексики/грамматики/вопросов), T-S5-11 (Intensive: все секции, ответы
-  только в финальной), T-S5-12 (охват 90%: отражён, пропущенные главы
-  перечислены). Ключ идемпотентности — собственный `stage_results:
-  s5_assembly` (та же формула, что у подстадий S1–S4; упражнения — вход),
-  секция `quality.json`. Общие требования TZ_03 (неизменны): только по
-  выровненному подмножеству E6 и тексту ПОСЛЕ L3; привязка к
-  `chapter_id`/`segment_id` + версии; уровни Minimal/Balanced/Learning/
-  Intensive. Протокол этапов как в E/L-стадиях (ветка stage/<S>, явные
-  пути в коммите, merge --no-ff, гейты, CONTROL + evidence, DECISIONS).
+  `docs/CONTROL/evidence/S4/`, `docs/CONTROL/evidence/S5/`.
+- **Далее:** **U1 — Web UI и API (ТЗ_04 §U1)**, затем U2 (CLI) и V1
+  (программа приёмки). U1: функциональный (НЕ демонстрационный)
+  интерфейс, доступный только внутри Tailscale. Стек — FastAPI +
+  серверный HTML + минимум JavaScript (D8); тяжёлый frontend-фреймворк и
+  сборщик — не вводить. Разделы: `Books`, `Jobs`, `Languages`, `Models`,
+  `Prompts`, `Settings`. Форма создания задания: файл EPUB, исходный язык
+  (предзаполнен результатом определения с показом уверенности), целевой
+  язык, режим (`Translation`/`Bilingual`/`Learning`), уровень
+  вмешательства, CEFR пользователя, профили LLM. `Languages` — матрица
+  пар со статусами резолвера L0 + перечень недостающих ресурсов для
+  каждой неполной пары; `cefr_source: derived` — единая подпись
+  `Estimated CEFR level` (L1-8). Страница задания — фактические данные:
+  статус, текущая глава, обработанные/неудавшиеся сегменты, повторы,
+  токены по профилям, прошедшее время, оценка остатка, охват
+  выравнивания, предупреждения, ошибки. ПРОЦЕНТЫ — только при
+  корректном вычислении, иначе «глава 8 / 14, сегментов 1284 / 2017»
+  (фиктивный процент — дефект). Логи задания (`job.log`, `errors.log`,
+  `quality.log`) — из интерфейса. `/api/health` — ПОКОМПОНЕНТНОЕ
+  состояние, НИКОГДА общий флаг: `{"app","database","storage","llm",
+  "epubcheck","nlp":{...}}`. Endpoint'ы (без потребителя не создаются):
+  `/api/health`; `/api/languages`; `GET|POST /api/books`; `GET|POST
+  /api/jobs`; `GET /api/jobs/{id}`; `POST /api/jobs/{id}/confirm`
+  (при NEEDS_CONFIRMATION); `POST /api/jobs/{id}/pause|resume|cancel`;
+  `GET /api/jobs/{id}/logs|result|quality` (quality — отчёт QC,
+  выравнивания и правок L3); `GET /api/models`; `GET /api/config`.
+  Доступ: привязка к Tailscale-адресу из конфигурации (public reverse
+  proxy не вводить) + общий секрет (env) либо basic auth; полноценная
+  система пользователей в первой версии не строится. Нереализованное —
+  `Not implemented`, не имитировать. CONTROL U1-1…U1-9: U1-1 прогресс
+  UI = БД (расхождение 0 на 20 срезах); U1-2 0 фиктивных процентов;
+  U1-3 `/api/health` при выключенном LLM — `llm: error`, общего
+  `healthy: true` нет (100%); U1-4 статусы пар UI = резолвер (0);
+  U1-5 `Estimated` во всех местах (100%); U1-6 неиспользуемые
+  endpoint'ы — 0; U1-7 доступ без общего секрета — отклонён (100%);
+  U1-8 секреты в HTML-ответах и логах доступа — 0; U1-9 правки L3 в UI
+  = `quality.log` (0). Тесты T-U1-1…T-U1-10: T-U1-9 — полный цикл через
+  API (загрузка → задание → подтверждение → прогресс → результат);
+  T-U1-10 — отключение LLM в середине задания: UI — ошибка с причиной,
+  а не замерший прогресс. Протокол этапов как в E/L/S-стадиях (ветка
+  `stage/U1`, явные пути в коммите, merge --no-ff, CONTROL + evidence,
+  DECISIONS).
+
+## Сделано в S5
+
+- **`app/learning/study_book.py` (новое):** сборка учебной книги —
+  ДОПОЛНЕНИЕ `target.epub` (не с нуля): `locate_structure` (container →
+  OPF → nav/NCX по manifest), `append_sections_to_doc` (секции — в КОНЦЕ
+  `<body>`, без смешивания; XMLParser `remove_blank_text=False`),
+  `render_sections` (порядок SECTION_ORDER = summary, vocab,
+  expressions, grammar, questions, exercises; `<section
+  class="s5-section" id="s5-{type}-{chapter_id}">` + h2; ответы —
+  ВНЕ; summary — при `status=="issued"`), `render_answers_document`
+  (финальный документ `study-answers.xhtml`, `lang=ru`, чистый
+  XHTML-default-namespace: `nsmap={None: XHTML, "xml": XML_NS}`;
+  `data-s5-coverage/data-s5-aligned/data-s5-total`; перечень пропущенных
+  глав; «Ответ:» — только здесь), `update_opf`/`update_nav`/`update_ncx`
+  (запись на каждую секцию + финальный документ; NCX — defensive,
+  playOrder max+1), `assemble_learning_epub` (оригинальные записи — имя/
+  порядок/дата; `mimetype` ПЕРВАЯ, принудительно STORED, остальные
+  DEFLATED; новая запись — фиксированная дата 1980-01-01 —
+  побайто-детерминизм), `validate_study_book` (mimetype; неструктурные
+  — побайтово; оригинальные блоки — префикс; «Ответ:» в главах — 0;
+  якоря; TOC; OPF; охват в финальном), `zipinfo_verbatim` (`/usr/bin/
+  zipinfo`, фолбэк — `zipfile`).
+- **`app/learning/card_export.py` (новое):** экспорт карточек без своего
+  формата: CSV RFC 4180 (заголовок = полный фиксированный набор колонок
+  языка, вложенные объекты — подстолбцы `имя_поле`), Anki text import
+  (`#separator:Tab`, `#html:false`, `#columns:Front/Back/<языковые>/
+  Tags`, C-escaping `\`→`\\`, `\n`, `\t`), JSON — полный массив;
+  `required_cells` (обязательные схемы: объекты — по подстолбцам,
+  nullable — колонка на месте, значение может быть пустым),
+  `nullable_fields`, `export_columns`.
+- **`app/learning/__init__.py`:** `SUBSTAGE_LEVELS["s5"]` = все 4 уровня
+  (состав секций — наличие артефактов вышестоящих стадий, T-S5-10).
+- **`app/workers/pipeline.py`:** подстадия `s5_assembly` в `run_learning`
+  (ключ `stage_results: "s5_assembly"`, та же формула): охват —
+  `jobs.alignment_coverage` (None → AppError; расхождение с E6-отчётом
+  > 1e-9 → AppError), пропущенные главы — 0 выровненных пар;
+  `_s5_collect_artifacts` → `_s5_build_sections` (per-chapter рендер +
+  якоря + TOC-записи) → `render_answers_document` →
+  `assemble_learning_epub` → `validate_study_book` → `atomic_finalize`
+  (`.partial` → fsync → валидация → EPUBCheck → `.bak` → `os.replace` →
+  fsync dir — тот же механизм E5/L3) → `_s5_export_cards`
+  (cards.csv / cards.anki.tsv / cards.json) → `s5_report.json` (включая
+  `zipinfo` verbatim, EPUBCheck-версию/итог, sections, skipped) →
+  секция `quality.json s5` + warnings (пропущенные главы, частичный
+  охват, EPUBCheck недоступен — Rule 6).
+- **`stubs/lxml/etree.pyi` (расширение):** локальные минимальные
+  стабы (mypy_path=stubs) дополнены поверхом S5: `_DocumentTree`
+  (docinfo/getroot), `getroottree`, `findall`, `iter`, `XMLParser`,
+  `Element`/`SubElement` c `nsmap: Mapping[str | None, str | None]`,
+  overloads `tostring` (doctype) / `fromstring` (parser).
+- **Тесты: 12 запусков `tests/test_s5_study_book.py`** (T-S5-1…T-S5-12;
+  S5Env по образцу S1Env; kill-профиль heartbeat 0.5 c / lease 1.0 c;
+  T-S5-9 — ×10 kill-итераций W1→confirm→W2→SIGKILL→W3 + in-process
+  повтор сборки побайтово; T-S5-12 — white-box патч alignment после
+  `run_validating_output`, до GLOSSARY_FIX/LEARNING; книги — 20-главная
+  en, 1-главная en, 10×10 en, 20-главные de/fr/it/nl из языковых пулов
+  S4 (число слов выше плотности S1, иначе `max_cards`=0)).
+  Evidence-скрипт `tests/s5_evidence.py` (12 verbatim-файлов, 11
+  in-process прогонов + ×10 kill).
+- **Измерено (evidence S5, `docs/CONTROL/evidence/S5/`, 12 файлов):**
+  EPUBCheck 0 ERROR ×5 языков (verbatim); mimetype первой STORED +
+  zipinfo verbatim; 100% сохранность (неструктурные побайтово,
+  префиксы блоков 20/20, style.css/img/container.xml явно); TOC 100%;
+  «Ответ:» в главах 0 / в финальном 341; обязательные колонки карточек
+  100% строк ×4 языка (артикль de/nl, род fr/it, main_forms de —
+  verbatim); охват = E6 (расхождение 0); kill ×10: 0 повреждённых
+  принятых, resume COMPLETED, детерминизм побайтово; Minimal — 0
+  секций; Intensive — «артефакт ⇔ секция» по главам; 90% — дословно
+  (`data-s5-coverage="0.900000"`, «S5 Ten — 3», «90.0%»), пропущенная
+  глава без секций.
+- Тесты: 256/256 (244 + 12), ruff 0, mypy 0 (66 файлов).
+- Дефекты этапа: не обнаружено. Честные пределы (в CONTROL S5): S5-7 —
+  фактический импорт в Anki НЕ ПРОВЕРЕН (BLOCKER: anki/pyanki
+  отсутствуют; формат верифицирован структурно verbatim); LLM — mock
+  (BLOCKER-1); NCX-ветка — только кодом+unit (тестовых EPUB с NCX нет);
+  `.bak` (E5.9) при повторной записи той же книги в сквозном прогоне не
+  моделировался (каждая kill-итерация — новое задание).
 
 ## Сделано в S4
 

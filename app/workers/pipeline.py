@@ -95,7 +95,7 @@ from app.languages.nlp import load_nlp, nlp_report
 from app.languages.phenomena import PhenomenaTaxonomy, for_stage, load_phenomena
 from app.languages.registry import PackSpec, aliases_map, load_registry
 from app.languages.resolver import PairReport, PairResolver, PairStatus
-from app.learning import SUBSTAGE_LEVELS
+from app.learning import SUBSTAGE_LEVELS, card_export, study_book
 from app.learning.cards import assemble_card, check_vocab_cards
 from app.learning.grammar import check_grammar_notes, reference_explanation
 from app.learning.mwe import MweCandidate, check_mwe_records, select_mwe_candidates
@@ -920,6 +920,7 @@ class Pipeline:
             ("s4_summary", SUBSTAGE_LEVELS["s4_summary"], self._s4_summary),
             ("s4_questions", SUBSTAGE_LEVELS["s4_questions"], self._s4_questions),
             ("s4_exercises", SUBSTAGE_LEVELS["s4_exercises"], self._s4_exercises),
+            ("s5_assembly", SUBSTAGE_LEVELS["s5"], self._s5_assembly),
         )
         for stage_key, allowed_levels, run_substage in substages:
             if level not in allowed_levels:
@@ -2424,6 +2425,299 @@ class Pipeline:
             warnings=stage_warnings,
         )
         repo.record_stage_result(job.id, "s4_exercises", key, str(job_dir / "exercises.json"))
+        return final_warnings
+
+    def _s5_collect_artifacts(self, job_dir: Path) -> dict[str, Any]:
+        """S5: артефакты вышестоящих стадий (отсутствует — не входит в
+        уровень): карточки, MWE, заметки, summary, вопросы, упражнения,
+        ответы (+ группировка по главам)."""
+
+        def _list(name: str, field: str) -> list[dict[str, Any]]:
+            path = job_dir / name
+            if not path.is_file():
+                return []
+            data = self._read_json(path).get(field)
+            return data if isinstance(data, list) else []
+
+        def _by_chapter(records: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+            grouped: dict[str, list[dict[str, Any]]] = {}
+            for record in records:
+                grouped.setdefault(str(record.get("chapter_id", "")), []).append(record)
+            return grouped
+
+        cards = _list("vocabulary_cards.json", "cards")
+        mwe_records = _list("mwe_records.json", "records")
+        grammar_notes = _list("grammar_notes.json", "notes")
+        summaries = _list("summaries.json", "chapters")
+        questions = _list("questions.json", "questions")
+        exercises = _list("exercises.json", "exercises")
+        answers_path = job_dir / "answers.json"
+        answers: Mapping[str, Any] = (
+            self._read_json(answers_path).get("chapters", {}) if answers_path.is_file() else {}
+        )
+        return {
+            "cards": cards,
+            "cards_by": _by_chapter(cards),
+            "mwe_by": _by_chapter(mwe_records),
+            "grammar_by": _by_chapter(grammar_notes),
+            "summaries_by": {
+                str(rec.get("chapter_id")): rec
+                for rec in summaries
+                if isinstance(rec, Mapping)
+            },
+            "questions": questions,
+            "questions_by": _by_chapter(questions),
+            "exercises": exercises,
+            "exercises_by": _by_chapter(exercises),
+            "answers": answers,
+        }
+
+    def _s5_build_sections(
+        self,
+        book: Book,
+        target: Path,
+        artifacts: Mapping[str, Any],
+    ) -> tuple[
+        dict[str, bytes], dict[str, list[str]], dict[str, list[str]], list[tuple[str, str]]
+    ]:
+        """S5: секции по главам (состав — по наличию данных) + оглавление
+        (каждая секция — запись, S5.4). Возврат: (doc_patches,
+        chapter_anchors, sections_by_chapter, toc_entries)."""
+        doc_patches: dict[str, bytes] = {}
+        chapter_anchors: dict[str, list[str]] = {}
+        sections_by_chapter: dict[str, list[str]] = {}
+        toc_entries: list[tuple[str, str]] = []
+        with zipfile.ZipFile(target) as archive:
+            _opf_path, opf_dir, _nav, _ncx = study_book.locate_structure(archive)
+            answers_doc = study_book.join_path(opf_dir, study_book.ANSWERS_HREF)
+            for chapter in book.chapters:
+                data = {
+                    "summary": artifacts["summaries_by"].get(chapter.chapter_id),
+                    "vocab": artifacts["cards_by"].get(chapter.chapter_id, []),
+                    "expressions": artifacts["mwe_by"].get(chapter.chapter_id, []),
+                    "grammar": artifacts["grammar_by"].get(chapter.chapter_id, []),
+                    "questions": artifacts["questions_by"].get(chapter.chapter_id, []),
+                    "exercises": artifacts["exercises_by"].get(chapter.chapter_id, []),
+                }
+                sections, present = study_book.render_sections(chapter.chapter_id, data)
+                if not present:
+                    continue
+                doc_path = chapter.document_path
+                if doc_path not in archive.namelist():
+                    raise AppError(f"S5: документ главы {doc_path} отсутствует в target.epub")
+                doc_patches[doc_path] = study_book.append_sections_to_doc(
+                    archive.read(doc_path), sections
+                )
+                chapter_anchors[doc_path] = [f"s5-{t}-{chapter.chapter_id}" for t in present]
+                sections_by_chapter[chapter.chapter_id] = present
+                for section_type in present:
+                    toc_entries.append(
+                        (
+                            f"{doc_path}#s5-{section_type}-{chapter.chapter_id}",
+                            f"{chapter.title} — {study_book.SECTION_TITLES[section_type]}",
+                        )
+                    )
+            toc_entries.append((answers_doc, study_book.ANSWERS_TITLE))
+        return doc_patches, chapter_anchors, sections_by_chapter, toc_entries
+
+    @staticmethod
+    def _s5_export_cards(
+        job_dir: Path, cards: list[dict[str, Any]], pack_dir: Path, source_pack: PackSpec
+    ) -> dict[str, Any]:
+        """S5.6: экспорт карточек CSV/Anki/JSON (поля — по card_schema.json)."""
+        exports: dict[str, Any] = {"cards": len(cards)}
+        if not cards:
+            return exports
+        schema = load_card_schema(pack_dir, source_pack)
+        exports["csv"] = card_export.export_cards_csv(job_dir / "cards.csv", cards, schema)
+        exports["anki"] = card_export.export_cards_anki(
+            job_dir / "cards.anki.tsv", cards, schema
+        )
+        exports["json"] = card_export.export_cards_json(job_dir / "cards.json", cards)
+        return exports
+
+    def _s5_finalize_quality(
+        self,
+        job_dir: Path,
+        *,
+        coverage: float,
+        chapters_total: int,
+        chapters_with_sections: int,
+        skipped: Sequence[tuple[str, str]],
+        exports: Mapping[str, Any],
+        epubcheck_available: bool,
+        epubcheck_reason: str | None,
+    ) -> list[str]:
+        """S5: секция quality.json + финальные предупреждения (пропущенные
+        главы, частичный охват, EPUBCheck недоступен — Rule 6)."""
+        stage_warnings: list[str] = []
+        if skipped:
+            names = "; ".join(f"«{t}»" if t else cid for cid, t in skipped[:10])
+            stage_warnings.append(
+                f"S5: {len(skipped)} глав без выровненных сегментов "
+                f"(вне учебной книги): {names}"
+            )
+        if coverage < 1.0 - 1e-9:
+            stage_warnings.append(
+                f"S5: фактический охват {coverage:.1%} (E6) — указан в учебной книге"
+            )
+        if not epubcheck_available:
+            stage_warnings.append(f"S5: EPUBCheck недоступен (Rule 6): {epubcheck_reason}")
+        quality_path = job_dir / "quality.json"
+        quality = self._read_json(quality_path) if quality_path.is_file() else {}
+        base_warnings = list(quality.get("warnings", ()))
+        quality["s5"] = {
+            "enabled": True,
+            "coverage": coverage,
+            "chapters_total": chapters_total,
+            "chapters_with_sections": chapters_with_sections,
+            "skipped": len(skipped),
+            "exports": dict(exports),
+            "report": "s5_report.json",
+        }
+        quality["warnings"] = [*base_warnings, *stage_warnings]
+        self._write_json(quality_path, quality)
+        quality_logger = logging.getLogger(QUALITY_LOGGER)
+        quality_logger.info("QC после S5: %s", json.dumps(quality, ensure_ascii=False))
+        return list(quality["warnings"])
+
+    def _s5_assembly(
+        self, repo: JobRepository, job: Job, job_dir: Path, key: str, glossary_hash: str
+    ) -> list[str]:
+        """S5 (ТЗ_03): сборка учебного EPUB и экспорт карточек.
+
+        Метод — ДОПОЛНЕНИЕ выходного EPUB тракта (target.epub), не «с нуля»
+        (S5.1): вставка секций в конец `<body>` каждой главы (состав — по
+        наличию артефактов вышестоящих стадий, т.е. по уровню), правка OPF
+        manifest/spine, EPUB3-nav / NCX (каждая секция — запись оглавления,
+        S5.4), добавление финального документа «Ответы и охват» в конец
+        spine (ответы — только там, S5-5), фактический охват E6 в книге
+        (S5-8, расхождение с отчётом E6 = 0). Атомарная выдача:
+        `.partial` → внутренняя валидация → EPUBCheck → `os.replace`
+        (S5.7/S5.8, Rule 8). Экспорт карточек: CSV/Anki/JSON (S5.6, поля —
+        по card_schema.json языка)."""
+        settings = self._settings
+        job = repo.require(job.id)
+        book, pairs, source_pack, pack_dir, _nlp, source_code = self._learning_context(job)
+
+        # S5-8: фактический охват — single source (D36) jobs.alignment_coverage;
+        # расхождение с отчётом E6 = 0 (иначе стадия не выпускает книгу).
+        coverage = job.alignment_coverage
+        if coverage is None:
+            raise AppError("S5: jobs.alignment_coverage не установлен (E6 не исполнен?)")
+        alignment = self._l3_alignment(self._read_json(job_dir / "alignment_report.json"))
+        if abs(alignment.coverage - coverage) > 1e-9:
+            raise AppError(
+                f"S5: расхождение охвата: задание {coverage:.6f} vs отчёт E6 "
+                f"{alignment.coverage:.6f}"
+            )
+        seg_chapter = {
+            seg.segment_id: ch.chapter_id for ch in book.chapters for seg in ch.segments
+        }
+        aligned_by_chapter: dict[str, int] = {}
+        for pair in pairs:
+            chapter_id = seg_chapter.get(pair.segment_id)
+            if chapter_id is not None:
+                aligned_by_chapter[chapter_id] = aligned_by_chapter.get(chapter_id, 0) + 1
+        skipped: list[tuple[str, str]] = [
+            (ch.chapter_id, ch.title or "")
+            for ch in book.chapters
+            if aligned_by_chapter.get(ch.chapter_id, 0) == 0
+        ]
+
+        artifacts = self._s5_collect_artifacts(job_dir)
+        target = job_dir / "target.epub"
+        (
+            doc_patches,
+            chapter_anchors,
+            sections_by_chapter,
+            toc_entries,
+        ) = self._s5_build_sections(book, target, artifacts)
+
+        answers_bytes = study_book.render_answers_document(
+            coverage=coverage,
+            aligned=alignment.aligned_count,
+            total=alignment.total,
+            chapters_total=len(book.chapters),
+            chapters_with_sections=len(sections_by_chapter),
+            skipped=skipped,
+            level=job.learning_level or "",
+            answers_data=artifacts["answers"],
+            questions=artifacts["questions"],
+            exercises=artifacts["exercises"],
+        )
+        partial = job_dir / "learning.epub.partial"
+        structure = study_book.assemble_learning_epub(
+            target,
+            partial,
+            doc_patches=doc_patches,
+            toc_entries=toc_entries,
+            answers_bytes=answers_bytes,
+        )
+        problems = study_book.validate_study_book(
+            partial,
+            target,
+            chapter_anchors=chapter_anchors,
+            toc_anchor_paths=[href for href, _label in toc_entries],
+            coverage=coverage,
+            block_tags=settings.segmentation.block_tags,
+        )
+        if problems:
+            raise AppError(
+                "S5: структурная валидация собранного EPUB не пройдена: " + "; ".join(problems)
+            )
+        learning_epub = job_dir / "learning.epub"
+        epubcheck_out, _bak = atomic_finalize(partial, learning_epub, settings)
+
+        # Экспорт карточек (S5.6): CSV/Anki/JSON, поля — по card_schema.json.
+        exports = self._s5_export_cards(job_dir, artifacts["cards"], pack_dir, source_pack)
+
+        timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        report: dict[str, Any] = {
+            "stage": "S5",
+            "enabled": True,
+            "source_language": source_code,
+            "target_language": job.target_language,
+            "user_level": job.learning_level,
+            "user_cefr": job.learning_cefr,
+            "glossary_hash": glossary_hash,
+            "idempotency_key": key,
+            "coverage": coverage,
+            "aligned": alignment.aligned_count,
+            "total": alignment.total,
+            "chapters_total": len(book.chapters),
+            "chapters_with_sections": len(sections_by_chapter),
+            "skipped": [{"chapter_id": cid, "title": title} for cid, title in skipped],
+            "sections": sections_by_chapter,
+            "exports": exports,
+            "epub": {
+                "entries_total": structure["entries_total"],
+                "answers": structure["answers"],
+                "nav": structure["nav"],
+                "ncx": structure["ncx"],
+                "epubcheck": {
+                    "version": epubcheck_out.version,
+                    "available": epubcheck_out.available,
+                    "errors": len(epubcheck_out.errors),
+                    "warnings": len(epubcheck_out.warnings),
+                    "unavailable_reason": epubcheck_out.unavailable_reason,
+                },
+            },
+            "zipinfo": study_book.zipinfo_verbatim(learning_epub),
+            "timestamp": timestamp,
+        }
+        self._write_json(job_dir / "s5_report.json", report)
+        final_warnings = self._s5_finalize_quality(
+            job_dir,
+            coverage=coverage,
+            chapters_total=len(book.chapters),
+            chapters_with_sections=len(sections_by_chapter),
+            skipped=skipped,
+            exports=exports,
+            epubcheck_available=epubcheck_out.available,
+            epubcheck_reason=epubcheck_out.unavailable_reason,
+        )
+        repo.record_stage_result(job.id, "s5_assembly", key, str(job_dir / "s5_report.json"))
         return final_warnings
 
     def _learning_no_op(

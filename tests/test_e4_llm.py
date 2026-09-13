@@ -92,11 +92,14 @@ def _prompt_yaml(system: str = "S") -> str:
 
 # ------------------------------------------------------------------ T-E4-1
 
-#: URL: исключены стандартные XML-неймспейсы EPUB (idpf.org, w3.org, purl.org) —
-#: это константы протокола, а не адреса LLM-эндпоинтов.
+#: URL: исключены стандартные XML-неймспейсы EPUB (idpf.org, w3.org,
+#: purl.org, daisy.org — NCX EPUB2) — это константы протокола, а не
+#: адреса LLM-эндпоинтов.
 _FORBIDDEN_PATTERNS = [
     (
-        re.compile(r"https?://(?!www\.idpf\.org|www\.w3\.org|purl\.org)\S+"),
+        re.compile(
+            r"https?://(?!www\.idpf\.org|www\.w3\.org|purl\.org|www\.daisy\.org)\S+"
+        ),
         "URL",
     ),
     (re.compile(r"\bsk-[A-Za-z0-9_-]{8,}"), "API-ключ"),
