@@ -1,0 +1,20 @@
+дата: 2026-09-14 01:17:07
+версии: python=3.11.13 spacy=3.8.16
+
+s5_en1.epub (1 глава, Intensive), kill-профиль (heartbeat 0.5 c, lease 1.0 c); 10 итераций: W1 → confirm → W2 → SIGKILL в окне записи learning.epub.partial → проверка → W3 доводит до конца
+
+   0 | kill=да | learning.epub: отсутствует | target.epub: валиден | resume: W3 → COMPLETED_WITH_WARNINGS | детерминизм: побайтово
+   1 | kill=да | learning.epub: отсутствует | target.epub: валиден | resume: W3 → COMPLETED_WITH_WARNINGS | детерминизм: побайтово
+   2 | kill=да | learning.epub: отсутствует | target.epub: валиден | resume: W3 → COMPLETED_WITH_WARNINGS | детерминизм: побайтово
+   3 | kill=да | learning.epub: отсутствует | target.epub: валиден | resume: W3 → COMPLETED_WITH_WARNINGS | детерминизм: побайтово
+   4 | kill=да | learning.epub: отсутствует | target.epub: валиден | resume: W3 → COMPLETED_WITH_WARNINGS | детерминизм: побайтово
+   5 | kill=да | learning.epub: отсутствует | target.epub: валиден | resume: W3 → COMPLETED_WITH_WARNINGS | детерминизм: побайтово
+   6 | kill=да | learning.epub: отсутствует | target.epub: валиден | resume: W3 → COMPLETED_WITH_WARNINGS | детерминизм: побайтово
+   7 | kill=да | learning.epub: отсутствует | target.epub: валиден | resume: W3 → COMPLETED_WITH_WARNINGS | детерминизм: побайтово
+   8 | kill=да | learning.epub: отсутствует | target.epub: валиден | resume: W3 → COMPLETED_WITH_WARNINGS | детерминизм: побайтово
+   9 | kill=да | learning.epub: отсутствует | target.epub: валиден | resume: W3 → COMPLETED_WITH_WARNINGS | детерминизм: побайтово
+
+попало в окно kill: 10/10; повреждённых принятых learning.epub: 0 (каждый принятый файл проверен read_epub + zip)
+детерминизм: in-process повтор S5-сборки = финальный файл побайтово (все итерации с kill)
+
+S5-9: PASS — kill -9 ×10: 0 повреждённых принятых файлов, после resume — терминальное состояние с валидной книгой

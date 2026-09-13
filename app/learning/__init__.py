@@ -12,9 +12,11 @@ from collections.abc import Mapping
 #: Minimal — только оригинал+перевод (learning-материалов нет);
 #: Balanced — + ключевая лексика (S1); Learning — + выражения (S2),
 #: грамматические заметки (S3), вопросы на понимание (S4); Intensive — +
-#: упражнения (S4) и полный учебный блок: summary (S4) + сборка учебной
-#: книги (S5). Подстадия, не входящая в уровень, не исполняется и
-#: артефактов не выпускает (стадия существует — как no-op).
+#: упражнения (S4) и summary (S4). Сборка учебной книги (S5) — на всех
+#: уровнях: состав секций определяет наличие артефактов вышестоящих стадий
+#: (T-S5-10: у Minimal в книге нет секций лексики/грамматики/вопросов).
+#: Подстадия, не входящая в уровень, не исполняется и артефактов не
+#: выпускает (стадия существует — как no-op).
 SUBSTAGE_LEVELS: Mapping[str, frozenset[str]] = {
     "s1": frozenset({"Balanced", "Learning", "Intensive"}),
     "s2": frozenset({"Learning", "Intensive"}),
@@ -22,4 +24,5 @@ SUBSTAGE_LEVELS: Mapping[str, frozenset[str]] = {
     "s4_summary": frozenset({"Intensive"}),
     "s4_questions": frozenset({"Learning", "Intensive"}),
     "s4_exercises": frozenset({"Intensive"}),
+    "s5": frozenset({"Minimal", "Balanced", "Learning", "Intensive"}),
 }

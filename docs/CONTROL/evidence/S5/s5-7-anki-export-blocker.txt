@@ -1,0 +1,15 @@
+дата: 2026-09-14 01:17:07
+версии: python=3.11.13 spacy=3.8.16
+
+shutil.which('anki') = None
+shutil.which('pyanki') = None
+
+cards.anki.tsv (verbatim, служебные строки + первая строка данных):
+#separator:Tab
+#html:false
+#columns:Front	Back	cefr_source	article	plural	auxiliary	main_forms_infinitive	main_forms_past	main_forms_participle	separable	Tags
+Brücke	Euüfnh	derived	die	Euüfnhen						epubtranslator pos=noun cefr=A1 band=A1 chapter=ch1
+
+теги всех 21 строк начинаются с «epubtranslator »: True
+
+S5-7: не проверено фактически (BLOCKER: Anki/pyanki отсутствуют в окружении) — формат Anki text import верифицирован структурно: служебные строки, число полей, теги, verbatim-пример выше

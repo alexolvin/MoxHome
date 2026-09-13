@@ -1,4 +1,4 @@
-"""Минимальные стробы lxml.etree (поверхность, используемая app/epub/).
+"""Минимальные стробы lxml.etree (поверхность, используемая app/).
 
 lxml не публикует py.typed; полные стробы (lxml-stubs) устарели.
 Стробы описывают только то, что использует проект, — ничего не прячут.
@@ -7,12 +7,27 @@ lxml не публикует py.typed; полные стробы (lxml-stubs) у
 from collections.abc import Iterator, Mapping
 from typing import Literal, overload
 
+class _Dtd:
+    """Объект DTD (doctype) — используется как значение параметра `doctype`."""
+
+
+class _DocInfo:
+    doctype: _Dtd | None
+
+
+class _DocumentTree:
+    docinfo: _DocInfo
+
+    def getroot(self) -> _Element: ...
+
+
 class _Element:
     tag: object
     text: str | None
     tail: str | None
     attrib: dict[str, str]
 
+    def getroottree(self) -> _DocumentTree: ...
     def __iter__(self) -> Iterator[_Element]: ...
     def __getitem__(self, index: int) -> _Element: ...
     def getparent(self) -> _Element | None: ...
@@ -23,11 +38,16 @@ class _Element:
     def remove(self, element: _Element) -> None: ...
     def addnext(self, element: _Element) -> None: ...
     def find(self, path: str) -> _Element | None: ...
-    def iter(self) -> Iterator[_Element]: ...
+    def findall(self, path: str) -> list[_Element]: ...
+    def iter(self, tag: str | None = None) -> Iterator[_Element]: ...
     def itertext(self) -> Iterator[str]: ...
 
 
 class XMLSyntaxError(Exception): ...
+
+
+class XMLParser:
+    def __init__(self, remove_blank_text: bool = False) -> None: ...
 
 
 class QName:
@@ -35,7 +55,19 @@ class QName:
     localname: str
 
 
-def Element(tag: str, attrib: Mapping[str, str] | None = None) -> _Element: ...
+def Element(
+    tag: str,
+    attrib: Mapping[str, str] | None = None,
+    nsmap: Mapping[str | None, str | None] | None = None,
+) -> _Element: ...
+
+
+def SubElement(
+    parent: _Element,
+    tag: str,
+    attrib: Mapping[str, str] | None = None,
+    nsmap: Mapping[str | None, str | None] | None = None,
+) -> _Element: ...
 
 
 @overload
@@ -48,7 +80,13 @@ def tostring(
     *,
     encoding: Literal["UTF-8", "utf-8"],
     xml_declaration: bool | None = None,
+    doctype: _Dtd | None = None,
 ) -> bytes: ...
 
 
+@overload
 def fromstring(data: bytes | str) -> _Element: ...
+
+
+@overload
+def fromstring(data: bytes | str, parser: XMLParser) -> _Element: ...
