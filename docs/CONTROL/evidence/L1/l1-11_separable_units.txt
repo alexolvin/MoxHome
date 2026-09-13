@@ -1,0 +1,14 @@
+T-L1-11: отделяемые глаголы — одна лексическая единица (de/nl)
+замер: 2026-09-13 04:58:18
+окружение: spacy=3.8.16 wordfreq=3.1.1 de_core_news_sm=3.8.0 en_core_web_sm=3.8.0 fr_core_news_sm=3.8.0 it_core_news_sm=3.8.0 nl_core_news_sm=3.8.0
+
+de: 'Er steht früh auf, bevor die Arbeit beginnt.'
+  ЕДИНИЦА: verb_form=steht particle=auf lemma=stehen unit_lemma=aufstehen
+  количество единиц: 1 (критерий: 1)
+nl: 'Hij staat vroeg op om te joggen.'
+  ЕДИНИЦА: verb_form=staat particle=op lemma=staan unit_lemma=opstaan
+  количество единиц: 1 (критерий: 1)
+
+отрицательный контроль — предлог с именным дополнением НЕ единица:
+  de: 'Das steht auf der Bank, und die Sonne scheint.' → единиц: 0 (критерий: 0)
+  nl: 'Hij gaat naar huis om te slapen.' → единиц: 0 (критерий: 0)

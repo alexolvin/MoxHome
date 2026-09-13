@@ -1,0 +1,11 @@
+L1-8: CEFR — все 5 языков derived, обязательная метка «Estimated CEFR level»
+замер: 2026-09-13 04:58:18
+окружение: spacy=3.8.16 wordfreq=3.1.1 de_core_news_sm=3.8.0 en_core_web_sm=3.8.0 fr_core_news_sm=3.8.0 it_core_news_sm=3.8.0 nl_core_news_sm=3.8.0
+
+en: cefr_source=derived effective_source=derived level=None estimated=True метка='Estimated CEFR level'
+de: cefr_source=derived effective_source=derived level=None estimated=True метка='Estimated CEFR level'
+nl: cefr_source=derived effective_source=derived level=None estimated=True метка='Estimated CEFR level'
+fr: cefr_source=derived effective_source=derived level=None estimated=True метка='Estimated CEFR level'
+it: cefr_source=derived effective_source=derived level=None estimated=True метка='Estimated CEFR level'
+
+единая точка отображения: app.languages.cefr.label (UI U1 читает только её)

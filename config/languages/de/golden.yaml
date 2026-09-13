@@ -1,8 +1,83 @@
-# Golden-набор (L0): семя эталонных предложений языка.
-# L1 (T-L1-10): расширение до 20 предложений с заранее размеченными явлениями.
-- text: "Der schnelle braune Fuchs springt über den faulen Hund am Fluss."
+# Golden-набор (L1/T-L1-10): 20 предложений с заранее размеченными явлениями.
+# `phenomena` — идентификаторы из phenomena.yaml этого языка (единый источник).
+# Разметка — эталонная аннотация (L1); все идентификаторы таксономии покрыты.
+- text: "Er steht früh auf, bevor die Arbeit beginnt."
   expected_language: de
-  source: "tests/fixtures/epub/lang_de.epub (chapter1, l-p1)"
-- text: "Die Mühle stand still, und das Wasser bewegte sich langsam."
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [DE-TRENNBAR]
+- text: "Der Kellner sagt, er sei heute besonders beschäftigt."
   expected_language: de
-  source: "tests/fixtures/epub/lang_de.epub (chapter1, l-p2)"
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [DE-KONJUNKTIV-I]
+- text: "Wenn ich mehr Zeit hätte, käme ich gern mit."
+  expected_language: de
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [DE-KONJUNKTIV-II]
+- text: "Ich weiß nicht, ob er morgen kommt."
+  expected_language: de
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [DE-NEBENSATZ-VERBLETZT]
+- text: "Sie denkt oft an ihre Großmutter."
+  expected_language: de
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [DE-KASUS-REKTION]
+- text: "Das alte, vom Sturm beschädigte Haus steht am Hügel."
+  expected_language: de
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [DE-PARTIZIP-ATTRIBUT]
+- text: "Das Fenster wurde von einem Ball kaputt gemacht."
+  expected_language: de
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [DE-PASSIV-WERDEN]
+- text: "Die Straße ist frisch gepflastert."
+  expected_language: de
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [DE-PASSIV-SEIN]
+- text: "Das ist doch ganz einfach, oder?"
+  expected_language: de
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [DE-MODALPARTIKEL]
+- text: "Nach dem Marathon hatte er einen furchtbaren Kater."
+  expected_language: de
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [DE-FESTE-WENDUNG]
+- text: "Die Regierung will eine Entscheidung treffen."
+  expected_language: de
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [DE-NOMEN-VERB-VERBINDUNG]
+- text: "Lebensversicherungsunternehmen spielen in der Stadt eine Rolle."
+  expected_language: de
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [DE-WORTBILDUNG-KOMPOSITUM]
+- text: "Sie geht am Abend immer spazieren."
+  expected_language: de
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [DE-TRENNBAR]
+- text: "Sie sagte, sie habe noch nichts gehört."
+  expected_language: de
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [DE-KONJUNKTIV-I]
+- text: "Hätte ich es gewusst, wäre ich nicht gekommen."
+  expected_language: de
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [DE-KONJUNKTIV-II]
+- text: "Er fragte, wann der Zug abfährt."
+  expected_language: de
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [DE-NEBENSATZ-VERBLETZT, DE-TRENNBAR]
+- text: "Wir warten auf den Bus an der Ecke."
+  expected_language: de
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [DE-KASUS-REKTION]
+- text: "Die geprüften Schüler erhielten ihre Zeugnisse."
+  expected_language: de
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [DE-PARTIZIP-ATTRIBUT]
+- text: "Das Essen wurde gestern von der Küche serviert."
+  expected_language: de
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [DE-PASSIV-WERDEN]
+- text: "Du hast wohl Durst, oder?"
+  expected_language: de
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [DE-MODALPARTIKEL]

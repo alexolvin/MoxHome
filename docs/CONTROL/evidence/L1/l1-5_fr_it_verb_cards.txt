@@ -1,0 +1,17 @@
+L1-5: fr/it-карточки глагола — без вспомогательного 0 выпущенных
+замер: 2026-09-13 04:58:18
+окружение: spacy=3.8.16 wordfreq=3.1.1 de_core_news_sm=3.8.0 en_core_web_sm=3.8.0 fr_core_news_sm=3.8.0 it_core_news_sm=3.8.0 nl_core_news_sm=3.8.0
+
+fr (verb: conjugation_group + auxiliary avoir/etre)
+  полная карточка: issued=1 rejected=0
+  без auxiliary: issued=0 (критерий: 0)
+    отклонена: поле <root>: 'auxiliary' is a required property
+  без conjugation_group: issued=0 (критерий: 0)
+    отклонена: поле <root>: 'conjugation_group' is a required property
+
+it (verb: conjugation_group + auxiliary avere/essere)
+  полная карточка: issued=1 rejected=0
+  без auxiliary: issued=0 (критерий: 0)
+    отклонена: поле <root>: 'auxiliary' is a required property
+  без conjugation_group: issued=0 (критерий: 0)
+    отклонена: поле <root>: 'conjugation_group' is a required property

@@ -31,9 +31,12 @@ import wordfreq
 import yaml
 
 from app.core.errors import ConfigurationError
-from app.languages.registry import PackSpec, load_golden, load_registry
+from app.languages.cefr import CefrSource
+from app.languages.phenomena import load_phenomena
+from app.languages.registry import PackSpec, load_golden, load_lemma_reference, load_registry
 from app.llm.prompts import PromptError, PromptResolver
 from app.llm.tasks import all_tasks
+from app.llm.tasks import task as task_spec
 
 
 class PairStatus(StrEnum):
@@ -115,6 +118,32 @@ def load_matrix(path: Path) -> tuple[tuple[str, str], ...]:
     return tuple(pairs)
 
 
+def _l1_resource_deficits(src_pack: PackSpec, pack_dir: Path) -> list[str]:
+    """L1-ресурсы пакета (мягкие): наличие каждого ресурса проверяется отдельно,
+    отсутствие каждого — своё точное сообщение (L0.3)."""
+    soft: list[str] = []
+    if not load_phenomena(pack_dir):
+        soft.append(f"нет таксономии явлений: {src_pack.code}/phenomena.yaml (L1.5)")
+    if not (pack_dir / src_pack.card_schema).is_file():
+        soft.append(f"нет схемы карточки: {src_pack.code}/{src_pack.card_schema} (L1.6)")
+    if not load_lemma_reference(pack_dir):
+        soft.append(
+            f"нет эталонного набора лемматизации: {src_pack.code}/lemma_reference.yaml (L1-2)"
+        )
+    if not src_pack.frequency_bands:
+        soft.append(f"нет частотных полос: {src_pack.code}/pack.yaml (frequency_bands, L1.3)")
+    if (
+        src_pack.cefr_source.startswith("lexicon:")
+        and not CefrSource(src_pack, pack_dir).lexicon_available
+    ):
+        name = src_pack.cefr_source.split(":", 1)[1]
+        soft.append(
+            f"CEFR-лексикон не найден: {src_pack.code}/cefr/{name}.json "
+            f"(язык переходит в derived, L1.4/T-L1-12)"
+        )
+    return soft
+
+
 def _source_pack_deficits(
     src_pack: PackSpec | None,
     source: str,
@@ -138,40 +167,49 @@ def _source_pack_deficits(
         soft.append("нет фикстуры исходного языка (pack.yaml: fixture)")
     elif not (project_root / src_pack.fixture).is_file():
         soft.append(f"фикстура не найдена: {src_pack.fixture}")
-    if not load_golden(registry_root / source):
+    # L1: ресурсы языкового пакета — данные, отсутствие каждого — в перечне (L0.3).
+    pack_dir = registry_root / source
+    soft.extend(_l1_resource_deficits(src_pack, pack_dir))
+    golden = load_golden(pack_dir)
+    if not golden:
         soft.append(f"нет golden-набора исходного языка: {source}/golden.yaml")
+    elif not any(entry.phenomena for entry in golden):
+        soft.append(f"в golden-наборе нет размеченных явлений: {source}/golden.yaml (L1/T-L1-10)")
     return hard, soft
 
 
 def _prompt_deficits(
-    prompt_resolver: PromptResolver, source: str, target: str
+    prompt_resolver: PromptResolver, source: str, target: str, tasks: tuple[str, ...]
 ) -> tuple[list[str], list[TaskPromptInfo]]:
     """Недостатки промптов пары — мягкие (L0.2: «промптов пары нет → задание разрешено»).
 
+    Задачи — пространство имён промптов пакета исходного языка (pack.yaml:
+    prompt_tasks — данные, L1.1); нет пакета/списка — все задачи реестра.
     pair_required-задача без pair-уровня не молчит (E4.3): сообщение прямо
     указывает, что на этапе анализа будет ошибка — тихого fallback нет.
     """
     missing: list[str] = []
     prompts: list[TaskPromptInfo] = []
-    for task in all_tasks():
+    for name in tasks:
+        spec = task_spec(name)
         try:
             resolved = prompt_resolver.resolve(
-                task.name, source, target, pair_required=task.pair_required
+                name, source, target, pair_required=spec.pair_required
             )
         except PromptError:
             suffix = (
                 " (pair_required: ошибка на этапе анализа, E4.3 — тихого fallback нет)"
-                if task.pair_required
+                if spec.pair_required
                 else ""
             )
-            message = f"промпт задачи {task.name} не резолвится (пара {source}/{target}){suffix}"
+            message = f"промпт задачи {name} не резолвится (пара {source}/{target}){suffix}"
             missing.append(message)
-            prompts.append(TaskPromptInfo(task.name, "missing", None))
+            prompts.append(TaskPromptInfo(name, "missing", None))
             continue
-        prompts.append(TaskPromptInfo(task.name, resolved.level, resolved.version))
+        prompts.append(TaskPromptInfo(name, resolved.level, resolved.version))
         if resolved.level != "pair":
             missing.append(
-                f"нет pair-промпта задачи {task.name} (пара {source}/{target}) "
+                f"нет pair-промпта задачи {name} (пара {source}/{target}) "
                 f"— fallback на уровень {resolved.level}"
             )
     return missing, prompts
@@ -217,7 +255,13 @@ class PairResolver:
         hard.extend(hard_src)
         missing.extend(hard_src)
         missing.extend(soft_src)
-        prompt_missing, prompts = _prompt_deficits(self._prompt_resolver, source, target)
+        # Пространство имён промптов — данные пакета (L1.1); нет пакета — все задачи.
+        tasks = (
+            src_pack.prompt_tasks
+            if src_pack is not None and src_pack.prompt_tasks
+            else tuple(t.name for t in all_tasks())
+        )
+        prompt_missing, prompts = _prompt_deficits(self._prompt_resolver, source, target, tasks)
         missing.extend(prompt_missing)
 
         if hard:

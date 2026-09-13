@@ -1,0 +1,41 @@
+# Таксономия грамматических явлений и типов MWE (L1.5) — язык это данные (Rule 1).
+# Идентификатор — стабильная строка: LLM возвращает ТОЛЬКО идентификаторы из этого
+# списка; идентификатор вне таксономии — ошибка валидации, артефакт отклоняется
+# (L1-6). name/description — данные (S1-промпты собираются из них).
+phenomena:
+  - id: IT-CONGIUNTIVO
+    kind: grammar
+    name: "Конъюнктив (congiuntivo)"
+    description: "Наклонение прилагательного/мнения: Spero che tu venga, credo che sia vero."
+  - id: IT-PASSATO-REMOTO
+    kind: grammar
+    name: "Passato remoto"
+    description: "Завершённое далёкое прошлое (литературное): Ieri entrai in casa e mi sedetti."
+  - id: IT-PRONOMI-COMBINATI
+    kind: grammar
+    name: "Слитные местоимения"
+    description: "Два местоимения в одной форме: me lo ricordo, gliel'ho detto, ce l'ha."
+  - id: IT-VERBI-PRONOMINALI
+    kind: grammar
+    name: "Возвратные глаголы"
+    description: "Verbi pronominali (reflexivi): Mi sono svegliato tardi; anche с изменением значения: accorgersi."
+  - id: IT-CONCORDANZA-PARTICIPIO
+    kind: grammar
+    name: "Согласование причастия"
+    description: "Participio passato согласуется с CD перед глаголом при avere: Le ho lette, l'ho vista."
+  - id: IT-PERIODO-IPOTETICO
+    kind: grammar
+    name: "Условный период (periodo ipotetico)"
+    description: "Три типа условных: Se avessi tempo, verrei (II/III tipo)."
+  - id: IT-GERUNDIO
+    kind: grammar
+    name: "Герундий (gerundio)"
+    description: "Cantando, si distrae; + avendo (gerundio composto): Avevano finito, se ne andarono."
+  - id: IT-ESPRESSIONE-IDIOMATICA
+    kind: mwe
+    name: "Идиоматическое выражение"
+    description: "Значение не сводится к словам: piangere a dirotto, avere il pollice verde."
+  - id: IT-VERBI-SINTAGMATICI
+    kind: mwe
+    name: "Синтагматические глаголы (verbi sintagmatici)"
+    description: "Глагол + именная/наречная часть как единое действие: avere fame, fare freddo, prendere il sole."

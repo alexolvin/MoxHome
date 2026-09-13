@@ -1,8 +1,83 @@
-# Golden-набор (L0): семя эталонных предложений языка.
-# L1 (T-L1-10): расширение до 20 предложений с заранее размеченными явлениями.
-- text: "De snelle bruine vos springt over de luie hond bij de rivier."
+# Golden-набор (L1/T-L1-10): 20 предложений с заранее размеченными явлениями.
+# `phenomena` — идентификаторы из phenomena.yaml этого языка (единый источник).
+# Разметка — эталонная аннотация (L1); все идентификаторы таксономии покрыты.
+- text: "Hij staat vroeg op om te joggen."
   expected_language: nl
-  source: "tests/fixtures/epub/lang_nl.epub (chapter1, l-p1)"
-- text: "De molen stond stilstaand, en het water bewoeg zich langzaam."
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [NL-SCHEIDBAAR]
+- text: "Zij heeft het boek gisteren gelezen."
   expected_language: nl
-  source: "tests/fixtures/epub/lang_nl.epub (chapter1, l-p2)"
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [NL-WERKWOORDELIJKE-EINDGROEP]
+- text: "Gisteren ging hij naar de markt."
+  expected_language: nl
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [NL-V2-WOORDVOLGORDE]
+- text: "Het kind speelde met de nieuwe hond."
+  expected_language: nl
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [NL-DE-HET]
+- text: "Er staat een grote boom voor het huis."
+  expected_language: nl
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [NL-ER-CONSTRUCTIE]
+- text: "Dat is toch een leuke plek!"
+  expected_language: nl
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [NL-MODALE-PARTIKELS]
+- text: "Hij is vannacht naar huis gelopen."
+  expected_language: nl
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [NL-PERFECTUM-HEBBEN-ZIJN]
+- text: "Ik heb de hele dag gezwommen."
+  expected_language: nl
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [NL-PERFECTUM-HEBBEN-ZIJN]
+- text: "Ze is voor de vogels vandaag."
+  expected_language: nl
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [NL-VASTE-UITDRUKKING]
+- text: "Het huisje aan de gracht is te koop."
+  expected_language: nl
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [NL-VERKLEINWOORD]
+- text: "Hij loopt elke ochtend naar zijn werk."
+  expected_language: nl
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [NL-V2-WOORDVOLGORDE]
+- text: "We gaan morgen samen naar het strand."
+  expected_language: nl
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [NL-V2-WOORDVOLGORDE]
+- text: "Het koffietje smaakt altijd lekker."
+  expected_language: nl
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [NL-VERKLEINWOORD]
+- text: "Er komt morgen een nieuwe collega."
+  expected_language: nl
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [NL-ER-CONSTRUCTIE]
+- text: "Die jurk is wel mooi."
+  expected_language: nl
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [NL-MODALE-PARTIKELS]
+- text: "Hij heeft het raam vanochtend opengezet."
+  expected_language: nl
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [NL-SCHEIDBAAR, NL-WERKWOORDELIJKE-EINDGROEP]
+- text: "De kinderen hebben vanmiddag gespeeld."
+  expected_language: nl
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [NL-PERFECTUM-HEBBEN-ZIJN]
+- text: "De das is om: na de tocht was ik kapot."
+  expected_language: nl
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [NL-VASTE-UITDRUKKING]
+- text: "Het fietsje staat in de schuur."
+  expected_language: nl
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [NL-DE-HET, NL-VERKLEINWOORD]
+- text: "Hij wil de fiets morgen repareren."
+  expected_language: nl
+  source: "T-L1-10 эталонная аннотация (L1)"
+  phenomena: [NL-WERKWOORDELIJKE-EINDGROEP]

@@ -1,0 +1,24 @@
+T-L1-12: файл CEFR-лексикона удалён → derived, метка меняется, нет падений
+замер: 2026-09-13 04:58:18
+окружение: spacy=3.8.16 wordfreq=3.1.1 de_core_news_sm=3.8.0 en_core_web_sm=3.8.0 fr_core_news_sm=3.8.0 it_core_news_sm=3.8.0 nl_core_news_sm=3.8.0
+
+лексикон на месте: hit=CefrResult(level='A1', source='lexicon:testlex', estimated=False) метка='CEFR level (lexicon:testlex): A1'
+слова нет в лексиконе: CefrResult(level=None, source='lexicon:testlex', estimated=False) метка='CEFR level (lexicon:testlex): не установлен' (не истина)
+
+файл cefr/testlex.json удалён (T-L1-12):
+  effective_source=derived (был lexicon:testlex) level=None estimated=True метка='Estimated CEFR level'
+  исключений при пересоздании CefrSource: 0
+
+резолвер xx→yy: unsupported, недостающее (verbatim):
+  - для исходного языка не объявлена spaCy-модель (pack.yaml: spacy_model)
+  - источник частотности недоступен: wordfreq (язык xx)
+  - нет фикстуры исходного языка (pack.yaml: fixture)
+  - нет таксономии явлений: xx/phenomena.yaml (L1.5)
+  - нет схемы карточки: xx/card_schema.json (L1.6)
+  - нет эталонного набора лемматизации: xx/lemma_reference.yaml (L1-2)
+  - нет частотных полос: xx/pack.yaml (frequency_bands, L1.3)
+  - CEFR-лексикон не найден: xx/cefr/testlex.json (язык переходит в derived, L1.4/T-L1-12)
+  - нет golden-набора исходного языка: xx/golden.yaml
+  - промпт задачи analysis_vocabulary не резолвится (пара xx/yy)
+  - промпт задачи analysis_grammar не резолвится (пара xx/yy)
+  - промпт задачи analysis_glossary не резолвится (пара xx/yy) (pair_required: ошибка на этапе анализа, E4.3 — тихого fallback нет)

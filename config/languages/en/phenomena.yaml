@@ -1,0 +1,50 @@
+# Таксономия грамматических явлений и типов MWE (L1.5) — язык это данные (Rule 1).
+# Идентификатор — стабильная строка: LLM возвращает ТОЛЬКО идентификаторы из этого
+# списка (жёсткое правило ТЗ L1 п.5); идентификатор вне таксономии — ошибка
+# валидации, артефакт отклоняется (L1-6). name/description — данные (S1-промпты
+# собираются из них). kind: grammar | mwe | morphology.
+phenomena:
+  - id: EN-PHRASAL-VERB
+    kind: mwe
+    name: "Фразовый глагол"
+    description: "Глагол + частица (up, out, away, off…) с изменением значения (give up, break into). Разбирается как единая лексическая единица."
+  - id: EN-IDIOM
+    kind: mwe
+    name: "Идиоматическое выражение"
+    description: "Фиксированное выражение, значение которого не сводится к сумме слов (raining cats and dogs, hit the road)."
+  - id: EN-COLLOCATION
+    kind: mwe
+    name: "Коллокация"
+    description: "Сильное устойчивое словосочетание: take a decision, make a mistake, strong coffee — не любой синтаксически возможный союзник."
+  - id: EN-COND-2
+    kind: grammar
+    name: "Второе условное (Second Conditional)"
+    description: "Нереальное/маловероятное условие настоящего: if + past simple … would + инфинитив (If I were you, I would leave)."
+  - id: EN-COND-3
+    kind: grammar
+    name: "Третье условное (Third Conditional)"
+    description: "Нереальное условие прошлого: if + past perfect … would have + причастие (If she had known, she would have come)."
+  - id: EN-PERFECT
+    kind: grammar
+    name: "Perfect-время"
+    description: "have/has/had + причастие II (present/past perfect): She has finished her work."
+  - id: EN-PERFECT-CONT
+    kind: grammar
+    name: "Perfect Continuous"
+    description: "have been + -ing: длительность к моменту (They have been waiting for hours)."
+  - id: EN-PASSIVE
+    kind: grammar
+    name: "Пассивный залог"
+    description: "be + причастие II: The bridge was built in 1900."
+  - id: EN-REPORTED-SPEECH
+    kind: grammar
+    name: "Неспрямая речь"
+    description: "Перевод прямой речи с backshift: He said that he was tired."
+  - id: EN-MODAL-PERFECT
+    kind: grammar
+    name: "Модальный глагол + perfect"
+    description: "модальный + have + причастие II (вывод о прошлом): She must have forgotten."
+  - id: EN-GERUND-VS-INF
+    kind: grammar
+    name: "Герундий vs инфинитив"
+    description: "Глагол управляет -ing или to-инфинитивом с разницей значений: I enjoy swimming / I want to swim."

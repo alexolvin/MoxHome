@@ -1,0 +1,53 @@
+# Таксономия грамматических явлений и типов MWE (L1.5) — язык это данные (Rule 1).
+# Идентификатор — стабильная строка: LLM возвращает ТОЛЬКО идентификаторы из этого
+# списка; идентификатор вне таксономии — ошибка валидации, артефакт отклоняется
+# (L1-6). name/description — данные (S1-промпты собираются из них).
+phenomena:
+  - id: DE-TRENNBAR
+    kind: mwe
+    name: "Отделяемый глагол (trennbar)"
+    description: "Глагол с отделяемой приставкой: приставка уходит на конец предложения (Er steht früh auf = aufstehen). Разбирается как единая лексическая единица."
+  - id: DE-KONJUNKTIV-I
+    kind: grammar
+    name: "Konjunktiv I (косвенная речь)"
+    description: "Условное наклонение I для косвенной речи: Er sagt, er sei müde."
+  - id: DE-KONJUNKTIV-II
+    kind: grammar
+    name: "Konjunktiv II (нереальность)"
+    description: "Условное наклонение II для нереального/вежливого: Wenn ich Zeit hätte, käme ich."
+  - id: DE-NEBENSATZ-VERBLETZT
+    kind: grammar
+    name: "Придаточное с вынесением глагола"
+    description: "В придаточном предложном союзе finiten глагол стоит на конце: Ich weiß, dass er morgen kommt."
+  - id: DE-KASUS-REKTION
+    kind: grammar
+    name: "Падежная рекция"
+    description: "Глагол/существительное управляет определённым падежом: denken an + Akk/Dat, warten auf + Akk."
+  - id: DE-PARTIZIP-ATTRIBUT
+    kind: grammar
+    name: "Причастный атрибут"
+    description: "Причастие II как определяющее: das von Stürmen gezeichnete Haus."
+  - id: DE-PASSIV-WERDEN
+    kind: grammar
+    name: "Процессуальный пассив (Vorgangspassiv)"
+    description: "werden + причастие II: Das Fenster wurde von dem Wind geöffnet."
+  - id: DE-PASSIV-SEIN
+    kind: grammar
+    name: "Результативный пассив (Zustandspassiv)"
+    description: "sein + причастие II: Die Brücke ist 1900 gebaut."
+  - id: DE-MODALPARTIKEL
+    kind: grammar
+    name: "Модальные частицы"
+    description: "doch, mal, ja, eben, halt, noch, wohl — тон и оценка высказывания: Das ist doch klar."
+  - id: DE-FESTE-WENDUNG
+    kind: mwe
+    name: "Устойчивое выражение"
+    description: "Фиксированная идиоматическая фраза: einen Kater haben, ins kalte Wasser fallen."
+  - id: DE-NOMEN-VERB-VERBINDUNG
+    kind: mwe
+    name: "Имя-глагольная связь (Nominalverbalkompositum)"
+    description: "Существительное + управляющий глагол как единое смысловое целое: eine Entscheidung treffen, Einfluss nehmen."
+  - id: DE-WORTBILDUNG-KOMPOSITUM
+    kind: morphology
+    name: "Сложение слов (Kompositum)"
+    description: "Многокомпонентное сложное слово: Lebensversicherungsunternehmen — разбирается по компонентам."
