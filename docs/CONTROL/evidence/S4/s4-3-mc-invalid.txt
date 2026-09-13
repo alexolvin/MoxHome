@@ -1,0 +1,11 @@
+дата: 2026-09-13 22:52:26
+версии: python=3.11.13 spacy=3.8.16
+
+s4_en1.epub (Learning), два mock-сценария (у первого mc-вопроса батчи):
+
+сценарий s4_mc_two_correct — два правильных варианта (verbatim):
+  question='Выберите верный вариант по фрагменту: Old maps marked the lighthouse beside the harbor, a quiet anchor above the tidepool.' reasons=['множественный выбор: число правильных вариантов 2, а не 1 (S4.3)']
+сценарий s4_mc_dup_option — дублирующиеся варианты (verbatim):
+  question='Выберите верный вариант по фрагменту: Old maps marked the lighthouse beside the harbor, a quiet anchor above the tidepool.' reasons=['множественный выбор: дублирующиеся варианты (S4.3)', 'множественный выбор: ответ не совпадает с текстом правильного варианта']
+
+S4-3: PASS — mc с числом правильных ≠ 1 / с дублем: отклонён, выпущено 0

@@ -37,8 +37,9 @@ import json
 import logging
 import math
 import time
+import uuid
 import zipfile
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, NoReturn
@@ -99,6 +100,7 @@ from app.learning.cards import assemble_card, check_vocab_cards
 from app.learning.grammar import check_grammar_notes, reference_explanation
 from app.learning.mwe import MweCandidate, check_mwe_records, select_mwe_candidates
 from app.learning.selection import select_lexis_candidates
+from app.learning.study import validate_exercise, validate_question, validate_summary
 from app.llm.analysis import AnalysisClient
 from app.llm.tasks import task as llm_task
 from app.workers.controls import LeaseLost, WorkerCancelled, WorkerPaused
@@ -915,6 +917,9 @@ class Pipeline:
             ("s1_vocabulary", SUBSTAGE_LEVELS["s1"], self._s1_vocabulary),
             ("s2_mwe", SUBSTAGE_LEVELS["s2"], self._s2_mwe),
             ("s3_grammar", SUBSTAGE_LEVELS["s3"], self._s3_grammar),
+            ("s4_summary", SUBSTAGE_LEVELS["s4_summary"], self._s4_summary),
+            ("s4_questions", SUBSTAGE_LEVELS["s4_questions"], self._s4_questions),
+            ("s4_exercises", SUBSTAGE_LEVELS["s4_exercises"], self._s4_exercises),
         )
         for stage_key, allowed_levels, run_substage in substages:
             if level not in allowed_levels:
@@ -1748,6 +1753,678 @@ class Pipeline:
         quality_logger = logging.getLogger(QUALITY_LOGGER)
         quality_logger.info("QC после S3: %s", json.dumps(quality, ensure_ascii=False))
         return list(quality["warnings"])
+
+    # ------------------------------------------------------------- служебное S4
+
+    def _s4_chapter_data(
+        self, book: Book, pairs: tuple[AlignedPair, ...]
+    ) -> dict[str, dict[str, Any]]:
+        """S4: выровненный текст главы (подмножество E6) — ЕДИНСТВЕННЫЙ
+        источник summary/вопросов/упражнений (материалы — по фактическому
+        тексту). Глава без выровненных непустых текстовых сегментов (пустая,
+        изображение, невыровненная) — вне словаря: зафиксированный пропуск
+        (S4-1)."""
+        seg_chapter = {
+            seg.segment_id: ch.chapter_id for ch in book.chapters for seg in ch.segments
+        }
+        data: dict[str, dict[str, Any]] = {}
+        for pair in pairs:
+            chapter_id = seg_chapter.get(pair.segment_id)
+            if chapter_id is None:
+                continue
+            source_text = pair.source_text.strip()
+            if not source_text:
+                continue  # пустой сегмент — текста нет (S4.1)
+            entry = data.setdefault(
+                chapter_id, {"segments": [], "text_parts": [], "word_count": 0}
+            )
+            entry["segments"].append(
+                {
+                    "segment_id": pair.segment_id,
+                    "source": source_text,
+                    "translation": pair.translation_text.strip(),
+                }
+            )
+            entry["text_parts"].append(source_text)
+            entry["word_count"] += len(source_text.split())
+        return data
+
+    @staticmethod
+    def _s4_item_id(chapter_id: str, item_type: str, text: str) -> str:
+        """S4: детерминированный id вопроса/упражнения
+        (chapter|type|текст.casefold) — стабилен между прогонами (answers.json
+        и повторные прогоны привязаны к нему)."""
+        return uuid.uuid5(
+            uuid.NAMESPACE_URL, f"s4:{chapter_id}:{item_type}:{text.casefold()}"
+        ).hex
+
+    def _s4_merge_answers(
+        self,
+        job_dir: Path,
+        chapter_id: str,
+        kind: str,
+        answers: Mapping[str, str],
+    ) -> None:
+        """S4.4: ответы — ОТДЕЛЬНАЯ сущность (answers.json); в тело главы не
+        попадают (S4-5)."""
+        path = job_dir / "answers.json"
+        data = self._read_json(path) if path.is_file() else {"chapters": {}}
+        chapters = data.setdefault("chapters", {})
+        chapter = chapters.setdefault(chapter_id, {"questions": {}, "exercises": {}})
+        chapter.setdefault(kind, {}).update(dict(answers))
+        self._write_json(path, data)
+
+    def _s4_finalize_quality(
+        self,
+        job_dir: Path,
+        *,
+        part: str,
+        stage_name: str,
+        section: dict[str, Any],
+        warnings: list[str],
+    ) -> list[str]:
+        """Секция s4 в quality.json (подсекции summary/questions/exercises
+        накапливаются подстадиями) + ФИНАЛЬНЫЕ предупреждения подстадии."""
+        quality_path = job_dir / "quality.json"
+        quality = self._read_json(quality_path) if quality_path.is_file() else {}
+        base_warnings = list(quality.get("warnings", ()))
+        quality.setdefault("s4", {})[part] = section
+        quality["warnings"] = [*base_warnings, *warnings]
+        self._write_json(quality_path, quality)
+        quality_logger = logging.getLogger(QUALITY_LOGGER)
+        quality_logger.info(
+            "QC после %s: %s", stage_name, json.dumps(quality, ensure_ascii=False)
+        )
+        return list(quality["warnings"])
+
+    def _s4_summary(
+        self, repo: JobRepository, job: Job, job_dir: Path, key: str, glossary_hash: str
+    ) -> list[str]:
+        """S4 (ТЗ_03): summary главы — ТОЛЬКО по фактическому тексту главы
+        (название в payload отсутствует — генерация по названию запрещена);
+        пустая/нечитаемая глава — НЕ создаётся, пропуск зафиксирован (S4-1).
+        → summaries.json + секция s4.summary."""
+        settings = self._settings
+        book, pairs, _source_pack, _pack_dir, _nlp, source_code = self._learning_context(job)
+        chapter_data = self._s4_chapter_data(book, pairs)
+        timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        _, model, _ = settings.llm.endpoint("analysis")
+        client = AnalysisClient(settings, repo, job.id)
+        spec = llm_task("chapter_summary")
+        prompt_file, prompt_version = "", 0
+        chapters: list[dict[str, Any]] = []
+        skipped: list[dict[str, str]] = []
+        rejected: list[dict[str, Any]] = []
+        for chapter in book.chapters:
+            data = chapter_data.get(chapter.chapter_id)
+            if data is None or not data["segments"]:
+                skipped.append(
+                    {
+                        "chapter_id": chapter.chapter_id,
+                        "reason": (
+                            "нет выровненных текстовых сегментов в главе "
+                            "(пустая глава/изображения) — summary не создаётся (S4.1)"
+                        ),
+                    }
+                )
+                continue
+            payload = {
+                "source_language": source_code,
+                "target_language": job.target_language,
+                "user_level": job.learning_level,
+                "user_cefr": job.learning_cefr,
+                "chapter_id": chapter.chapter_id,
+                "segments": data["segments"],
+            }
+            outcome = client.run_task(
+                spec,
+                source_code,
+                job.target_language,
+                json.dumps(payload, ensure_ascii=False, sort_keys=True),
+            )
+            if prompt_file == "":
+                prompt_file, prompt_version = outcome.prompt.file, outcome.prompt.version
+            reasons = validate_summary(outcome.payload)
+            if reasons:
+                rejected.append(
+                    {"chapter_id": chapter.chapter_id, "reasons": reasons}
+                )
+                continue
+            chapters.append(
+                {
+                    "chapter_id": chapter.chapter_id,
+                    "status": "issued",
+                    "brief": outcome.payload["brief"],
+                    "extended": outcome.payload["extended"],
+                    "key_events": outcome.payload["key_events"],
+                    "entities": outcome.payload["entities"],
+                    "themes": outcome.payload["themes"],
+                    "concepts": outcome.payload["concepts"],
+                    "word_count": data["word_count"],
+                    "source_language": source_code,
+                    "target_language": job.target_language,
+                    "user_level": job.learning_level,
+                    "user_cefr": job.learning_cefr,
+                    "glossary_hash": glossary_hash,
+                    "prompt_file": prompt_file,
+                    "prompt_version": prompt_version,
+                    "model": model,
+                    "profile": "analysis",
+                    "timestamp": timestamp,
+                }
+            )
+        stage_warnings = [
+            f"S4 summary: {s['chapter_id']}: {s['reason']}" for s in skipped
+        ]
+        if rejected:
+            first = [f"{r['chapter_id']}: {r['reasons'][0]}" for r in rejected[:10]]
+            stage_warnings.append(
+                f"S4 summary: {len(rejected)} глав отклонено: " + "; ".join(first)
+            )
+        report: dict[str, Any] = {
+            "stage": "S4",
+            "part": "summary",
+            "enabled": True,
+            "source_language": source_code,
+            "target_language": job.target_language,
+            "user_level": job.learning_level,
+            "user_cefr": job.learning_cefr,
+            "chapters_total": len(book.chapters),
+            "chapters_issued": len(chapters),
+            "chapters_skipped": len(skipped),
+            "chapters_rejected": len(rejected),
+            "glossary_hash": glossary_hash,
+            "prompt_file": prompt_file,
+            "prompt_version": prompt_version,
+            "model": model,
+            "profile": "analysis",
+            "timestamp": timestamp,
+            "idempotency_key": key,
+            "chapters": chapters,
+            "skipped": skipped,
+            "rejected": rejected,
+        }
+        self._write_json(job_dir / "summaries.json", report)
+        final_warnings = self._s4_finalize_quality(
+            job_dir,
+            part="summary",
+            stage_name="S4 summary",
+            section={
+                "enabled": True,
+                "chapters": len(book.chapters),
+                "issued": len(chapters),
+                "skipped": len(skipped),
+                "rejected": len(rejected),
+                "report": "summaries.json",
+            },
+            warnings=stage_warnings,
+        )
+        repo.record_stage_result(job.id, "s4_summary", key, str(job_dir / "summaries.json"))
+        return final_warnings
+
+    def _s4_question_items(
+        self,
+        repo: JobRepository,
+        job: Job,
+        *,
+        book: Book,
+        chapter_data: dict[str, dict[str, Any]],
+        source_code: str,
+        normalize: Callable[[str], str],
+    ) -> tuple[
+        list[tuple[Mapping[str, Any], str]],
+        list[dict[str, Any]],
+        str,
+        int,
+    ]:
+        """S4: LLM-вопросы по главам (поглавные батчи — никогда не вся книга
+        в запросе) + валидация (S4-2/S4-3/S4-4). Возвращает
+        (validated, rejected, prompt_file, prompt_version) — промпт первого
+        вызова (единый для всех глав, E4-2)."""
+        settings = self._settings
+        client = AnalysisClient(settings, repo, job.id)
+        spec = llm_task("chapter_questions")
+        prompt_file, prompt_version = "", 0
+        validated: list[tuple[Mapping[str, Any], str]] = []
+        rejected: list[dict[str, Any]] = []
+        for chapter in book.chapters:
+            data = chapter_data.get(chapter.chapter_id)
+            if data is None or not data["segments"]:
+                continue  # текста нет — вопросов нет (пропуск — в summaries)
+            payload = {
+                "source_language": source_code,
+                "target_language": job.target_language,
+                "user_level": job.learning_level,
+                "user_cefr": job.learning_cefr,
+                "chapter_id": chapter.chapter_id,
+                "segments": data["segments"],
+                "counts": {
+                    "easy": 5,
+                    "standard_min": 5,
+                    "standard_max": 10,
+                    "advanced_min": 1,
+                    "advanced_max": 5,
+                },
+            }
+            outcome = client.run_task(
+                spec,
+                source_code,
+                job.target_language,
+                json.dumps(payload, ensure_ascii=False, sort_keys=True),
+            )
+            if prompt_file == "":
+                prompt_file, prompt_version = outcome.prompt.file, outcome.prompt.version
+            raw_items = outcome.payload.get("items")
+            if not isinstance(raw_items, list):
+                raise AppError("S4: ответ LLM — items отсутствует или не массив")
+            seg_ids = frozenset(seg["segment_id"] for seg in data["segments"])
+            chapter_text = "\n".join(data["text_parts"])
+            for raw in raw_items:
+                if not isinstance(raw, dict):
+                    raise AppError("S4: ответ LLM — элемент items не объект")
+                reasons = validate_question(
+                    raw,
+                    chapter_seg_ids=seg_ids,
+                    chapter_text=chapter_text,
+                    normalize=normalize,
+                )
+                if reasons:
+                    rejected.append(
+                        {
+                            "chapter_id": chapter.chapter_id,
+                            "question": raw.get("question"),
+                            "type": raw.get("type"),
+                            "level": raw.get("level"),
+                            "reasons": reasons,
+                        }
+                    )
+                else:
+                    validated.append((raw, chapter.chapter_id))
+        return validated, rejected, prompt_file, prompt_version
+
+    def _s4_question_records(
+        self, dedup: list[tuple[Mapping[str, Any], str]]
+    ) -> tuple[
+        list[dict[str, Any]], dict[str, dict[str, str]], dict[str, int]
+    ]:
+        """S4: ответы ОТСЕКАЮТСЯ в отдельную сущность (answers.json, S4.4);
+        записи для тела главы — БЕЗ ответов (S4-5) + счёт по уровням."""
+        records: list[dict[str, Any]] = []
+        answers_by_chapter: dict[str, dict[str, str]] = {}
+        by_level: dict[str, int] = {}
+        for item, chapter_id in dedup:
+            qtype = str(item["type"])
+            record: dict[str, Any] = {
+                "id": self._s4_item_id(chapter_id, qtype, str(item.get("question", ""))),
+                "chapter_id": chapter_id,
+                "question": item["question"],
+                "type": qtype,
+                "level": item["level"],
+                "segment_id": item["segment_id"],
+                "entities": item.get("entities") or [],
+            }
+            if qtype == "mc":
+                options = item["options"]
+                record["options"] = [str(opt["text"]) for opt in options]
+                correct_index = next(
+                    i for i, opt in enumerate(options) if opt.get("correct") is True
+                )
+                answer = str(correct_index)
+            elif qtype == "gap":
+                record["original_sentence"] = item["original_sentence"]
+                record["sentence_with_blank"] = item["sentence_with_blank"]
+                answer = str(item["answer"])
+            else:
+                answer = str(item["answer"])
+            records.append(record)
+            answers_by_chapter.setdefault(chapter_id, {})[record["id"]] = answer
+            by_level[record["level"]] = by_level.get(record["level"], 0) + 1
+        return records, answers_by_chapter, by_level
+
+    def _s4_questions(
+        self, repo: JobRepository, job: Job, job_dir: Path, key: str, glossary_hash: str
+    ) -> list[str]:
+        """S4 (ТЗ_03): вопросы на понимание трёх уровней (easy — фактические,
+        standard — на содержание, advanced — вывод) по фактическому тексту
+        главы. Привязка к segment_id; сущности ∈ тексте главы (S4-4); пропуск
+        — слово ∈ исходном предложении (S4-2); выбор — ровно один правильный
+        (S4-3). Ответы — в answers.json (S4.4/S4-5). → questions.json."""
+        settings = self._settings
+        book, pairs, source_pack, _pack_dir, _nlp, source_code = self._learning_context(job)
+        chapter_data = self._s4_chapter_data(book, pairs)
+
+        def _normalize(text: str) -> str:
+            return normalize_text(text, source_pack.normalization)
+
+        validated, rejected, prompt_file, prompt_version = self._s4_question_items(
+            repo,
+            job,
+            book=book,
+            chapter_data=chapter_data,
+            source_code=source_code,
+            normalize=_normalize,
+        )
+        # Дубли текста вопроса на всю книгу: первый остаётся, остальные —
+        # отклонение (механизм S1.2/S2.4).
+        seen: set[str] = set()
+        dedup: list[tuple[Mapping[str, Any], str]] = []
+        for item, chapter_id in validated:
+            qkey = f"{item.get('type')}|{str(item.get('question', '')).casefold()}"
+            if qkey in seen:
+                rejected.append(
+                    {
+                        "chapter_id": chapter_id,
+                        "question": item.get("question"),
+                        "type": item.get("type"),
+                        "level": item.get("level"),
+                        "reasons": ["дублирующийся вопрос (S4)"],
+                    }
+                )
+                continue
+            seen.add(qkey)
+            dedup.append((item, chapter_id))
+        records, answers_by_chapter, by_level = self._s4_question_records(dedup)
+        for chapter_id, answers in answers_by_chapter.items():
+            self._s4_merge_answers(job_dir, chapter_id, "questions", answers)
+        timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        _, model, _ = settings.llm.endpoint("analysis")
+        stage_warnings: list[str] = []
+        if rejected:
+            first = [f"{r['chapter_id']}: {r['reasons'][0]}" for r in rejected[:10]]
+            stage_warnings.append(
+                f"S4 вопросы: {len(rejected)} отклонено: " + "; ".join(first)
+            )
+        report: dict[str, Any] = {
+            "stage": "S4",
+            "part": "questions",
+            "enabled": True,
+            "source_language": source_code,
+            "target_language": job.target_language,
+            "user_level": job.learning_level,
+            "user_cefr": job.learning_cefr,
+            "questions_issued": len(records),
+            "questions_rejected": len(rejected),
+            "by_level": dict(sorted(by_level.items())),
+            "glossary_hash": glossary_hash,
+            "prompt_file": prompt_file,
+            "prompt_version": prompt_version,
+            "model": model,
+            "profile": "analysis",
+            "timestamp": timestamp,
+            "idempotency_key": key,
+            "questions": records,
+            "rejected": rejected,
+        }
+        self._write_json(job_dir / "questions.json", report)
+        final_warnings = self._s4_finalize_quality(
+            job_dir,
+            part="questions",
+            stage_name="S4 вопросы",
+            section={
+                "enabled": True,
+                "issued": len(records),
+                "rejected": len(rejected),
+                "by_level": dict(sorted(by_level.items())),
+                "report": "questions.json",
+            },
+            warnings=stage_warnings,
+        )
+        repo.record_stage_result(job.id, "s4_questions", key, str(job_dir / "questions.json"))
+        return final_warnings
+
+    def _s4_exercise_sources(
+        self, job_dir: Path
+    ) -> tuple[dict[str, list[dict[str, Any]]], dict[str, list[dict[str, Any]]]]:
+        """S4: выпущенные карточки S1 / заметки S3 (по главам) — ЕДИНСТВЕННЫЙ
+        источник vocab/grammar-упражнений (S4.6)."""
+        cards_by_chapter: dict[str, list[dict[str, Any]]] = {}
+        cards_path = job_dir / "vocabulary_cards.json"
+        if cards_path.is_file():
+            for card in self._read_json(cards_path).get("cards", ()):
+                cards_by_chapter.setdefault(str(card.get("chapter_id", "")), []).append(
+                    card
+                )
+        notes_by_chapter: dict[str, list[dict[str, Any]]] = {}
+        notes_path = job_dir / "grammar_notes.json"
+        if notes_path.is_file():
+            for note in self._read_json(notes_path).get("notes", ()):
+                notes_by_chapter.setdefault(str(note.get("chapter_id", "")), []).append(
+                    note
+                )
+        return cards_by_chapter, notes_by_chapter
+
+    def _s4_exercise_items(
+        self,
+        repo: JobRepository,
+        job: Job,
+        *,
+        book: Book,
+        chapter_data: dict[str, dict[str, Any]],
+        cards_by_chapter: Mapping[str, Sequence[Mapping[str, Any]]],
+        notes_by_chapter: Mapping[str, Sequence[Mapping[str, Any]]],
+        source_code: str,
+        normalize: Callable[[str], str],
+    ) -> tuple[
+        list[tuple[Mapping[str, Any], str]],
+        list[dict[str, Any]],
+        str,
+        int,
+    ]:
+        """S4: LLM-упражнения по главам (поглавные батчи) + валидация
+        (S4-2/S4-3/S4-4/S4-6; перевод — дословно из главы; типы — конфиг)."""
+        settings = self._settings
+        allowed_types = frozenset(settings.limits.exercises_types)
+        client = AnalysisClient(settings, repo, job.id)
+        spec = llm_task("chapter_exercises")
+        prompt_file, prompt_version = "", 0
+        validated: list[tuple[Mapping[str, Any], str]] = []
+        rejected: list[dict[str, Any]] = []
+        for chapter in book.chapters:
+            data = chapter_data.get(chapter.chapter_id)
+            if data is None or not data["segments"]:
+                continue  # текста нет — упражнений нет
+            cards = list(cards_by_chapter.get(chapter.chapter_id, ()))
+            notes = list(notes_by_chapter.get(chapter.chapter_id, ()))
+            payload = {
+                "source_language": source_code,
+                "target_language": job.target_language,
+                "user_level": job.learning_level,
+                "user_cefr": job.learning_cefr,
+                "chapter_id": chapter.chapter_id,
+                "segments": data["segments"],
+                "cards": [
+                    {
+                        "id": card["lemma"],
+                        "word_form": card.get("word_form") or card["lemma"],
+                        "translation": card.get("translation", ""),
+                        "segment_id": card.get("segment_id", ""),
+                    }
+                    for card in cards
+                ],
+                "notes": [
+                    {
+                        "id": note["surface"],
+                        "explanation": note.get("explanation", ""),
+                        "phenomenon_id": note.get("phenomenon_id", ""),
+                        "segment_id": note.get("segment_id", ""),
+                    }
+                    for note in notes
+                ],
+                "exercise_types": sorted(allowed_types),
+            }
+            outcome = client.run_task(
+                spec,
+                source_code,
+                job.target_language,
+                json.dumps(payload, ensure_ascii=False, sort_keys=True),
+            )
+            if prompt_file == "":
+                prompt_file, prompt_version = outcome.prompt.file, outcome.prompt.version
+            raw_items = outcome.payload.get("items")
+            if not isinstance(raw_items, list):
+                raise AppError("S4: ответ LLM — items отсутствует или не массив")
+            seg_ids = frozenset(seg["segment_id"] for seg in data["segments"])
+            chapter_text = "\n".join(data["text_parts"])
+            card_ids = frozenset(str(c["id"]) for c in payload["cards"])
+            note_ids = frozenset(str(n["id"]) for n in payload["notes"])
+            for raw in raw_items:
+                if not isinstance(raw, dict):
+                    raise AppError("S4: ответ LLM — элемент items не объект")
+                reasons = validate_exercise(
+                    raw,
+                    chapter_seg_ids=seg_ids,
+                    chapter_text=chapter_text,
+                    card_ids=card_ids,
+                    note_ids=note_ids,
+                    allowed_types=allowed_types,
+                    normalize=normalize,
+                )
+                if reasons:
+                    rejected.append(
+                        {
+                            "chapter_id": chapter.chapter_id,
+                            "prompt": raw.get("prompt"),
+                            "type": raw.get("type"),
+                            "reasons": reasons,
+                        }
+                    )
+                else:
+                    validated.append((raw, chapter.chapter_id))
+        return validated, rejected, prompt_file, prompt_version
+
+    def _s4_exercise_records(
+        self, dedup: list[tuple[Mapping[str, Any], str]]
+    ) -> tuple[
+        list[dict[str, Any]], dict[str, dict[str, str]], dict[str, int]
+    ]:
+        """S4: ответы ОТСЕКАЮТСЯ в answers.json (S4.4); записи — БЕЗ ответов
+        (S4-5) + счёт по типам."""
+        records: list[dict[str, Any]] = []
+        answers_by_chapter: dict[str, dict[str, str]] = {}
+        by_type: dict[str, int] = {}
+        for item, chapter_id in dedup:
+            etype = str(item["type"])
+            record: dict[str, Any] = {
+                "id": self._s4_item_id(chapter_id, etype, str(item.get("prompt", ""))),
+                "chapter_id": chapter_id,
+                "prompt": item["prompt"],
+                "type": etype,
+                "segment_id": item["segment_id"],
+                "source_ref": item.get("source_ref"),
+            }
+            if etype == "mc":
+                options = item["options"]
+                record["options"] = [str(opt["text"]) for opt in options]
+                correct_index = next(
+                    i for i, opt in enumerate(options) if opt.get("correct") is True
+                )
+                answer = str(correct_index)
+            elif etype == "gap":
+                record["original_sentence"] = item["original_sentence"]
+                record["sentence_with_blank"] = item["sentence_with_blank"]
+                answer = str(item["answer"])
+            else:
+                answer = str(item["answer"])
+            records.append(record)
+            answers_by_chapter.setdefault(chapter_id, {})[record["id"]] = answer
+            by_type[record["type"]] = by_type.get(record["type"], 0) + 1
+        return records, answers_by_chapter, by_type
+
+    def _s4_exercises(
+        self, repo: JobRepository, job: Job, job_dir: Path, key: str, glossary_hash: str
+    ) -> list[str]:
+        """S4 (ТЗ_03): упражнения главы (состав типов — конфиг
+        limits.exercises_types); лексика — ТОЛЬКО из выпущенных S1-карточек,
+        грамматика — ТОЛЬКО из выпущенных S3-заметок (S4-6); перевод —
+        предложение дословно из главы; ответы — в answers.json (S4.4).
+        → exercises.json."""
+        settings = self._settings
+        book, pairs, source_pack, _pack_dir, _nlp, source_code = self._learning_context(job)
+        chapter_data = self._s4_chapter_data(book, pairs)
+
+        def _normalize(text: str) -> str:
+            return normalize_text(text, source_pack.normalization)
+
+        cards_by_chapter, notes_by_chapter = self._s4_exercise_sources(job_dir)
+        validated, rejected, prompt_file, prompt_version = self._s4_exercise_items(
+            repo,
+            job,
+            book=book,
+            chapter_data=chapter_data,
+            cards_by_chapter=cards_by_chapter,
+            notes_by_chapter=notes_by_chapter,
+            source_code=source_code,
+            normalize=_normalize,
+        )
+        # Дубли текста задания на всю книгу (механизм S1.2/S2.4).
+        seen: set[str] = set()
+        dedup: list[tuple[Mapping[str, Any], str]] = []
+        for item, chapter_id in validated:
+            ekey = f"{item.get('type')}|{str(item.get('prompt', '')).casefold()}"
+            if ekey in seen:
+                rejected.append(
+                    {
+                        "chapter_id": chapter_id,
+                        "prompt": item.get("prompt"),
+                        "type": item.get("type"),
+                        "reasons": ["дублирующееся упражнение (S4)"],
+                    }
+                )
+                continue
+            seen.add(ekey)
+            dedup.append((item, chapter_id))
+        records, answers_by_chapter, by_type = self._s4_exercise_records(dedup)
+        for chapter_id, answers in answers_by_chapter.items():
+            self._s4_merge_answers(job_dir, chapter_id, "exercises", answers)
+        stage_warnings: list[str] = []
+        if rejected:
+            first = [f"{r['chapter_id']}: {r['reasons'][0]}" for r in rejected[:10]]
+            stage_warnings.append(
+                f"S4 упражнения: {len(rejected)} отклонено: " + "; ".join(first)
+            )
+        timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        _, model, _ = settings.llm.endpoint("analysis")
+        report: dict[str, Any] = {
+            "stage": "S4",
+            "part": "exercises",
+            "enabled": True,
+            "source_language": source_code,
+            "target_language": job.target_language,
+            "user_level": job.learning_level,
+            "user_cefr": job.learning_cefr,
+            "exercises_issued": len(records),
+            "exercises_rejected": len(rejected),
+            "by_type": dict(sorted(by_type.items())),
+            "vocab_from_cards": 1.0 if by_type.get("vocab") else None,
+            "grammar_from_notes": 1.0 if by_type.get("grammar") else None,
+            "glossary_hash": glossary_hash,
+            "prompt_file": prompt_file,
+            "prompt_version": prompt_version,
+            "model": model,
+            "profile": "analysis",
+            "timestamp": timestamp,
+            "idempotency_key": key,
+            "exercises": records,
+            "rejected": rejected,
+        }
+        self._write_json(job_dir / "exercises.json", report)
+        final_warnings = self._s4_finalize_quality(
+            job_dir,
+            part="exercises",
+            stage_name="S4 упражнения",
+            section={
+                "enabled": True,
+                "issued": len(records),
+                "rejected": len(rejected),
+                "by_type": dict(sorted(by_type.items())),
+                "vocab_from_cards": report["vocab_from_cards"],
+                "grammar_from_notes": report["grammar_from_notes"],
+                "report": "exercises.json",
+            },
+            warnings=stage_warnings,
+        )
+        repo.record_stage_result(job.id, "s4_exercises", key, str(job_dir / "exercises.json"))
+        return final_warnings
 
     def _learning_no_op(
         self, repo: JobRepository, job: Job, job_dir: Path

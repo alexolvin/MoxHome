@@ -36,7 +36,17 @@
                      детерминированных кандидатов («подброшенная» цитата) →
                      отклонение;
   grammar_note_too_long — T-S3-10: у первой заметки explanation длиннее
-                     лимита → отклонение, а не тихая усечка.
+                     лимита → отклонение, а не тихая усечка;
+  s4_entity_ghost     — S4-4: у первого вопроса entities содержит слово,
+                     отсутствующее в главе → отклонение;
+  s4_mc_two_correct   — S4-3: у первого mc-вопроса два правильных
+                     варианта → отклонение;
+  s4_mc_dup_option    — S4-3: у первого mc-вопроса дублирующиеся
+                     варианты → отклонение;
+  s4_gap_missing_word — S4-2: ответ gap-задания отсутствует в исходном
+                     предложении → отклонение;
+  s4_vocab_ghost      — S4-6: source_ref первого vocab-упражнения
+                     указывает на карточку вне выпущенных → отклонение.
 
 Сценарии, помеченные «analysis», действуют только на запросы вида analysis
 (системный промпт начинается с "You are an analysis engine"); на translate/fill
@@ -60,6 +70,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from xml.etree import ElementTree as ET
 
 import tiktoken
+
+from app.learning.study import blank_first_occurrence
 
 _ROT = 3
 _FILL_TEMPLATE_RE = re.compile(r"```XML\n(.*?)\n```", re.DOTALL)
@@ -503,6 +515,472 @@ def _grammar_note_response(user: str, scenario: str) -> str:
     return json.dumps({"items": items}, ensure_ascii=False)
 
 
+_S4_SUMMARY_MARKER = "Summary payload (JSON):\n"
+_S4_QUESTIONS_MARKER = "Questions payload (JSON):\n"
+_S4_EXERCISES_MARKER = "Exercises payload (JSON):\n"
+
+_S4_SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
+_S4_WORD_RE = re.compile(r"[^\W\d_]+", re.UNICODE)
+
+
+def _s4_sentences(text: str) -> list[str]:
+    """Предложения исходного текста (детерминированный split по
+    оконечной пунктуации)."""
+    return [s for s in (part.strip() for part in _S4_SENTENCE_RE.split(text.strip())) if s]
+
+
+def _s4_content_words(text: str, min_len: int = 4) -> list[str]:
+    """Содержимые слова (буквенные, длина ≥ min_len) в порядке появления."""
+    return [w for w in _S4_WORD_RE.findall(text) if len(w) >= min_len]
+
+
+def _s4_payload_list(payload: dict[str, object], key: str) -> list[object]:
+    """Массивное поле payload (пустой список, если отсутствует/не массив)."""
+    value = payload.get(key)
+    return value if isinstance(value, list) else []
+
+
+def _s4_segment_sentences(payload: dict[str, object]) -> list[tuple[str, str]]:
+    """(segment_id, sentence) — фактические предложения сегментов payload."""
+    result: list[tuple[str, str]] = []
+    for seg in _s4_payload_list(payload, "segments"):
+        if not isinstance(seg, dict):
+            continue
+        segment_id = str(seg.get("segment_id", ""))
+        if not segment_id:
+            continue
+        for sentence in _s4_sentences(str(seg.get("source", ""))):
+            result.append((segment_id, sentence))
+    return result
+
+
+def _s4_distractors(correct: str, pool: list[str], count: int = 3) -> list[str]:
+    """Дистракторы для mc (детерминированные): различные слова пула, затем
+    варианты. Дистракторам НЕ нужно присутствовать в главе — только сущности."""
+    seen = {correct.casefold()}
+    out: list[str] = []
+    for word in pool:
+        if word.casefold() not in seen:
+            seen.add(word.casefold())
+            out.append(word)
+        if len(out) == count:
+            break
+    i = 1
+    while len(out) < count:
+        variant = f"{correct} {i}"
+        if variant.casefold() not in seen:
+            seen.add(variant.casefold())
+            out.append(variant)
+        i += 1
+    return out
+
+
+def _s4_mc_options(
+    correct: str, distractors: list[str], position: int
+) -> list[dict[str, object]]:
+    """4 варианта, ровно один correct (S4.3); позиция правильного ротируется
+    (T-S4-9: правильный не систематически в одном месте/самый длинный)."""
+    options: list[dict[str, object]] = [
+        {"text": text, "correct": False} for text in distractors
+    ]
+    options.insert(position, {"text": correct, "correct": True})
+    return options
+
+
+def _s4_first_of_type(items: list[dict[str, object]], qtype: str) -> int | None:
+    """Индекс первого item заданного типа (mock-инъекции сценариев)."""
+    for idx, item in enumerate(items):
+        if item["type"] == qtype:
+            return idx
+    return None
+
+
+def _s4_gap_items(
+    pick: Callable[[int], tuple[str, str]], chapter_index: int
+) -> list[dict[str, object]]:
+    """easy — пропуск (S4.2: пропущенное слово в исходном предложении)."""
+    items: list[dict[str, object]] = []
+    for k in range(5):
+        segment_id, sentence = pick(k)
+        words = _s4_content_words(sentence)
+        if not words:
+            continue
+        word = words[(chapter_index + k) % len(words)]
+        blanked = blank_first_occurrence(sentence, word)
+        others = [w for w in words if w.casefold() != word.casefold()][:2]
+        items.append(
+            {
+                "question": f"Вставьте пропущенное слово: {blanked}",
+                "type": "gap",
+                "level": "easy",
+                "segment_id": segment_id,
+                "entities": others or [word],
+                "answer": word,
+                "original_sentence": sentence,
+                "sentence_with_blank": blanked,
+            }
+        )
+    return items
+
+
+def _s4_mc_items(
+    pick: Callable[[int], tuple[str, str]], chapter_index: int
+) -> list[dict[str, object]]:
+    """standard — множественный выбор (S4.3: ровно один correct, позиция
+    ротируется)."""
+    items: list[dict[str, object]] = []
+    for k in range(5):
+        segment_id, sentence = pick(5 + k)
+        words = _s4_content_words(sentence)
+        if not words:
+            continue
+        correct = words[(chapter_index * 2 + k) % len(words)]
+        items.append(
+            {
+                "question": f"Выберите верный вариант по фрагменту: {sentence}",
+                "type": "mc",
+                "level": "standard",
+                "segment_id": segment_id,
+                "entities": [correct],
+                "answer": correct,
+                "options": _s4_mc_options(
+                    correct, _s4_distractors(correct, words), (chapter_index + k) % 4
+                ),
+            }
+        )
+    return items
+
+
+def _s4_tf_items(
+    pick: Callable[[int], tuple[str, str]], chapter_index: int
+) -> list[dict[str, object]]:
+    """standard — верно/неверно."""
+    items: list[dict[str, object]] = []
+    for k in range(2):
+        segment_id, sentence = pick(10 + k)
+        words = _s4_content_words(sentence)
+        if not words:
+            continue
+        items.append(
+            {
+                "question": f"Верно ли утверждение: «{sentence}»?",
+                "type": "tf",
+                "level": "standard",
+                "segment_id": segment_id,
+                "entities": [words[0]],
+                "answer": "true" if (chapter_index + k) % 2 == 0 else "false",
+            }
+        )
+    return items
+
+
+def _s4_free_items(
+    pick: Callable[[int], tuple[str, str]], chapter_index: int
+) -> list[dict[str, object]]:
+    """advanced — свободные (эталонный ответ — русский, детерминированный)."""
+    items: list[dict[str, object]] = []
+    for k in range(3):
+        segment_id, sentence = pick(12 + k)
+        words = _s4_content_words(sentence)
+        if not words:
+            continue
+        items.append(
+            {
+                "question": f"Что следует из фрагмента: {sentence}?",
+                "type": "free",
+                "level": "advanced",
+                "segment_id": segment_id,
+                "entities": words[:2],
+                "answer": "Эталонный ответ: " + code(words[k % len(words)]),
+            }
+        )
+    return items
+
+
+def _s4_question_items(
+    payload: dict[str, object], chapter_index: int, scenario: str
+) -> list[dict[str, object]]:
+    """S4: детерминированные mock-вопросы — 5 easy (gap), 5 standard (mc) +
+    2 (tf), 3 advanced (free) — только по фактическим предложениям payload
+    (сущности ∈ главе, gap-слово ∈ предложении, mc — ровно один correct)."""
+    sentences = _s4_segment_sentences(payload)
+    if not sentences:
+        return []
+
+    def pick(index: int) -> tuple[str, str]:
+        return sentences[index % len(sentences)]
+
+    items: list[dict[str, object]] = []
+    for factory in (_s4_gap_items, _s4_mc_items, _s4_tf_items, _s4_free_items):
+        items.extend(factory(pick, chapter_index))
+    if scenario == "s4_entity_ghost" and items:
+        items[0] = dict(items[0], entities=["QwzxwGhost"])
+    if scenario == "s4_gap_missing_word":
+        idx = _s4_first_of_type(items, "gap")
+        if idx is not None:
+            items[idx] = dict(items[idx], answer="ZzblqAbsentWord")
+    if scenario in ("s4_mc_two_correct", "s4_mc_dup_option"):
+        idx = _s4_first_of_type(items, "mc")
+        if idx is not None:
+            options = [dict(option) for option in items[idx]["options"]]  # type: ignore[attr-defined]
+            if scenario == "s4_mc_two_correct":
+                alt = next(i for i, option in enumerate(options) if not option["correct"])
+                options[alt] = dict(options[alt], correct=True)
+            else:
+                options[0] = dict(options[0], text=str(options[1]["text"]))
+            items[idx] = dict(items[idx], options=options)
+    return items
+
+
+def _chapter_questions_response(user: str, scenario: str) -> str:
+    """Ответ задачи chapter_questions (S4)."""
+    start = user.find(_S4_QUESTIONS_MARKER)
+    if start == -1:
+        return json.dumps({"items": []})
+    try:
+        payload = json.loads(user[start + len(_S4_QUESTIONS_MARKER) :].strip())
+    except json.JSONDecodeError:
+        return json.dumps({"items": []})
+    chapter_index = sum(ord(ch) for ch in str(payload.get("chapter_id", "")))
+    return json.dumps({"items": _s4_question_items(payload, chapter_index, scenario)})
+
+
+def _chapter_summary_response(user: str) -> str:
+    """Ответ задачи chapter_summary (S4): ОДИН объект (не items-массив),
+    только по фактическому тексту payload; сущности — слова главы.
+    Непарсится payload (прямой run_task с простым текстом, E4-2) — ответ
+    остаётся схема-валидным (generic-сущности), пустого объекта нет."""
+    start = user.find(_S4_SUMMARY_MARKER)
+    payload: dict[str, object] = {}
+    if start != -1:
+        try:
+            parsed: object = json.loads(user[start + len(_S4_SUMMARY_MARKER) :].strip())
+            if isinstance(parsed, dict):
+                payload = parsed
+        except json.JSONDecodeError:
+            payload = {}
+    words: list[str] = []
+    for seg in _s4_payload_list(payload, "segments"):
+        if isinstance(seg, dict):
+            words.extend(_s4_content_words(str(seg.get("source", ""))))
+    entities = list(dict.fromkeys(words))[:5] or ["текст"]
+    summary = {
+        "brief": "Глава о: " + ", ".join(entities[:3]) + " (mock).",
+        "extended": (
+            "Mock-суммаризация по фактическому тексту главы. Ключевые слова: "
+            + ", ".join(entities)
+            + "."
+        ),
+        "key_events": ["Событие mock: " + entity for entity in entities[:2]],
+        "entities": entities,
+        "themes": ["Тема mock: " + entities[0]],
+        "concepts": [
+            "Понятие mock: " + (entities[1] if len(entities) > 1 else entities[0])
+        ],
+    }
+    return json.dumps(summary, ensure_ascii=False)
+
+
+def _s4_vocab_items(
+    cards: list[dict[str, object]], fallback_seg: str
+) -> list[dict[str, object]]:
+    """vocab — ТОЛЬКО из выпущенных S1-карточек payload (S4.6)."""
+    items: list[dict[str, object]] = []
+    for card in cards[:3]:
+        lemma = str(card.get("id", ""))
+        if not lemma:
+            continue
+        word_form = str(card.get("word_form") or lemma)
+        items.append(
+            {
+                "type": "vocab",
+                "prompt": f"Выберите перевод слова «{word_form}».",
+                "answer": str(card.get("translation") or code(lemma)),
+                "segment_id": str(card.get("segment_id") or fallback_seg),
+                "source_ref": {"kind": "card", "id": lemma},
+            }
+        )
+    return items
+
+
+def _s4_grammar_items(
+    notes: list[dict[str, object]], fallback_seg: str
+) -> list[dict[str, object]]:
+    """grammar — ТОЛЬКО из выпущенных S3-заметок payload (S4.6)."""
+    items: list[dict[str, object]] = []
+    for note in notes[:3]:
+        surface = str(note.get("id", ""))
+        if not surface:
+            continue
+        items.append(
+            {
+                "type": "grammar",
+                "prompt": f"Объясните форму «{surface}».",
+                "answer": str(note.get("explanation") or code(surface)),
+                "segment_id": str(note.get("segment_id") or fallback_seg),
+                "source_ref": {"kind": "note", "id": surface},
+            }
+        )
+    return items
+
+
+def _s4_gap_exercise(
+    pick: Callable[[int], tuple[str, str]], chapter_index: int
+) -> dict[str, object] | None:
+    segment_id, sentence = pick(5)
+    words = _s4_content_words(sentence)
+    if not words:
+        return None
+    word = words[chapter_index % len(words)]
+    blanked = blank_first_occurrence(sentence, word)
+    return {
+        "type": "gap",
+        "prompt": f"Вставьте пропущенное слово: {blanked}",
+        "answer": word,
+        "segment_id": segment_id,
+        "source_ref": None,
+        "original_sentence": sentence,
+        "sentence_with_blank": blanked,
+    }
+
+
+def _s4_mc_exercises(
+    pick: Callable[[int], tuple[str, str]], chapter_index: int
+) -> list[dict[str, object]]:
+    items: list[dict[str, object]] = []
+    for k in range(2):
+        segment_id, sentence = pick(6 + k)
+        words = _s4_content_words(sentence)
+        if not words:
+            continue
+        correct = words[(chapter_index + k) % len(words)]
+        items.append(
+            {
+                "type": "mc",
+                "prompt": f"Выберите верный вариант по фрагменту: {sentence}",
+                "answer": correct,
+                "segment_id": segment_id,
+                "source_ref": None,
+                "options": _s4_mc_options(
+                    correct,
+                    _s4_distractors(correct, words),
+                    (chapter_index + k + 1) % 4,
+                ),
+            }
+        )
+    return items
+
+
+def _s4_tf_exercise(
+    pick: Callable[[int], tuple[str, str]], chapter_index: int
+) -> dict[str, object] | None:
+    segment_id, sentence = pick(8)
+    words = _s4_content_words(sentence)
+    if not words:
+        return None
+    return {
+        "type": "tf",
+        "prompt": f"Верно ли утверждение: «{sentence}»?",
+        "answer": "true" if chapter_index % 2 == 0 else "false",
+        "segment_id": segment_id,
+        "source_ref": None,
+        "entities": [words[0]],
+    }
+
+
+def _s4_free_exercise(
+    pick: Callable[[int], tuple[str, str]], chapter_index: int
+) -> dict[str, object] | None:
+    segment_id, sentence = pick(9)
+    words = _s4_content_words(sentence)
+    if not words:
+        return None
+    return {
+        "type": "free",
+        "prompt": f"Что следует из фрагмента: {sentence}?",
+        "answer": "Эталонный ответ: " + code(words[chapter_index % len(words)]),
+        "segment_id": segment_id,
+        "source_ref": None,
+        "entities": words[:2],
+    }
+
+
+def _s4_sentence_exercises(
+    allowed: set[str], pick: Callable[[int], tuple[str, str]], chapter_index: int
+) -> list[dict[str, object]]:
+    """Упражнения, строящиеся по предложениям главы (translation/gap/mc/tf/
+    free): translation — предложение дословно из главы (S4)."""
+    items: list[dict[str, object]] = []
+    if "translation" in allowed:
+        for k in range(2):
+            segment_id, sentence = pick(k)
+            items.append(
+                {
+                    "type": "translation",
+                    "prompt": sentence,
+                    "answer": code(sentence),
+                    "segment_id": segment_id,
+                    "source_ref": None,
+                }
+            )
+    if "gap" in allowed:
+        item = _s4_gap_exercise(pick, chapter_index)
+        if item is not None:
+            items.append(item)
+    if "mc" in allowed:
+        items.extend(_s4_mc_exercises(pick, chapter_index))
+    if "tf" in allowed:
+        item = _s4_tf_exercise(pick, chapter_index)
+        if item is not None:
+            items.append(item)
+    if "free" in allowed:
+        item = _s4_free_exercise(pick, chapter_index)
+        if item is not None:
+            items.append(item)
+    return items
+
+
+def _s4_exercise_items(
+    payload: dict[str, object], chapter_index: int, scenario: str
+) -> list[dict[str, object]]:
+    """S4: детерминированные mock-упражнения — vocab только из карточек
+    payload, grammar только из заметок (S4.6), translation дословно из
+    главы, типы — из payload.exercise_types (конфиг limits)."""
+    allowed = {str(t) for t in _s4_payload_list(payload, "exercise_types")}
+    sentences = _s4_segment_sentences(payload)
+    fallback_seg = sentences[0][0] if sentences else ""
+    items: list[dict[str, object]] = []
+    if "vocab" in allowed:
+        cards = [c for c in _s4_payload_list(payload, "cards") if isinstance(c, dict)]
+        items.extend(_s4_vocab_items(cards, fallback_seg))
+    if "grammar" in allowed:
+        notes = [n for n in _s4_payload_list(payload, "notes") if isinstance(n, dict)]
+        items.extend(_s4_grammar_items(notes, fallback_seg))
+    if sentences:
+        def pick(index: int) -> tuple[str, str]:
+            return sentences[index % len(sentences)]
+
+        items.extend(_s4_sentence_exercises(allowed, pick, chapter_index))
+    if scenario == "s4_vocab_ghost":
+        idx = _s4_first_of_type(items, "vocab")
+        if idx is not None:
+            items[idx] = dict(items[idx], source_ref={"kind": "card", "id": "ghost_lemma_x"})
+    return items
+
+
+def _chapter_exercises_response(user: str, scenario: str) -> str:
+    """Ответ задачи chapter_exercises (S4)."""
+    start = user.find(_S4_EXERCISES_MARKER)
+    if start == -1:
+        return json.dumps({"items": []})
+    try:
+        payload = json.loads(user[start + len(_S4_EXERCISES_MARKER) :].strip())
+    except json.JSONDecodeError:
+        return json.dumps({"items": []})
+    chapter_index = sum(ord(ch) for ch in str(payload.get("chapter_id", "")))
+    return json.dumps({"items": _s4_exercise_items(payload, chapter_index, scenario)})
+
+
 _CANNED_ANALYSIS = {
     "empty": "",
     "bad_json": '{"items": [unterminated — not valid JSON',
@@ -525,6 +1003,9 @@ def _analysis_response(scenario: str, system: str, user: str) -> str:
         "vocabulary_card": lambda: _vocabulary_card_response(user, scenario),
         "mwe_note": lambda: _mwe_note_response(user, scenario),
         "grammar_note": lambda: _grammar_note_response(user, scenario),
+        "chapter_summary": lambda: _chapter_summary_response(user),
+        "chapter_questions": lambda: _chapter_questions_response(user, scenario),
+        "chapter_exercises": lambda: _chapter_exercises_response(user, scenario),
     }
     handler = handlers.get(task)
     if handler is not None:

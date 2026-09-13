@@ -23,48 +23,131 @@
   заявляются);
   **S3 (Грамматические заметки, ТЗ_03)** — CONTROL PASS 7/7 (S3-1…S3-7 +
   T-S3-1…10), 223/223 теста (на mock, BLOCKER-1 — реальные прогоны не
-  заявляются).
+  заявляются);
+  **S4 (Summary, вопросы, упражнения, ТЗ_03)** — CONTROL PASS 7/7
+  (S4-1…S4-7 + T-S4-8/9), 244/244 теста (на mock, BLOCKER-1 — реальные
+  прогоны не заявляются).
   Отчёты: `docs/ENGINE_PROBE.md`, `docs/CONTROL/E2.md`, `docs/CONTROL/E3.md`,
   `docs/CONTROL/E4.md`, `docs/CONTROL/E5.md`, `docs/CONTROL/E6.md`, `docs/CONTROL/L0.md`,
   `docs/CONTROL/L1.md`, `docs/CONTROL/L2.md`, `docs/CONTROL/L3.md`,
-  `docs/CONTROL/S1.md`, `docs/CONTROL/S2.md`, `docs/CONTROL/S3.md`; evidence:
+  `docs/CONTROL/S1.md`, `docs/CONTROL/S2.md`, `docs/CONTROL/S3.md`,
+  `docs/CONTROL/S4.md`; evidence:
   `docs/CONTROL/evidence/E1…E6/`, `docs/CONTROL/evidence/L0/`,
   `docs/CONTROL/evidence/L1/`, `docs/CONTROL/evidence/L2/`,
   `docs/CONTROL/evidence/L3/`, `docs/CONTROL/evidence/S1/`,
-  `docs/CONTROL/evidence/S2/`, `docs/CONTROL/evidence/S3/`.
-- **Далее:** **S4 — summary, вопросы, упражнения (ТЗ_03 §S4)**, затем S5
-  (учебный EPUB-аугмент + экспорты + kill ×10) и TZ_04
-  (U1, U2, V1). S4 (ТЗ_03 §S4): summary только по фактическому тексту главы
-  (по названию — запрещено; пустая/нечитаемая глава — не создаётся,
-  пропуск зафиксирован); вопросы на понимание трёх уровней (Easy — 5
-  фактических / Standard — 5–10 на содержание / Advanced — вывод, намерение
-  автора, аргументация); упражнения: множественный выбор, верно/неверно,
-  заполнение пропуска, перевод, лексика, грамматика, свободный ответ
-  (состав типов — конфигурация); ответы — отдельная сущность (не в теле
-  главы); детерминированная валидация: пропуск — удалённое слово в
-  исходном предложении; выбор — ровно один правильный, без дублей,
-  правильный не выделяется длиной (распределение длин); верно/неверно —
-  сопоставимо с текстом главы по сущностям; вопросы по отсутствующим
-  сущностям — отклоняются; лексические/грамматические упражнения — из
-  выпущенных S1-карточек и S3-заметок (не порождают новый материал). CONTROL
-  S4-1…S4-7 (S4-1: пустая глава — 100% без summary, пропуск зафиксирован;
-  S4-2: пропусков вне предложения — 0; S4-3: выбор с числом правильных ≠ 1 —
-  0; S4-4: вопросы по отсутствующим сущностям — 0; S4-5: ответы в теле
-  главы — 0 вхождений; S4-6: лексические упражнения из выпущенных карточек —
-  100%; S4-7: 5 языков), T-S4-8 — глава-изображение без текста, T-S4-9 —
-  распределение длин вариантов (100 вопросов). Гейт уровней (таблица
-  ТЗ_03): вопросы — `Learning`, упражнения — `Intensive`; подстадия/подстадии
-  S4 в `run_learning` (гейт `SUBSTAGE_LEVELS` расширить),
-  ключ идемпотентности `sha256(input_hash | glossary_hash | level | cefr)`,
-  LLM-задача по главам батчами, `quality.json`-секция, версионные поля.
-  Общие требования TZ_03 (неизменны для S4–S5):
-  только по выровненному подмножеству E6 и тексту ПОСЛЕ L3; привязка к
-  `chapter_id`/`segment_id`/`source_text_hash` + версии (промпт, профиль,
-  модель, пара, уровень, timestamp, хэш глоссария); уровни
-  Minimal/Balanced/Learning/Intensive; CEFR — отбор, не фильтр-абсолют;
-  генераторы поглавные (никогда не вся книга в запрос); ответы хранятся
-  отдельно от заданий. Протокол этапов как в E/L-стадиях (ветка stage/<S>,
-  явные пути в коммите, merge --no-ff, гейты, CONTROL + evidence, DECISIONS).
+  `docs/CONTROL/evidence/S2/`, `docs/CONTROL/evidence/S3/`,
+  `docs/CONTROL/evidence/S4/`.
+- **Далее:** **S5 — сборка learning EPUB и экспорт карточек (ТЗ_03 §S5)**,
+  затем TZ_04 (U1, U2, V1). S5 (ТЗ_03 §S5): метод сборки — ДОПОЛНЕНИЕ
+  выходного EPUB тракта T, а не создание с нуля: распаковка → вставка
+  XHTML-секций → правка `nav`/NCX и OPF `manifest`/`spine` → упаковка
+  (метаданные/обложка/изображения/стили/ссылки сохраняются по построению);
+  `mimetype` — первая запись архива БЕЗ сжатия, остальные сжаты, `zipinfo`
+  в отчёт verbatim; структура: текст главы, затем ОТДЕЛЬНЫЕ секции в конце
+  главы — ключевая лексика, выражения, грамматика, вопросы, упражнения
+  (смешивание учебного материала в поток запрещено); ответы — отдельная
+  секция в КОНЦЕ КНИГИ; состав секций — по уровню (Minimal…Intensive);
+  каждая добавленная секция — запись в оглавлении; экспорт карточек
+  CSV/Anki/JSON (свой формат не изобретать; поля по `card_schema.json`
+  языка: артикль de/nl и род fr/it обязаны попасть в экспорт, а не теряться
+  при выравнивании колонок); валидация — внутренние проверки + EPUBCheck
+  (нет валидатора — Rule 6); атомарная выдача `.partial` → валидация →
+  `os.replace`; фактический охват (доля E6, пропущенные главы) — в книге и
+  в UI, расхождение с отчётом E6 = 0. CONTROL S5-1…S5-9 (S5-1: EPUBCheck
+  0 ERROR на 5 языковых фикстурах; S5-2: mimetype первой записью, 100%;
+  S5-3: сохранность обложки/изображений/стилей/ссылок 100%, расхождения
+  перечислены; S5-4: записи в оглавлении для всех секций, 100%; S5-5:
+  ответы в теле глав — 0; S5-6: обязательные поля карточек — 100% строк;
+  S5-7: импорт экспорта в Anki без ошибок — фактически, verbatim; S5-8:
+  охват в книге = отчёт E6, расхождение 0; S5-9: kill на записи learning
+  EPUB ×10 — 0 повреждённых принятых файлов), T-S5-10 (Minimal: без секций
+  лексики/грамматики/вопросов), T-S5-11 (Intensive: все секции, ответы
+  только в финальной), T-S5-12 (охват 90%: отражён, пропущенные главы
+  перечислены). Ключ идемпотентности — собственный `stage_results:
+  s5_assembly` (та же формула, что у подстадий S1–S4; упражнения — вход),
+  секция `quality.json`. Общие требования TZ_03 (неизменны): только по
+  выровненному подмножеству E6 и тексту ПОСЛЕ L3; привязка к
+  `chapter_id`/`segment_id` + версии; уровни Minimal/Balanced/Learning/
+  Intensive. Протокол этапов как в E/L-стадиях (ветка stage/<S>, явные
+  пути в коммите, merge --no-ff, гейты, CONTROL + evidence, DECISIONS).
+
+## Сделано в S4
+
+- **`app/learning/study.py` (новое):** детерминированная валидация учебных
+  материалов и конвенции: `BLANK="____"`, `split_words` (regex
+  `[^\W\d_]+`), `blank_first_occurrence` (первое вхождение на границе слова,
+  IGNORECASE), `check_gap` (слово ∈ словах исходного предложения + blank по
+  конвенции), `check_mc` (≥2 вариантов, без дублей casefold, ровно один
+  правильный, ответ = текст правильного), `check_tf_answer`, `check_entities`
+  (`contains_form` по нормализованному тексту главы — Rule 8, тот же
+  механизм L2/S2/S3), `validate_summary` (brief/extended непустые, списки),
+  `validate_question`, `validate_exercise` (vocab `source_ref` → id
+  выпущенной S1-карточки, grammar → id выпущенной S3-заметки, translation —
+  prompt ∈ тексту главы, type ∈ `limits.exercises_types`).
+- **`app/workers/pipeline.py`:** три подстадии в `run_learning`
+  (`SUBSTAGE_LEVELS`: `s4_summary` {Intensive}, `s4_questions`
+  {Learning, Intensive}, `s4_exercises` {Intensive}): `_s4_chapter_data`
+  (выровненные сегменты главы, пары E6; главы БЕЗ текстовых сегментов
+  исключаются ДО LLM — `skipped` с причиной + warning, S4.1/T-S4-8) → LLM
+  по главам (summary — ОДНО объект-изложение; вопросы — 15: 5 easy + 5–10
+  standard + 1–5 advanced; упражнения — 7 типов, состав — конфиг) →
+  детерминированная валидация → дедупликация (`type|question.casefold()` /
+  prompt упражнения) → `summaries.json` / `questions.json` /
+  `exercises.json` (записи БЕЗ `answer`/`correct`) + `answers.json`
+  `{chapters:{ch:{questions:{qid},exercises:{eid}}}}` (ВСЕ ответы —
+  отдельная сущность, S4-5; mc — индекс строкой, gap — слово, tf —
+  true/false, free — эталон) + секция `s4.{summary,questions,exercises}` в
+  `quality.json` + `record_stage_result` (ключи `s4_summary`/
+  `s4_questions`/`s4_exercises`; у упражнений — плюс hashes
+  `vocabulary_cards.json`/`grammar_notes.json` — вход = выпуски S1/S3).
+  Детерминированные id: `uuid5(NAMESPACE_URL, "s4:{ch}:{type}:{text.
+  casefold()}").hex`.
+- **`app/llm/tasks.py`:** задачи `chapter_summary` (JSON-схема — ОДИН
+  объект, не items: brief/extended/key_events/entities/themes/concepts —
+  семантика «одна сводка на главу» в схеме), `chapter_questions` (items:
+  question/type/level/segment_id/entities/answer; опц. options/
+  original_sentence/sentence_with_blank), `chapter_exercises` (items:
+  type/prompt/answer/segment_id/source_ref; `source_ref.kind` ∈ {card, note}
+  | null — translation/gap/mc/tf/free используют null).
+- **Промпты:** `prompts/chapter_summary/v1.yaml`,
+  `prompts/chapter_questions/v1.yaml`, `prompts/chapter_exercises/v1.yaml`
+  (generic, маркеры payload в user_template).
+- **Конфиг:** `limits.exercises_types` (7 типов, дефолт — все;
+  field_validator — неизвестный тип → `ConfigurationError`),
+  `config.example.yaml`.
+- **Mock (D3):** три S4-обработчика — summary (всегда schema-validный
+  объект, фолбэк entities=["текст"] — требуется для E4-2, которая шлёт
+  plain text; генерация из фактических предложений segments), questions
+  (5 gap + 5 mc + 2 tf + 3 free на главу; gap-слово/mc-варианты — из слов
+  предложения, позиции `(chapter_index + k) % 4`), exercises (≤3 vocab из
+  карточек payload, ≤3 grammar из заметок, 2 translation, 1 gap, 2 mc,
+  1 tf, 1 free); сценарии `s4_gap_missing_word` (answer
+  «ZzblqAbsentWord»), `s4_mc_two_correct`, `s4_mc_dup_option`,
+  `s4_entity_ghost` (entities [«QwzxwGhost»]), `s4_vocab_ghost`
+  (source_ref id «ghost_lemma_x»).
+- **Измерено (evidence S4, `docs/CONTROL/evidence/S4/`, 9 файлов):**
+  пустая + image-главы — 0 summary, 2/2 пропусков зафиксированы с причиной
+  (verbatim); 0 gap с чужим словом (инъекция отклонена с причиной); 0 mc с
+  2 правильными / с дублем (2 сценария verbatim); 0 выпущенных с
+  отсутствующей сущностью (инъекция QwzxwGhost); 0 полей answer/correct в
+  теле (300 вопросов + 169 упражнений), answers.json 1:1 (300/300,
+  169/169); 100% vocab из выпущенных карточек (29/29,
+  `vocab_from_cards`=1.0, ghost отклонён); 5/5 языков со всеми тремя
+  подстадиями (en/de/fr/it/nl: 15 вопросов / 8–11 упражнений) + гейт
+  уровней (Minimal/Balanced — без s4, Learning — только вопросы); mc-100:
+  позиции 26/26/24/24 (топ 26%), «самый длинный» 38/100 < 60%.
+- Тесты: 21 запуск в `tests/test_s4_study.py` (T-S4-1…T-S4-9; T-S4-7 —
+  ×5 языков + гейт уровней; T-S4-8 — глава-изображение; T-S4-9 —
+  распределение 100 mc). Evidence-скрипт `tests/s4_evidence.py`
+  (9 verbatim-файлов, 15 прогонов). Полный прогон 244/244 (223 + 21),
+  ruff 0, mypy 0 (64 файла).
+- Дефекты этапа: не обнаружено. Честные пределы механизма (в CONTROL S4):
+  LLM — mock (BLOCKER-1); фактчекинг summary — за LLM; «правильный не
+  самый длинный» гейтится как РАСПРЕДЕЛЕНИЕ по книге (топ-позиция < 60%,
+  «самый длинный» < 60% — пороги избраны, в ТЗ их нет); grammar-ветка
+  сквозного прогона без заметок (кандидатов 0 на S4-фикстурах — покрывается
+  unit); free-ответы — семантическая проверка за LLM (детерминированно —
+  только наличие сущностей в главе).
 
 ## Сделано в S3
 

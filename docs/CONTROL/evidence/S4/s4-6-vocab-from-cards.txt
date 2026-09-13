@@ -1,0 +1,35 @@
+дата: 2026-09-13 22:52:26
+версии: python=3.11.13 spacy=3.8.16
+
+s4_en.epub (Intensive, mock ok) + сценарий s4_vocab_ghost (source_ref = «ghost_lemma_x» — не среди выпущенных карточек)
+
+карточек S1 выпущено: 33; vocab-упражнений: 29; вне выпущенных карточек: 0
+vocab_from_cards (exercises.json): 1.0
+
+примеры vocab-упражнений с source_ref (verbatim):
+  chapter=ch1 ref={'kind': 'card', 'id': 'dusk'} prompt='Выберите перевод слова «dusk».'
+  chapter=ch1 ref={'kind': 'card', 'id': 'pass'} prompt='Выберите перевод слова «passed».'
+  chapter=ch1 ref={'kind': 'card', 'id': 'map'} prompt='Выберите перевод слова «maps».'
+  chapter=ch2 ref={'kind': 'card', 'id': 'meadow'} prompt='Выберите перевод слова «meadow».'
+  chapter=ch2 ref={'kind': 'card', 'id': 'dewdrop'} prompt='Выберите перевод слова «dewdrop».'
+
+сценарий s4_vocab_ghost — отклонения (verbatim):
+  prompt='Выберите перевод слова «dusk».' reasons=["лексическое упражнение не из выпущенной карточки (S4.6): 'ghost_lemma_x'"]
+  prompt='Выберите перевод слова «meadow».' reasons=["лексическое упражнение не из выпущенной карточки (S4.6): 'ghost_lemma_x'"]
+  prompt='Выберите перевод слова «seagull».' reasons=["лексическое упражнение не из выпущенной карточки (S4.6): 'ghost_lemma_x'"]
+  prompt='Выберите перевод слова «forest».' reasons=["лексическое упражнение не из выпущенной карточки (S4.6): 'ghost_lemma_x'"]
+  prompt='Выберите перевод слова «orchard».' reasons=["лексическое упражнение не из выпущенной карточки (S4.6): 'ghost_lemma_x'"]
+  prompt='Выберите перевод слова «coyote».' reasons=["лексическое упражнение не из выпущенной карточки (S4.6): 'ghost_lemma_x'"]
+  prompt='Выберите перевод слова «dockyard».' reasons=["лексическое упражнение не из выпущенной карточки (S4.6): 'ghost_lemma_x'"]
+  prompt='Выберите перевод слова «seashell».' reasons=["лексическое упражнение не из выпущенной карточки (S4.6): 'ghost_lemma_x'"]
+  prompt='Выберите перевод слова «cape».' reasons=["лексическое упражнение не из выпущенной карточки (S4.6): 'ghost_lemma_x'"]
+  prompt='Выберите перевод слова «marsh».' reasons=["лексическое упражнение не из выпущенной карточки (S4.6): 'ghost_lemma_x'"]
+  prompt='Выберите перевод слова «isle».' reasons=["лексическое упражнение не из выпущенной карточки (S4.6): 'ghost_lemma_x'"]
+  prompt='Выберите перевод слова «moraine».' reasons=["лексическое упражнение не из выпущенной карточки (S4.6): 'ghost_lemma_x'"]
+  prompt='Выберите перевод слова «muskox».' reasons=["лексическое упражнение не из выпущенной карточки (S4.6): 'ghost_lemma_x'"]
+  prompt='Выберите перевод слова «canyon».' reasons=["лексическое упражнение не из выпущенной карточки (S4.6): 'ghost_lemma_x'"]
+  prompt='Выберите перевод слова «coral».' reasons=["лексическое упражнение не из выпущенной карточки (S4.6): 'ghost_lemma_x'"]
+  prompt='Выберите перевод слова «peatbog».' reasons=["лексическое упражнение не из выпущенной карточки (S4.6): 'ghost_lemma_x'"]
+«ghost_lemma_x» среди выпущенных: False
+
+S4-6: PASS — 100% vocab-упражнений из выпущенных карточек; призрачный источник отклонён

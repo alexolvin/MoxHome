@@ -1,0 +1,12 @@
+дата: 2026-09-13 22:52:26
+версии: python=3.11.13 spacy=3.8.16
+
+s4_en1.epub (Learning, сценарий s4_gap_missing_word: у первого gap-вопроса answer = «ZzblqAbsentWord» — слова нет в предложении)
+
+вопросов выпущено: 14; отклонено: 1
+
+отклонения с причиной S4-2 (verbatim):
+  chapter='ch1' question='Вставьте пропущенное слово: The harbor near the anchor kept the lighthouse steady while the buoy rose over the ____.' reasons=['пропущенное слово отсутствует в исходном предложении (S4.2): ZzblqAbsentWord']
+gap-вопросов выпущено: 4; «ZzblqAbsentWord» среди выпущенных: False
+
+S4-2: PASS — gap с чужим словом отклонён, выпущено 0 таких

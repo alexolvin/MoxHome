@@ -69,6 +69,9 @@ limits:
   vocabulary_max_cards_per_1000_words: 15
   grammar_max_notes_per_chapter: 10
   glossary_max_user_prompt_chars: 8000
+  # S4: состав типов упражнений главы; тип вне списка отклоняется
+  # детерминированной валидацией (mc, tf, gap, translation, vocab, grammar, free)
+  exercises_types: [mc, tf, gap, translation, vocab, grammar, free]
 
 glossary:
   # L2: глоссарий книги (кандидаты детерминированно, LLM — перевод/пояснение/
