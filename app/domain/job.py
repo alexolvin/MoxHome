@@ -1,12 +1,14 @@
 """Модель задания (E3): статусы и явная таблица допустимых переходов (E3.2).
 
-Машина состояний — из ТЗ §E3 (+ L3, ТЗ_02 §L3):
+Машина состояний — из ТЗ §E3 (+ L3, ТЗ_02 §L3; + LEARNING, ТЗ_03):
     CREATED → VALIDATING → [NEEDS_CONFIRMATION →] PLANNING → TRANSLATING
-    → ANALYZING → GENERATING → VALIDATING_OUTPUT → GLOSSARY_FIX
+    → ANALYZING → GENERATING → VALIDATING_OUTPUT → GLOSSARY_FIX → LEARNING
     → COMPLETED | COMPLETED_WITH_WARNINGS | FAILED
 GLOSSARY_FIX (L3) — правка перечисленных расхождений глоссария в выходном
 EPUB; стадия всегда существует (при выключенной правке — no-op, T-L3-10).
-Из любого рабочего состояния — CANCELLED / PAUSED / INTERRUPTED;
+LEARNING (S1–S5, ТЗ_03) — финальный рабочий этап: learning-материалы по
+тексту перевода ПОСЛЕ L3; стадия всегда существует (learning не включён —
+no-op). Из любого рабочего состояния — CANCELLED / PAUSED / INTERRUPTED;
 INTERRUPTED/PAUSED → (resume) → состояние, с которого прервались
 (состояние проверяется: только сохранённый interrupted_from/paused_from).
 Переход не из таблицы — ошибка (JobStateError), а не молчаливое присвоение.
@@ -30,6 +32,9 @@ class JobStatus(StrEnum):
     VALIDATING_OUTPUT = "VALIDATING_OUTPUT"
     #: L3: правка перечисленных расхождений глоссария в выходном EPUB (ТЗ_02 §L3).
     GLOSSARY_FIX = "GLOSSARY_FIX"
+    #: S1–S5 (ТЗ_03): learning-материалы по тексту перевода ПОСЛЕ L3; финальный
+    #: рабочий этап — терминальный статус по итогам стадии.
+    LEARNING = "LEARNING"
     COMPLETED = "COMPLETED"
     COMPLETED_WITH_WARNINGS = "COMPLETED_WITH_WARNINGS"
     FAILED = "FAILED"
@@ -48,6 +53,7 @@ WORKING_STATES: frozenset[JobStatus] = frozenset(
         JobStatus.GENERATING,
         JobStatus.VALIDATING_OUTPUT,
         JobStatus.GLOSSARY_FIX,
+        JobStatus.LEARNING,
     }
 )
 #: Терминальные состояния (переходов из них нет).
@@ -72,6 +78,8 @@ NEXT_STAGE: Mapping[JobStatus, JobStatus] = {
     JobStatus.ANALYZING: JobStatus.GENERATING,
     JobStatus.GENERATING: JobStatus.VALIDATING_OUTPUT,
     JobStatus.VALIDATING_OUTPUT: JobStatus.GLOSSARY_FIX,
+    # S1–S5 (ТЗ_03): learning-материалы — по тексту перевода ПОСЛЕ L3.
+    JobStatus.GLOSSARY_FIX: JobStatus.LEARNING,
 }
 
 
@@ -99,8 +107,11 @@ TRANSITIONS: Mapping[JobStatus, frozenset[JobStatus]] = {
     JobStatus.ANALYZING: _controls(JobStatus.GENERATING, JobStatus.FAILED),
     JobStatus.GENERATING: _controls(JobStatus.VALIDATING_OUTPUT, JobStatus.FAILED),
     JobStatus.VALIDATING_OUTPUT: _controls(JobStatus.GLOSSARY_FIX, JobStatus.FAILED),
-    # L3: финальный рабочий этап — терминальный статус по итогам правки.
-    JobStatus.GLOSSARY_FIX: _controls(
+    # L3: после правки — LEARNING (S1–S5); GLOSSARY_FIX — не финальный этап,
+    # как другие рабочие (halt L3.6 — FAILED, D63).
+    JobStatus.GLOSSARY_FIX: _controls(JobStatus.LEARNING, JobStatus.FAILED),
+    # S1–S5 (ТЗ_03): финальный рабочий этап — терминальный статус по итогам.
+    JobStatus.LEARNING: _controls(
         JobStatus.COMPLETED, JobStatus.COMPLETED_WITH_WARNINGS, JobStatus.FAILED
     ),
     # Resume: только в сохранённое *_from-состояние (проверяется в репозитории).
@@ -111,6 +122,12 @@ TRANSITIONS: Mapping[JobStatus, frozenset[JobStatus]] = {
     JobStatus.FAILED: frozenset(),
     JobStatus.CANCELLED: frozenset(),
 }
+
+
+#: Уровни learning-материалов (ТЗ_03): управляют сложностью композиций, а не
+#: абсолютным фильтром (CEFR/уровень влияют на отбор, но не блокируют).
+#: Спеллинг — из ТЗ_03 (первая буква заглавная).
+LEARNING_LEVELS: tuple[str, ...] = ("Minimal", "Balanced", "Learning", "Intensive")
 
 
 @dataclass(frozen=True)
@@ -151,3 +168,9 @@ class Job:
     #: подтверждён (NEEDS_CONFIRMATION или джоб не дошёл до validating).
     source_language: str | None = None
     error_message: str | None = None
+    #: Learning (S1–S5, ТЗ_03): уровень сложности материалов (LEARNING_LEVELS);
+    #: None — learning не включён (стадия LEARNING существует, no-op).
+    learning_level: str | None = None
+    #: Learning (ТЗ_03): CEFR-уровень пользователя (A1..C2); влияет на отбор,
+    #: не является абсолютным фильтром. None — не задан (не влияет).
+    learning_cefr: str | None = None

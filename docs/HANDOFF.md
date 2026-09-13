@@ -16,27 +16,37 @@
   частотность)** — CONTROL PASS 9/9 (L1-1…L1-9 + T-L1-10/11/12);
   **L2 (Глоссарий и терминология)** — CONTROL PASS 8/8 (L2-1…L2-8 + T-L2-1…11);
   **L3 (Правка перевода по глоссарию)** — CONTROL PASS 10/10 (L3-1…L3-10 +
-  T-L3-1…15), 171/171 теста (на mock, BLOCKER-1 — реальные прогоны
-  не заявляются).
+  T-L3-1…15);
+  **S1 (Отбор лексики, ТЗ_03)** — CONTROL PASS 7/7 (S1-1…S1-7 + T-S1-1…10),
+  185/185 теста (на mock, BLOCKER-1 — реальные прогоны не заявляются).
   Отчёты: `docs/ENGINE_PROBE.md`, `docs/CONTROL/E2.md`, `docs/CONTROL/E3.md`,
   `docs/CONTROL/E4.md`, `docs/CONTROL/E5.md`, `docs/CONTROL/E6.md`, `docs/CONTROL/L0.md`,
-  `docs/CONTROL/L1.md`, `docs/CONTROL/L2.md`, `docs/CONTROL/L3.md`; evidence:
+  `docs/CONTROL/L1.md`, `docs/CONTROL/L2.md`, `docs/CONTROL/L3.md`,
+  `docs/CONTROL/S1.md`; evidence:
   `docs/CONTROL/evidence/E1…E6/`, `docs/CONTROL/evidence/L0/`,
   `docs/CONTROL/evidence/L1/`, `docs/CONTROL/evidence/L2/`,
-  `docs/CONTROL/evidence/L3/`.
-- **Далее:** **TZ_03_LEARNING — этапы S1–S5 (учебные материалы)**, затем
-  TZ_04_INTERFACES_AND_ACCEPTANCE. Общие требования TZ_03: все этапы — только по
-  выровненному подмножеству E6 и только по тексту перевода ПОСЛЕ L3 (карточка,
-  чей перевод термина взят из текста до правки, устаревает и не выпускается);
-  каждый артефакт
-  привязан к `chapter_id`/`segment_id`/`source_text_hash` + версии (промпт,
-  профиль, модель, пара, уровень, timestamp, хэш глоссария); уровни
+  `docs/CONTROL/evidence/L3/`, `docs/CONTROL/evidence/S1/`.
+- **Далее:** **S2 — устойчивые выражения и многословные конструкции (MWE,
+  ТЗ_03 §S2)**, затем S3–S5 (ТЗ_03_LEARNING) и TZ_04_INTERFACES_AND_ACCEPTANCE.
+  S2: типы конструкций — из `phenomena.yaml` языка (EN-PHRASAL-VERB — частный
+  случай, не универсальная категория); языкоспецифичные обязательные случаи:
+  de — DE-TRENNBAR (отделяемые с разорванной приставкой) +
+  DE-NOMEN-VERB-VERBINDUNG; nl — NL-SCHEIDBAAR + NL-ER-CONSTRUCTIE; fr —
+  FR-LOCUTION-VERBALE + сложное отрицание; it — IT-VERBI-PRONOMINALI/
+  IT-VERBI-SINTAGMATICI + комбинированные местоимения; en — фразовые глаголы +
+  коллокации. Детерминированный предотбор — морфосинтаксические шаблоны spaCy
+  (зависимости, POS-последовательности) + повторяемость, LLM уточняет/
+  объясняет; разорванные конструкции — обе части с позициями (запись без второй
+  части невалидна); валидация: id ∈ таксономии языка, все части в сегменте,
+  канонический вид непустой. CONTROL S2-1…S2-6 (S2-2: golden-30 de/nl
+  отделяемые ≥ 85%). Общие требования TZ_03 (неизменны для S2–S5): только по
+  выровненному подмножеству E6 и тексту ПОСЛЕ L3; привязка к
+  `chapter_id`/`segment_id`/`source_text_hash` + версии (промпт, профиль,
+  модель, пара, уровень, timestamp, хэш глоссария); уровни
   Minimal/Balanced/Learning/Intensive; CEFR — отбор, не фильтр-абсолют;
   генераторы поглавные (никогда не вся книга в запрос); ответы хранятся
-  отдельно от заданий. S1 — отбор лексики (двухступенчатый: детерминированная
-  ступень ОБЯЗАТЕЛЬНА — лемма/POS/служебные/частотная полоса wordfreq/CEFR
-  источника/повторяемость, LLM-ступень — только ранжирование и карточка,
-  обратный порядок запрещён). CONTROL S1…S5, протокол этапов как в E/L-стадиях.
+  отдельно от заданий. Протокол этапов как в E/L-стадиях (ветка stage/<S>,
+  явные пути в коммите, merge --no-ff, гейты, CONTROL + evidence, DECISIONS).
 
 ## Сделано в L2
 

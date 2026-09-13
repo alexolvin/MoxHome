@@ -1,0 +1,14 @@
+дата: 2026-09-13 13:30:29
+версии: python=3.11.13 spacy=3.8.16
+
+s1_en.epub — плотность (S1-3: ≤ N на 1000 слов исходного языка):
+
+  N (limits.vocabulary_max_cards_per_1000_words) = 15.0
+  book_words = 1823
+  max_cards = floor(15.0 × 1823 / 1000) = 27 (расчёт: 27)
+  candidates_total = 24
+  cards_issued = 24 (≤ cap: True)
+  density_actual = 13.165112 (≤ N: True)
+  cards_not_selected = 0  cards_rejected = 0  cards_missing = 0
+
+S1-3: PASS
