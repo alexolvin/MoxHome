@@ -27,6 +27,13 @@ phenomena:
     kind: grammar
     name: "Сложное отрицание"
     description: "ne + plus/jamais/rien/personne…: Je ne sais plus, il n'y a personne."
+    patterns:
+      # Два маркера в пределах предложения: ne/n' (измерено: ADV) +
+      # второй элемент отрицания (jamais/plus — ADV, rien — PRON,
+      # personne — ADJ: по тексту, POS не ограничивает).
+      - type: wrap
+        start: {text: ["ne", "n'"]}
+        end: {text: [jamais, plus, rien, personne]}
   - id: FR-GERONDIF
     kind: grammar
     name: "Герундий (gérondif)"
@@ -35,6 +42,13 @@ phenomena:
     kind: mwe
     name: "Глагольная фраза (locution verbale)"
     description: "Глагол + частица/предлог как единое действие: s'appeler, faire semblant de, arriver à."
+    patterns:
+      # Возвратный/своёместоимный элемент + глагол; позиция 0 — только
+      # клитика (se/s'/me/m'/te/t'), иначе «Je parle» — ложный кандидат.
+      - type: sequence
+        pos: [PRON, VERB]
+        texts: {0: [se, s', me, m', te, t']}
+        min_occurrences: 2
   - id: FR-EXPRESSION-IDIOMATIQUE
     kind: mwe
     name: "Идиоматическое выражение"

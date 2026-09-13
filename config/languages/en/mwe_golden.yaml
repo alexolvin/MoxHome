@@ -1,0 +1,40 @@
+# Golden-набор S2 (en): фразовые глаголы (EN-PHRASAL-VERB) и коллокации
+# (EN-COLLOCATION). Каждая конструкция повторяется в двух предложениях —
+# фильтр повторяемости (min_occurrences=2, данные шаблона) проходит.
+mwe:
+  - text: "She gave up the plan."
+    expected:
+      - id: EN-PHRASAL-VERB
+  - text: "He gave up his old work."
+    expected:
+      - id: EN-PHRASAL-VERB
+  - text: "They walked away slowly."
+    expected:
+      - id: EN-PHRASAL-VERB
+  - text: "We walked away quietly."
+    expected:
+      - id: EN-PHRASAL-VERB
+  - text: "He broke into the house."
+    expected:
+      - id: EN-PHRASAL-VERB
+  - text: "She broke into the room."
+    expected:
+      - id: EN-PHRASAL-VERB
+  - text: "She made a point."
+    expected:
+      - id: EN-COLLOCATION
+  - text: "He made a point too."
+    expected:
+      - id: EN-COLLOCATION
+  - text: "She drinks strong coffee."
+    expected:
+      - id: EN-COLLOCATION
+  - text: "He brews strong coffee."
+    expected:
+      - id: EN-COLLOCATION
+  - text: "They took a decision."
+    expected:
+      - id: EN-COLLOCATION
+  - text: "We took a decision early."
+    expected:
+      - id: EN-COLLOCATION

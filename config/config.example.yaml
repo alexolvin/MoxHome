@@ -79,7 +79,7 @@ glossary:
   ngram_min: 2              # многословные последовательности: от
   ngram_max: 4              # ...до (в слов)
   max_term_chars: 80        # кандидат длиннее — отбрасывается
-  units: [kg, g, mg, l, ml, m, km, cm, mm, km/h, m/s, °C, %, w, kw, kw·h, a, v, hz]
+  units: [kg, g, mg, l, ml, m, km, cm, mm, km/h, m/s, °C, "%", w, kw, kw·h, a, v, hz]
   style_sample_chars: 5000  # проба текста для стилевого профиля (L2.7)
   annotation_batch_size: 25 # кандидатов на один вызов LLM
   consistency_min_share: 0.95  # L2-4: ниже — предупреждение QC

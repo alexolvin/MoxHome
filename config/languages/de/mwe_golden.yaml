@@ -1,0 +1,126 @@
+# Golden-набор S2 (de): 30 предложений с разорванной отделяемой приставкой
+# (DE-TRENNBAR). Ожидаемая unit_lemma = приставка + лемма глагола (механизм
+# L1 lexical_units). Словарный состав контролируется: между глаголом и
+# приставкой — только наречия (именные constituents механизм L1 запрещает),
+# поэтому NomVerb-биграммы (NOUN+VERB) в предложениях не повторяются.
+mwe:
+  - text: "Er steht früh auf."
+    expected:
+      - id: DE-TRENNBAR
+        unit: aufstehen
+  - text: "Wir gehen heute aus."
+    expected:
+      - id: DE-TRENNBAR
+        unit: ausgehen
+  - text: "Der Zug fährt pünktlich ab."
+    expected:
+      - id: DE-TRENNBAR
+        unit: abfahren
+  - text: "Sie kommt langsam zurück."
+    expected:
+      - id: DE-TRENNBAR
+        unit: zurückkommen
+  - text: "Er schaltet abends ein."
+    expected:
+      - id: DE-TRENNBAR
+        unit: einschalten
+  - text: "Der Bus kommt endlich an."
+    expected:
+      - id: DE-TRENNBAR
+        unit: ankommen
+  - text: "Wir räumen jetzt auf."
+    expected:
+      - id: DE-TRENNBAR
+        unit: aufräumen
+  - text: "Er schaltet nachts ab."
+    expected:
+      - id: DE-TRENNBAR
+        unit: abschalten
+  - text: "Sie geht still fort."
+    expected:
+      - id: DE-TRENNBAR
+        unit: fortgehen
+  - text: "Das Kind lacht laut weg."
+    expected:
+      - id: DE-TRENNBAR
+        unit: weglachen
+  - text: "Er steigt vorsichtig ein."
+    expected:
+      - id: DE-TRENNBAR
+        unit: einsteigen
+  - text: "Die Tür springt leise zu."
+    expected:
+      - id: DE-TRENNBAR
+        unit: zuspringen
+  - text: "Der Hund wühlt wild um."
+    expected:
+      - id: DE-TRENNBAR
+        unit: umwühlen
+  - text: "Wir packen sorgfältig ein."
+    expected:
+      - id: DE-TRENNBAR
+        unit: einpacken
+  - text: "Das Auto fährt langsam los."
+    expected:
+      - id: DE-TRENNBAR
+        unit: losfahren
+  - text: "Sie atmet tief durch."
+    expected:
+      - id: DE-TRENNBAR
+        unit: durchatmen
+  - text: "Er fragt höflich nach."
+    expected:
+      - id: DE-TRENNBAR
+        unit: nachfragen
+  - text: "Der Mann blickt skeptisch zurück."
+    expected:
+      - id: DE-TRENNBAR
+        unit: zurückblicken
+  - text: "Der Bus hält kurz ab."
+    expected:
+      - id: DE-TRENNBAR
+        unit: abhalten
+  - text: "Sie ruft lauthals aus."
+    expected:
+      - id: DE-TRENNBAR
+        unit: ausrufen
+  - text: "Er zahlt pünktlich ein."
+    expected:
+      - id: DE-TRENNBAR
+        unit: einzahlen
+  - text: "Das Wasser steigt langsam über."
+    expected:
+      - id: DE-TRENNBAR
+        unit: übersteigen
+  - text: "Wir sortieren geduldig zusammen."
+    expected:
+      - id: DE-TRENNBAR
+        unit: zusammensortieren
+  - text: "Der Vogel fliegt schnell weg."
+    expected:
+      - id: DE-TRENNBAR
+        unit: wegfliegen
+  - text: "Das Kind wacht früh auf."
+    expected:
+      - id: DE-TRENNBAR
+        unit: aufwachen
+  - text: "Der Kranke atmet ruhig aus."
+    expected:
+      - id: DE-TRENNBAR
+        unit: ausatmen
+  - text: "Das Konzert fängt bald an."
+    expected:
+      - id: DE-TRENNBAR
+        unit: anfangen
+  - text: "Der Alarm stört nachts auf."
+    expected:
+      - id: DE-TRENNBAR
+        unit: aufstören
+  - text: "Der Baum fällt plötzlich um."
+    expected:
+      - id: DE-TRENNBAR
+        unit: umfallen
+  - text: "Der Notar schreibt sorgfältig auf."
+    expected:
+      - id: DE-TRENNBAR
+        unit: aufschreiben

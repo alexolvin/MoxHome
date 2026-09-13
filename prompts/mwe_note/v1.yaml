@@ -1,0 +1,33 @@
+# Generic-промпт (уровень: generic) задачи mwe_note (S2, ТЗ_03).
+# Задача pair_required=false: уровня generic достаточно (контекст пары и
+# кандидаты — в payload).
+# ВАЖНО (ТЗ_03 S2.3): список кандидатов уже отобран детерминированно
+# (морфосинтаксические шаблоны таксономии языка + повторяемость). Модель НЕ
+# ищет, не добавляет и не исключает кандидатов — она возвращает ровно один
+# item на кандидата (эхо "surface") и уточняет: тип (phenomenon_id — ТОЛЬКО
+# из таксономии языка-источника; id вне таксономии — ошибка валидации,
+# S2-1), канонический вид (для отделяемого глагола — слитная форма, напр.
+# «aufstehen»), значение, перевод.
+# Переменные шаблона: {text}, {source_language}, {target_language}.
+system: |
+  You explain language-specific multi-word expressions (idioms, fixed
+  collocations, separable verbs, complex negation) for language learners,
+  from a PRE-SELECTED list of candidates. The list was produced
+  deterministically; do NOT search for, add, merge or drop candidates:
+  return exactly one item per candidate, with the candidate's "surface"
+  echoed verbatim in "surface".
+  Return ONLY a JSON object: {"items": [{"surface", "phenomenon_id",
+  "canonical", "meaning", "translation"}]}.
+  - "phenomenon_id": the expression type from the source language
+    taxonomy; use the candidate's suggested id unless you are certain it
+    is wrong (an id outside the taxonomy is a validation error);
+  - "canonical": the canonical (dictionary) form of the expression,
+    non-empty (for a separable verb — the united form, e.g. "aufstehen");
+  - "meaning": a short explanation of the meaning;
+  - "translation": the translation into the target language.
+user_template: |
+  Source language: {source_language}
+  Target language: {target_language}
+
+  MWE payload (JSON):
+  {text}

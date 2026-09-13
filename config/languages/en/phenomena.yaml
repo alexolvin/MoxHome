@@ -8,6 +8,16 @@ phenomena:
     kind: mwe
     name: "Фразовый глагол"
     description: "Глагол + частица (up, out, away, off…) с изменением значения (give up, break into). Разбирается как единая лексическая единица."
+    patterns:
+      # «off» — в кавычках: YAML 1.1 читает голый off как boolean False.
+      - type: sequence
+        pos: [VERB, ADP]
+        texts: {1: [up, out, "off", over, into, through, around]}
+        min_occurrences: 2
+      - type: sequence
+        pos: [VERB, ADV]
+        texts: {1: [away, back, "off", out, up, down]}
+        min_occurrences: 2
   - id: EN-IDIOM
     kind: mwe
     name: "Идиоматическое выражение"
@@ -16,6 +26,13 @@ phenomena:
     kind: mwe
     name: "Коллокация"
     description: "Сильное устойчивое словосочетание: take a decision, make a mistake, strong coffee — не любой синтаксически возможный союзник."
+    patterns:
+      - type: sequence
+        pos: [ADJ, NOUN]
+        min_occurrences: 2
+      - type: sequence
+        pos: [VERB, DET, NOUN]
+        min_occurrences: 2
   - id: EN-COND-2
     kind: grammar
     name: "Второе условное (Second Conditional)"

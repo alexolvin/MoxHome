@@ -1,0 +1,49 @@
+# Golden-набор S2 (fr): глалочные фразы (FR-LOCUTION-VERBALE — возвратная
+# клитика + глагол; каждая повторяется дважды — фильтр min_occurrences=2)
+# и сложное отрицание (FR-NEGATION-COMPLEXE — wrap ne/n' +
+# jamais/plus/rien/personne; один хит на предложение, фильтр не нужен).
+mwe:
+  - text: "Il s'appelle Paul."
+    expected:
+      - id: FR-LOCUTION-VERBALE
+  - text: "Elle s'appelle Marie."
+    expected:
+      - id: FR-LOCUTION-VERBALE
+  - text: "Elle se lave chaque matin."
+    expected:
+      - id: FR-LOCUTION-VERBALE
+  - text: "Il se lave chaque soir."
+    expected:
+      - id: FR-LOCUTION-VERBALE
+  - text: "Il se réveille tard."
+    expected:
+      - id: FR-LOCUTION-VERBALE
+  - text: "Elle se réveille tôt."
+    expected:
+      - id: FR-LOCUTION-VERBALE
+  # «téléphone» (verb) модель тегит NOUN (омоним) → «me regarde»
+  # (regarde — VERB, проверено прогоном).
+  - text: "Je me regarde souvent."
+    expected:
+      - id: FR-LOCUTION-VERBALE
+  - text: "Je me regarde dans le miroir."
+    expected:
+      - id: FR-LOCUTION-VERBALE
+  - text: "Il ne vient jamais."
+    expected:
+      - id: FR-NEGATION-COMPLEXE
+  - text: "Elle ne parle plus."
+    expected:
+      - id: FR-NEGATION-COMPLEXE
+  - text: "Je ne veux rien."
+    expected:
+      - id: FR-NEGATION-COMPLEXE
+  - text: "Il n'est jamais venu."
+    expected:
+      - id: FR-NEGATION-COMPLEXE
+  - text: "Je n'ai rien vu."
+    expected:
+      - id: FR-NEGATION-COMPLEXE
+  - text: "Il n'y a personne ici."
+    expected:
+      - id: FR-NEGATION-COMPLEXE

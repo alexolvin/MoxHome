@@ -7,6 +7,10 @@ phenomena:
     kind: mwe
     name: "Отделяемый глагол (trennbar)"
     description: "Глагол с отделяемой приставкой: приставка уходит на конец предложения (Er steht früh auf = aufstehen). Разбирается как единая лексическая единица."
+    patterns:
+      # Механизм L1 lexical_units: приставки — данные pack.yaml (Rule 8:
+      # один механизм, измерен T-L1-11).
+      - type: separable_units
   - id: DE-KONJUNKTIV-I
     kind: grammar
     name: "Konjunktiv I (косвенная речь)"
@@ -47,6 +51,12 @@ phenomena:
     kind: mwe
     name: "Имя-глагольная связь (Nominalverbalkompositum)"
     description: "Существительное + управляющий глагол как единое смысловое целое: eine Entscheidung treffen, Einfluss nehmen."
+    patterns:
+      # Поворачивание «Nomen + глагол» в начало: NOUN смежно VERB.
+      # Широкий шаблон → фильтр повторяемости (ТЗ_03 S2.3).
+      - type: sequence
+        pos: [NOUN, VERB]
+        min_occurrences: 2
   - id: DE-WORTBILDUNG-KOMPOSITUM
     kind: morphology
     name: "Сложение слов (Kompositum)"

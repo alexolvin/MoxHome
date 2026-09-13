@@ -5,3 +5,16 @@
 привязан к источнику (chapter_id/segment_id/source_text_hash) и к версии
 (промпт/профиль/модель/пара/уровень пользователя/хэш глоссария).
 """
+
+from collections.abc import Mapping
+
+#: ТЗ_03 таблица уровней: какой уровень включает какую подстадию.
+#: Minimal — только оригинал+перевод (learning-материалов нет);
+#: Balanced — + ключевая лексика (S1); Learning — + выражения (S2),
+#: грамматические заметки (S3), вопросы (S4); Intensive — + упражнения (S4)
+#: и полный учебный блок (S5). Подстадия, не входящая в уровень, не
+#: исполняется и артефактов не выпускает (стадия существует — как no-op).
+SUBSTAGE_LEVELS: Mapping[str, frozenset[str]] = {
+    "s1": frozenset({"Balanced", "Learning", "Intensive"}),
+    "s2": frozenset({"Learning", "Intensive"}),
+}

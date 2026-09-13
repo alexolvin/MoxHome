@@ -17,30 +17,37 @@
   **L2 (Глоссарий и терминология)** — CONTROL PASS 8/8 (L2-1…L2-8 + T-L2-1…11);
   **L3 (Правка перевода по глоссарию)** — CONTROL PASS 10/10 (L3-1…L3-10 +
   T-L3-1…15);
-  **S1 (Отбор лексики, ТЗ_03)** — CONTROL PASS 7/7 (S1-1…S1-7 + T-S1-1…10),
-  185/185 теста (на mock, BLOCKER-1 — реальные прогоны не заявляются).
+  **S1 (Отбор лексики, ТЗ_03)** — CONTROL PASS 7/7 (S1-1…S1-7 + T-S1-1…10);
+  **S2 (Устойчивые выражения и MWE, ТЗ_03)** — CONTROL PASS 6/6 (S2-1…S2-6 +
+  T-S2-1…7), 202/202 теста (на mock, BLOCKER-1 — реальные прогоны не
+  заявляются).
   Отчёты: `docs/ENGINE_PROBE.md`, `docs/CONTROL/E2.md`, `docs/CONTROL/E3.md`,
   `docs/CONTROL/E4.md`, `docs/CONTROL/E5.md`, `docs/CONTROL/E6.md`, `docs/CONTROL/L0.md`,
   `docs/CONTROL/L1.md`, `docs/CONTROL/L2.md`, `docs/CONTROL/L3.md`,
-  `docs/CONTROL/S1.md`; evidence:
+  `docs/CONTROL/S1.md`, `docs/CONTROL/S2.md`; evidence:
   `docs/CONTROL/evidence/E1…E6/`, `docs/CONTROL/evidence/L0/`,
   `docs/CONTROL/evidence/L1/`, `docs/CONTROL/evidence/L2/`,
-  `docs/CONTROL/evidence/L3/`, `docs/CONTROL/evidence/S1/`.
-- **Далее:** **S2 — устойчивые выражения и многословные конструкции (MWE,
-  ТЗ_03 §S2)**, затем S3–S5 (ТЗ_03_LEARNING) и TZ_04_INTERFACES_AND_ACCEPTANCE.
-  S2: типы конструкций — из `phenomena.yaml` языка (EN-PHRASAL-VERB — частный
-  случай, не универсальная категория); языкоспецифичные обязательные случаи:
-  de — DE-TRENNBAR (отделяемые с разорванной приставкой) +
-  DE-NOMEN-VERB-VERBINDUNG; nl — NL-SCHEIDBAAR + NL-ER-CONSTRUCTIE; fr —
-  FR-LOCUTION-VERBALE + сложное отрицание; it — IT-VERBI-PRONOMINALI/
-  IT-VERBI-SINTAGMATICI + комбинированные местоимения; en — фразовые глаголы +
-  коллокации. Детерминированный предотбор — морфосинтаксические шаблоны spaCy
-  (зависимости, POS-последовательности) + повторяемость, LLM уточняет/
-  объясняет; разорванные конструкции — обе части с позициями (запись без второй
-  части невалидна); валидация: id ∈ таксономии языка, все части в сегменте,
-  канонический вид непустой. CONTROL S2-1…S2-6 (S2-2: golden-30 de/nl
-  отделяемые ≥ 85%). Общие требования TZ_03 (неизменны для S2–S5): только по
-  выровненному подмножеству E6 и тексту ПОСЛЕ L3; привязка к
+  `docs/CONTROL/evidence/L3/`, `docs/CONTROL/evidence/S1/`,
+  `docs/CONTROL/evidence/S2/`.
+- **Далее:** **S3 — грамматические заметки (ТЗ_03 §S3)**, затем S4 (резюме +
+  вопросы + упражнения: вопросы — на Learning, упражнения — на Intensive),
+  S5 (учебный EPUB-аугмент + экспорты + kill ×10) и TZ_04
+  (U1, U2, V1). S3 (ТЗ_03 §S3): контекстные короткие пояснения
+  грамматических явлений языка-источника (id из `phenomena.yaml`,
+  `kind: grammar`), текст на целевом языке (лимит длины — конфиг); заметка
+  привязана к `segment_id` и цитирует фрагмент — обязан присутствовать в
+  сегменте; не более K на главу (`limits.grammar_max_notes_per_chapter` = 10,
+  уже в конфиге); приоритет — явления уровня пользователя, повторяющиеся в
+  книге; повторяющееся явление — один раз развёрнуто, далее краткая ссылка на
+  первую заметку; детерминированный предотбор по морфологическим признакам
+  spaCy там, где возможно (LLM объясняет найденное, не ищет); валидация: id ∈
+  таксономии, цитата ∈ сегменте, длина ≤ лимита, язык = целевой. CONTROL
+  S3-1…S3-7 (S3-6: golden 20/язык обязательных явлений ≥ 75%), T-S3-8 — de
+  фикстура с придаточным (DE-NEBENSATZ-VERBLETZT). Подстадия `s3_grammar` в
+  `run_learning` (гейт `SUBSTAGE_LEVELS` расширить; Learning/Intensive),
+  ключ идемпотентности `sha256(input_hash | glossary_hash | level | cefr)`,
+  LLM-задача по главам батчами, `quality.json`-секция, версионные поля. Общие требования TZ_03 (неизменны для S3–S5):
+  только по выровненному подмножеству E6 и тексту ПОСЛЕ L3; привязка к
   `chapter_id`/`segment_id`/`source_text_hash` + версии (промпт, профиль,
   модель, пара, уровень, timestamp, хэш глоссария); уровни
   Minimal/Balanced/Learning/Intensive; CEFR — отбор, не фильтр-абсолют;

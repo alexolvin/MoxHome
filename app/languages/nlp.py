@@ -121,6 +121,9 @@ class LexicalUnit:
     particle_index: int
     lemma: str
     unit_lemma: str
+    #: Текст предложения (S2: пример из книги + golden-метрики); пусто —
+    #: для обратной совместимости прямых конструкций.
+    sentence: str = ""
 
 
 def _sentence_ok(sent_text: str, min_chars: int, max_chars: int | None) -> bool:
@@ -203,6 +206,7 @@ def lexical_units(
                         particle_index=j,
                         lemma=verb.lemma_,
                         unit_lemma=particle.text.lower() + verb.lemma_,
+                        sentence=sent.text,
                     )
                 )
                 break

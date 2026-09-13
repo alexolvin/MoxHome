@@ -197,6 +197,25 @@ _VOCABULARY_CARD_SCHEMA = _object_schema(
     }
 )
 
+#: S2 (ТЗ_03): уточнение и объяснение детерминированных MWE-кандидатов
+#: (S2.3: список кандидатов моделью не выдвигается — эхо "surface";
+#: phenomenon_id — ТОЛЬКО из таксономии языка-источника, id вне таксономии —
+#: ошибка детерминированной валидации, S2-1).
+_MWE_NOTE_SCHEMA = _object_schema(
+    {
+        "type": "object",
+        "required": ["surface", "phenomenon_id", "canonical", "meaning", "translation"],
+        "additionalProperties": False,
+        "properties": {
+            "surface": {"type": "string", "minLength": 1},
+            "phenomenon_id": {"type": "string", "minLength": 1},
+            "canonical": {"type": "string", "minLength": 1},
+            "meaning": {"type": "string", "minLength": 1},
+            "translation": {"type": "string", "minLength": 1},
+        },
+    }
+)
+
 _TASKS: dict[str, TaskSpec] = {
     "analysis_vocabulary": TaskSpec(
         name="analysis_vocabulary",
@@ -257,6 +276,18 @@ _TASKS: dict[str, TaskSpec] = {
         ),
         pair_required=False,
         schema=_VOCABULARY_CARD_SCHEMA,
+    ),
+    "mwe_note": TaskSpec(
+        name="mwe_note",
+        description=(
+            "S2 (ТЗ_03): уточнить и объяснить детерминированных MWE-кандидатов "
+            "(тип из таксономии языка-источника, канонический вид, значение, "
+            "перевод; эхо surface — один item на кандидата). Выдвижение "
+            "выражений моделью НЕ выполняется (S2.3). pair_required=false: "
+            "контекст (языки, уровень пользователя, кандидаты) — в payload."
+        ),
+        pair_required=False,
+        schema=_MWE_NOTE_SCHEMA,
     ),
 }
 
