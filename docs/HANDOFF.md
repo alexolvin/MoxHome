@@ -13,23 +13,119 @@
   CONTROL PASS 8/8; **E6 (Выравнивание оригинал ↔ перевод)** — CONTROL PASS 7/7
   (+T-E6-8); **L0 (Реестр языков, матрица пар, определение языка)** — CONTROL PASS 8/8
   (L0-1…L0-6 + T-L0-7/8); **L1 (Языковые пакеты: NLP, таксономия, карточки, CEFR,
-  частотность)** — CONTROL PASS 9/9 (L1-1…L1-9 + T-L1-10/11/12), 143/143 теста
-  (на mock, BLOCKER-1 — реальные прогоны не заявляются).
+  частотность)** — CONTROL PASS 9/9 (L1-1…L1-9 + T-L1-10/11/12);
+  **L2 (Глоссарий и терминология)** — CONTROL PASS 8/8 (L2-1…L2-8 + T-L2-1…11),
+  154/154 теста (на mock, BLOCKER-1 — реальные прогоны не заявляются).
   Отчёты: `docs/ENGINE_PROBE.md`, `docs/CONTROL/E2.md`, `docs/CONTROL/E3.md`,
   `docs/CONTROL/E4.md`, `docs/CONTROL/E5.md`, `docs/CONTROL/E6.md`, `docs/CONTROL/L0.md`,
-  `docs/CONTROL/L1.md`; evidence: `docs/CONTROL/evidence/E1…E6/`,
-  `docs/CONTROL/evidence/L0/`, `docs/CONTROL/evidence/L1/`.
-- **Далее:** **L2 — «Глоссарий и терминология»** (TZ_02: детерминистичные кандидаты —
-  NER из spaCy (NER включается на этом этапе, сейчас parser/ner отключены в L1),
-  повторяющиеся многословные последовательности, аббревиатуры, единицы измерения,
-  слова с заглавной вне начала предложения (правило для `de` отключается в `pack.yaml`);
-  LLM — только перевод/пояснение отобранных (треб. 2); запись глоссария + **парадигма
-  целевого языка** (треб. 4: `inflected: true|false` в `pack.yaml`; для `ru` — 6 падежей
-  ед.+мн.ч. для сущ./имён; проверка парадигмы, `paradigm_unverified`); глоссарий в
-  `user_prompt` тракта T с фиксацией усечения (треб. 5, E5-7); проверка согласованности
-  ПОСЛЕ перевода — только обнаружение расхождений, текст на L2 не правится (треб. 6,
-  правка — L3); стилевой профиль книги (треб. 7: formal/neutral/literary/conversational);
-  привязка к версии книги по хэшу (треб. 8). CONTROL L2-1…8, тесты T-L2-1…11.
+  `docs/CONTROL/L1.md`, `docs/CONTROL/L2.md`; evidence:
+  `docs/CONTROL/evidence/E1…E6/`, `docs/CONTROL/evidence/L0/`,
+  `docs/CONTROL/evidence/L1/`, `docs/CONTROL/evidence/L2/`.
+- **Далее:** **L3 — «Правка перевода по глоссарию»** (TZ_02 §L3: замкнуть цикл —
+  детерминированно исправить в выходном EPUB перечисленные L2 расхождения: вход =
+  список расхождений L2 + карта выравнивания E6 (измеренный XPath перевода, D31) +
+  глоссарий с парадигмами; правится ровно то, что измеримо разошлось; `paradigm_unverified`
+  термины — вне автоправки; это ТРЕТЬЕ разрешённое исключение из Rule 8 (до L3 текст
+  правит только движок); L2 не правит, L3 — да). CONTROL L3 — по TZ_02.
+
+## Сделано в L2
+
+- **`app/domain/glossary.py` (новое):** `GlossaryEntry` (термин, перевод, часть
+  речи, `segment_id` первого вхождения, число вхождений, примечание,
+  `approved=False`, `source_forms`, `paradigm`/`paradigm_status`/`paradigm_reason`),
+  `Paradigm` (inflected, forms, coincidences), `Glossary` (terms + `by_term`),
+  `BookStyle` (style/region/note), статусы `PARADIGM_{VERIFIED,UNVERIFIED,NOT_APPLICABLE}`,
+  `check_paradigm` (D56: число форм = числу имён, нет пустых, каждое совпадение
+  ИМЁН форм объяснено, общая основа ≥1), `GlossaryError` (fail-closed, D55).
+- **`app/glossary/candidates.py` (новое, D54):** `extract_candidates(book, pack,
+  nlp, settings)` — 5 правил, `RULE_PRIORITY = (ner, multiword, abbreviation,
+  unit, capitalized)`: NER — токены с `ent_type` (NER-токены пропускаются
+  capitalized-правилом — вхождение считается один раз); многословные — n-граммы
+  2..`ngram_max`, `occurrences ≥ min_occurrences`; аббревиатуры/единицы — данные
+  `pack.yaml` (`units`); заглавные вне начала предложения — только если
+  `pack.capitalized_candidates` (de — false); дедуп NFC+casefold, каноническая
+  поверхность — самая частотная (тайбрейк — первая встреча). Детерминированно
+  (L2-1: 13/13, побайтово).
+- **`app/glossary/annotation.py` (новое, D55):** `annotate_candidates` — задача
+  `glossary_annotation` (батчи ≤25, `pair_required=false`), JSON-массив на вход,
+  отсутствующий/некорректный элемент → `GlossaryError`; `_annotation_paradigm` —
+  парадигма вместе с переводом (треб. 4): `inflected=false` → `not_applicable`,
+  `forms=()` (T-L2-11); `_indeclinable_paradigm` — выделенный путь.
+- **`app/glossary/consistency.py` (новое, D57):** `check_consistency(glossary,
+  alignment)` — presence-based по спаренным сегментам E6: термин «в сегменте» =
+  любой `source_form` (NFC+casefold, граница слова); согласовано = в переводе
+  есть канонический перевод или форма ПРОВЕРЕННОЙ парадигмы; `ConsistencyReport`
+  (terms: варианты casefold, mismatch_segments; mismatches: term/segment_id/
+  тексты; `share`; `to_dict`); L2 текст НЕ правит.
+- **`app/glossary/store.py` (новое, D53):** `BookStore(books_dir)` —
+  `books/<book_key>/<source_hash>/` (glossary.yaml, style.yaml, meta.yaml
+  current/superseded, mismatches/); `book_key_of(path) = Path(path).name`;
+  атомарная запись (врем. файл + `Path.replace`); чтение глоссария — строго по
+  хэшу версии; `save_mismatches`.
+- **`app/glossary/service.py` (новое):** `ensure_book_glossary(settings, repo,
+  job, *, book, source_pack, target_pack)` — загрузить из store (по хэшу) ИЛИ
+  построить: кандидаты → аннотация (LLM) → сохранение (глоссарий + стиль);
+  `_determine_style` — задача `book_style` один раз на версию (D58); глоссарий
+  отключён (`glossary.enabled=false`, D60) → None без артефактов.
+- **`app/workers/pipeline.py`:** `_book_glossary_bundle` (лениво, по версии
+  книги) в `run_translating` → `glossary_provider` (E5-механизм, без изменений
+  E5) — `build_glossary_prompt(prefix=<стилевой профиль>)`; `run_validating_output`
+  — `check_consistency` по отчёту E6 → `glossary_consistency.json` (report:
+  terms + mismatches с текстами сегментов) + секция `quality.json`
+  (`glossary_consistency`) + `save_mismatches` + предупреждение «L2:
+  согласованность терминов ниже порога: …» при share < `consistency_min_share`
+  (D57); выделенный `_glossary_consistency` (PLR0915).
+- **Данные:** `config/languages/ru/pack.yaml` — `inflected: true` +
+  `paradigm_forms.{noun,proper_noun}` = 12 имён форм (6 падежей × ед./мн. ч.);
+  de — `capitalized_candidates: false` (явно), en/fr/it/nl — true;
+  `config/languages/ru/inflection_golden.yaml` — 5 имён × 12 форм + 6
+  падежных предложений (nom_sg==acc_sg, nom_pl==acc_pl — с объяснениями);
+  промпты: `prompts/glossary_annotation/v1.yaml`, `prompts/book_style/v1.yaml`
+  (generic, `pair_required=false`); `GlossarySection` в `app/core/config.py`
+  (enabled=false по умолчанию — D60; min_occurrences=2, ngram 2..4,
+  max_term_chars=80, units, style_sample_chars=5000, annotation_batch_size=25,
+  consistency_min_share=0.95); `config.example.yaml` — `glossary.enabled: false`
+  (локальный `config.yaml` — true, в git не попадает).
+- **LLM-задачи/адаптер (расширение E4):** `glossary_annotation` и `book_style`
+  в `app/llm/tasks.py` (pair_required=false); mock: ответы аннотации = эхо
+  кандидатов (translation = rot3(термин); парадигма — rot3 + суффиксы
+  `_MOCK_PARADIGM_SUFFIXES`, 12 различимых форм → verified; sentinel
+  `badparadigm` — 12 идентичных форм без объяснений → unverified; sentinel
+  `indeclinable` — inflected=false → not_applicable), `book_style` →
+  `{"style": "neutral", "region": null, ...}`; НОВЫЙ сценарий
+  `glossary_inconsistent` — в переводе rot3(Wexley) заменён на «Xrongy» (в
+  translate-ответе И в fill-ответе — финальный текст mock-мира идёт через
+  fill-путь, см. дефекты ниже).
+- **NER включён (D59):** `app/languages/nlp.py` — `disable=["parser"]` (ner
+  смодели есть, загрузка без exclude).
+- **Измерено (evidence L2, `docs/CONTROL/evidence/L2/`, 8 файлов):** кандидаты
+  13/13 идентичны; de: 0 capitalized (контрфакт — 2: 'Fluss'×4, 'Mühle'×3);
+  внедрённая несогласованность 3/3 (share 0.0, «Xrongy»×3 / «Zhaohb»×0 в
+  target.epub, хэши источника и target.epub на границах этапов — verbatim);
+  complex en→ru 46/46 = 100.0% (13 терминов); усечение 4/13 (лимит 200,
+  prompt 186), предупреждение verbatim; парадигмы 9/10 = 90.0% (Badparadigm —
+  unverified с причиной verbatim, Indeclinable — not_applicable); golden-30:
+  0/30 с парадигмой / 20/30 без (контроль); marlow 20× → 20/20, 1 вариант;
+  5 языков → ru: 5/5.
+- Тесты: 11 запусков в `tests/test_l2_glossary.py` (T-L2-1…11); evidence-скрипт
+  `tests/l2_evidence.py` (8 verbatim-файлов). Полный прогон 154/154 (143 + 11),
+  ruff 0, mypy 0 (54 файла).
+- Дефекты этапа (Rule 3, подробно в `docs/CONTROL/L2.md`): **финальный текст
+  mock-мира — FILL-путь** (code() сдвигает и буквы XML-тегов → translate-ответ
+  структурно невалиден, движок переключается на fill) — инъекция сценария
+  добавлена и в `_fill_response`; **stale job-объект**: `run_validating` пишет
+  `source_language` в БД, объект в памяти устаревает → без подтверждения
+  `AppError «подтверждённый исходный язык не задан»` (фикс: `repo.require`
+  после блока подтверждения — в тесте; в воркере require на каждом этапе уже
+  есть, D40); **`load_settings` игнорирует `llm.prompts_root` из YAML** —
+  `Settings.prompts_dir` ВСЕГДА `<storage.root>/prompts`, тесты/evidence
+  копируют репозиторийные промпты в storage (паттерн E4, `shutil.copytree`);
+  **NER sm-шум**: `fox`→ORG, `first`, `Second` в complex.epub — ложные
+  сущности (детерминированность не страдает; отсев — за LLM-аннотацией);
+  **NER пропускает имена в начале предложения** (sentencizer + «; ») и редкие
+  выдуманные имена — в тестах имена стоят в середине предложения и частые
+  (каждое вхождение гарантировано capitalized-правилом); **variant-списки
+  casefold** (сравнение golden — по casefold-ожидаемым).
 
 ## Сделано в L1
 

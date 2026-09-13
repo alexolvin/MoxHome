@@ -18,7 +18,9 @@ _GLOSSARY_HEADER = "Use this glossary consistently when translating:\n"
 
 
 def build_glossary_prompt(
-    entries: tuple[GlossaryEntry, ...], limit_chars: int
+    entries: tuple[GlossaryEntry, ...],
+    limit_chars: int,
+    prefix: str = "",
 ) -> tuple[str | None, int, int, int]:
     """Собирает user_prompt глоссария с лимитом.
 
@@ -26,20 +28,34 @@ def build_glossary_prompt(
     Усечение жёсткое: строка, не влезающая в лимит, отбрасывается вместе со всеми
     последующими (порядок — по приоритету). Если не влез ни один термин —
     user_prompt = None (глоссарий не передаётся, усечение = все термины).
+
+    `prefix` (L2.7): префикс user_prompt (стилевой профиль книги); стоит
+    ПЕРЕД заголовком глоссария и учитывается в том же лимите. Термины без
+    влезшего префикса/заголовка — как и раньше: None (усечение = все термины);
+    префикс без терминов — сам префикс.
     """
-    if not entries:
-        return None, 0, 0, 0
     ordered = sorted(entries, key=lambda entry: (-entry.occurrences, entry.term))
+    parts: list[str] = []
     lines: list[str] = []
-    total_chars = len(_GLOSSARY_HEADER)
-    for entry in ordered:
-        line = f"- {entry.term} → {entry.translation}\n"
-        if total_chars + len(line) > limit_chars:
-            break
-        lines.append(line)
-        total_chars += len(line)
-    if not lines:
+    total_chars = 0
+    if prefix and len(prefix) <= limit_chars:
+        parts.append(prefix)
+        total_chars += len(prefix)
+    if entries and total_chars + len(_GLOSSARY_HEADER) <= limit_chars:
+        parts.append(_GLOSSARY_HEADER)
+        total_chars += len(_GLOSSARY_HEADER)
+        for entry in ordered:
+            line = f"- {entry.term} → {entry.translation}\n"
+            if total_chars + len(line) > limit_chars:
+                break
+            lines.append(line)
+            parts.append(line)
+            total_chars += len(line)
+    if entries and not lines:
+        # Ни один термин не влез — глоссарий не передаётся, усечение = все
+        # термины (E5-7); головый заголовок без терминов не создаётся.
         return None, len(entries), 0, 0
-    return _GLOSSARY_HEADER + "".join(lines), len(entries), len(lines), len(
-        _GLOSSARY_HEADER + "".join(lines)
-    )
+    if not parts:
+        return None, 0, 0, 0
+    prompt = "".join(parts)
+    return prompt, len(entries), len(lines), len(prompt)

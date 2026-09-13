@@ -71,6 +71,54 @@ _GLOSSARY_SCHEMA = _object_schema(
     }
 )
 
+#: Л2.2/L2.3/L2.4: LLM — ТОЛЬКО перевод и краткое пояснение детерминированно
+#: отобранных кандидатов + парадигма целевого языка (один раз, вместе с
+#: переводом). Поиск кандидатов моделью НЕ выполняется (ТЗ L2.1/L2.2).
+_GLOSSARY_ANNOTATION_SCHEMA = _object_schema(
+    {
+        "type": "object",
+        "required": ["term", "translation", "pos", "note", "paradigm"],
+        "additionalProperties": False,
+        "properties": {
+            "term": {"type": "string", "minLength": 1},
+            "translation": {"type": "string", "minLength": 1},
+            "pos": {"enum": ["noun", "verb", "adjective", "proper_noun", "other"]},
+            "note": {"type": ["string", "null"]},
+            "paradigm": {
+                "type": "object",
+                "required": ["inflected", "forms", "coincidences"],
+                "additionalProperties": False,
+                "properties": {
+                    "inflected": {"type": "boolean"},
+                    # Порядок значений = порядок имён форм из pack.yaml цели
+                    # (передано в payload); [] — несклоняемый термин (L2.4).
+                    "forms": {"type": "array", "items": {"type": "string", "minLength": 1}},
+                    # Поимённое объяснение совпадающих форм (L2.4):
+                    # имя формы → объяснение (напр., «вин. = им. (неодуш.)»).
+                    "coincidences": {
+                        "type": "object",
+                        "additionalProperties": {"type": "string", "minLength": 1},
+                    },
+                },
+            },
+        },
+    }
+)
+
+#: Л2.7: стилевой профиль книги — один раз, хранится с книгой.
+_BOOK_STYLE_SCHEMA = _object_schema(
+    {
+        "type": "object",
+        "required": ["style", "region", "note"],
+        "additionalProperties": False,
+        "properties": {
+            "style": {"enum": ["formal", "neutral", "literary", "conversational"]},
+            "region": {"type": ["string", "null"]},
+            "note": {"type": ["string", "null"]},
+        },
+    }
+)
+
 _TASKS: dict[str, TaskSpec] = {
     "analysis_vocabulary": TaskSpec(
         name="analysis_vocabulary",
@@ -92,6 +140,22 @@ _TASKS: dict[str, TaskSpec] = {
         ),
         pair_required=True,
         schema=_GLOSSARY_SCHEMA,
+    ),
+    "glossary_annotation": TaskSpec(
+        name="glossary_annotation",
+        description=(
+            "Л2: перевод и краткое пояснение детерминированно отобранных кандидатов "
+            "в глоссарий + парадигма целевого языка (одна запись на кандидата; "
+            "список кандидатов моделью не выдвигается — ТЗ L2.1/L2.2)."
+        ),
+        pair_required=False,
+        schema=_GLOSSARY_ANNOTATION_SCHEMA,
+    ),
+    "book_style": TaskSpec(
+        name="book_style",
+        description="Л2: стилевой профиль книги (formal/neutral/literary/conversational).",
+        pair_required=False,
+        schema=_BOOK_STYLE_SCHEMA,
     ),
 }
 

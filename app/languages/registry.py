@@ -108,6 +108,17 @@ class PackSpec(BaseModel):
     frequency_bands: tuple[BandSpec, ...] = ()
     #: Отделяемые/разделяемые приставки (L1.5; пусто — их в языке нет).
     separable_prefixes: tuple[str, ...] = ()
+    #: Л2: правило кандидатов «слова с заглавной вне начала предложения»
+    #: включено для языка ИСХОДНОГО текста. Для `de` выключено: в немецком все
+    #: существительные пишутся с заглавной (ТЗ L2.1) — данные, не код (Rule 1).
+    capitalized_candidates: bool = True
+    #: Л2 (T): язык ЦЕЛЕВОЙ — флективный (парадигма нужна) или нет.
+    #: Для `ru` — true (6 падежей × ед./мн. для существительных и имён
+    #: собственных); для `en` — false, парадигма пустая (ТЗ L2.4).
+    inflected: bool = False
+    #: Л2 (T): список имён форм парадигмы по частям речи (порядок = порядок
+    #: значений, которые возвращает LLM). Данные, не код (Rule 1).
+    paradigm_forms: dict[str, tuple[str, ...]] = Field(default_factory=dict)
 
     @field_validator("code")
     @classmethod
@@ -194,6 +205,24 @@ class PackSpec(BaseModel):
         if len(set(lowered)) != len(lowered):
             raise ValueError(f"separable_prefixes: дублирующиеся приставки: {value!r}")
         return tuple(lowered)
+
+    @model_validator(mode="after")
+    def _check_paradigm(self) -> PackSpec:
+        """Согласованность inflected и paradigm_forms (Л2.4): флективный язык
+        объявляет формы по частям речи, нефлективный — не должен (en)."""
+        if not self.inflected and self.paradigm_forms:
+            raise ValueError(
+                "paradigm_forms не пуст, но inflected=false "
+                f"(язык {self.code}: парадигма у нефлективного языка не объявляется)"
+            )
+        for pos, names in self.paradigm_forms.items():
+            if not names:
+                raise ValueError(f"paradigm_forms: пустой список форм для POS {pos!r}")
+            if len(set(names)) != len(names):
+                raise ValueError(
+                    f"paradigm_forms: дублирующиеся имена форм для POS {pos!r}: {names!r}"
+                )
+        return self
 
 
 class GoldenEntry(BaseModel):

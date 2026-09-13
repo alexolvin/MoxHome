@@ -73,9 +73,11 @@ def test_l1_1_pipelines_five_of_five_versions_once_per_process() -> None:
         nlp = load_nlp(pack)
         names = [name for name, _ in nlp.pipeline]
         assert "sentencizer" in names, f"{code}: нет сегментатора (E030 без него)"
-        assert "parser" not in names and "ner" not in names, (
-            f"{code}: parser/ner должны быть отключены (L1.2)"
-        )
+        # L2: NER включён (кандидаты в глоссарий, ТЗ L2.1/D59); parser остаётся
+        # отключённым ради скорости (D59). Замечание L1 («включаются в L2»)
+        # исполнено на этапе L2.
+        assert "parser" not in names, f"{code}: parser должен быть отключён (D59)"
+        assert "ner" in names, f"{code}: NER включён с L2 (ТЗ L2.1, D59)"
         report = nlp_report(pack)
         assert report["model"] == pack.spacy_model
         # L1-2: версии фиксированы — изменение версии модели ломает тест (осознанно).
