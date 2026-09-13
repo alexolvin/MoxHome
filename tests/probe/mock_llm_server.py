@@ -10,7 +10,10 @@
   timeout          — сервер не отвечает дольше таймаута клиента (сценарий таймаута);
   empty            — analysis отвечает пустой строкой (E4.6);
   bad_json         — analysis отвечает некорректным JSON (E4.6);
-  refuse           — analysis отвечает повторяющимся отказом (E4.6).
+  refuse           — analysis отвечает повторяющимся отказом (E4.6);
+  glossary_inconsistent — T-L2-3: в ответе translate сентинел «Wexley»
+                     (rot3) заменяется на «Xrongy» → несогласованный перевод
+                     термина глоссария (analysis не затрагивается).
 
 Сценарии, помеченные «analysis», действуют только на запросы вида analysis
 (системный промпт начинается с "You are an analysis engine"); на translate/fill
@@ -126,14 +129,109 @@ def _count_prompt_tokens(messages: list[dict[str, str]]) -> int:
     return total
 
 
-def _analysis_response(scenario: str) -> str:
-    """Ответ для запросов вида analysis (E4.6: детерминированные сценарии)."""
+_TASK_RE = re.compile(r"\. Task: (\w+)\.")
+
+#: L2: mock-аннотация глоссария. Sentinel-термины (для T-L2-6/T-L2-11):
+#: «badparadigm» (casefold) — 12 идентичных форм БЕЗ объяснений →
+#: paradigm_unverified; «indeclinable» (casefold) — явная метка
+#: несклоняемости (inflected=false, форм нет).
+_GLOSSARY_SENTINEL_BAD = "badparadigm"
+_GLOSSARY_SENTINEL_INDECLINABLE = "indeclinable"
+#: Suffixes for the deterministic mock paradigm (12 positions, ru case names
+#: order from pack.yaml); distinct suffixes → verified paradigm (L2-6).
+_MOCK_PARADIGM_SUFFIXES = ("", "a", "u", "o2", "om", "e2", "i2", "ov", "am", "i3", "ami", "ax")
+
+#: L2/T-L2-3: сценарий «glossary_inconsistent» — инъекция несогласованного
+#: перевода: исходный термин-сентинел в ответе translate заменяется на
+#: «неправильную» форму (в выходе нет НИ ОДНОЙ формы глоссарийной парадигмы —
+#: расхождение по критерию L3.2). Анализ (аннотация) при этом не меняется.
+_INCONSISTENT_TERM = "Wexley"
+_INCONSISTENT_WRONG = "Xrongy"
+
+
+def _mock_paradigm(translation: str, names: list[str]) -> dict[str, object]:
+    """Детерминированная mock-парадигма: каноническая форма + различимые
+    суффиксы → проверка парадигмы проходит (различимы, общая основа =
+    каноническая форма). Совпадений нет → coincidences пуст."""
+    forms = []
+    for i in range(len(names)):
+        suffix = _MOCK_PARADIGM_SUFFIXES[i % len(_MOCK_PARADIGM_SUFFIXES)]
+        forms.append(translation + ("_" + suffix if suffix else ""))
+    return {"inflected": True, "forms": forms, "coincidences": {}}
+
+
+def _glossary_annotation_response(user: str) -> str:
+    """Ответ задачи glossary_annotation (L2): эхо кандидатов, перевод =
+    rot3 (code) — согласован с движковым rot3-переводом (L2-4/T-L2-7:
+    один и тот же термин → один и тот же перевод во всех вхождениях)."""
+    marker = "Annotation payload (JSON):\n"
+    start = user.find(marker)
+    payload_raw = user[start + len(marker) :].strip() if start != -1 else ""
+    try:
+        payload = json.loads(payload_raw)
+    except json.JSONDecodeError:
+        return json.dumps({"items": []})
+    paradigm_forms: dict[str, list[str]] = payload.get("paradigm_forms") or {}
+    items: list[dict[str, object]] = []
+    for cand in payload.get("candidates") or []:
+        if not isinstance(cand, dict):
+            continue
+        term = str(cand.get("term", ""))
+        if not term:
+            continue
+        key = term.casefold()
+        pos = cand.get("pos_hint")
+        if pos not in ("noun", "verb", "adjective", "proper_noun", "other"):
+            pos = "other"
+        names = paradigm_forms.get(pos) or []
+        if key == _GLOSSARY_SENTINEL_INDECLINABLE:
+            paradigm = {"inflected": False, "forms": [], "coincidences": {}}
+        elif key == _GLOSSARY_SENTINEL_BAD and names:
+            # 12 идентичных форм без объяснений → отклоняется (L2.4).
+            paradigm = {
+                "inflected": True,
+                "forms": [code(term)] * len(names),
+                "coincidences": {},
+            }
+        elif names:
+            paradigm = _mock_paradigm(code(term), names)
+        else:
+            paradigm = {"inflected": False, "forms": [], "coincidences": {}}
+        items.append(
+            {
+                "term": term,
+                "translation": code(term),
+                "pos": pos,
+                "note": "mock annotation (L2)",
+                "paradigm": paradigm,
+            }
+        )
+    return json.dumps({"items": items}, ensure_ascii=False)
+
+
+def _book_style_response() -> str:
+    """Ответ задачи book_style (L2.7): детерминированный профиль."""
+    return json.dumps(
+        {"items": [{"style": "neutral", "region": None, "note": "mock style profile"}]},
+        ensure_ascii=False,
+    )
+
+
+def _analysis_response(scenario: str, system: str, user: str) -> str:
+    """Ответ для запросов вида analysis (E4.6: детерминированные сценарии;
+    L2: task-aware ответы glossary_annotation / book_style)."""
     if scenario == "empty":
         return ""
     if scenario == "bad_json":
         return '{"items": [unterminated — not valid JSON'
     if scenario == "refuse":
         return "I'm sorry, I cannot help you with that request."
+    task_match = _TASK_RE.search(system)
+    if task_match is not None:
+        if task_match.group(1) == "glossary_annotation":
+            return _glossary_annotation_response(user)
+        if task_match.group(1) == "book_style":
+            return _book_style_response()
     return json.dumps({"items": []})
 
 
@@ -154,15 +252,28 @@ def _fill_response(user: str, scenario: str) -> str:
         return "I cannot produce the requested XML structure."
     root = ET.fromstring(match.group(1))
     _apply_code_to_element(root)
-    return ET.tostring(root, encoding="unicode")
+    text = ET.tostring(root, encoding="unicode")
+    if scenario == "glossary_inconsistent":
+        # T-L2-3: финальный текст в mock-мире приходит из fill-пути (translate-
+        # ответ структурно невалиден — code() сдвигает и буквы тегов), поэтому
+        # инъекция применяется здесь же.
+        text = text.replace(code(_INCONSISTENT_TERM), _INCONSISTENT_WRONG)
+    return text
 
 
-def _build_response(kind: str, scenario: str, user: str) -> str:
+def _build_response(kind: str, scenario: str, user: str, system: str) -> str:
     """Детерминированный ответ на запрос вида kind в сценарии scenario."""
     if kind == "translate":
-        return "" if scenario == "translate_empty" else code(user)
+        if scenario == "translate_empty":
+            return ""
+        text = code(user)
+        if scenario == "glossary_inconsistent":
+            # T-L2-3: вхождение сентинела в переводе заменяется на «неправильную»
+            # форму (все остальные слова — обычный rot3, согласованный с глоссарием).
+            text = text.replace(code(_INCONSISTENT_TERM), _INCONSISTENT_WRONG)
+        return text
     if kind == "analysis":
-        return _analysis_response(scenario)
+        return _analysis_response(scenario, system, user)
     return _fill_response(user, scenario)
 
 
@@ -233,7 +344,7 @@ def _build_server(
             if scenario == "timeout":
                 time.sleep(30)
 
-            response = _build_response(kind, scenario, user)
+            response = _build_response(kind, scenario, user, system)
 
             prompt_tokens = _count_prompt_tokens(messages)
             encoding = tiktoken.get_encoding("cl100k_base")

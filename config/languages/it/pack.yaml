@@ -10,6 +10,8 @@ fixture: tests/fixtures/epub/lang_it.epub  # фикстура исходного
 # golden.yaml — 20 предложений с явлениями (T-L1-10); lemma_reference.yaml — 50 словоформ
 # (L1-2); phenomena.yaml — таксономия (L1.5); card_schema.json — схема карточки (L1.6).
 card_schema: card_schema.json
+# L2.1: правило «слова с заглавной вне начала предложения» включено (явно).
+capitalized_candidates: true
 normalization:
   unicode_form: NFC
   casefold: false

@@ -16,6 +16,8 @@ fixture: tests/fixtures/epub/complex.epub  # фикстура исходного
 # card_schema.json — JSON-схема словарной карточки (L1.6); обязательные поля
 # по частям речи заданы в ней (единый источник — Rule 8), pack.yaml объявляет путь.
 card_schema: card_schema.json
+# L2.1: правило «слова с заглавной вне начала предложения» включено (явно).
+capitalized_candidates: true
 normalization:
   unicode_form: NFC
   casefold: false

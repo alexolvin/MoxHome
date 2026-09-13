@@ -66,6 +66,20 @@ limits:
   grammar_max_notes_per_chapter: 10
   glossary_max_user_prompt_chars: 8000
 
+glossary:
+  # L2: глоссарий книги (кандидаты детерминированно, LLM — перевод/пояснение/
+  # парадигма). По умолчанию ВЫКЛЮЧЕНО — поведение без глоссария не меняется;
+  # включение — осознанное (D60).
+  enabled: false
+  min_occurrences: 2        # мин. вхождений кандидата (все правила)
+  ngram_min: 2              # многословные последовательности: от
+  ngram_max: 4              # ...до (в слов)
+  max_term_chars: 80        # кандидат длиннее — отбрасывается
+  units: [kg, g, mg, l, ml, m, km, cm, mm, km/h, m/s, °C, %, w, kw, kw·h, a, v, hz]
+  style_sample_chars: 5000  # проба текста для стилевого профиля (L2.7)
+  annotation_batch_size: 25 # кандидатов на один вызов LLM
+  consistency_min_share: 0.95  # L2-4: ниже — предупреждение QC
+
 alignment:
   min_coverage: 0.995
   # E6.3: критерий белого списка «идентичен оригиналу» (регулярный шаблон по

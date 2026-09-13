@@ -10,6 +10,10 @@ fixture: tests/fixtures/epub/lang_de.epub  # фикстура исходного
 # (L1-2); phenomena.yaml — таксономия (L1.5); card_schema.json — схема карточки (L1.6,
 # обязательные поля по частям речи — единый источник, Rule 8).
 card_schema: card_schema.json
+# L2.1: правило кандидатов «слова с заглавной вне начала предложения» для
+# немецкого ВЫКЛЮЧЕНО — в немецком все существительные пишутся с заглавной,
+# правило дало бы лавину ложных кандидатов (ТЗ L2.1: «с поправкой на немецкий»).
+capitalized_candidates: false
 normalization:
   unicode_form: NFC
   casefold: false

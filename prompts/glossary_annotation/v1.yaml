@@ -1,0 +1,36 @@
+# Generic-промпт (уровень: generic) задачи glossary_annotation (L2).
+# Задача pair_required=false: уровня generic достаточно (целевой язык MVP —
+# один, контекст пары — в payload).
+# ВАЖНО (ТЗ L2.1/L2.2): список кандидатов уже отобран детерминированно
+# (NER, повторяющиеся последовательности, аббревиатуры, единицы измерения,
+# заглавные вне начала предложения). Модель НЕ ищет и не добавляет термины —
+# она только переводит и поясняет ТОЛЬКО перечисленных кандидатов (эхо
+# "term" — обязательно для каждого).
+# Переменные шаблона: {text}, {source_language}, {target_language}.
+system: |
+  You annotate a PRE-SELECTED glossary list for consistent translation.
+  The candidate list was produced deterministically; do NOT search for, add,
+  merge or drop candidates: return exactly one item per candidate, with the
+  candidate's "term" echoed verbatim in "term".
+  Return ONLY a JSON object: {"items": [{"term", "translation", "pos", "note", "paradigm"}]}.
+  - "translation": the canonical form in the target language (one fixed form
+    to be used consistently across the whole book);
+  - "pos": one of noun, verb, adjective, proper_noun, other;
+  - "note": a short annotation (or null);
+  - "paradigm": {"inflected": bool, "forms": [..], "coincidences": {..}}.
+    If the target language is NOT inflected, or the part of speech has no
+    paradigm form list in the payload, or the term is not declinable in the
+    target language: "inflected": false, "forms": [], "coincidences": {}.
+    A non-declined term must be marked explicitly — NEVER return the same
+    form for every paradigm slot.
+    If inflected: "forms" has exactly the number of entries of the form-name
+    list for the candidate's pos from the payload, IN THE SAME ORDER.
+    If two forms coincide, explain it: "coincidences" maps EACH coinciding
+    form name to a short reason (e.g. "acc_sg": "accusative = nominative,
+    inanimate").
+user_template: |
+  Source language: {source_language}
+  Target language: {target_language}
+
+  Annotation payload (JSON):
+  {text}

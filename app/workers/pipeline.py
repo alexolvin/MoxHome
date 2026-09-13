@@ -47,9 +47,13 @@ from app.adapters.epub_engine import (
 from app.core.config import Settings
 from app.core.errors import AppError, LLMUnavailableError, OutputValidationFailed
 from app.core.logging import QUALITY_LOGGER
+from app.domain.glossary import Glossary
 from app.domain.job import Job
 from app.epub import aligner
 from app.epub.reader import read_epub
+from app.glossary.consistency import check_consistency
+from app.glossary.service import BookGlossaryBundle, ensure_book_glossary, glossary_prefix
+from app.glossary.store import BookStore, book_key_of
 from app.languages.detect import LanguageReport, detect_book
 from app.languages.nlp import nlp_report
 from app.languages.registry import PackSpec, aliases_map, load_registry
@@ -151,6 +155,80 @@ class Pipeline:
         if pack is None or pack.spacy_model is None:
             return None
         return nlp_report(pack)
+
+    def _book_glossary_bundle(self, repo: JobRepository, job: Job) -> BookGlossaryBundle:
+        """L2: глоссарий версии книги (сборка на первом задании, загрузка далее;
+        L2.8: привязка к хэшу исходного файла). Загружает книгу и пары пакетов
+        (исходный — подтверждённый язык задания, L0.5)."""
+        settings = self._settings
+        book = read_epub(Path(job.source_path), self.job_dir(job.id) / "unpack", settings)
+        registry = load_registry(settings.languages_root)
+        source_code = job.source_language
+        if source_code is None:
+            raise AppError(
+                "подтверждённый исходный язык не задан (L0.5) — глоссарий не строится"
+            )
+        source_pack = registry.get(source_code)
+        target_pack = registry.get(job.target_language)
+        if source_pack is None or target_pack is None:
+            raise AppError(
+                f"язык не найден в реестре: {source_code} / {job.target_language}"
+            )
+        return ensure_book_glossary(
+            settings,
+            repo,
+            job,
+            book=book,
+            source_pack=source_pack,
+            target_pack=target_pack,
+        )
+
+    def _book_glossary(self, job: Job) -> Glossary | None:
+        """L2.6: глоссарий версии книги из хранилища (None — не собран)."""
+        store = BookStore(self._settings.books_dir)
+        return store.load_glossary(book_key_of(job.source_path), job.input_sha256)
+
+    def _glossary_consistency(
+        self, job: Job, alignment: aligner.AlignmentReport
+    ) -> tuple[dict[str, Any] | None, list[str]]:
+        """L2.6: проверка согласованности перевода по глоссарию (детекция
+        только; список расхождений потребляет L3). Возвращает (секция
+        quality.json, предупреждения). Секция None — глоссарий выключен
+        или глоссарий книги не собран."""
+        warnings: list[str] = []
+        if not self._settings.glossary.enabled:
+            return None, warnings
+        book_glossary = self._book_glossary(job)
+        if book_glossary is None:
+            return None, warnings
+        consistency = check_consistency(book_glossary, alignment)
+        report_dict = consistency.to_dict()
+        report_dict["job_id"] = job.id
+        self._write_json(self.job_dir(job.id) / "glossary_consistency.json", report_dict)
+        store = BookStore(self._settings.books_dir)
+        store.save_mismatches(book_key_of(job.source_path), job.input_sha256, report_dict)
+        section: dict[str, Any] = {
+            "terms_checked": consistency.terms_checked,
+            "occurrences_checked": consistency.occurrences_checked,
+            "consistent_occurrences": consistency.consistent_occurrences,
+            "consistent_share": round(consistency.share, 6),
+            "min_share": self._settings.glossary.consistency_min_share,
+            "mismatches": len(consistency.mismatches),
+            "report": "glossary_consistency.json",
+        }
+        if (
+            consistency.occurrences_checked
+            and consistency.share < self._settings.glossary.consistency_min_share
+        ):
+            first_m = [f"{m.term} ({m.segment_id})" for m in consistency.mismatches][:10]
+            warnings.append(
+                f"L2: согласованность терминов ниже порога: "
+                f"{consistency.consistent_occurrences}/{consistency.occurrences_checked} "
+                f"({consistency.share:.1%} < "
+                f"{self._settings.glossary.consistency_min_share:.1%}): "
+                + "; ".join(first_m)
+            )
+        return section, warnings
 
     def validation(self, job_id: str) -> dict[str, Any]:
         """validation.json задания (L0: секция language_detection; воркер строит
@@ -293,9 +371,22 @@ class Pipeline:
             control_check=control_check,
         )
 
+        # L2: глоссарий версии книги. Явный provider (тесты/E5) — приоритет;
+        # иначе — встроенная сборка (кандидаты детерминированно, LLM — только
+        # аннотация; L2.8: хранилище с привязкой к хэшу исходного файла).
         glossary: tuple[GlossaryEntry, ...] = ()
+        style_prefix: str = ""
         if self._glossary_provider is not None:
             glossary = tuple(self._glossary_provider(job))
+        elif settings.glossary.enabled:
+            bundle = self._book_glossary_bundle(repo, job)
+            glossary = tuple(
+                GlossaryEntry(
+                    term=term.term, translation=term.translation, occurrences=term.occurrences
+                )
+                for term in bundle.glossary.terms
+            )
+            style_prefix = glossary_prefix(bundle.style)
 
         request = TranslationRequest(
             source_path=Path(job.source_path),
@@ -304,6 +395,7 @@ class Pipeline:
             mode=self._submit_mode(job.mode),
             glossary=glossary,
             glossary_limit_chars=settings.limits.glossary_max_user_prompt_chars,
+            glossary_prefix=style_prefix,
             on_progress=on_progress,
             on_fill_failed=on_fill_failed,
         )
@@ -556,6 +648,11 @@ class Pipeline:
                 + "; ".join(first)
             )
 
+        # L2.6: проверка согласованности перевода по глоссарию (детекция
+        # только; текст не правится — список расхождений потребляет L3).
+        consistency_section, consistency_warnings = self._glossary_consistency(job, alignment)
+        warnings.extend(consistency_warnings)
+
         quality = {
             **report,
             "checks": checks,
@@ -573,6 +670,8 @@ class Pipeline:
                 "report": "alignment_report.json",
             },
         }
+        if consistency_section is not None:
+            quality["glossary_consistency"] = consistency_section
         self._write_json(job_dir / "quality.json", quality)
         quality_logger = logging.getLogger(QUALITY_LOGGER)
         quality_logger.info("QC выхода: %s", json.dumps(quality, ensure_ascii=False))

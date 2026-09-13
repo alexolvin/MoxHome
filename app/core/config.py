@@ -151,6 +151,45 @@ class LimitsSection(BaseModel):
     glossary_max_user_prompt_chars: int = Field(default=8000, gt=0)
 
 
+class GlossarySection(BaseModel):
+    """Глоссарий книги (L2): параметры детерминированного отбора кандидатов
+    и проверки согласованности. Значения — данные конфигурации (Rule 1);
+    включение — опционально (по умолчанию выключено: поведение E-стадий без
+    глоссария не меняется, D60)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    enabled: bool = False
+    #: Минимальное число вхождений для кандидата (все правила, L2.1).
+    min_occurrences: int = Field(default=2, ge=1)
+    #: Длина многословных последовательностей (n-грамм), кандидата в глоссарий.
+    ngram_min: int = Field(default=2, ge=2)
+    ngram_max: int = Field(default=4, ge=2)
+    #: Кандидат длиннее — отбрасывается (NER-сущности могут быть длинными).
+    max_term_chars: int = Field(default=80, ge=1)
+    #: Единицы измерения (L2.1): список — данные, не код.
+    units: tuple[str, ...] = (
+        "kg", "g", "mg", "l", "ml", "m", "km", "cm", "mm",
+        "km/h", "m/s", "°C", "%", "w", "kw", "kw·h", "a", "v", "hz",
+    )
+    #: Объём текстовой пробы для определения стилевого профиля (L2.7).
+    style_sample_chars: int = Field(default=5000, ge=100)
+    #: Кандидатов на один вызов LLM (glossary_annotation, L2.2).
+    annotation_batch_size: int = Field(default=25, ge=1)
+    #: Доля согласованных вхождений терминов (L2-4): ниже — предупреждение QC.
+    consistency_min_share: float = Field(default=0.95, gt=0.0, le=1.0)
+
+    @model_validator(mode="after")
+    def _check_ngram_range(self) -> GlossarySection:
+        if self.ngram_max < self.ngram_min:
+            raise ValueError(
+                f"glossary.ngram_max ({self.ngram_max}) < ngram_min ({self.ngram_min})"
+            )
+        if self.ngram_max > 8:
+            raise ValueError(f"glossary.ngram_max слишком велик: {self.ngram_max}")
+        return self
+
+
 class AlignmentSection(BaseModel):
     """Пороги и критерии выравнивания оригинал ↔ перевод (E6)."""
 
@@ -266,6 +305,7 @@ class Settings(BaseModel):
     llm: LLMSection
     storage: StorageSection
     limits: LimitsSection
+    glossary: GlossarySection = Field(default_factory=GlossarySection)
     alignment: AlignmentSection
     segmentation: SegmentationSection
     language_detection: LanguageDetectionSection
@@ -454,6 +494,7 @@ def load_settings(config_yaml: Path, env_file: Path) -> Settings:
         )
         storage_section = StorageSection.model_validate({**storage_sub, "root": str(root_path)})
         limits_section = LimitsSection.model_validate(_sub(data, "limits"))
+        glossary_section = GlossarySection.model_validate(_sub(data, "glossary"))
         alignment_section = AlignmentSection.model_validate(_sub(data, "alignment"))
         segmentation_section = SegmentationSection.model_validate(_sub(data, "segmentation"))
         detection_section = LanguageDetectionSection.model_validate(
@@ -472,6 +513,7 @@ def load_settings(config_yaml: Path, env_file: Path) -> Settings:
         llm=llm_section,
         storage=storage_section,
         limits=limits_section,
+        glossary=glossary_section,
         alignment=alignment_section,
         segmentation=segmentation_section,
         language_detection=detection_section,

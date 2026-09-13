@@ -6,5 +6,20 @@ spacy_model: null  # NLP-пайплайн не объявлен (целевой 
 frequency_source: wordfreq
 cefr_source: derived  # CEFR — характеристика исходного языка; для цели — не используется
 fixture: null  # фикстура исходного языка не объявлена (целевой язык)
-# L2: парадигма падежей (inflected) — добавляется на этапе L2 вместе с
-# правилами генерации/проверки парадигмы (ТЗ L2 п.4).
+# L2.4: целевой язык флективный — одной канонической формы перевода
+# недостаточно: «Марлоу» и «Марло́у» — расхождение, а то же имя в разных
+# падежах («Париж» / «Париже») — норма; без парадигмы проверка даёт ложные
+# срабатывания на каждом склоняемом имени. Имена форм — порядок значений,
+# которые возвращает LLM;
+# проверка парадигмы (различимость/объяснение совпадений, общая основа) —
+# app/glossary/annotation.py (детерминированная, ТЗ L2.4).
+inflected: true
+paradigm_forms:
+  noun:
+    [nom_sg, gen_sg, dat_sg, acc_sg, instr_sg, prep_sg,
+     nom_pl, gen_pl, dat_pl, acc_pl, instr_pl, prep_pl]
+  proper_noun:
+    [nom_sg, gen_sg, dat_sg, acc_sg, instr_sg, prep_sg,
+     nom_pl, gen_pl, dat_pl, acc_pl, instr_pl, prep_pl]
+# golden-набор словоизменения (L2-7): 30 случаев склоняемых имён —
+# config/languages/ru/inflection_golden.yaml (ложные расхождения = 0).

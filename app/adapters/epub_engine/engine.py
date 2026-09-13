@@ -107,7 +107,9 @@ class EpubTranslatorEngine:
             partial.unlink()
 
         user_prompt, total_terms, kept_terms, prompt_chars = build_glossary_prompt(
-            request.glossary, request.glossary_limit_chars
+            request.glossary,
+            request.glossary_limit_chars,
+            request.glossary_prefix,
         )
         dropped_terms = total_terms - kept_terms
 

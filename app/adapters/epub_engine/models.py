@@ -111,6 +111,9 @@ class TranslationRequest:
     glossary: tuple[GlossaryEntry, ...] = ()
     #: Лимит user_prompt (символы), из limits.glossary_max_user_prompt_chars.
     glossary_limit_chars: int = 8000
+    #: Префикс user_prompt (L2.7): стилевой профиль книги; учитывается в
+    #: лимите (glossary_max_user_prompt_chars) наравне с глоссарием.
+    glossary_prefix: str = ""
     on_progress: Callable[[float], None] | None = None
     on_fill_failed: Callable[[FillFailedEvent], None] | None = None
 

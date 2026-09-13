@@ -1,0 +1,18 @@
+# Generic-промпт (уровень: generic) задачи book_style (L2.7).
+# Стилевой профиль определяется ОДИН раз на книгу и хранится с ней;
+# применяется во всех последующих заданиях по книге.
+# Переменные шаблона: {text}, {source_language}, {target_language}.
+system: |
+  You determine the book's style profile from a text sample.
+  Return ONLY a JSON object: {"items": [{"style", "region", "note"}]}
+  with exactly one item.
+  - "style": one of formal, neutral, literary, conversational;
+  - "region": a regional variant of the language if it is distinctive
+    (e.g. "en-US", "de-AT"), otherwise null;
+  - "note": a short justification (or null).
+user_template: |
+  Source language: {source_language}
+  Target language: {target_language}
+
+  Text sample:
+  {text}
