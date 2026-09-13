@@ -38,10 +38,12 @@ import logging
 import math
 import time
 import zipfile
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, NoReturn
+
+from spacy.language import Language
 
 from app.adapters.epub_engine import (
     EngineUsage,
@@ -87,10 +89,14 @@ from app.glossary.store import BookStore, book_key_of
 from app.languages.cards import load_card_schema
 from app.languages.cefr import CefrSource
 from app.languages.detect import LanguageReport, detect_book
+from app.languages.frequency import normalize_text
 from app.languages.nlp import load_nlp, nlp_report
+from app.languages.phenomena import PhenomenaTaxonomy, load_phenomena
 from app.languages.registry import PackSpec, aliases_map, load_registry
 from app.languages.resolver import PairReport, PairResolver, PairStatus
+from app.learning import SUBSTAGE_LEVELS
 from app.learning.cards import assemble_card, check_vocab_cards
+from app.learning.mwe import MweCandidate, check_mwe_records, select_mwe_candidates
 from app.learning.selection import select_lexis_candidates
 from app.llm.analysis import AnalysisClient
 from app.llm.tasks import task as llm_task
@@ -882,9 +888,11 @@ class Pipeline:
 
         Стадия всегда существует: learning не включён (learning_level None) —
         no-op (аналог L3.10). Подстадии имеют собственные ключи
-        идемпотентности (stage_results: "s1_vocabulary", далее S2–S5).
-        Возвращает ФИНАЛЬНЫЕ предупреждения — по ним воркер выбирает
-        COMPLETED / COMPLETED_WITH_WARNINGS.
+        идемпотентности (stage_results: "s1_vocabulary", "s2_mwe"; далее
+        S3–S5) и входят в уровень по таблице ТЗ_03 (SUBSTAGE_LEVELS):
+        подстадия, не входящая в уровень, не исполняется и артефактов не
+        выпускает. Возвращает ФИНАЛЬНЫЕ предупреждения — по ним воркер
+        выбирает COMPLETED / COMPLETED_WITH_WARNINGS.
         """
         job = repo.require(job.id)
         job_dir = self.job_dir(job.id)
@@ -901,13 +909,45 @@ class Pipeline:
                 )
             ).encode()
         ).hexdigest()
-        result = repo.get_stage_result(job.id, "s1_vocabulary")
-        if result is not None and result.input_hash == key:
-            quality_path = job_dir / "quality.json"
-            if quality_path.is_file():
-                return list(self._read_json(quality_path)["warnings"])
-            return []
-        return self._s1_vocabulary(repo, job, job_dir, key, glossary_hash)
+        level = job.learning_level
+        substages = (
+            ("s1_vocabulary", SUBSTAGE_LEVELS["s1"], self._s1_vocabulary),
+            ("s2_mwe", SUBSTAGE_LEVELS["s2"], self._s2_mwe),
+        )
+        for stage_key, allowed_levels, run_substage in substages:
+            if level not in allowed_levels:
+                continue  # уровень не включает подстадию (таблица ТЗ_03)
+            result = repo.get_stage_result(job.id, stage_key)
+            if result is not None and result.input_hash == key:
+                continue  # идемпотентность: подстадия с тем же ключом исполнена
+            run_substage(repo, job, job_dir, key, glossary_hash)
+        quality_path = job_dir / "quality.json"
+        if quality_path.is_file():
+            return list(self._read_json(quality_path)["warnings"])
+        return []
+
+    def _learning_context(
+        self, job: Job
+    ) -> tuple[Book, tuple[AlignedPair, ...], PackSpec, Path, Language, str]:
+        """Общий контекст подстадий S1–S5: выровненное подмножество E6 +
+        пакет и пайплайн языка-ИСТОЧНИКА (learning-материалы строятся по
+        исходному тексту — как S1)."""
+        settings = self._settings
+        job_dir = self.job_dir(job.id)
+        alignment = self._l3_alignment(self._read_json(job_dir / "alignment_report.json"))
+        pairs = tuple(p for d in alignment.docs for p in d.aligned)
+        book = read_epub(Path(job.source_path), job_dir / "unpack", settings)
+        registry = load_registry(settings.languages_root)
+        source_code = job.source_language
+        if source_code is None:
+            raise AppError("подтверждённый исходный язык не задан (L0.5) — learning не строится")
+        source_pack = registry.get(source_code)
+        target_pack = registry.get(job.target_language)
+        if source_pack is None or target_pack is None:
+            raise AppError(f"язык не найден в реестре: {source_code} / {job.target_language}")
+        pack_dir = settings.languages_root / source_pack.code
+        nlp = load_nlp(source_pack)
+        return book, pairs, source_pack, pack_dir, nlp, source_code
 
     def _s1_vocabulary(
         self, repo: JobRepository, job: Job, job_dir: Path, key: str, glossary_hash: str
@@ -917,20 +957,8 @@ class Pipeline:
         5-пунктная валидация (S1.5) → плотность ≤ N на 1000 слов (S1-3) →
         vocabulary_cards.json. Только выровненное подмножество E6."""
         settings = self._settings
-        alignment = self._l3_alignment(self._read_json(job_dir / "alignment_report.json"))
-        pairs = tuple(p for d in alignment.docs for p in d.aligned)
-        book = read_epub(Path(job.source_path), job_dir / "unpack", settings)
-        registry = load_registry(settings.languages_root)
-        source_code = job.source_language
-        if source_code is None:
-            raise AppError("подтверждённый исходный язык не задан (L0.5) — S1 не строится")
-        source_pack = registry.get(source_code)
-        target_pack = registry.get(job.target_language)
-        if source_pack is None or target_pack is None:
-            raise AppError(f"язык не найден в реестре: {source_code} / {job.target_language}")
-        pack_dir = settings.languages_root / source_pack.code
+        book, pairs, source_pack, pack_dir, nlp, source_code = self._learning_context(job)
         card_schema = load_card_schema(pack_dir, source_pack)
-        nlp = load_nlp(source_pack)
         cefr_source = CefrSource(source_pack, pack_dir)
 
         candidates = select_lexis_candidates(
@@ -1150,6 +1178,227 @@ class Pipeline:
         self._write_json(quality_path, quality)
         quality_logger = logging.getLogger(QUALITY_LOGGER)
         quality_logger.info("QC после S1: %s", json.dumps(quality, ensure_ascii=False))
+        return list(quality["warnings"])
+
+    def _s2_mwe(
+        self, repo: JobRepository, job: Job, job_dir: Path, key: str, glossary_hash: str
+    ) -> list[str]:
+        """S2 (ТЗ_03): идиомы, устойчивые сочетания и языкоспецифичные MWE
+        в терминах таксономии языка-источника. Детерминированный предотбор
+        (шаблоны + повторяемость, app/learning/mwe.py) → LLM-объяснение по
+        главам (mwe_note, S2.3: выдвижение моделью запрещено) →
+        детерминированная валидация (S2.6) → mwe_records.json + секция s2 в
+        quality.json. Только выровненное подмножество E6 (исходный текст)."""
+        settings = self._settings
+        book, pairs, source_pack, pack_dir, nlp, source_code = self._learning_context(job)
+        phenomena = load_phenomena(pack_dir)
+        taxonomy = PhenomenaTaxonomy(phenomena)
+        candidates = select_mwe_candidates(
+            book=book, pairs=pairs, pack=source_pack, nlp=nlp, phenomena=phenomena
+        )
+
+        items, prompt_file, prompt_version = self._s2_llm_items(
+            repo, job, book, candidates, source_code
+        )
+        _, model, _ = settings.llm.endpoint("analysis")
+        seg_texts = {
+            seg.segment_id: seg.plain_text for ch in book.chapters for seg in ch.segments
+        }
+
+        def _normalize(text: str) -> str:
+            return normalize_text(text, source_pack.normalization)
+
+        candidates_by_surface = {
+            normalize_text(candidate.surface, source_pack.normalization): candidate
+            for candidate in candidates
+        }
+        validated, rejected = check_mwe_records(
+            items=items,
+            candidates=candidates_by_surface,
+            taxonomy=taxonomy,
+            seg_texts=seg_texts,
+            normalize=_normalize,
+        )
+        # Дубли поверхностной формы в ответе LLM: первая запись остаётся,
+        # остальные — отклонение (дедупликация на всю книгу, механизм S1.2).
+        seen: set[str] = set()
+        dedup_validated: list[tuple[Mapping[str, Any], MweCandidate]] = []
+        for item, candidate in validated:
+            surface_key = candidate.surface.casefold()
+            if surface_key in seen:
+                rejected.append(
+                    {
+                        "surface": candidate.surface,
+                        "phenomenon_id": candidate.phenomenon_id,
+                        "reasons": ["дублирующая запись MWE (S2.4)"],
+                    }
+                )
+                continue
+            seen.add(surface_key)
+            dedup_validated.append((item, candidate))
+        # Детерминированное ранжирование (LLM в задаче mwe_note ранжирование
+        # не выдаёт — только подтверждение/объяснение): вхождения → id →
+        # поверхность.
+        dedup_validated.sort(
+            key=lambda pair: (
+                -pair[1].occurrences,
+                pair[1].phenomenon_id,
+                pair[1].surface.casefold(),
+            )
+        )
+
+        timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        records: list[dict[str, Any]] = [
+            {
+                "surface": candidate.surface,
+                "parts": [[part.text, part.index] for part in candidate.parts],
+                "canonical": str(item.get("canonical", "")),
+                "phenomenon_id": str(item.get("phenomenon_id", "")),
+                "meaning": str(item.get("meaning", "")),
+                "translation": str(item.get("translation", "")),
+                "unit_lemma": candidate.unit_lemma,
+                "occurrences": candidate.occurrences,
+                "chapter_id": candidate.chapter_id,
+                "segment_id": candidate.first_segment_id,
+                "segment_ids": list(candidate.segment_ids),
+                "source_text_hash": candidate.source_text_hash,
+                "example_sentence": candidate.example_sentence,
+                "source_language": source_code,
+                "target_language": job.target_language,
+                "user_level": job.learning_level,
+                "user_cefr": job.learning_cefr,
+                "glossary_hash": glossary_hash,
+                "prompt_file": prompt_file,
+                "prompt_version": prompt_version,
+                "model": model,
+                "profile": "analysis",
+                "timestamp": timestamp,
+            }
+            for item, candidate in dedup_validated
+        ]
+        seg_word_count = {
+            seg.segment_id: seg.word_count for ch in book.chapters for seg in ch.segments
+        }
+        total_words = sum(seg_word_count.get(p.segment_id, 0) for p in pairs)
+        report: dict[str, Any] = {
+            "stage": "S2",
+            "enabled": True,
+            "source_language": source_code,
+            "target_language": job.target_language,
+            "user_level": job.learning_level,
+            "user_cefr": job.learning_cefr,
+            "book_words": total_words,
+            "candidates_total": len(candidates),
+            "records_issued": len(records),
+            "records_rejected": len(rejected),
+            "separable_records": sum(1 for record in records if record["unit_lemma"]),
+            "glossary_hash": glossary_hash,
+            "prompt_file": prompt_file,
+            "prompt_version": prompt_version,
+            "model": model,
+            "profile": "analysis",
+            "timestamp": timestamp,
+            "idempotency_key": key,
+            "candidates": [asdict(candidate) for candidate in candidates],
+            "records": records,
+            "rejected": rejected,
+        }
+        self._write_json(job_dir / "mwe_records.json", report)
+        final_warnings = self._s2_finalize_quality(
+            job_dir, report=report, rejected=rejected
+        )
+        repo.record_stage_result(job.id, "s2_mwe", key, str(job_dir / "mwe_records.json"))
+        return final_warnings
+
+    def _s2_llm_items(
+        self,
+        repo: JobRepository,
+        job: Job,
+        book: Book,
+        candidates: tuple[MweCandidate, ...],
+        source_code: str,
+    ) -> tuple[list[dict[str, Any]], str, int]:
+        """S2.3: LLM-объяснение кандидатов по главам, батчами (конфиг).
+        Возвращает (items, prompt_file, prompt_version) — промпт первого
+        вызова (единый для всех батчей, E4-2)."""
+        settings = self._settings
+        client = AnalysisClient(settings, repo, job.id)
+        spec = llm_task("mwe_note")
+        batch_size = settings.limits.mwe_llm_batch
+        by_chapter: dict[str, list[MweCandidate]] = {}
+        for candidate in candidates:
+            by_chapter.setdefault(candidate.chapter_id, []).append(candidate)
+        prompt_file, prompt_version = "", 0
+        items: list[dict[str, Any]] = []
+        for chapter in book.chapters:
+            chapter_cands = by_chapter.get(chapter.chapter_id)
+            if not chapter_cands:
+                continue
+            for start in range(0, len(chapter_cands), batch_size):
+                batch = chapter_cands[start : start + batch_size]
+                payload = {
+                    "source_language": source_code,
+                    "target_language": job.target_language,
+                    "user_level": job.learning_level,
+                    "user_cefr": job.learning_cefr,
+                    "chapter_id": chapter.chapter_id,
+                    "candidates": [
+                        {
+                            "surface": candidate.surface,
+                            "parts": [[part.text, part.index] for part in candidate.parts],
+                            "phenomenon_id": candidate.phenomenon_id,
+                            "unit_lemma": candidate.unit_lemma,
+                            "occurrences": candidate.occurrences,
+                            "segment_id": candidate.first_segment_id,
+                            "source_sentence": candidate.example_sentence,
+                        }
+                        for candidate in batch
+                    ],
+                }
+                outcome = client.run_task(
+                    spec,
+                    source_code,
+                    job.target_language,
+                    json.dumps(payload, ensure_ascii=False, sort_keys=True),
+                )
+                if prompt_file == "":
+                    prompt_file, prompt_version = outcome.prompt.file, outcome.prompt.version
+                raw_items = outcome.payload.get("items")
+                if not isinstance(raw_items, list):
+                    raise AppError("S2: ответ LLM — items отсутствует или не массив")
+                for raw in raw_items:
+                    if not isinstance(raw, dict):
+                        raise AppError("S2: ответ LLM — элемент items не объект")
+                    items.append(raw)
+        return items, prompt_file, prompt_version
+
+    def _s2_finalize_quality(
+        self, job_dir: Path, *, report: dict[str, Any], rejected: list[dict[str, Any]]
+    ) -> list[str]:
+        """Секция s2 в quality.json + ФИНАЛЬНЫЕ предупреждения стадии (QC +
+        отклонённые записи + нулевой отбор — S2-1/S2-2)."""
+        quality_path = job_dir / "quality.json"
+        quality = self._read_json(quality_path) if quality_path.is_file() else {}
+        base_warnings = list(quality.get("warnings", ()))
+        quality["s2"] = {
+            "enabled": True,
+            "book_words": report["book_words"],
+            "candidates": report["candidates_total"],
+            "issued": report["records_issued"],
+            "rejected": report["records_rejected"],
+            "separable": report["separable_records"],
+            "report": "mwe_records.json",
+        }
+        stage_warnings: list[str] = []
+        if report["candidates_total"] == 0:
+            stage_warnings.append("S2: MWE-кандидаты не отобраны (0) — записей нет")
+        if rejected:
+            first = [f"{r['surface']}: {r['reasons'][0]}" for r in rejected[:10]]
+            stage_warnings.append(f"S2: {len(rejected)} записей отклонено: " + "; ".join(first))
+        quality["warnings"] = [*base_warnings, *stage_warnings]
+        self._write_json(quality_path, quality)
+        quality_logger = logging.getLogger(QUALITY_LOGGER)
+        quality_logger.info("QC после S2: %s", json.dumps(quality, ensure_ascii=False))
         return list(quality["warnings"])
 
     def _learning_no_op(

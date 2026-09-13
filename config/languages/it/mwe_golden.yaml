@@ -1,0 +1,50 @@
+# Golden-набор S2 (it): возвратные глаголы (IT-VERBI-PRONOMINALI —
+# клитика + глагол), слиянные местоимения (IT-PRONOMI-COMBINATI — две
+# клитики + глагол; в тех же предложениях, что и PRONOMINALI — оба id
+# ожидаются: «ci vuole» действительно и возвратное употребление),
+# синтагматические глаголы (IT-VERBI-SINTAGMATICI — глагол + предлог).
+# Каждая конструкция повторяется в двух предложениях (одна и та же
+# поверхностная форма спана) — фильтр min_occurrences=2.
+mwe:
+  - text: "Mi piace il caffè."
+    expected:
+      - id: IT-VERBI-PRONOMINALI
+  - text: "Mi piace il tè."
+    expected:
+      - id: IT-VERBI-PRONOMINALI
+  - text: "Ti dico la verità."
+    expected:
+      - id: IT-VERBI-PRONOMINALI
+  - text: "Ti dico la mia storia."
+    expected:
+      - id: IT-VERBI-PRONOMINALI
+  - text: "Mi ci vuole un po'."
+    expected:
+      - id: IT-PRONOMI-COMBINATI
+      - id: IT-VERBI-PRONOMINALI
+  - text: "Mi ci vuole un momento."
+    expected:
+      - id: IT-PRONOMI-COMBINATI
+      - id: IT-VERBI-PRONOMINALI
+  # «ricordo» модель тегит то VERB, то NOUN (память) → пара «me lo dico»
+  # (dico — VERB в обоих предложениях, проверено прогоном).
+  - text: "Me lo dico sempre."
+    expected:
+      - id: IT-PRONOMI-COMBINATI
+      - id: IT-VERBI-PRONOMINALI
+  - text: "Me lo dico spesso."
+    expected:
+      - id: IT-PRONOMI-COMBINATI
+      - id: IT-VERBI-PRONOMINALI
+  - text: "Vado a casa presto."
+    expected:
+      - id: IT-VERBI-SINTAGMATICI
+  - text: "Vado a casa spesso."
+    expected:
+      - id: IT-VERBI-SINTAGMATICI
+  - text: "Parto per Roma domani."
+    expected:
+      - id: IT-VERBI-SINTAGMATICI
+  - text: "Parto per Roma subito."
+    expected:
+      - id: IT-VERBI-SINTAGMATICI

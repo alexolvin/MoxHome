@@ -152,6 +152,9 @@ class LimitsSection(BaseModel):
     #: S1 (ТЗ_03): размер батча LLM-вызова заполнения карточек (глава →
     #: батчи; та же роль, что glossary.annotation_batch_size, для стадии S1).
     vocabulary_llm_batch: int = Field(default=25, gt=0)
+    #: S2 (ТЗ_03): размер батча LLM-вызова объяснения MWE-кандидатов
+    #: (глава → батчи; та же роль, что vocabulary_llm_batch, для стадии S2).
+    mwe_llm_batch: int = Field(default=25, gt=0)
     #: S1 (ТЗ_03): «вне CEFR-диапазона пользователя» — дистанция уровней
     #: (A1..C2) >= этого значения. Диапазон — не абсолютный фильтр: материал
     #: допускается с меткой cefr_out_of_range (ТЗ_03 общее требование 3).

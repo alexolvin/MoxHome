@@ -15,10 +15,22 @@ phenomena:
     kind: grammar
     name: "Слитные местоимения"
     description: "Два местоимения в одной форме: me lo ricordo, gliel'ho detto, ce l'ha."
+    patterns:
+      # Две клитики + глагол (измерено: Me/PRON lo/PRON ricordo/VERB).
+      # Вспомогательный глагол (AUX) шаблоном не покрывается — честно в
+      # CONTROL (ce l'ho detto: ho — AUX).
+      - type: sequence
+        pos: [PRON, PRON, VERB]
+        min_occurrences: 2
   - id: IT-VERBI-PRONOMINALI
     kind: grammar
     name: "Возвратные глаголы"
     description: "Verbi pronominali (reflexivi): Mi sono svegliato tardi; anche с изменением значения: accorgersi."
+    patterns:
+      # Клитика + глагол (измерено: Mi/PRON piace/VERB; Ti/PRON dico/VERB).
+      - type: sequence
+        pos: [PRON, VERB]
+        min_occurrences: 2
   - id: IT-CONCORDANZA-PARTICIPIO
     kind: grammar
     name: "Согласование причастия"
@@ -39,3 +51,9 @@ phenomena:
     kind: mwe
     name: "Синтагматические глаголы (verbi sintagmatici)"
     description: "Глагол + именная/наречная часть как единое действие: avere fame, fare freddo, prendere il sole."
+    patterns:
+      # Глагол + предлог (измерено: Vado/VERB a/ADP; Parto/VERB per/ADP).
+      # Широкий шаблон → фильтр повторяемости.
+      - type: sequence
+        pos: [VERB, ADP]
+        min_occurrences: 2

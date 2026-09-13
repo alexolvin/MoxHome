@@ -26,7 +26,10 @@
   vocab_generated_example — S1-6: у первой карточки выдуманный пример с
                      example_generated=true (помеченные допускаются);
   vocab_schema_bad      — S1-4: у первой карточки translation="—" (плейсхолдер
-                     → отклонение по card_schema.json, выпускается 0).
+                     → отклонение по card_schema.json, выпускается 0);
+  mwe_bad_id            — S2-1: у первой записи mwe_note phenomenon_id вне
+                     таксономии языка (ZZ-S2-FAKE) → детерминированная
+                     валидация отклоняет, принятых 0 с этим id.
 
 Сценарии, помеченные «analysis», действуют только на запросы вида analysis
 (системный промпт начинается с "You are an analysis engine"); на translate/fill
@@ -401,6 +404,44 @@ def _vocabulary_card_response(user: str, scenario: str) -> str:
     return json.dumps({"items": items}, ensure_ascii=False)
 
 
+_MWE_PAYLOAD_MARKER = "MWE payload (JSON):\n"
+
+
+def _mwe_note_response(user: str, scenario: str) -> str:
+    """Ответ задачи mwe_note (S2): детерминированно по кандидатам — по
+    одному item на кандидата, эхо surface, эхо phenomenon_id; canonical —
+    unit_lemma для отделяемых единиц, rot3 поверхности для прочих;
+    meaning/translation — rot3. Сценарий mwe_bad_id: у первой записи
+    phenomenon_id вне таксономии (ZZ-S2-FAKE) — детерминированная
+    валидация обязана отклонить (S2-1)."""
+    start = user.find(_MWE_PAYLOAD_MARKER)
+    if start == -1:
+        return json.dumps({"items": []})
+    try:
+        payload = json.loads(user[start + len(_MWE_PAYLOAD_MARKER) :].strip())
+    except json.JSONDecodeError:
+        return json.dumps({"items": []})
+    items: list[dict[str, object]] = []
+    for index, cand in enumerate(payload.get("candidates", ())):
+        if not isinstance(cand, dict):
+            continue
+        surface = str(cand.get("surface", ""))
+        unit_lemma = cand.get("unit_lemma")
+        phenomenon_id = str(cand.get("phenomenon_id", ""))
+        if scenario == "mwe_bad_id" and index == 0:
+            phenomenon_id = "ZZ-S2-FAKE"
+        items.append(
+            {
+                "surface": surface,
+                "phenomenon_id": phenomenon_id,
+                "canonical": str(unit_lemma) if unit_lemma else code(surface),
+                "meaning": code(surface),
+                "translation": code(surface),
+            }
+        )
+    return json.dumps({"items": items}, ensure_ascii=False)
+
+
 _CANNED_ANALYSIS = {
     "empty": "",
     "bad_json": '{"items": [unterminated — not valid JSON',
@@ -411,19 +452,21 @@ _CANNED_ANALYSIS = {
 def _analysis_response(scenario: str, system: str, user: str) -> str:
     """Ответ для запросов вида analysis (E4.6: детерминированные сценарии;
     L2: task-aware ответы glossary_annotation / book_style; L3: glossary_fix;
-    S1: vocabulary_card)."""
+    S1: vocabulary_card; S2: mwe_note)."""
     if scenario in _CANNED_ANALYSIS:
         return _CANNED_ANALYSIS[scenario]
     task_match = _TASK_RE.search(system)
     task = task_match.group(1) if task_match is not None else ""
-    if task == "glossary_annotation":
-        return _glossary_annotation_response(user)
-    if task == "book_style":
-        return _book_style_response()
-    if task == "glossary_fix":
-        return _glossary_fix_response(user, scenario)
-    if task == "vocabulary_card":
-        return _vocabulary_card_response(user, scenario)
+    handlers: dict[str, Callable[[], str]] = {
+        "glossary_annotation": lambda: _glossary_annotation_response(user),
+        "book_style": _book_style_response,
+        "glossary_fix": lambda: _glossary_fix_response(user, scenario),
+        "vocabulary_card": lambda: _vocabulary_card_response(user, scenario),
+        "mwe_note": lambda: _mwe_note_response(user, scenario),
+    }
+    handler = handlers.get(task)
+    if handler is not None:
+        return handler()
     return json.dumps({"items": []})
 
 

@@ -7,6 +7,9 @@ phenomena:
     kind: mwe
     name: "Разделяемый глагол (scheidbaar)"
     description: "Глагол с разделяемой приставкой: приставка уходит в конец (Hij staat vroeg op = opstaan). Разбирается как единая лексическая единица."
+    patterns:
+      # Механизм L1 lexical_units: приставки — данные pack.yaml (Rule 8).
+      - type: separable_units
   - id: NL-WERKWOORDELIJKE-EINDGROEP
     kind: grammar
     name: "Глагольная конечная группа"
@@ -23,6 +26,17 @@ phenomena:
     kind: grammar
     name: "Er-конструкция"
     description: "Формальный подлежащее er: Er staat een man bij de deur."
+    patterns:
+      # Формальное «er» + финитный глагол (измерено: «Er» в начале
+      # предложения тагуется ADV; PRON-вариант на случай других размечений).
+      # Указательное «er» в середине предложения глаголом не смежно
+      # (V2), поэтому фильтр повторяемости не нужен.
+      - type: sequence
+        pos: [ADV, VERB]
+        texts: {0: [er]}
+      - type: sequence
+        pos: [PRON, VERB]
+        texts: {0: [er]}
   - id: NL-MODALE-PARTIKELS
     kind: grammar
     name: "Модальные частицы"

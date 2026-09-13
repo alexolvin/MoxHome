@@ -1,0 +1,134 @@
+# Golden-набор S2 (nl): 30 предложений с разорванной разделяемой приставкой
+# (NL-SCHEIDBAAR). Ожидаемая unit_lemma = приставка + лемма глагола
+# (механизм L1 lexical_units, приставки — pack.yaml). Словарный состав
+# контролируется: между глаголом и приставкой — только наречия/прилагательные
+# (именные constituents механизм L1 запрещает), после приставки — нет
+# именных токенов.
+mwe:
+  - text: "Ik sta vroeg op."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: opstaan
+  - text: "Hij gaat snel weg."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: weggaan
+  - text: "Zij komt laat aan."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: aankomen
+  - text: "We gaan vannacht uit."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: uitgaan
+  # «elke dag» = DET NOUN — именной constituent между глаголом и частицей
+  # (блок механизма L1) → «telkens» (ADV, проверено прогоном).
+  - text: "Hij belt telkens op."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: opbellen
+  - text: "Zij reist morgen af."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: afreizen
+  - text: "Dat valt goed mee."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: meevalen
+  - text: "De trein loopt door."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: doorlopen
+  - text: "Hij keert plotseling om."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: omkeren
+  - text: "De prijs valt terug."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: terugvallen
+  - text: "We stellen zorgvuldig samen."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: samenstellen
+  - text: "Hij schrijft zorgvuldig op."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: opschrijven
+  - text: "Ze tikkt langzaam weg."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: wegtikken
+  - text: "Hij raakt voorzichtig aan."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: aanraken
+  - text: "Hij ziet er goed uit."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: uitzien
+  - text: "Hij steekt snel over."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: oversteken
+  - text: "Hij treedt voorzichtig toe."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: toetreden
+  - text: "Hij gaat langzaam heen."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: heengaan
+  - text: "Hij praat gerust bij."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: bijpraten
+  - text: "Hij sluit zorgvuldig af."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: afsluiten
+  - text: "We zetten langzaam samen."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: samenzetten
+  - text: "Hij komt morgen terug."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: terugkomen
+  # «doofd» модель тегит NOUN → «uitschakelen» (проверено прогоном).
+  - text: "Hij schakelt langzaam uit."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: uitschakelen
+  # «zacht» модель тегит NOUN → «rustig» (проверено прогоном).
+  - text: "Hij wipt rustig weg."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: wegwippen
+  - text: "Hij schuift gerust aan."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: aanschuiven
+  # «doofd» (NOUN) и «stilletjes» (NOUN) блокируют хит → «uitlopen»
+  # (проверено прогоном).
+  - text: "De bijeenkomst loopt uit."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: uitlopen
+  - text: "Hij buigt zacht om."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: ombuigen
+  # «licht» (verb) модель тегит ADJ (омоним) → «doorbreken» (проверено).
+  - text: "Hij breekt langzaam door."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: doorbreken
+  - text: "Hij kappt voorzichtig af."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: afkappen
+  - text: "Hij vraagt rustig op."
+    expected:
+      - id: NL-SCHEIDBAAR
+        unit: opvragen
