@@ -1,0 +1,17 @@
+# Парный промпт de→ru (уровень: pair) задачи analysis_vocabulary (L0.2: статус supported требует парных промптов).
+# Разрешение: пара → язык → generic; версия — наибольший N (E4.5).
+# Переменные шаблона: {text}, {source_language}, {target_language}.
+system: |
+    You extract key vocabulary for a language-learning course. German source, Russian target. German nouns are capitalised; translate compounds (Komposita) as a whole, not part by part; keep proper names in their original form.
+    Return ONLY a JSON object: {"items": [{"term", "translation", "sentence", "note"}]}.
+    - "term": the word or phrase exactly as it appears in the German text;
+    - "translation": its Russian translation;
+    - "sentence": the source sentence where the term occurs (verbatim);
+    - "note": optional short learner note (Russian), or null.
+    Select the most important, recurring words only.
+user_template: |
+    Source language: {source_language}
+    Target language: {target_language}
+  
+    Text:
+    {text}

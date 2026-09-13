@@ -1,0 +1,10 @@
+L0-1: определение языка на 5 языковых фикстурах (seed=42)
+замер: 2026-09-13 03:37:23
+окружение: langdetect=1.0.9 spacy=3.8.16 wordfreq=3.1.1
+
+PASS complex.epub: dc:language=en detected=en confidence=1.0 decision=accepted top3=[en:1.000000]
+PASS lang_de.epub: dc:language=de detected=de confidence=1.0 decision=accepted top3=[de:1.000000]
+PASS lang_fr.epub: dc:language=fr detected=fr confidence=1.0 decision=accepted top3=[fr:1.000000]
+PASS lang_it.epub: dc:language=it detected=it confidence=1.0 decision=accepted top3=[it:1.000000]
+PASS lang_nl.epub: dc:language=nl detected=nl confidence=1.0 decision=accepted top3=[nl:1.000000]
+итого: 5/5 верно, уверенность зафиксирована

@@ -1,0 +1,8 @@
+# Golden-набор (L0): семя эталонных предложений языка.
+# L1 (T-L1-10): расширение до 20 предложений с заранее размеченными явлениями.
+- text: "Le rapide renard brun saute par-dessus le chien paresseux près de la rivière."
+  expected_language: fr
+  source: "tests/fixtures/epub/lang_fr.epub (chapter1, l-p1)"
+- text: "Le moulin était immobile, et l'eau se déplaçait lentement."
+  expected_language: fr
+  source: "tests/fixtures/epub/lang_fr.epub (chapter1, l-p2)"

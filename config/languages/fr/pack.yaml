@@ -1,0 +1,8 @@
+# Языковой пакет (L0.1) — язык это данные, а не код (Rule 1).
+code: fr
+name: French
+aliases: [fra]
+spacy_model: fr_core_news_sm  # NLP-пайплайн (L1); версия зафиксирована в docs/HANDOFF.md
+frequency_source: wordfreq  # источник частотности (L1: Zipf-шкала, bands в пакете)
+cefr_source: derived  # L0: объявлено; L1 — проверка CEFR-лексикона и лицензии
+fixture: tests/fixtures/epub/lang_fr.epub  # фикстура исходного языка (относительно корня проекта)

@@ -9,13 +9,16 @@ dependencies = [
     "httpx>=0.28.1",
     "jinja2>=3.1.6",
     "jsonschema>=4.26.0",
+    "langdetect>=1.0.9",
     "lxml>=6.1.3",
     "pydantic>=2.13.5",
     "pydantic-settings>=2.15.0",
     "python-multipart>=0.0.32",
     "pyyaml>=6.0.3",
+    "spacy>=3.8.16",
     "tiktoken>=0.14.0",
     "uvicorn>=0.52.4",
+    "wordfreq>=3.1.1",
 ]
 
 [tool.ruff]
@@ -37,6 +40,8 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 # XHTML-строки фикстур — данные, не код
 "tests/fixtures/epub/build.py" = ["E501"]
+# Стансы: F401 — re-export публичных имён пакета в __init__
+"stubs/**/*.pyi" = ["F401", "I001"]
 
 [tool.mypy]
 python_version = "3.11"

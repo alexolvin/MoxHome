@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     tokens_analysis INTEGER NOT NULL DEFAULT 0,
     tokens_total INTEGER NOT NULL DEFAULT 0,
     alignment_coverage REAL,
+    source_language TEXT,
     error_message TEXT
 );
 
@@ -94,6 +95,8 @@ _MIGRATED_JOB_COLUMNS: dict[str, str] = {
     "mode": "TEXT NOT NULL DEFAULT 'bilingual'",
     # E5-базы: выравнивание (E6) до этапа не измерялось — NULL.
     "alignment_coverage": "REAL",
+    # L0-базы: исходный язык до L0 не хранился — NULL (подтверждается на validating).
+    "source_language": "TEXT",
 }
 
 

@@ -11,13 +11,77 @@
   **E2 (Ридер EPUB и сегментатор)** — CONTROL PASS 6/6; **E3 (Job, воркер, возобновление)** —
   CONTROL PASS 6/6; **E4 (Слой LLM)** — CONTROL PASS 6/6; **E5 (Тракт T: перевод)** —
   CONTROL PASS 8/8; **E6 (Выравнивание оригинал ↔ перевод)** — CONTROL PASS 7/7
-  (+T-E6-8), 95/95 теста (на mock, BLOCKER-1 — реальные прогоны не заявляются).
+  (+T-E6-8); **L0 (Реестр языков, матрица пар, определение языка)** — CONTROL PASS 8/8
+  (L0-1…L0-6 + T-L0-7/8), 116/116 тестов (на mock, BLOCKER-1 — реальные прогоны
+  не заявляются).
   Отчёты: `docs/ENGINE_PROBE.md`, `docs/CONTROL/E2.md`, `docs/CONTROL/E3.md`,
-  `docs/CONTROL/E4.md`, `docs/CONTROL/E5.md`, `docs/CONTROL/E6.md`;
-  evidence: `docs/CONTROL/evidence/E1…E6/`.
-- **Далее:** **L0 — «Реестр языков, матрица пар, определение языка»** (TZ_02:
-  `langdetect` с фиксированным seed, сверка с `dc:language`, резолвер ресурсов пары
-  supported/degraded/unsupported; CONTROL L0-1…L0-6, тесты T-L0-1…T-L0-8).
+  `docs/CONTROL/E4.md`, `docs/CONTROL/E5.md`, `docs/CONTROL/E6.md`, `docs/CONTROL/L0.md`;
+  evidence: `docs/CONTROL/evidence/E1…E6/`, `docs/CONTROL/evidence/L0/`.
+- **Далее:** **L1 — «Языковые пакеты»** (TZ_02: `phenomena.yaml` + `card_schema.json`
+  в пакете языка; spaCy-пайплайны 5/5, версии зафиксированы (L1-1); лемматизация ≥90%
+  на 50 словоформах на язык (L1-2); CEFR: проверка наличия/лицензии лексиконов всех
+  5 языков → таблица в `docs/LIMITATIONS.md` (L1-7), неясная лицензия →
+  `cefr_source: derived` + метка `Estimated CEFR` (D6, L1-8); wordfreq — ограничение
+  в `LIMITATIONS.md` (снимок ~2021); частотные полосы — Zipf-шкала в `pack.yaml`
+  (L1-9: 0 числовых порогов в коде); таксономия явлений поязыковая, LLM — только
+  идентификаторы таксономии (L1-6); обязательные поля карточек по языку/POS
+  (L1-3…5); golden-наборы 20 предложений (T-L1-10), отделяемые глаголы de/nl
+  (T-L1-11), удаление лексикона → `derived` без падений (T-L1-12)).
+
+## Сделано в L0
+
+- **`app/languages/registry.py`:** `PackSpec` (спаци-модель, источник частотности,
+  CEFR-диапазон, фикстура, алиасы), `load_registry`/`load_pack`/`load_golden`/
+  `aliases_map` — данные `config/languages/<code>/pack.yaml` + `golden.yaml` (Rule 1).
+- **`app/languages/detect.py` (D7/D41):** `langdetect 1.0.9` с фикс. сидом (seed=42):
+  `_FactoryHolder` — единый фабрик процесса (профили один раз, `set_seed` на вызов),
+  `detect_text` (пустой/неопределяемый → None, Rule 6), `decide()` — правила L0.5
+  (совпадение → ACCEPTED; конфликт или неуверенность → NEEDS_CONFIRMATION; без dc —
+  решение детектора при уверенности), `detect_book`, `normalize_code` (алиасы,
+  под-теги), многоязычность L0.6 (D44: доля = помечено/ВСЕ сегменты, сегменты
+  < `segment_min_chars` не детектируются, пометки — только при превышении порога).
+- **`app/languages/resolver.py` (D38):** `PairResolver` — статус пары по фактическим
+  ресурсам; unsupported (задание не создаётся) = нет пакета источника ∨ нет
+  spaCy-модели источника ∨ нет пакета целевого языка (расширение); degraded
+  (задание разрешено) = нет частотности/фикстуры/golden/промптов пары (ТЗ буквально);
+  `missing` — точный перечень (L0.3), у pair_required-задач — пометка E4.3;
+  шов `spacy_available` (L0-4 — симуляция удаления модели без деструктивных действий);
+  `load_matrix` — неверная матрица → `ConfigurationError` (Rule 6).
+- **`app/services/languages.py` (L0-5):** `pair_status`/`matrix_report` — единая точка
+  для UI/API: статусы только из резолвера.
+- **Данные:** `config/languages/` — 6 пакетов (en/de/fr/it/nl/ru) + 5 golden-наборов;
+  `config/language_matrix.yaml` — 11 пар (5×→ru supported; 5 кросс-пар degraded —
+  нет pair-промптов vocabulary/grammar; en→ja unsupported — демонстрация);
+  промпты: +6 glossary-пар (`{de,fr,it,nl}/en`, `de/it`, `en/de` — со E4).
+- **Интеграция пайплайна:** `run_validating` — детект (до LLM, E2.5) +
+  `jobs.source_language` (колонка, миграция) + перепроверка пары (unsupported →
+  AppError → FAILED с перечнем); `run_planning` — без подтверждённого языка AppError
+  (fail closed) и перечитывание свежей строки (D40); `create_job` — проверка пары по
+  `dc:language` ДО создания (L0.7); `confirm_job(source_language=…)` — выбор
+  пользователя (D43); `read_dc_language` (reader, без распаковки); причина
+  NEEDS_CONFIRMATION воркера — из `validation.json` (D42, Rule 8).
+- **Фикстуры:** `conflict.epub` (немецкий текст, `dc:language=en`, 2 главы — без
+  подозрительности), `bilingual.epub` (en h1+3p + de h1+2p, `dc:language=en`).
+- **Конфиг:** `LanguagesSection` (`languages.root`/`matrix`, дефолты — корень
+  репозитория: production-конфиг не менялся), `LanguageDetectionSection` расширен
+  (seed, multilingual_share=0.2, segment_min_chars=40); `config.example.yaml`
+  обновлён. Зависимости: `langdetect>=1.0.9`, `spacy>=3.8.16`, `wordfreq>=3.1.1`
+  (+стансы `stubs/langdetect/` — D41; per-file-ignores ruff для `stubs/**`).
+- **Тестовые среды (D39):** `make_yaml` по умолчанию кладёт реестр/матрицу
+  репозитория; T-E5-10 — `server.lease_seconds=120` (heartbeat=60 по D18): с 30-с
+  арендой one-shot-воркер брал «зомби» вместо текущего задания (измерено до релиза).
+- **Измерено (evidence L0, `docs/CONTROL/evidence/L0/`):** 5/5 фикстур conf=1.0;
+  конфликт 3/3 (100%) с причиной verbatim; 6/6 degraded/unsupported с перечнем;
+  шов без spaCy → 11/11 unsupported, 0 падений; UI==резолвер diff 0 ×11;
+  supported=5 (все →ru); T-L0-7: confirm('de') → PLANNING + план; T-L0-8:
+  share=0.285714 > 0.2, 2 de-пометки, segment_id существуют.
+- Тесты: 21 запуск в `tests/test_l0_languages.py` (T-L0-1…8 + правила `decide()` ×7,
+  детерминированность, unsupported `create_job`, деформации `load_matrix` ×6);
+  evidence-скрипт `tests/l0_evidence.py` (8 verbatim-файлов).
+- Дефекты этапа (Rule 3, подробно в `docs/CONTROL/L0.md`): `decide()` — кортеж причины
+  был строкой (хвостовая запятая; смоук); «нет пакета целевого языка» не попадал в
+  `missing` (поймано новым тестом L0.7); E5-10 лиза (D39); API langdetect 1.x
+  (`.lang`/`.prob`, нет `.name`) и `--no-implicit-reexport` стансов (D41).
 
 ## Сделано в E6
 
@@ -269,6 +333,7 @@ cd /mdisk/EpubTranslator
 .venv/bin/python tests/e4_evidence.py   # сборка verbatim-evidence CONTROL E4
 .venv/bin/python tests/e5_evidence.py   # сборка verbatim-evidence CONTROL E5
 .venv/bin/python tests/e6_evidence.py   # сборка verbatim-evidence CONTROL E6
+.venv/bin/python tests/l0_evidence.py   # сборка verbatim-evidence CONTROL L0
 ```
 
 Новые пакеты: `uv add <pkg>` (runtime) / `uv add --dev <pkg>`; lock обновляется автоматически.
@@ -342,9 +407,31 @@ T-E6-8: REPLACE — 26/26 `how=inplace`, `translation_xpath==source_xpath`,
 source_text из исходного файла, исходная фраза в выходе отсутствует.
 Итого по инструментарию после E6: ruff 0, mypy 0 (54 файла), pytest 95/95.
 
+L0-1: 5/5 фикстур (en/de/fr/it/nl) — `decision=accepted`, `confidence=1.0`,
+top3 одноязычны. L0-2: конфликт (en в OPF, текст de) → NEEDS_CONFIRMATION 3/3
+(100%), p=1.000000, причина verbatim; правила `decide()` 7/7 в тесте.
+L0-3: 6/6 (100%) degraded/unsupported с перечнем недостающего (5×DEGRADED по 2,
+1×UNSUPPORTED 4; 5×SUPPORTED missing=0). L0-4: шов `spacy_available=False` →
+11/11 пар unsupported («spaCy-модель не установлена: <модель>»), старт
+Pipeline+Worker — 0 падений. L0-5: services.languages == независимый резолвер —
+расхождение 0 ×11 пар (+matrix_report). L0-6: supported=5 (en/de/fr/it/nl → ru),
+критерий «все исходные → ru» исполнен. T-L0-7: conflict.epub → run_validating True,
+`source_language=None` (авто-выбора нет), confirm('de') → PLANNING + plan.json.
+T-L0-8: bilingual.epub → подтверждение не требуется, `source_language=en`,
+факт: 7 сегментов, share=0.285714 > 0.2, exceeds=true, 2 de-пометки (conf=1.0),
+segment_id существуют в книге.
+Итого по инструментарию после L0: ruff 0, mypy 0, pytest 116/116 (95 + 21 L0).
+
 ## Открытые дефекты / ограничения
 
 - Сервер ещё не запускается (этап U1) — `python -m app` пока только валидирует конфиг.
+  UI-показ статусов пар (L0-5) и экран подтверждения языка (L0.5) — в U1: данные
+  готовы (`services.languages` — единая точка, `validation.json` — решение и причины).
+- L0: `langdetect` — статистический (naive Bayes) детектор; confidence=1.0 на
+  фикстурах — не гарантия на реальных книгах: страховка — правила L0.5 (конфликт
+  детектора и `dc:language` → подтверждение, авто-выбор запрещён) и порог
+  `min_confidence` (YAML); по сегментам — только ≥ `segment_min_chars` (D44).
+  Нейро-NLP (spaCy) подключается в L1 (лемматизация, POS).
 - Воркер запускается автономно (`python -m app.workers.run --config … --env …`);
   интеграция «сервер создаёт задания + воркер их исполняет» — в U1.
 - Показ доли выравнивания в UI (E6-6, «показан в UI») — в U1: данные готовы

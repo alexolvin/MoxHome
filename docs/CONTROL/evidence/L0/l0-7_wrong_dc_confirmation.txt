@@ -1,0 +1,27 @@
+T-L0-7: неверный dc:language (en в OPF, немецкий текст) → подтверждение
+замер: 2026-09-13 03:37:23
+окружение: langdetect=1.0.9 spacy=3.8.16 wordfreq=3.1.1
+
+job: j-20260913T003723Z-e04d0c
+run_validating → требуется подтверждение: True
+job.source_language после validating: None (авто-выбор запрещён, L0.5)
+
+validation.json → language_detection (verbatim):
+{
+  "dc_language": "en",
+  "detected": "de",
+  "confidence": 1.0,
+  "probabilities": {
+    "de": 1.0
+  },
+  "decision": "needs_confirmation",
+  "accepted_language": null,
+  "needs_confirmation": true,
+  "reasons": [
+    "конфликт языков: детектор=de (p=1.0000) против dc:language=en — авто-выбор запрещён (L0.5), показаны оба значения"
+  ],
+  "multilingual": null
+}
+
+confirm_job(source_language='de'): status=PLANNING source_language=de
+plan.json создан по подтверждённому языку: True

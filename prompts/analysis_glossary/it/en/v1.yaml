@@ -1,0 +1,17 @@
+# Парный промпт it→en (уровень: pair) задачи analysis_glossary.
+# Разрешение: пара → язык → generic; версия — наибольший N (E4.5).
+# Переменные шаблона: {text}, {source_language}, {target_language}.
+system: |
+    You extract terms and proper names that require a CONSISTENT translation
+    across the whole book (a glossary entry). Italian source, English target. Italian definite articles attached to proper names (il, la, i, le) are dropped in the English glossary form; keep proper names in their original form.
+    Return ONLY a JSON object: {"items": [{"term", "translation", "justification"}]}.
+    - "term": the term or proper name exactly as it appears in the Italian text;
+    - "translation": the agreed English translation;
+    - "justification": why this form must be kept consistent.
+    Only recurring or semantically central terms; no one-off common words.
+user_template: |
+    Source language: {source_language}
+    Target language: {target_language}
+
+    Text:
+    {text}

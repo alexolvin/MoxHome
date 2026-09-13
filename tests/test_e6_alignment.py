@@ -150,6 +150,8 @@ def e6_env(tmp_path_factory: pytest.TempPathFactory) -> Iterator[E6Env]:
     (work / "config.yaml").write_text(
         f"storage:\n  root: {work}\n"
         f"epubcheck:\n  jar_path: {DEFAULT_EPUBCHECK_JAR}\n"
+        f"languages:\n  root: {ROOT / 'config' / 'languages'}\n"
+        f"  matrix: {ROOT / 'config' / 'language_matrix.yaml'}\n"
         "llm:\n  profiles:\n"
         + "".join(
             f"    {name}:\n      base_url: {server.url}\n      model: test-model\n"

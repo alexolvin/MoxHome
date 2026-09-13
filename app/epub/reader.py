@@ -80,6 +80,26 @@ def read_epub(source: Path, work_dir: Path, settings: Settings) -> Book:
     )
 
 
+def read_dc_language(source: Path) -> str | None:
+    """Лёгкое чтение dc:language из OPF (L0.7: проверка пары ДО создания задания).
+
+    Без распаковки книги: ZIP → container.xml → OPF → dc:language. Нечитаемый
+    архив — None: полная валидация (mimetype, DRM, spine) делает ридер на
+    стадии validating (E2.5), а ошибочный dc:language перекрывает
+    перекрёстная проверка детектора (L0.5).
+    """
+    try:
+        with zipfile.ZipFile(source) as archive:
+            if CONTAINER_PATH not in archive.namelist():
+                return None
+            container = etree.fromstring(archive.read(CONTAINER_PATH))
+            opf_path = _find_opf_path(container)
+            opf = etree.fromstring(archive.read(opf_path))
+    except (OSError, zipfile.BadZipFile, etree.XMLSyntaxError, KeyError, InputValidationError):
+        return None
+    return _dc_text(opf, "language")
+
+
 def _prepare(source: Path, work_dir: Path) -> str:
     """Валидация ZIP/mimetype/DRM/container + распаковка. Возвращает путь OPF."""
     if not zipfile.is_zipfile(source):

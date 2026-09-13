@@ -1,0 +1,28 @@
+T-L0-8: двуязычная фикстура (en + de, dc:language=en) — факт и пометки
+замер: 2026-09-13 03:37:23
+окружение: langdetect=1.0.9 spacy=3.8.16 wordfreq=3.1.1
+
+job: j-20260913T003724Z-50e3c6
+требуется подтверждение: False (нет: детектор и dc:language согласны)
+job.source_language: en
+пороги (конфиг): multilingual_share=0.2 segment_min_chars=40
+
+multilingual (verbatim):
+{
+  "main_language": "en",
+  "marked": [
+    {
+      "segment_id": "db5993a505e49c8835ecb7fa3baecfc415eb72940c105cfef637791e9e3693c8",
+      "detected": "de",
+      "confidence": 1.0
+    },
+    {
+      "segment_id": "dc1adb4cf2f52e889fc0c8b25ad8605d39ce8ed2cb0d2b667040bcec60d3ef55",
+      "detected": "de",
+      "confidence": 1.0
+    }
+  ],
+  "segment_count": 7,
+  "share": 0.285714,
+  "exceeds_threshold": true
+}

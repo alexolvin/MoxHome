@@ -1,0 +1,26 @@
+# Матрица языковых пар (L0.2): объявляет НАМЕРЕНИЕ (какие пары желательны).
+# Статус пары (supported / degraded / unsupported + ЧЕГО ИМЕННО не хватает)
+# вычисляет резолвер по фактически доступным ресурсам — не по намерению.
+# «Пара не поддерживается» без перечня недостающих ресурсов — недопустимый
+# ответ (L0.3). UI (U1) и API читают только резолвер (L0-5), не этот файл.
+#
+# en→ja — демонстрация unsupported: у японского нет pack.yaml и spaCy-модели
+# (намерение впереди возможностей — резолвер скажет это честно с перечнем).
+# Cross-пары (en↔de, fr/it/nl→en) — покрытие E4/E5 (Rule 4): у них есть
+# pair-prompt анализа глоссария, а vocabulary/grammar резолвятся через generic
+# → резолвер честно считает их degraded (L0.2), не supported.
+pairs:
+  # MVP (L0-6): все исходные языки → русский
+  - {source: en, target: ru}
+  - {source: de, target: ru}
+  - {source: fr, target: ru}
+  - {source: nl, target: ru}
+  - {source: it, target: ru}
+  # Cross-пары (намерения E4/E5):
+  - {source: en, target: de}  # glossary pair-prompt есть (E4); vocabulary/grammar → generic → degraded
+  - {source: de, target: en}  # glossary pair-prompt есть; vocabulary/grammar → generic → degraded
+  - {source: fr, target: en}
+  - {source: it, target: en}
+  - {source: nl, target: en}
+  # Unsupported (демонстрация L0.3/L0-4):
+  - {source: en, target: ja}

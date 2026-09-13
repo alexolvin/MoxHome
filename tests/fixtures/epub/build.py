@@ -8,7 +8,9 @@
   drm.epub       — E2-3: корректная EPUB + META-INF/encryption.xml;
   broken.epub    — E2-7: обрезанный OPF (невалидный XML);
   lang_de/fr/nl/it.epub — E2-6 (Rule 4): минимальные книги на 5 языках
-                          (en — probe.en.epub).
+                          (en — probe.en.epub);
+  conflict.epub    — L0/T-L0-7: немецкий текст, dc:language=en (конфликт, L0.5);
+  bilingual.epub   — L0/T-L0-8: главы en + de, dc:language=en (многоязычная, L0.6).
 Контент и метадаты — фиксированы: повторная генерация даёт побайтово тот же результат
 (timestamps фиксируются в zipfile.ZipInfo).
 """
@@ -472,6 +474,179 @@ LANG_BOOKS: dict[str, tuple[str, str, tuple[str, str]]] = {
 }
 
 
+# ------------------------------------------------------------------ L0 fixtures
+
+# L0 (T-L0-7): текст немецкий, а dc:language=en (типичная ошибка реальных EPUB).
+# Две главы — книга НЕ подозрительна (spine > 1): подтверждение требуется
+# только из-за конфликта языков (детектор=de против dc:language=en, L0.5).
+CONFLICT_CH1 = """<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="de" xml:lang="de">
+<head>
+  <title>Kapitel Eins</title>
+</head>
+<body>
+  <h1 id="k1-h1">Kapitel Eins</h1>
+  <p id="k1-p1">Der schnelle braune Fuchs springt über den faulen Hund am Fluss.</p>
+  <p id="k1-p2">Die Mühle stand still, und das Wasser bewegte sich langsam.</p>
+</body>
+</html>
+"""
+
+CONFLICT_CH2 = """<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="de" xml:lang="de">
+<head>
+  <title>Kapitel Zwei</title>
+</head>
+<body>
+  <h1 id="k2-h1">Kapitel Zwei</h1>
+  <p id="k2-p1">Der Müller ging jeden Morgen zur Mühle und horchte auf das Wasser.</p>
+  <p id="k2-p2">Im Herbst wurde der Fluss kälter, und die Fische zogen in die Tiefe.</p>
+</body>
+</html>
+"""
+
+CONFLICT_OPF = """<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="conflict-id">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="conflict-id">urn:uuid:66666666-1111-2222-3333-444444444444</dc:identifier>
+    <dc:title>Deutsche Probe (Konflikt)</dc:title>
+    <dc:creator>Language Fixture Author</dc:creator>
+    <dc:language>en</dc:language>
+    <dc:date>2026-01-01</dc:date>
+    <meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>
+  </metadata>
+  <manifest>
+    <item id="ch1" href="k1.xhtml" media-type="application/xhtml+xml"/>
+    <item id="ch2" href="k2.xhtml" media-type="application/xhtml+xml"/>
+    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+  </manifest>
+  <spine>
+    <itemref idref="ch1"/>
+    <itemref idref="ch2"/>
+  </spine>
+</package>
+"""
+
+CONFLICT_NAV = """<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"
+      lang="de" xml:lang="de">
+<head>
+  <title>Contents</title>
+</head>
+<body>
+  <nav epub:type="toc" id="toc">
+    <h1>Contents</h1>
+    <ol>
+      <li><a href="k1.xhtml">Kapitel Eins</a></li>
+      <li><a href="k2.xhtml">Kapitel Zwei</a></li>
+    </ol>
+  </nav>
+</body>
+</html>
+"""
+
+
+def build_conflict_book(out_path: Path) -> None:
+    """L0/T-L0-7: немецкий текст + dc:language=en → конфликт, NEEDS_CONFIRMATION."""
+    files: dict[str, str | bytes] = {
+        "META-INF/container.xml": CONTAINER_XML,
+        "OEBPS/content.opf": CONFLICT_OPF,
+        "OEBPS/k1.xhtml": CONFLICT_CH1,
+        "OEBPS/k2.xhtml": CONFLICT_CH2,
+        "OEBPS/nav.xhtml": CONFLICT_NAV,
+    }
+    _write_epub(out_path, files)
+
+
+# L0 (T-L0-8): двуязычная книга — главы en и de, dc:language=en.
+# en-глава: 4 сегмента (h1 + 3 p), de-глава: 3 (h1 + 2 p); доля de-сегментов
+# (2 p, h1 короче segment_min_chars) = 2/7 > multilingual_share → факт + пометки.
+BILINGUAL_EN_CH = """<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <title>Chapter One</title>
+</head>
+<body>
+  <h1 id="b1-h1">Chapter One</h1>
+  <p id="b1-p1">The river was cold that year, colder than the miller remembered from the previous season.</p>
+  <p id="b1-p2">The water was clear, and the stones along the bank were smooth and grey.</p>
+  <p id="b1-p3">Every morning the fishers would walk along the bank with their nets.</p>
+</body>
+</html>
+"""
+
+BILINGUAL_DE_CH = """<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="de" xml:lang="de">
+<head>
+  <title>Kapitel Eins</title>
+</head>
+<body>
+  <h1 id="b2-h1">Kapitel Eins</h1>
+  <p id="b2-p1">Der schnelle braune Fuchs springt über den faulen Hund am Fluss.</p>
+  <p id="b2-p2">Die Mühle stand still, und das Wasser bewegte sich langsam.</p>
+</body>
+</html>
+"""
+
+BILINGUAL_OPF = """<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bilingual-id">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="bilingual-id">urn:uuid:77777777-1111-2222-3333-444444444444</dc:identifier>
+    <dc:title>Bilingual Probe</dc:title>
+    <dc:creator>Language Fixture Author</dc:creator>
+    <dc:language>en</dc:language>
+    <dc:date>2026-01-01</dc:date>
+    <meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>
+  </metadata>
+  <manifest>
+    <item id="ch1" href="en1.xhtml" media-type="application/xhtml+xml"/>
+    <item id="ch2" href="de1.xhtml" media-type="application/xhtml+xml"/>
+    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+  </manifest>
+  <spine>
+    <itemref idref="ch1"/>
+    <itemref idref="ch2"/>
+  </spine>
+</package>
+"""
+
+BILINGUAL_NAV = """<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"
+      lang="en" xml:lang="en">
+<head>
+  <title>Contents</title>
+</head>
+<body>
+  <nav epub:type="toc" id="toc">
+    <h1>Contents</h1>
+    <ol>
+      <li><a href="en1.xhtml">Chapter One</a></li>
+      <li><a href="de1.xhtml">Kapitel Eins</a></li>
+    </ol>
+  </nav>
+</body>
+</html>
+"""
+
+
+def build_bilingual_book(out_path: Path) -> None:
+    """L0/T-L0-8: главы двух языков (en + de), dc:language=en → факт L0.6 + пометки."""
+    files: dict[str, str | bytes] = {
+        "META-INF/container.xml": CONTAINER_XML,
+        "OEBPS/content.opf": BILINGUAL_OPF,
+        "OEBPS/en1.xhtml": BILINGUAL_EN_CH,
+        "OEBPS/de1.xhtml": BILINGUAL_DE_CH,
+        "OEBPS/nav.xhtml": BILINGUAL_NAV,
+    }
+    _write_epub(out_path, files)
+
+
 def main() -> None:
     fixture_dir = Path(__file__).parent
     build_probe_book(fixture_dir / "probe.en.epub")
@@ -480,6 +655,8 @@ def main() -> None:
     build_broken_book(fixture_dir / "broken.epub")
     for lang, (title, uid, lines) in LANG_BOOKS.items():
         build_lang_book(fixture_dir / f"lang_{lang}.epub", lang, title, uid, lines)
+    build_conflict_book(fixture_dir / "conflict.epub")
+    build_bilingual_book(fixture_dir / "bilingual.epub")
     print(f"built fixtures in {fixture_dir}")
 
 

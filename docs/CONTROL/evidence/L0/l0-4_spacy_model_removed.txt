@@ -1,0 +1,29 @@
+L0-4: spaCy-модель «удалена» (шов spacy_available=False, без фактического удаления)
+замер: 2026-09-13 03:37:23
+окружение: langdetect=1.0.9 spacy=3.8.16 wordfreq=3.1.1
+
+en → ru: UNSUPPORTED
+  - spaCy-модель не установлена: en_core_web_sm
+de → ru: UNSUPPORTED
+  - spaCy-модель не установлена: de_core_news_sm
+fr → ru: UNSUPPORTED
+  - spaCy-модель не установлена: fr_core_news_sm
+nl → ru: UNSUPPORTED
+  - spaCy-модель не установлена: nl_core_news_sm
+it → ru: UNSUPPORTED
+  - spaCy-модель не установлена: it_core_news_sm
+en → de: UNSUPPORTED
+  - spaCy-модель не установлена: en_core_web_sm
+de → en: UNSUPPORTED
+  - spaCy-модель не установлена: de_core_news_sm
+fr → en: UNSUPPORTED
+  - spaCy-модель не установлена: fr_core_news_sm
+it → en: UNSUPPORTED
+  - spaCy-модель не установлена: it_core_news_sm
+nl → en: UNSUPPORTED
+  - spaCy-модель не установлена: nl_core_news_sm
+en → ja: UNSUPPORTED
+  - spaCy-модель не установлена: en_core_web_sm
+старт приложения (load_settings + Pipeline + Worker): исключений нет
+пар unsupported после «удаления» модели: 11/11
+падений: 0

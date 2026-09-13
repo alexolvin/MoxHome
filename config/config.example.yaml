@@ -78,8 +78,18 @@ segmentation:
   block_tags: [p, li, blockquote, h1, h2, h3, h4, h5, h6, dd, dt, td]
 
 language_detection:
-  sample_segments: 200
-  min_confidence: 0.6
+  # L0.4: детерминированное определение исходного языка (langdetect, не LLM).
+  sample_segments: 200   # объём выборки сегментов для детектора
+  min_confidence: 0.6    # порог уверенности (L0.5): ниже — NEEDS_CONFIRMATION
+  seed: 42               # сид детектора (D7: воспроизводимость результата)
+  multilingual_share: 0.2    # L0.6: порог доли сегментов с другим языком
+  segment_min_chars: 40      # L0.6: короче — сегмент не помечается
+
+languages:
+  # L0.1/L0.2: язык это данные (Rule 1). Реестр config/languages/<code>/pack.yaml
+  # и матрица пар — относительно storage.root (абсолютные пути допустимы).
+  root: config/languages
+  matrix: config/language_matrix.yaml
 
 epubcheck:
   # Путь к EPUBCheck-jar (E5). Распределение W3C 5.x: каталог <каталог-jar>/lib

@@ -28,6 +28,14 @@ DEFAULT_LLM_MODEL = "test-model"
 DEFAULT_EPUBCHECK_JAR = str(
     Path(__file__).resolve().parents[1] / "data" / "tools" / "epubcheck-5.3.0" / "epubcheck.jar"
 )
+#: Корень репозитория: реестр языков и промпты по умолчанию — данные из репо (L0).
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+#: Реестр языков (L0.1): по умолчанию — реестр репозитория (абсолютный путь).
+DEFAULT_LANGUAGES_ROOT = str(_REPO_ROOT / "config" / "languages")
+DEFAULT_LANGUAGE_MATRIX = str(_REPO_ROOT / "config" / "language_matrix.yaml")
+#: Промпты (E4/L0): по умолчанию — промпты репозитория (абсолютный путь);
+#: тесты, управляющие деревом промптов, передают собственный prompts_root.
+DEFAULT_PROMPTS_ROOT = str(_REPO_ROOT / "prompts")
 
 
 @pytest.fixture(autouse=True)
@@ -70,7 +78,12 @@ def make_yaml(
     """Генерирует config.yaml со storage.root и полными LLM-профилями (E4.1).
 
     Параметры: root, extra (доп. YAML ниже), base_url/model (для всех профилей),
-    profile_overrides — поимённые переопределения полей профилей (T-E4-8 и пр.).
+    profile_overrides — поимённые переопределения полей профилей (T-E4-8 и пр.),
+    prompts_root — корень промптов (по умолчанию llm.prompts_root),
+    languages_root/language_matrix — реестр и матрица (L0): по умолчанию данные
+    из репозитория (абсолютные пути), чтобы резолвер пар работал в каждом тесте,
+    lease_seconds — server.lease_seconds (T-E5-10: аренда должна покрывать весь
+    цикл, иначе one-shot-воркер возьмёт «зомби» вместо текущего задания).
     """
 
     def _make(
@@ -81,6 +94,10 @@ def make_yaml(
         model: str = DEFAULT_LLM_MODEL,
         profile_overrides: Mapping[str, Mapping[str, object]] | None = None,
         epubcheck_jar: str = DEFAULT_EPUBCHECK_JAR,
+        prompts_root: str = "",
+        languages_root: str = DEFAULT_LANGUAGES_ROOT,
+        language_matrix: str = DEFAULT_LANGUAGE_MATRIX,
+        lease_seconds: float | None = None,
     ) -> Path:
         overrides = profile_overrides or {}
         profile_lines: list[str] = []
@@ -93,12 +110,33 @@ def make_yaml(
         epubcheck_lines = (
             f"epubcheck:\n  jar_path: {_yaml_scalar(epubcheck_jar)}\n" if epubcheck_jar else ""
         )
+        llm_lines = "llm:\n"
+        if prompts_root:
+            llm_lines += f"  prompts_root: {_yaml_scalar(prompts_root)}\n"
+        llm_lines += "  profiles:\n" + "\n".join(profile_lines) + "\n"
+        languages_lines = "languages:\n"
+        if languages_root:
+            languages_lines += f"  root: {_yaml_scalar(languages_root)}\n"
+        if language_matrix:
+            languages_lines += f"  matrix: {_yaml_scalar(language_matrix)}\n"
+        # server.lease_seconds: по умолчанию 30 c; переопределяется, когда тесту
+        # нужно, чтобы аренда не истекла на протяжении всего сценария (T-E5-10).
+        # Ограничение E3-1 (lease ≤ 2×heartbeat) обязывает поднимать heartbeat
+        # вместе с лизой: heartbeat = lease/2 — минимально допустимое.
+        server_lines = ""
+        if lease_seconds is not None:
+            server_lines = (
+                f"server:\n"
+                f"  heartbeat_seconds: {lease_seconds / 2}\n"
+                f"  lease_seconds: {lease_seconds}\n"
+            )
         path = tmp_path / "config.yaml"
         path.write_text(
-            f"storage:\n  root: {root}\nllm:\n  profiles:\n"
-            + "\n".join(profile_lines)
-            + "\n"
+            f"storage:\n  root: {root}\n"
+            + server_lines
+            + llm_lines
             + epubcheck_lines
+            + languages_lines
             + extra,
             encoding="utf-8",
         )

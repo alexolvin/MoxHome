@@ -1,0 +1,30 @@
+L0-3: резолвер — перечень недостающего (промпты: /mdisk/EpubTranslator/prompts)
+замер: 2026-09-13 03:37:23
+окружение: langdetect=1.0.9 spacy=3.8.16 wordfreq=3.1.1
+
+en → ru: SUPPORTED (missing=0)
+de → ru: SUPPORTED (missing=0)
+fr → ru: SUPPORTED (missing=0)
+nl → ru: SUPPORTED (missing=0)
+it → ru: SUPPORTED (missing=0)
+en → de: DEGRADED (missing=2)
+  - нет pair-промпта задачи analysis_vocabulary (пара en/de) — fallback на уровень generic
+  - нет pair-промпта задачи analysis_grammar (пара en/de) — fallback на уровень generic
+de → en: DEGRADED (missing=2)
+  - нет pair-промпта задачи analysis_vocabulary (пара de/en) — fallback на уровень generic
+  - нет pair-промпта задачи analysis_grammar (пара de/en) — fallback на уровень generic
+fr → en: DEGRADED (missing=2)
+  - нет pair-промпта задачи analysis_vocabulary (пара fr/en) — fallback на уровень generic
+  - нет pair-промпта задачи analysis_grammar (пара fr/en) — fallback на уровень generic
+it → en: DEGRADED (missing=2)
+  - нет pair-промпта задачи analysis_vocabulary (пара it/en) — fallback на уровень generic
+  - нет pair-промпта задачи analysis_grammar (пара it/en) — fallback на уровень generic
+nl → en: DEGRADED (missing=2)
+  - нет pair-промпта задачи analysis_vocabulary (пара nl/en) — fallback на уровень generic
+  - нет pair-промпта задачи analysis_grammar (пара nl/en) — fallback на уровень generic
+en → ja: UNSUPPORTED (missing=4)
+  - нет пакета целевого языка: ja/pack.yaml
+  - нет pair-промпта задачи analysis_vocabulary (пара en/ja) — fallback на уровень generic
+  - нет pair-промпта задачи analysis_grammar (пара en/ja) — fallback на уровень generic
+  - промпт задачи analysis_glossary не резолвится (пара en/ja) (pair_required: ошибка на этапе анализа, E4.3 — тихого fallback нет)
+degraded/unsupported с перечнем: 6/6 (100%)

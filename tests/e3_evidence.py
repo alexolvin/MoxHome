@@ -77,7 +77,10 @@ def _make_env_storage(work: Path, server: MockLLMServer) -> tuple[Settings, Path
     )
     cfg_file = work / "config.yaml"
     cfg_file.write_text(
-        f"storage:\n  root: {work}\nllm:\n  profiles:\n{profile_lines}\n{SERVER_EXTRA}",
+        f"storage:\n  root: {work}\n"
+        f"languages:\n  root: {ROOT / 'config' / 'languages'}\n"
+        f"  matrix: {ROOT / 'config' / 'language_matrix.yaml'}\n"
+        f"llm:\n  profiles:\n{profile_lines}\n{SERVER_EXTRA}",
         encoding="utf-8",
     )
     settings = load_settings(cfg_file, env_file)
