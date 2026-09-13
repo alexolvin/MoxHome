@@ -92,6 +92,8 @@ def _make_env_storage(
     cfg_file.write_text(
         f"storage:\n  root: {work}\n"
         f"epubcheck:\n  jar_path: {epubcheck_jar}\n"
+        f"languages:\n  root: {ROOT / 'config' / 'languages'}\n"
+        f"  matrix: {ROOT / 'config' / 'language_matrix.yaml'}\n"
         f"llm:\n  profiles:\n{profile_lines}\n{extra}",
         encoding="utf-8",
     )

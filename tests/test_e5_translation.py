@@ -154,6 +154,8 @@ def e5_env(tmp_path_factory: pytest.TempPathFactory) -> Iterator[E5Env]:
     (work / "config.yaml").write_text(
         f"storage:\n  root: {work}\n"
         f"epubcheck:\n  jar_path: {DEFAULT_EPUBCHECK_JAR}\n"
+        f"languages:\n  root: {ROOT / 'config' / 'languages'}\n"
+        f"  matrix: {ROOT / 'config' / 'language_matrix.yaml'}\n"
         "llm:\n  profiles:\n"
         + "".join(
             f"    {name}:\n      base_url: {server.url}\n      model: test-model\n"
@@ -183,6 +185,7 @@ def _settings_for(
     base_url: str | None = None,
     profile_overrides: Mapping[str, Mapping[str, object]] | None = None,
     epubcheck_jar: str = DEFAULT_EPUBCHECK_JAR,
+    lease_seconds: float | None = None,
 ) -> tuple[Settings, Database, JobRepository]:
     """Настройки + БД + репозиторий на изолированном storage.root (паттерн E3/E4)."""
     cfg = make_yaml(
@@ -191,6 +194,7 @@ def _settings_for(
         base_url=base_url or (server.url if server is not None else DEFAULT_LLM_BASE_URL),
         profile_overrides=profile_overrides,
         epubcheck_jar=epubcheck_jar,
+        lease_seconds=lease_seconds,
     )
     env = make_env(None)
     settings = load_settings(cfg, env)
@@ -307,11 +311,17 @@ def test_e5_10_kill9_during_write_never_corrupts_output(
 
     «Момент записи» — стадия TRANSLATING: движок пишет `target.epub.partial`
     progressively на протяжении всего перевода (E5.6).
+
+    lease_seconds=120: цикл занимает ~45 с; с дефолтной арендой (30 с) лиза
+    убитого задания истекла бы посреди цикла, и следующий one-shot-воркер по
+    E3.4 взял бы «зомби» (самое старое занятие) вместо текущего задания.
     """
     mock_server.set_delay(1.0)
     workers: list[subprocess.Popen[bytes]] = []
     for iteration in range(10):
-        settings, db, repo = _settings_for(tmp_path, make_env, make_yaml, mock_server)
+        settings, db, repo = _settings_for(
+            tmp_path, make_env, make_yaml, mock_server, lease_seconds=120.0
+        )
         cfg_path = tmp_path / "config.yaml"
         env_path = tmp_path / "test.env"
         try:

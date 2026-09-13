@@ -1,0 +1,17 @@
+# Golden-набор (L0): семя эталонных предложений языка.
+# L1 (T-L1-10): расширение до 20 предложений с заранее размеченными явлениями.
+- text: "The quick brown fox jumps over the lazy dog near the river."
+  expected_language: en
+  source: "tests/fixtures/epub/complex.epub (z_alpha, c1-p1)"
+- text: "She visited the old mill on a cold morning."
+  expected_language: en
+  source: "tests/fixtures/epub/complex.epub (z_alpha, c1-p2)"
+- text: "First list item with emphasis."
+  expected_language: en
+  source: "tests/fixtures/epub/complex.epub (z_alpha, c1-li1)"
+- text: "The fox said: patience is a virtue, but the river does not wait for anyone, and the mill does not turn by itself."
+  expected_language: en
+  source: "tests/fixtures/epub/complex.epub (z_alpha, c1-bq)"
+- text: "Footnote: the river was cold that year, colder than the miller remembered from the previous season."
+  expected_language: en
+  source: "tests/fixtures/epub/complex.epub (m_mid, c2-fn1)"

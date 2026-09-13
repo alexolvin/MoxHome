@@ -144,7 +144,7 @@ class Worker:
                 self._repo.transition(
                     job_id,
                     JobStatus.NEEDS_CONFIRMATION,
-                    reason="подозрительная книга (требует подтверждения, E2.7)",
+                    reason=self._confirmation_reason(job_id),
                 )
                 self._repo.release(job_id, self._pid)
                 return None
@@ -169,6 +169,21 @@ class Worker:
             self._repo.transition(job_id, final, reason="результат валидирован")
             return None
         return NEXT_STAGE[state]
+
+    def _confirmation_reason(self, job_id: str) -> str:
+        """Причина NEEDS_CONFIRMATION (E2.7 + L0.5): подозрительная книга и/или
+        язык. Строится из validation.json — единый источник с пайплайном (Rule 8)."""
+        try:
+            payload = self._pipeline.validation(job_id)
+        except (OSError, ValueError):
+            return "подозрительная книга (требует подтверждения, E2.7)"
+        parts: list[str] = []
+        if payload.get("suspicious"):
+            parts.append("подозрительная книга (требует подтверждения, E2.7)")
+        detection = payload.get("language_detection") or {}
+        for reason in detection.get("reasons", ()):
+            parts.append(f"язык: {reason}")
+        return "; ".join(parts) or "требует подтверждения"
 
     # ------------------------------------------------------------- контроль (E3.8)
 

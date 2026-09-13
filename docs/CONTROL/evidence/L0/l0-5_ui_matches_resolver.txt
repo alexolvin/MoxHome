@@ -1,0 +1,16 @@
+L0-5: статус пары в единой точке UI (services.languages) == резолвер
+замер: 2026-09-13 03:37:23
+окружение: langdetect=1.0.9 spacy=3.8.16 wordfreq=3.1.1
+
+en → ru: ui=degraded resolver=degraded расхождение=0
+de → ru: ui=degraded resolver=degraded расхождение=0
+fr → ru: ui=degraded resolver=degraded расхождение=0
+nl → ru: ui=degraded resolver=degraded расхождение=0
+it → ru: ui=degraded resolver=degraded расхождение=0
+en → de: ui=degraded resolver=degraded расхождение=0
+de → en: ui=degraded resolver=degraded расхождение=0
+fr → en: ui=degraded resolver=degraded расхождение=0
+it → en: ui=degraded resolver=degraded расхождение=0
+nl → en: ui=degraded resolver=degraded расхождение=0
+en → ja: ui=unsupported resolver=unsupported расхождение=0
+суммарное расхождение: 0 (критерий: 0)

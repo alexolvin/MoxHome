@@ -1,0 +1,22 @@
+L0-6: число supported-пар (критерий: ≥ 5; все исходные → ru)
+замер: 2026-09-13 03:37:23
+окружение: langdetect=1.0.9 spacy=3.8.16 wordfreq=3.1.1
+
+en → ru: SUPPORTED
+de → ru: SUPPORTED
+fr → ru: SUPPORTED
+nl → ru: SUPPORTED
+it → ru: SUPPORTED
+en → de: DEGRADED
+de → en: DEGRADED
+fr → en: DEGRADED
+it → en: DEGRADED
+nl → en: DEGRADED
+en → ja: UNSUPPORTED
+supported: 5
+  - en → ru
+  - de → ru
+  - fr → ru
+  - nl → ru
+  - it → ru
+критерий: PASS (supported=5 ≥ 5; исходные → ru: ['de', 'en', 'fr', 'it', 'nl'])

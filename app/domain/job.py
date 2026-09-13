@@ -138,4 +138,8 @@ class Job:
     #: Доля выровненных сегментов (E6.5) — в статусе задания; ниже порога
     #: (alignment.min_coverage) — COMPLETED_WITH_WARNINGS. None — не измерялась.
     alignment_coverage: float | None = None
+    #: Подтверждённый исходный язык (L0): решение детектора + dc:language
+    #: (L0.5). Ставится на стадии validating при принятии языка; None — не
+    #: подтверждён (NEEDS_CONFIRMATION или джоб не дошёл до validating).
+    source_language: str | None = None
     error_message: str | None = None

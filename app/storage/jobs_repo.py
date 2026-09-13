@@ -414,6 +414,15 @@ class JobRepository:
         )
         self._db.conn.commit()
 
+    def set_source_language(self, job_id: str, language: str) -> None:
+        """Подтверждённый исходный язык (L0): ставится на стадии validating —
+        решение детектора + dc:language (L0.5). Единственный писатель — воркер."""
+        self._db.conn.execute(
+            "UPDATE jobs SET source_language = ?, updated_at = ? WHERE id = ?",
+            (language, _now(), job_id),
+        )
+        self._db.conn.commit()
+
     def add_tokens(self, job_id: str, profile: str, delta: int) -> None:
         if delta <= 0:
             return
@@ -587,5 +596,6 @@ class JobRepository:
             tokens_analysis=row["tokens_analysis"],
             tokens_total=row["tokens_total"],
             alignment_coverage=row["alignment_coverage"],
+            source_language=row["source_language"],
             error_message=row["error_message"],
         )

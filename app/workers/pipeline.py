@@ -1,8 +1,13 @@
 """Конвейер задания (E3/E5): исполнение этапов с идемпотентностью (E3.6).
 
 - validating: ридер (E2) → validation.json (вкл. TOC/metadata/сегменты по главам
-  — E5.3 «реальные единицы»); подозрительная книга → NEEDS_CONFIRMATION.
-- planning: план перевода (режим задания + движковый submit, E5.2) → plan.json.
+  — E5.3 «реальные единицы») + детерминированное определение исходного языка
+  (L0.4/L0.5, app/languages/detect.py) → секция language_detection; подозрительная
+  книга ИЛИ язык требует подтверждения → NEEDS_CONFIRMATION; принятый язык —
+  в jobs.source_language; пара (принятый исходный → целевой) перепроверяется
+  резолвером (L0.2): unsupported → FAILED с перечнем недостающих (L0.3).
+- planning: исходный язык подтверждён (invariant, L0.5) + пара исполняема →
+  план перевода (режим задания + движковый submit, E5.2) → plan.json.
 - translating: адаптер TranslationEngine (E5.1, D17): `.partial` → внутренняя
   валидация → EPUBCheck → бэкап → `os.replace` (E5.6); прогресс в реальные
   единицы (E5.3); fill-сбои атрибутируются по группе и пишутся в errors.log и
@@ -40,11 +45,14 @@ from app.adapters.epub_engine import (
     TranslationRequest,
 )
 from app.core.config import Settings
-from app.core.errors import LLMUnavailableError, OutputValidationFailed
+from app.core.errors import AppError, LLMUnavailableError, OutputValidationFailed
 from app.core.logging import QUALITY_LOGGER
 from app.domain.job import Job
 from app.epub import aligner
 from app.epub.reader import read_epub
+from app.languages.detect import LanguageReport, detect_book
+from app.languages.registry import aliases_map, load_registry
+from app.languages.resolver import PairReport, PairResolver, PairStatus
 from app.workers.controls import LeaseLost, WorkerCancelled, WorkerPaused
 from app.workers.qc import QcInput, run_qc
 
@@ -56,6 +64,29 @@ logger = logging.getLogger("app.worker.pipeline")
 #: Источник глоссария (E5.5): хук для L2 (и тестов). В E5 — None (глоссария нет);
 #: наполнение — этап L2.
 GlossaryProvider = Callable[[Job], tuple[GlossaryEntry, ...]]
+
+
+def _language_detection_payload(report: LanguageReport) -> dict[str, Any]:
+    """Секция validation.json: решение по исходному языку (L0.4/L0.5/L0.6)."""
+    return {
+        "dc_language": report.dc_language,
+        "detected": report.detected,
+        "confidence": report.confidence,
+        "probabilities": report.probabilities,
+        "decision": report.decision.value,
+        "accepted_language": report.accepted_language,
+        "needs_confirmation": report.needs_confirmation,
+        "reasons": list(report.reasons),
+        "multilingual": asdict(report.multilingual) if report.multilingual is not None else None,
+    }
+
+
+def _pair_unsupported_message(pair: PairReport) -> str:
+    """Сообщение об unsupported-паре: ТОЧНЫЙ перечень недостающего (L0.3)."""
+    return (
+        f"языковая пара {pair.source} → {pair.target} не поддерживается (L0.2); "
+        f"не хватает: {'; '.join(pair.missing)}"
+    )
 
 
 class Pipeline:
@@ -99,16 +130,46 @@ class Pipeline:
             return SubmitMode.REPLACE
         return SubmitMode(self._settings.translation.submit_mode_bilingual)
 
+    def _resolve_pair(self, source: str | None, target: str) -> PairReport | None:
+        """Статус пары (L0.2) по фактическим ресурсам. None — исходный язык не задан."""
+        if source is None:
+            return None
+        resolver = PairResolver(
+            registry_root=self._settings.languages_root,
+            prompts_root=self._settings.prompts_dir,
+        )
+        return resolver.resolve_pair(source, target)
+
+    def validation(self, job_id: str) -> dict[str, Any]:
+        """validation.json задания (L0: секция language_detection; воркер строит
+        причину NEEDS_CONFIRMATION из неё же — единый источник, Rule 8)."""
+        return self._read_json(self.job_dir(job_id) / "validation.json")
+
     # ------------------------------------------------------------------ этапы
 
     def run_validating(self, repo: JobRepository, job: Job) -> bool:
-        """Читает книгу ридером (E2.5: до любого LLM). Возвращает: книга подозрительна."""
+        """Читает книгу ридером (E2.5: до любого LLM) + определяет исходный язык (L0.4).
+
+        Возвращает: книга подозрительна ИЛИ язык требует подтверждения (L0.5) —
+        воркер переводит в NEEDS_CONFIRMATION. Принятый язык пишется в
+        jobs.source_language; пара (принятый → целевой) перепроверяется резолвером:
+        unsupported — AppError → FAILED с точным перечнем недостающего (L0.2/L0.3).
+        """
         if self._skipped(repo, job, "validating"):
-            return bool(self._read_json(self.job_dir(job.id) / "validation.json")["suspicious"])
+            payload = self._read_json(self.job_dir(job.id) / "validation.json")
+            detection = payload.get("language_detection") or {}
+            return bool(payload["suspicious"]) or bool(detection.get("needs_confirmation"))
         book = read_epub(Path(job.source_path), self.job_dir(job.id) / "unpack", self._settings)
+        report = detect_book(
+            book, self._settings, aliases=aliases_map(load_registry(self._settings.languages_root))
+        )
+        if report.accepted_language is not None:
+            repo.set_source_language(job.id, report.accepted_language)
         payload = {
             "title": book.title,
             "language": book.language,
+            # L0: решение по исходному языку (детектор + dc:language, L0.5).
+            "language_detection": _language_detection_payload(report),
             "suspicious": book.suspicious,
             "suspicious_reasons": list(book.suspicious_reasons),
             "stats": asdict(book.stats),
@@ -123,11 +184,30 @@ class Pipeline:
         artifact = self.job_dir(job.id) / "validation.json"
         self._write_json(artifact, payload)
         repo.record_stage_result(job.id, "validating", self.input_hash(job), str(artifact))
-        return book.suspicious
+        if book.suspicious or report.needs_confirmation:
+            return True
+        pair = self._resolve_pair(report.accepted_language, job.target_language)
+        if pair is not None and pair.status is PairStatus.UNSUPPORTED:
+            raise AppError(_pair_unsupported_message(pair))
+        return False
 
     def run_planning(self, repo: JobRepository, job: Job) -> None:
         if self._skipped(repo, job, "planning"):
             return
+        # source_language пишется в БД стадией validating (или confirm) — снимок,
+        # переданный в метод, может быть старше этой записи: читаем свежую строку
+        # (воркер и так делает require на каждом этапе).
+        job = repo.require(job.id)
+        # L0.5: исходный язык подтверждён (детектор+dc на validating либо выбор
+        # пользователя при confirm). Без него план строить нельзя (fail closed).
+        if job.source_language is None:
+            raise AppError(
+                "исходный язык не подтверждён (L0.5): подтверждение задания должно "
+                "включать выбор исходного языка"
+            )
+        pair = self._resolve_pair(job.source_language, job.target_language)
+        if pair is not None and pair.status is PairStatus.UNSUPPORTED:
+            raise AppError(_pair_unsupported_message(pair))
         validation = self._read_json(self.job_dir(job.id) / "validation.json")
         profile = self._settings.llm.profile("translation")
         plan = {

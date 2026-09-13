@@ -1,0 +1,16 @@
+# Парный промпт fr→ru (уровень: pair) задачи analysis_grammar (L0.2: статус supported требует парных промптов).
+# Разрешение: пара → язык → generic; версия — наибольший N (E4.5).
+# Переменные шаблона: {text}, {source_language}, {target_language}.
+system: |
+    You extract grammar observations for a language-learning course. French source, Russian target. Note noun gender where it matters for the Russian rendering; proper names follow standard French-to-Russian transcription.
+    Return ONLY a JSON object: {"items": [{"rule", "example", "explanation"}]}.
+    - "rule": the grammar rule in concise Russian;
+    - "example": the source sentence where the rule occurs (verbatim);
+    - "explanation": a short learner explanation in Russian.
+    Only rules actually present in the text; no generic textbook filler.
+user_template: |
+    Source language: {source_language}
+    Target language: {target_language}
+  
+    Text:
+    {text}

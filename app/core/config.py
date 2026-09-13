@@ -204,10 +204,30 @@ class SegmentationSection(BaseModel):
 
 
 class LanguageDetectionSection(BaseModel):
+    """Детерминированное определение исходного языка (L0.4, D7): объём/метод выборки и пороги."""
+
     model_config = ConfigDict(frozen=True)
 
     sample_segments: int = Field(default=200, gt=0)
     min_confidence: float = Field(default=0.6, gt=0.0, le=1.0)
+    #: Сид детектора (D7: детерминированность — результат воспроизводим).
+    seed: int = 42
+    #: Многоязычная книга (L0.6): порог доли сегментов с другим языком;
+    #: превышение → факт в отчёте и пометки сегментов.
+    multilingual_share: float = Field(default=0.2, gt=0.0, le=1.0)
+    #: Минимальная длина сегмента (символы) для пометки: короче — детектор ненадёжен.
+    segment_min_chars: int = Field(default=40, ge=0)
+
+
+class LanguagesSection(BaseModel):
+    """Языковой слой (L0.1/L0.2): реестр и матрица — данные, а не код (Rule 1)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    #: Корень реестра (L0.1): config/languages/<code>/pack.yaml; относительно storage.root.
+    root: str = Field(default="config/languages", min_length=1)
+    #: Матрица пар (L0.2); относительно storage.root.
+    matrix: str = Field(default="config/language_matrix.yaml", min_length=1)
 
 
 class EpubcheckSection(BaseModel):
@@ -249,6 +269,7 @@ class Settings(BaseModel):
     alignment: AlignmentSection
     segmentation: SegmentationSection
     language_detection: LanguageDetectionSection
+    languages: LanguagesSection
     epubcheck: EpubcheckSection
     translation: TranslationSection
 
@@ -305,6 +326,18 @@ class Settings(BaseModel):
     def prompts_dir(self) -> Path:
         """Корень внешних промптов (E4.5): <storage.root>/<llm.prompts_root>."""
         return self.storage.root / self.llm.prompts_root
+
+    @property
+    def languages_root(self) -> Path:
+        """Корень реестра языков (L0.1): <storage.root>/<languages.root>, если не абсолютный."""
+        path = Path(self.languages.root)
+        return path if path.is_absolute() else self.storage.root / path
+
+    @property
+    def language_matrix_path(self) -> Path:
+        """Матрица пар (L0.2): <storage.root>/<languages.matrix>, если не абсолютный."""
+        path = Path(self.languages.matrix)
+        return path if path.is_absolute() else self.storage.root / path
 
     @property
     def epubcheck_jar_path(self) -> Path:
@@ -426,6 +459,7 @@ def load_settings(config_yaml: Path, env_file: Path) -> Settings:
         detection_section = LanguageDetectionSection.model_validate(
             _sub(data, "language_detection")
         )
+        languages_section = LanguagesSection.model_validate(_sub(data, "languages"))
         epubcheck_section = EpubcheckSection.model_validate(_sub(data, "epubcheck"))
         translation_section = TranslationSection.model_validate(_sub(data, "translation"))
     except ValidationError as exc:
@@ -441,6 +475,7 @@ def load_settings(config_yaml: Path, env_file: Path) -> Settings:
         alignment=alignment_section,
         segmentation=segmentation_section,
         language_detection=detection_section,
+        languages=languages_section,
         epubcheck=epubcheck_section,
         translation=translation_section,
     )

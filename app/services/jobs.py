@@ -4,6 +4,12 @@ API-сторона пишет только создание задания и у
 занято занимается воркер (единственный писатель рабочих состояний, E3.1).
 Управляющие команды (cancel/pause/resume) исполняет JobRepository напрямую —
 он и есть авторизованный писатель; дублирующих обёрток нет (Rule 8).
+
+L0.7: целевой язык задаёт пользователь; пара (dc:language → целевой) проверяется
+резолвером ДО создания задания — unsupported отклоняется с точным перечнем
+недостающих (L0.2/L0.3). dc:language читается лёгким ридером (без распаковки);
+его отсутствие — не ошибка: язык определит детектор на validating (L0.5), пара
+перепроверится там.
 """
 
 from __future__ import annotations
@@ -18,6 +24,8 @@ from app.core.config import Settings
 from app.core.errors import InputValidationError
 from app.core.ids import new_job_id
 from app.domain.job import Job, JobStatus
+from app.epub.reader import read_dc_language
+from app.languages.resolver import PairResolver, PairStatus
 from app.storage.jobs_repo import JobRepository
 
 #: Версия промптов (E4: prompts/<task>/<src>/<tgt>/vN.yaml). В E3 единая версия.
@@ -69,6 +77,19 @@ def create_job(
         raise InputValidationError(f"файл-источник не найден: {source_path}")
     if not zipfile.is_zipfile(source_path):
         raise InputValidationError(f"не является ZIP-архивом: {source_path.name}")
+    # L0.7: проверка пары ДО создания задания (fail closed). dc:language может
+    # отсутствовать — тогда исходный язык определит детектор на validating (L0.5).
+    dc_language = read_dc_language(source_path)
+    if dc_language is not None:
+        resolver = PairResolver(
+            registry_root=settings.languages_root, prompts_root=settings.prompts_dir
+        )
+        report = resolver.resolve_pair(dc_language, target_language)
+        if report.status is PairStatus.UNSUPPORTED:
+            raise InputValidationError(
+                f"языковая пара {report.source} → {report.target} не поддерживается "
+                f"(L0.2); не хватает: {'; '.join(report.missing)}"
+            )
     now = time.time()
     job = Job(
         id=new_job_id(),
@@ -87,8 +108,17 @@ def create_job(
     return job
 
 
-def confirm_job(repo: JobRepository, job_id: str) -> Job:
-    """Подтверждение подозрительной книги: NEEDS_CONFIRMATION → PLANNING."""
+def confirm_job(
+    repo: JobRepository, job_id: str, source_language: str | None = None
+) -> Job:
+    """Подтверждение NEEDS_CONFIRMATION: подозрительная книга (E2.7) и/или язык (L0.5).
+
+    `source_language` — выбор ПОЛЬЗОВАТЕЛЯ исходного языка (L0.5: авто-выбор
+    при конфликте детектора и dc:language запрещён): записывается в задание;
+    стадия planning требует подтверждённый язык (invariant, fail closed).
+    """
+    if source_language is not None:
+        repo.set_source_language(job_id, source_language.strip().lower())
     return repo.transition(
         job_id, JobStatus.PLANNING, reason="подтверждено пользователем", actor="api"
     )
