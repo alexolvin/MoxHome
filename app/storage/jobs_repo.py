@@ -130,6 +130,25 @@ class JobRepository:
         row = self._db.conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
         return self._row_to_job(row) if row is not None else None
 
+    def list_jobs(self) -> list[Job]:
+        """Все задания, новые первыми (U1: список заданий в UI/API).
+
+        Только чтение — API/UI не пишут рабочие состояния (E3.1).
+        """
+        rows = self._db.conn.execute(
+            "SELECT * FROM jobs ORDER BY created_at DESC, id DESC"
+        ).fetchall()
+        jobs: list[Job] = []
+        for row in rows:
+            job = self._row_to_job(row)
+            if job is not None:
+                jobs.append(job)
+        return jobs
+
+    def ping(self) -> None:
+        """Жив ли БД (U1 /api/health): ``SELECT 1``; сбой — исключение."""
+        self._db.conn.execute("SELECT 1").fetchone()
+
     def list_transitions(self, job_id: str) -> list[TransitionRecord]:
         rows = self._db.conn.execute(
             "SELECT * FROM transitions WHERE job_id = ? ORDER BY id", (job_id,)

@@ -1,0 +1,25 @@
+дата: 2026-09-14 03:11:22
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: U1-4 — статусы пар API == свежему резолверу L0
+
+пар в матрице: 11; пар в API: 11
+
+| пара | API | резолвер (свежий) | не хватает (API) | совпадает |
+|---|---|---|---|---|
+| en → ru | supported | supported | — | да |
+| de → ru | supported | supported | — | да |
+| fr → ru | supported | supported | — | да |
+| nl → ru | supported | supported | — | да |
+| it → ru | supported | supported | — | да |
+| en → de | degraded | degraded | нет pair-промпта задачи analysis_vocabulary (пара en/de) — fallback на уровень generic; нет pair-промпта задачи analysis_grammar (пара en/de) — fallback на уровень generic | да |
+| de → en | degraded | degraded | нет pair-промпта задачи analysis_vocabulary (пара de/en) — fallback на уровень generic; нет pair-промпта задачи analysis_grammar (пара de/en) — fallback на уровень generic | да |
+| fr → en | degraded | degraded | нет pair-промпта задачи analysis_vocabulary (пара fr/en) — fallback на уровень generic; нет pair-промпта задачи analysis_grammar (пара fr/en) — fallback на уровень generic | да |
+| it → en | degraded | degraded | нет pair-промпта задачи analysis_vocabulary (пара it/en) — fallback на уровень generic; нет pair-промпта задачи analysis_grammar (пара it/en) — fallback на уровень generic | да |
+| nl → en | degraded | degraded | нет pair-промпта задачи analysis_vocabulary (пара nl/en) — fallback на уровень generic; нет pair-промпта задачи analysis_grammar (пара nl/en) — fallback на уровень generic | да |
+| en → ja | unsupported | unsupported | нет пакета целевого языка: ja/pack.yaml; нет pair-промпта задачи analysis_vocabulary (пара en/ja) — fallback на уровень generic; нет pair-промпта задачи analysis_grammar (пара en/ja) — fallback на уровень generic; промпт задачи analysis_glossary не резолвится (пара en/ja) (pair_required: ошибка на этапе анализа, E4.3 — тихого fallback нет) | да |
+
+расхождений: 0
+
+ВЕРДИКТ: PASS

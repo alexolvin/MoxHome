@@ -1,0 +1,21 @@
+дата: 2026-09-14 03:11:22
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: U1-9 — список правок L3 в UI == quality.log (0 расхождений)
+
+задание: j-20260914T001134Z-e6d35d (wexley-книга, 7 сегментов, сценарий glossary_inconsistent)
+статус: COMPLETED
+l3: attempted=3 applied=3 rejected=0
+строк kind=glossary_fix в quality.log: 3
+правок в UI (GET /api/jobs/j-20260914T001134Z-e6d35d/quality → l3.fixes): 3
+
+| segment_id | doc | термин | UI applied | в quality.log |
+|---|---|---|---|---|
+| 2489455fc18ac6b23ac296bbdb1f0ec4e083597b3078d90508f9346839d2d95a | OEBPS/chapter1.xhtml | Wexley | да | да |
+| 533ccc006c8a97c149a60c74ed02f9fcdcdb93241776c7d784454e36dcc4c179 | OEBPS/chapter1.xhtml | Wexley | да | да |
+| 759ecabc3d20304bab278c1c2fc39ae78a741957f82ed20c0ad2ee81ddf9a66d | OEBPS/chapter1.xhtml | Wexley | да | да |
+
+расхождений: 0
+
+ВЕРДИКТ: UI == quality.log, правок фактических: 3 — PASS

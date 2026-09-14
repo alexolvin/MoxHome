@@ -1,7 +1,9 @@
 """Точка входа приложения.
 
 E0: загрузка и валидация конфигурации (fail closed), инициализация логирования.
-Начиная с U1 здесь запускается FastAPI-сервер.
+Начиная с U1 здесь запускается FastAPI-сервер (Web UI + API). Воркер —
+отдельный процесс: ``python -m app.workers.run --loop`` (запуск из UI —
+«Not implemented», не притворяемся, что он запускается).
 """
 
 from __future__ import annotations
@@ -11,9 +13,12 @@ import logging
 import sys
 from pathlib import Path
 
+import uvicorn
+
 from app.core.config import load_settings
 from app.core.errors import ConfigurationError
 from app.core.logging import setup_logging
+from app.web.app import create_app
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -43,7 +48,21 @@ def main(argv: list[str] | None = None) -> int:
             "port": settings.server.port,
         },
     )
-    log.info("этап E0: службы ещё не запущены (сервер — этап U1)")
+    app = create_app(settings)
+    log.info(
+        "U1: запуск FastAPI-сервера",
+        extra={
+            "bind": settings.server.bind_address,
+            "port": settings.server.port,
+            "auth": "on (общий секрет)" if settings.server.auth_secret else "off",
+        },
+    )
+    uvicorn.run(
+        app,
+        host=settings.server.bind_address,
+        port=settings.server.port,
+        log_level="info",
+    )
     return 0
 
 

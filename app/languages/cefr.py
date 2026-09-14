@@ -109,3 +109,13 @@ def label(result: CefrResult) -> str:
         return f"Estimated CEFR level{suffix}"
     level = result.level if result.level is not None else "не установлен"
     return f"CEFR level ({result.source}): {level}"
+
+
+def language_cefr_label(pack: PackSpec) -> str:
+    """Подпись ЯЗЫКА в разделах UI (U1.4/U1-5): классификация та же, что у
+    ``label`` — `derived` (фактически) → `Estimated CEFR level`; лексикон →
+    `CEFR level (lexicon:<имя>)`. Уровень слова здесь не показывается —
+    это свойство ``label``, а не языка."""
+    if pack.cefr_source == _DERIVED:
+        return "Estimated CEFR level"
+    return f"CEFR level ({pack.cefr_source})"

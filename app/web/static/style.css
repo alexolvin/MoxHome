@@ -1,0 +1,24 @@
+/* U1: минимальный CSS (ТЗ: без фреймворков и build-инструментов). */
+body { font-family: system-ui, -apple-system, sans-serif; margin: 0; color: #1a1a1a; }
+header { display: flex; gap: 1rem; align-items: baseline; padding: .75rem 1rem; border-bottom: 1px solid #ccc; }
+.brand { font-weight: 700; text-decoration: none; color: #1a1a1a; }
+nav a { margin-right: .75rem; text-decoration: none; color: #14508c; }
+main { padding: 1rem; max-width: 1100px; }
+table { border-collapse: collapse; margin: .5rem 0 1rem; width: 100%; }
+th, td { border: 1px solid #ccc; padding: .3rem .5rem; text-align: left; vertical-align: top; font-size: .9rem; }
+th { background: #f4f4f4; }
+footer { padding: .75rem 1rem; border-top: 1px solid #ccc; font-size: .8rem; color: #555; }
+.err { color: #b00020; }
+.ok { color: #0a7a2f; }
+.hint { color: #555; font-size: .85rem; }
+.ni { font-weight: 600; }
+form label { margin-right: 1rem; }
+.actions { margin: 1rem 0; display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+button, .btn { padding: .3rem .7rem; }
+a.btn { text-decoration: none; }
+pre { background: #f6f6f6; padding: .5rem; overflow-x: auto; font-size: .8rem; }
+.status-completed, .status-completed_with_warnings { color: #0a7a2f; font-weight: 600; }
+.status-failed { color: #b00020; font-weight: 600; }
+.status-cancelled { color: #666; }
+.status-paused { color: #8a6d00; font-weight: 600; }
+details { margin: .75rem 0; }

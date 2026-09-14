@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Jobs</h1>
+
+<form id="u1-create" data-jobs-page="1">
+  <label>Книга:
+    <select name="book" required>
+      {% for b in books %}<option value="{{ b.name }}">{{ b.name }}{% if b.title %} — {{ b.title }}{% endif %}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Целевой язык:
+    <select name="target_language" required>
+      {% for code in registry_codes %}<option value="{{ code }}">{{ code }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Режим:
+    <select name="mode">
+      <option value="bilingual" selected>bilingual</option>
+      <option value="translation">translation</option>
+    </select>
+  </label>
+  <label>Learning-уровень:
+    <select name="learning_level">
+      <option value="" selected>— нет —</option>
+      <option value="Minimal">Minimal</option>
+      <option value="Balanced">Balanced</option>
+      <option value="Learning">Learning</option>
+      <option value="Intensive">Intensive</option>
+    </select>
+  </label>
+  <label>CEFR пользователя:
+    <select name="learning_cefr">
+      <option value="" selected>— нет —</option>
+      {% for l in cefr_levels %}<option value="{{ l }}">{{ l }}</option>{% endfor %}
+    </select>
+  </label>
+  <button type="submit">Создать задание</button>
+  <span id="u1-create-msg"></span>
+</form>
+
+{% if rows %}
+<table id="u1-jobs-table" data-u1-fetch="/api/jobs" data-u1-render="jobs">
+  <tr>
+    <th>задание</th><th>статус</th><th>пара</th><th>режим / уровень</th>
+    <th>прогресс (реальные единицы)</th><th>выравнивание</th>
+    <th>токены</th><th>ошибка</th>
+  </tr>
+  {% for row in rows %}
+  {% set j = row.job %}
+  <tr>
+    <td><a href="/jobs/{{ j.id }}">{{ j.id }}</a></td>
+    <td class="status-{{ j.status.value | lower }}">{{ j.status.value }}</td>
+    <td>{{ j.source_language or '—' }} → {{ j.target_language }}</td>
+    <td>{{ j.mode }}{% if j.learning_level %} / {{ j.learning_level }}{% if j.learning_cefr %} ({{ j.learning_cefr }}){% endif %}{% endif %}</td>
+    <td>{{ row.progress_display }}</td>
+    <td>{% if j.alignment_coverage is not none %}{{ '%.1f' | format(j.alignment_coverage * 100) }}%{% else %}—{% endif %}</td>
+    <td>{{ j.tokens_total }}</td>
+    <td class="err">{{ j.error_message or '' }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p>Заданий нет. Загрузите книгу в <a href="/books">Books</a> и создайте задание.</p>
+{% endif %}
+{% endblock %}

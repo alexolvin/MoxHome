@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Job {{ facts.id }} <span class="status-{{ facts.status | lower }}">{{ facts.status }}</span></h1>
+
+<div id="u1-progress" data-u1-poll="{{ facts.id }}" data-u1-status="{{ facts.status }}">
+  <table>
+    <tr><th>статус</th><td class="status-{{ facts.status | lower }}">{{ facts.status }}{% if facts.error %} — <span class="err">{{ facts.error }}</span>{% endif %}</td></tr>
+    <tr><th>пара</th><td>{{ facts.source_language or '—' }} → {{ facts.target_language }}</td></tr>
+    <tr><th>режим / уровень</th><td>{{ facts.mode }}{% if facts.learning_level %} / {{ facts.learning_level }}{% if facts.learning_cefr %} ({{ facts.learning_cefr }}){% endif %}{% endif %}</td></tr>
+    <tr><th>прогресс (реальные единицы)</th><td>{{ facts.progress_display }}</td></tr>
+    <tr><th>фаза</th><td>{{ facts.phase or '—' }} ({{ facts.phases.completed }} / {{ facts.phases.total }})</td></tr>
+    <tr><th>сегменты</th><td>{% if facts.segments %}{{ facts.segments.processed }} / {{ facts.segments.total }}{% else %}—{% endif %}</td></tr>
+    <tr><th>выравнивание</th><td>{% if facts.alignment.coverage is not none %}{{ '%.1f' | format(facts.alignment.coverage * 100) }}% ({{ facts.alignment.aligned }} / {{ facts.alignment.total }}){% else %}—{% endif %}</td></tr>
+    <tr><th>токены</th><td>
+      {% for name, t in facts.tokens.items() %}{% if name != 'total' %}{{ name }}: {{ t.total }}{% if not loop.last %} · {% endif %}{% endif %}{% endfor %}
+      · всего: {{ facts.tokens.total }}
+    </td></tr>
+    <tr><th>время</th><td>прошло: {{ facts.elapsed_seconds }} c{% if facts.eta_seconds is not none %} · осталось (оценка): {{ facts.eta_seconds }} c{% endif %}</td></tr>
+    <tr><th>ошибки / повторы</th><td>сегментов с ошибками: {{ facts.failed_segments }} · повторов: {{ facts.retries }}</td></tr>
+    <tr><th>создано / обновлено</th><td>{{ facts.created_at | round(0) }} / {{ facts.updated_at | round(0) }}</td></tr>
+  </table>
+  {% if facts.warnings %}
+  <p><b>предупреждения:</b></p>
+  <ul>{% for w in facts.warnings %}<li>{{ w }}</li>{% endfor %}</ul>
+  {% endif %}
+</div>
+
+<div class="actions">
+  {% if facts.status == 'NEEDS_CONFIRMATION' %}
+  <form id="u1-confirm" data-job="{{ facts.id }}">
+    <label>Исходный язык:
+      <select id="u1-confirm-lang">
+        {% if detected %}
+        <option value="{{ detected }}" selected>{{ detected }} (детекция, уверенность {{ facts.language_detection.confidence }})</option>
+        {% endif %}
+        {% for code in registry_codes %}
+        {% if code != detected %}
+        <option value="{{ code }}">{{ code }}</option>
+        {% endif %}
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">Подтвердить и запустить</button>
+    <span id="u1-confirm-msg"></span>
+  </form>
+  {% endif %}
+  {% if not facts.status_terminal %}
+    <button id="u1-pause" data-job="{{ facts.id }}">Пауза</button>
+    <button id="u1-cancel" data-job="{{ facts.id }}">Отменить</button>
+  {% endif %}
+  {% if facts.status == 'PAUSED' %}
+    <button id="u1-resume" data-job="{{ facts.id }}">Продолжить</button>
+  {% endif %}
+  {% if facts.result_ready %}
+    <a class="btn" href="/api/jobs/{{ facts.id }}/result">Скачать результат</a>
+    {% if facts.files['cards.csv'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=cards.csv">карточки CSV</a>{% endif %}
+    {% if facts.files['cards.anki.tsv'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=cards.anki.tsv">карточки Anki TSV</a>{% endif %}
+    {% if facts.files['cards.json'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=cards.json">карточки JSON</a>{% endif %}
+  {% else %}
+    <span class="hint">Результат появится после завершения задания.</span>
+  {% endif %}
+</div>
+
+<details>
+  <summary>Качество (QC, выравнивание, правки L3)</summary>
+  <div id="u1-quality" data-u1-fetch="/api/jobs/{{ facts.id }}/quality" data-u1-render="quality">загрузка…</div>
+</details>
+
+<details>
+  <summary>Логи (job / errors / quality)</summary>
+  <div id="u1-logs" data-u1-fetch="/api/jobs/{{ facts.id }}/logs" data-u1-render="logs">загрузка…</div>
+</details>
+{% endblock %}
