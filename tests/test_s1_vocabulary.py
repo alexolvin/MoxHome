@@ -218,7 +218,7 @@ class S1Env:
             )
             pipeline.run_validating_output(repo, repo.require(job.id))
             repo.transition(job.id, JobStatus.GLOSSARY_FIX, reason="начало этапа (T-S1)")
-            job_dir = pipeline.job_dir(job.id)
+            job_dir = settings.job_dir(job.id)
             error: AppError | None = None
             warnings: list[str] = []
             handlers = attach_job_logs(job_dir, settings.secrets())
@@ -297,7 +297,8 @@ def s1_env(tmp_path_factory: pytest.TempPathFactory) -> Iterator[S1Env]:
 
 def _cards(run: S1Run) -> list[dict[str, Any]]:
     assert run.s1_report is not None, f"нет vocabulary_cards.json: {run.error}"
-    return run.s1_report["cards"]
+    cards: list[dict[str, Any]] = run.s1_report["cards"]
+    return cards
 
 
 def _noun_cards(run: S1Run) -> list[dict[str, Any]]:
@@ -332,6 +333,7 @@ def test_s1_2_no_lemma_duplicates(s1_env: S1Env) -> None:
     assert len(lemmas) == len(set(lemmas)), "дубль леммы среди выпущенных"
     # Повторяемость учтена: в книге s1_en все кандидаты повторяются.
     assert all(card["occurrences"] > 1 for card in cards)
+    assert run.s1_report is not None, "S1-отчёт отсутствует"
     assert run.s1_report["candidates_total"] == len(
         {c["lemma"] for c in run.s1_report["candidates"]}
     )
@@ -344,6 +346,7 @@ def test_s1_3_density_cap(s1_env: S1Env) -> None:
     # S1-3: плотность ≤ N на 1000 слов исходного языка (N — из конфигурации).
     run = s1_env.run("t3", "s1_en.epub")
     rep = run.s1_report
+    assert rep is not None, "S1-отчёт отсутствует"
     n = s1_env.settings_of("main").limits.vocabulary_max_cards_per_1000_words
     words = rep["book_words"]
     cap = math.floor(n * words / 1000.0)
@@ -363,6 +366,7 @@ def test_s1_4_placeholder_rejected_issued_valid(s1_env: S1Env) -> None:
     # 100% выпущенных проходят схему языка.
     run = s1_env.run("t4", "s1_en.epub", scenario="vocab_schema_bad")
     rep = run.s1_report
+    assert rep is not None, "S1-отчёт отсутствует"
     rejected = {r["lemma"]: r["reasons"] for r in rep["rejected"]}
     assert rejected, "отклонённые карточки зафиксированы с причинами"
     first = rep["candidates"][0]["lemma"]
@@ -385,6 +389,8 @@ def test_s1_5_deterministic_candidates(s1_env: S1Env) -> None:
     # S1-5: воспроизводимость — два запуска дают идентичный список кандидатов.
     first = s1_env.run("t5a", "s1_en.epub")
     second = s1_env.run("t5b", "s1_en.epub")
+    assert first.s1_report is not None, "S1-отчёт отсутствует (запуск 1)"
+    assert second.s1_report is not None, "S1-отчёт отсутствует (запуск 2)"
     assert first.s1_report["candidates"] == second.s1_report["candidates"]
 
 
@@ -396,6 +402,7 @@ def test_s1_6_example_from_book_share(s1_env: S1Env) -> None:
     # с пометкой example_generated (и не отклоняется).
     run = s1_env.run("t6", "s1_en.epub", scenario="vocab_generated_example")
     rep = run.s1_report
+    assert rep is not None, "S1-отчёт отсутствует"
     cards = rep["cards"]
     assert len(cards) >= 20
     assert rep["cards_rejected"] == 0, (
@@ -445,6 +452,7 @@ def test_s1_8_ghost_card_rejected(s1_env: S1Env) -> None:
     # отклонена с причиной и не выпущена.
     run = s1_env.run("t8", "s1_en.epub", scenario="vocab_ghost")
     rep = run.s1_report
+    assert rep is not None, "S1-отчёт отсутствует"
     ghosts = [r for r in rep["rejected"] if r["lemma"] == "Ghostlemma"]
     assert ghosts, "призрачная карточка отклонена"
     assert all(any("кандидат" in reason for reason in g["reasons"]) for g in ghosts)

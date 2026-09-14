@@ -116,7 +116,7 @@ def _run_inprocess(
     pipeline.run_planning(repo, job_now)
     pipeline.run_translating(repo, job_now, lambda: None)
     warnings = pipeline.run_validating_output(repo, job_now)
-    job_dir = pipeline.job_dir(job.id)
+    job_dir = settings.job_dir(job.id)
     quality: dict[str, Any] = json.loads((job_dir / "quality.json").read_text(encoding="utf-8"))
     return job, job_dir, quality, warnings
 

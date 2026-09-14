@@ -153,7 +153,8 @@ def s3_env(tmp_path_factory: pytest.TempPathFactory) -> Iterator[S1Env]:
 def _grammar_report(run: S1Run) -> dict[str, Any]:
     path = run.job_dir / "grammar_notes.json"
     assert path.is_file(), f"нет grammar_notes.json: {run.error}"
-    return json.loads(path.read_text(encoding="utf-8"))
+    data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    return data
 
 
 def _grammar_golden(s3_env: S1Env, code: str) -> tuple[int, int, int]:

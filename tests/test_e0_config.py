@@ -162,13 +162,13 @@ def test_prompts_root_explicit_resolved(
     # относительный — от storage.root.
     absolute = tmp_path / "custom_prompts"
     absolute.mkdir()
-    settings = load_settings(  # type: ignore[operator]
+    settings = load_settings(
         make_yaml(str(tmp_path / "data"), prompts_root=str(absolute)), make_env()  # type: ignore[operator]
     )
     assert settings.prompts_dir == absolute.resolve()
     root = tmp_path / "data2"
     (root / "relative_prompts").mkdir(parents=True)
-    settings = load_settings(  # type: ignore[operator]
+    settings = load_settings(
         make_yaml(str(root), prompts_root="relative_prompts"), make_env()  # type: ignore[operator]
     )
     assert settings.prompts_dir == (root / "relative_prompts").resolve()

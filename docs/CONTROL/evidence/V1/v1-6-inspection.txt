@@ -1,0 +1,80 @@
+дата: 2026-09-14 06:53:13
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: V1-6 — осмотр сгенерированного EPUB (container/OPF/nav/NCX/XHTML/CSS/
+картинки/ссылки + zipinfo verbatim; «стандартный ридер» в headless-
+окружении заменён EPUBCheck 5.3.0 + ридером приложения E2.5 — честно)
+
+--- target.epub: 6 файлов
+  | META-INF/container.xml
+  | OEBPS/chapter1.xhtml
+  | OEBPS/chapter2.xhtml
+  | OEBPS/content.opf
+  | OEBPS/nav.xhtml
+  | mimetype
+container.xml (verbatim):
+  | <?xml version="1.0"?>
+  | <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  |   <rootfiles>
+  |     <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+  |   </rootfiles></container>
+OPF (OEBPS/content.opf): manifest 3 items, spine 2 itemref
+  | ch1: chapter1.xhtml [application/xhtml+xml] 
+  | ch2: chapter2.xhtml [application/xhtml+xml] 
+  | nav: nav.xhtml [application/xhtml+xml] nav
+spine: ch1, ch2
+nav (nav.xhtml): 2 ссылок
+NCX: отсутствует (EPUB3: навигация — nav.xhtml; допустимо)
+CSS: 0 файлов — не найдено
+изображения (<img>): 0 ссылок
+битые ссылки: 0
+zipinfo (verbatim):
+  | Archive:  /tmp/v1-evidence-oxfmb9lh/v6/jobs/j-20260914T035326Z-f6f5dc/target.epub
+  | Zip file size: 3040 bytes, number of entries: 6
+  | ?rw-------  2.0 unx       20 b- stor 26-Jan-01 00:00 mimetype
+  | ?rw-------  2.0 unx      457 b- defN 80-Jan-01 00:00 OEBPS/nav.xhtml
+  | ?rw-------  2.0 unx      851 b- defN 80-Jan-01 00:00 OEBPS/content.opf
+  | ?rw-------  2.0 unx     1906 b- defN 80-Jan-01 00:00 OEBPS/chapter1.xhtml
+  | ?rw-------  2.0 unx     1884 b- defN 80-Jan-01 00:00 OEBPS/chapter2.xhtml
+  | ?rw-------  2.0 unx      234 b- defN 26-Jan-01 00:00 META-INF/container.xml
+  | 6 files, 5352 bytes uncompressed, 2358 bytes compressed:  55.9%
+
+--- learning.epub: 7 файлов
+  | META-INF/container.xml
+  | OEBPS/chapter1.xhtml
+  | OEBPS/chapter2.xhtml
+  | OEBPS/content.opf
+  | OEBPS/nav.xhtml
+  | OEBPS/study-answers.xhtml
+  | mimetype
+container.xml (verbatim):
+  | <?xml version="1.0"?>
+  | <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  |   <rootfiles>
+  |     <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+  |   </rootfiles></container>
+OPF (OEBPS/content.opf): manifest 4 items, spine 3 itemref
+  | ch1: chapter1.xhtml [application/xhtml+xml] 
+  | ch2: chapter2.xhtml [application/xhtml+xml] 
+  | nav: nav.xhtml [application/xhtml+xml] nav
+  | s5-answers: study-answers.xhtml [application/xhtml+xml] 
+spine: ch1, ch2, s5-answers
+nav (nav.xhtml): 7 ссылок
+NCX: отсутствует (EPUB3: навигация — nav.xhtml; допустимо)
+CSS: 0 файлов — не найдено
+изображения (<img>): 0 ссылок
+битые ссылки: 0
+zipinfo (verbatim):
+  | Archive:  /tmp/v1-evidence-oxfmb9lh/v6/jobs/j-20260914T035326Z-f6f5dc/learning.epub
+  | Zip file size: 5769 bytes, number of entries: 7
+  | ?rw-------  2.0 unx       20 b- stor 26-Jan-01 00:00 mimetype
+  | ?rw-------  2.0 unx      953 b- defN 80-Jan-01 00:00 OEBPS/nav.xhtml
+  | ?rw-------  2.0 unx      961 b- defN 80-Jan-01 00:00 OEBPS/content.opf
+  | ?rw-------  2.0 unx     5703 b- defN 80-Jan-01 00:00 OEBPS/chapter1.xhtml
+  | ?rw-------  2.0 unx     4619 b- defN 80-Jan-01 00:00 OEBPS/chapter2.xhtml
+  | ?rw-------  2.0 unx      234 b- defN 26-Jan-01 00:00 META-INF/container.xml
+  | ?rw-------  2.0 unx     6585 b- defN 80-Jan-01 00:00 OEBPS/study-answers.xhtml
+  | 7 files, 19075 bytes uncompressed, 4961 bytes compressed:  74.0%
+
+ВЕРДИКТ: V1-6 (осмотр EPUB) — PASS

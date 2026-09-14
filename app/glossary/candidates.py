@@ -96,7 +96,11 @@ def _add(
 ) -> None:
     if not surface.strip() or count <= 0:
         return
-    surface = unicodedata.normalize("NFC", surface)
+    # Внутренние пробельные (переносы/отступы исходного XHTML) — в один
+    # пробел: один термин с разным отбелом (NER-сущность «Charles\n      »
+    # в реальной книге) давал бы отдельного кандидата, а аннотация
+    # отклонялась бы как «дублирующая» (поймано V1.13 на v1_en.epub).
+    surface = re.sub(r"\s+", " ", unicodedata.normalize("NFC", surface)).strip()
     key = _norm(surface)
     entry = acc.get(key)
     if entry is None:

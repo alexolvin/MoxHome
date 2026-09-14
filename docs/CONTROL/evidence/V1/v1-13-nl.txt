@@ -1,0 +1,6231 @@
+дата: 2026-09-14 08:53:34
+версии: python=3.11.13 spacy=3.8.16
+
+K: V1.13 — полный конвейер nl → ru, Learning, bilingual; книга v1_nl.epub
+
+$ python -m app.cli … translate v1_nl.epub --source nl --target ru --mode bilingual --level Learning --wait 3600
+rc = 0;  wall = 253 c
+  | задание: j-20260914T060908Z-b91a9f
+  | статус: CREATED
+  | исход: COMPLETED_WITH_WARNINGS
+
+CLI job status (verbatim):
+  | задание: j-20260914T060908Z-b91a9f
+  | статус: COMPLETED_WITH_WARNINGS
+  | пара: nl → ru  режим: bilingual
+  | learning, уровень: Learning
+  | прогресс: глава 9 / 9, сегментов 1276 / 1595
+  | сегменты: 1276 / 1595
+  | охват выравнивания (E6): 1592 / 1595 (99.8%)
+  | токенов всего: 3642776
+  | прошло: 251 c
+  | остаток (оценка): 28 c
+  | предупреждение: E5 п.4: перевод совпадает с оригиналом (вероятно, непереведено): OEBPS/842701366549142707_27486-h-1.htm.html /htmlbody[1]div[1]p[79] перевод совпадает с оригиналом; OEBPS/842701366549142707_27486-h-4.htm.html /htmlbody[1]div[1]p[105] перевод совпадает с оригиналом; OEBPS/842701366549142707_27486-h-4.htm.html /htmlbody[1]div[1]p[158] перевод совпадает с оригиналом; OEBPS/842701366549142707_27486-h-6.htm.html /htmlbody[1]div[1]table[1]tbody[1]tr[1]td[3] перевод совпадает с оригиналом; OEBPS/842701366549142707_27486-h-6.htm.html /htmlbody[1]div[1]table[1]tbody[1]tr[2]td[3] перевод совпадает с оригиналом; OEBPS/842701366549142707_27486-h-6.htm.html /htmlbody[1]div[1]table[1]tbody[1]tr[3]td[3] перевод совпадает с оригиналом; OEBPS/842701366549142707_27486-h-6.htm.html /htmlbody[1]div[1]table[1]tbody[1]tr[4]td[3] перевод совпадает с оригиналом; OEBPS/842701366549142707_27486-h-6.htm.html /htmlbody[1]div[1]table[1]tbody[1]tr[5]td[3] перевод совпадает с оригиналом; OEBPS/842701366549142707_27486-h-6.htm.html /htmlbody[1]div[1]table[1]tbody[1]tr[6]td[3] перевод совпадает с оригиналом; OEBPS/842701366549142707_27486-h-6.htm.html /htmlbody[1]div[1]table[1]tbody[1]tr[7]td[3] перевод совпадает с оригиналом
+  | предупреждение: E5 п.7: изменения структуры XHTML вне ожидаемой вставки: OEBPS/842701366549142707_27486-h-0.htm.html //body[2]/div[1] атрибут 'lang' удалён; OEBPS/842701366549142707_27486-h-0.htm.html //body[2]/div[1] число дочерних элементов 4 -> 6; OEBPS/842701366549142707_27486-h-0.htm.html //body[2]/div[3] число дочерних элементов 7 -> 6; OEBPS/842701366549142707_27486-h-6.htm.html //body[2]/div[1]/div[1] число дочерних элементов 2 -> 4; OEBPS/842701366549142707_27486-h-7.htm.html //body[2]/div[1] число дочерних элементов 2 -> 3; OEBPS/842701366549142707_27486-h-7.htm.html //body[2]/div[2]/table[7]/tbody[1]/tr[1] число дочерних элементов 3 -> 6; OEBPS/842701366549142707_27486-h-7.htm.html //body[2]/div[4] атрибут 'lang' удалён; OEBPS/842701366549142707_27486-h-7.htm.html //body[2]/div[4] число дочерних элементов 48 -> 92
+  | предупреждение: E5 п.3 (прогресс): число вызовов on_progress (10) != ожидаемому (11)
+  | предупреждение: E5 п.5 (глоссарий): user_prompt усечён — включено 396/846 терминов (лимит 8000 симв., отброшено 450)
+  | предупреждение: L3: 12 правка(и) не прошли валидацию — расхождения неустранены: 5en (2efeb0844a12fb64ded815925755d5fe427499d9f7d9f0e59bdee55d4ac23bdd): новая версия не содержит форму парадигмы термина; Staet (141729e1d22394f71183107f79f09e40bf6aa711441c8ca3927f6e5752e96bbb): новая версия не содержит форму парадигмы термина; Zijn (141729e1d22394f71183107f79f09e40bf6aa711441c8ca3927f6e5752e96bbb): новая версия не содержит форму парадигмы термина; Daar (1e00fcab5de2704af2f477013b5853480a05d579e0c9fa6d7fe7766c646e88ab): новая версия не содержит форму парадигмы термина; Den (1e00fcab5de2704af2f477013b5853480a05d579e0c9fa6d7fe7766c646e88ab): новая версия не содержит форму парадигмы термина; Ben (d6f8f9d09ab0a5029837725f8e990c890534bdb0ff737c3cd4635043a478a8ec): новая версия не содержит форму парадигмы термина; U (d6f8f9d09ab0a5029837725f8e990c890534bdb0ff737c3cd4635043a478a8ec): новая версия не содержит форму парадигмы термина; 20en Juni (c6e47a6c4e1a6f9eaaaec59d14f4e8da4f7f5a7e6fb7231c11e9940b9be09747): новая версия не содержит форму парадигмы термина; 5en (df7cbfa1ef6e98fcc398dc71500f2e450c904394e47ec8aa56cd04b8de31758b): новая версия не содержит форму парадигмы термина; En (f35fb8b4c6be39c7a9da8e2e6925f734675f83a67891860d6499dcb25960652b): новая версия не содержит форму парадигмы термина
+  | предупреждение: S1: 974 карточек отклонено: naam: лемма не соответствует словоформе по spaCy (S1.5); heilig: лемма не соответствует словоформе по spaCy (S1.5); vervolgd: лемма не соответствует словоформе по spaCy (S1.5); toevoegen: лемма не соответствует словоформе по spaCy (S1.5); bestuur: лемма не соответствует словоформе по spaCy (S1.5); Nederlandsch: лемма не соответствует словоформе по spaCy (S1.5); vergrijpen: лемма не соответствует словоформе по spaCy (S1.5); stilzwijgen: лемма не соответствует словоформе по spaCy (S1.5); kerkbestur: лемма не соответствует словоформе по spaCy (S1.5); nagelacht: лемма не соответствует словоформе по spaCy (S1.5)
+  | предупреждение: S2: 4 записей отклонено: er was: дублирующая запись MWE (S2.4); Er zijn: дублирующая запись MWE (S2.4); er waren: дублирующая запись MWE (S2.4); er viel: дублирующая запись MWE (S2.4)
+  | предупреждение: S3: 27 заметок отклонено: heb ik hier nog bij te voegen: al de „maatregelen,” door mij geschetst, zijn letterlijk zóó genomen: цитата вне сегмента (S3.2): 'heb ik hier nog bij te voegen: al de „maatregelen,” door mij geschetst, zijn letterlijk zóó genomen'; heb niet verdicht, maar bronnen gebruikt: первая заметка явления отклонена — ссылка некорректна (S3.4); heeft, lijdt: первая заметка явления отклонена — ссылка некорректна (S3.4); is te beantwoorden met de wedervraag: Waarom houdt men steeds op allerlei wijzen de herinnering levendig aan de gruwelen van de Inquisitie; de martelingen onzen vroegeren voorvaderen aangedaan; het naamloos lijden den Hugenoten berokkend: первая заметка явления отклонена — ссылка некорректна (S3.4); is van eigenaardige beteekenis in verband met de voorrede van het boek, gedateerd 1-8 Januari 1886, waarin men aan het slot leest: „Een en ander schreef ik onder den overstelpenden en hartaangrijpenden arbeid, dien de voorloopige schorsing van tachtig Kerkeraadsleden mijner Gemeente mij als Scriba van het Classikaal Bestuur oplegt: первая заметка явления отклонена — ссылка некорректна (S3.4); is, „stilzwijgend: первая заметка явления отклонена — ссылка некорректна (S3.4); zijn echt; van slechts zeer enkele personen de namen gewijzigd: первая заметка явления отклонена — ссылка некорректна (S3.4); heb je daardoor jezelf leelijk de deur uitgezet: первая заметка явления отклонена — ссылка некорректна (S3.4); heb je geweigerd: первая заметка явления отклонена — ссылка некорректна (S3.4); heb je mandaat als veldwachter.... en hier als dorpsbode.... ga: первая заметка явления отклонена — ссылка некорректна (S3.4)
+  | предупреждение: S4 вопросы: 1 отклонено: p_144: дублирующийся вопрос (S4)
+  | предупреждение: S5: 1 глав без выровненных сегментов (вне учебной книги): «"Cover"»
+  | предупреждение: S5: фактический охват 99.8% (E6) — указан в учебной книге
+  | результат готов: target.epub, learning.epub, cards.csv, cards.anki.tsv, cards.json
+
+Метрики (источник: артефакты задания + БД):
+  | {
+  |   "статус": "COMPLETED_WITH_WARNINGS",
+  |   "сегменты (alignment total)": 1595,
+  |   "охват выравнивания": 0.998119,
+  |   "EPUBCheck выхода errors/warnings": [
+  |     0,
+  |     0
+  |   ],
+  |   "глоссарий (total/kept/truncated, translation_result)": [
+  |     846,
+  |     396,
+  |     true
+  |   ],
+  |   "терминов, проверено на согласованность (L2.6)": 846,
+  |   "расхождений (финальное состояние файла, после L3)": 15,
+  |   "L3 mismatches/attempted/applied/rejected/halted": [
+  |     20,
+  |     17,
+  |     5,
+  |     12,
+  |     false
+  |   ],
+  |   "S1 book_words/candidates/issued/rejected/not_selected": [
+  |     44390,
+  |     4965,
+  |     665,
+  |     974,
+  |     3326
+  |   ],
+  |   "S1 плотность на 1000 слов (density_actual)": 14.980852,
+  |   "S1 отклонённые карточки по причинам": {
+  |     "лемма не соответствует словоформе по spaCy (S1.5)": 974
+  |   },
+  |   "S2 candidates/issued/rejected": [
+  |     154,
+  |     150,
+  |     4
+  |   ],
+  |   "S3 issued/rejected/not_selected": [
+  |     53,
+  |     27,
+  |     2296
+  |   ],
+  |   "S5 coverage/chapters_with_sections/chapters_total": [
+  |     0.998119,
+  |     8,
+  |     9
+  |   ],
+  |   "S5 learning.epub EPUBCheck errors/warnings": [
+  |     0,
+  |     0
+  |   ],
+  |   "learning.epub существует": true,
+  |   "токены по профилям (input/output)": {
+  |     "analysis": [
+  |       1432409,
+  |       746706
+  |     ],
+  |     "fill": [
+  |       583315,
+  |       198751
+  |     ],
+  |     "translation": [
+  |       521396,
+  |       160199
+  |     ]
+  |   },
+  |   "токены всего (БД)": 3642776,
+  |   "время (wall, c)": 252.9
+  | }
+
+--- quality.json (warnings/epubcheck/alignment/glossary)
+  | {
+  |   "warnings": [
+  |     "E5 п.4: перевод совпадает с оригиналом (вероятно, непереведено): OEBPS/842701366549142707_27486-h-1.htm.html /htmlbody[1]div[1]p[79] перевод совпадает с оригиналом; OEBPS/842701366549142707_27486-h-4.htm.html /htmlbody[1]div[1]p[105] перевод совпадает с оригиналом; OEBPS/842701366549142707_27486-h-4.htm.html /htmlbody[1]div[1]p[158] перевод совпадает с оригиналом; OEBPS/842701366549142707_27486-h-6.htm.html /htmlbody[1]div[1]table[1]tbody[1]tr[1]td[3] перевод совпадает с оригиналом; OEBPS/842701366549142707_27486-h-6.htm.html /htmlbody[1]div[1]table[1]tbody[1]tr[2]td[3] перевод совпадает с оригиналом; OEBPS/842701366549142707_27486-h-6.htm.html /htmlbody[1]div[1]table[1]tbody[1]tr[3]td[3] перевод совпадает с оригиналом; OEBPS/842701366549142707_27486-h-6.htm.html /htmlbody[1]div[1]table[1]tbody[1]tr[4]td[3] перевод совпадает с оригиналом; OEBPS/842701366549142707_27486-h-6.htm.html /htmlbody[1]div[1]table[1]tbody[1]tr[5]td[3] перевод совпадает с оригиналом; OEBPS/842701366549142707_27486-h-6.htm.html /htmlbody[1]div[1]table[1]tbody[1]tr[6]td[3] перевод совпадает с оригиналом; OEBPS/842701366549142707_27486-h-6.htm.html /htmlbody[1]div[1]table[1]tbody[1]tr[7]td[3] перевод совпадает с оригиналом",
+  |     "E5 п.7: изменения структуры XHTML вне ожидаемой вставки: OEBPS/842701366549142707_27486-h-0.htm.html //body[2]/div[1] атрибут 'lang' удалён; OEBPS/842701366549142707_27486-h-0.htm.html //body[2]/div[1] число дочерних элементов 4 -> 6; OEBPS/842701366549142707_27486-h-0.htm.html //body[2]/div[3] число дочерних элементов 7 -> 6; OEBPS/842701366549142707_27486-h-6.htm.html //body[2]/div[1]/div[1] число дочерних элементов 2 -> 4; OEBPS/842701366549142707_27486-h-7.htm.html //body[2]/div[1] число дочерних элементов 2 -> 3; OEBPS/842701366549142707_27486-h-7.htm.html //body[2]/div[2]/table[7]/tbody[1]/tr[1] число дочерних элементов 3 -> 6; OEBPS/842701366549142707_27486-h-7.htm.html //body[2]/div[4] атрибут 'lang' удалён; OEBPS/842701366549142707_27486-h-7.htm.html //body[2]/div[4] число дочерних элементов 48 -> 92",
+  |     "E5 п.3 (прогресс): число вызовов on_progress (10) != ожидаемому (11)",
+  |     "E5 п.5 (глоссарий): user_prompt усечён — включено 396/846 терминов (лимит 8000 симв., отброшено 450)",
+  |     "L3: 12 правка(и) не прошли валидацию — расхождения неустранены: 5en (2efeb0844a12fb64ded815925755d5fe427499d9f7d9f0e59bdee55d4ac23bdd): новая версия не содержит форму парадигмы термина; Staet (141729e1d22394f71183107f79f09e40bf6aa711441c8ca3927f6e5752e96bbb): новая версия не содержит форму парадигмы термина; Zijn (141729e1d22394f71183107f79f09e40bf6aa711441c8ca3927f6e5752e96bbb): новая версия не содержит форму парадигмы термина; Daar (1e00fcab5de2704af2f477013b5853480a05d579e0c9fa6d7fe7766c646e88ab): новая версия не содержит форму парадигмы термина; Den (1e00fcab5de2704af2f477013b5853480a05d579e0c9fa6d7fe7766c646e88ab): новая версия не содержит форму парадигмы термина; Ben (d6f8f9d09ab0a5029837725f8e990c890534bdb0ff737c3cd4635043a478a8ec): новая версия не содержит форму парадигмы термина; U (d6f8f9d09ab0a5029837725f8e990c890534bdb0ff737c3cd4635043a478a8ec): новая версия не содержит форму парадигмы термина; 20en Juni (c6e47a6c4e1a6f9eaaaec59d14f4e8da4f7f5a7e6fb7231c11e9940b9be09747): новая версия не содержит форму парадигмы термина; 5en (df7cbfa1ef6e98fcc398dc71500f2e450c904394e47ec8aa56cd04b8de31758b): новая версия не содержит форму парадигмы термина; En (f35fb8b4c6be39c7a9da8e2e6925f734675f83a67891860d6499dcb25960652b): новая версия не содержит форму парадигмы термина",
+  |     "S1: 974 карточек отклонено: naam: лемма не соответствует словоформе по spaCy (S1.5); heilig: лемма не соответствует словоформе по spaCy (S1.5); vervolgd: лемма не соответствует словоформе по spaCy (S1.5); toevoegen: лемма не соответствует словоформе по spaCy (S1.5); bestuur: лемма не соответствует словоформе по spaCy (S1.5); Nederlandsch: лемма не соответствует словоформе по spaCy (S1.5); vergrijpen: лемма не соответствует словоформе по spaCy (S1.5); stilzwijgen: лемма не соответствует словоформе по spaCy (S1.5); kerkbestur: лемма не соответствует словоформе по spaCy (S1.5); nagelacht: лемма не соответствует словоформе по spaCy (S1.5)",
+  |     "S2: 4 записей отклонено: er was: дублирующая запись MWE (S2.4); Er zijn: дублирующая запись MWE (S2.4); er waren: дублирующая запись MWE (S2.4); er viel: дублирующая запись MWE (S2.4)",
+  |     "S3: 27 заметок отклонено: heb ik hier nog bij te voegen: al de „maatregelen,” door mij geschetst, zijn letterlijk zóó genomen: цитата вне сегмента (S3.2): 'heb ik hier nog bij te voegen: al de „maatregelen,” door mij geschetst, zijn letterlijk zóó genomen'; heb niet verdicht, maar bronnen gebruikt: первая заметка явления отклонена — ссылка некорректна (S3.4); heeft, lijdt: первая заметка явления отклонена — ссылка некорректна (S3.4); is te beantwoorden met de wedervraag: Waarom houdt men steeds op allerlei wijzen de herinnering levendig aan de gruwelen van de Inquisitie; de martelingen onzen vroegeren voorvaderen aangedaan; het naamloos lijden den Hugenoten berokkend: первая заметка явления отклонена — ссылка некорректна (S3.4); is van eigenaardige beteekenis in verband met de voorrede van het boek, gedateerd 1-8 Januari 1886, waarin men aan het slot leest: „Een en ander schreef ik onder den overstelpenden en hartaangrijpenden arbeid, dien de voorloopige schorsing van tachtig Kerkeraadsleden mijner Gemeente mij als Scriba van het Classikaal Bestuur oplegt: первая заметка явления отклонена — ссылка некорректна (S3.4); is, „stilzwijgend: первая заметка явления отклонена — ссылка некорректна (S3.4); zijn echt; van slechts zeer enkele personen de namen gewijzigd: первая заметка явления отклонена — ссылка некорректна (S3.4); heb je daardoor jezelf leelijk de deur uitgezet: первая заметка явления отклонена — ссылка некорректна (S3.4); heb je geweigerd: первая заметка явления отклонена — ссылка некорректна (S3.4); heb je mandaat als veldwachter.... en hier als dorpsbode.... ga: первая заметка явления отклонена — ссылка некорректна (S3.4)",
+  |     "S4 вопросы: 1 отклонено: p_144: дублирующийся вопрос (S4)",
+  |     "S5: 1 глав без выровненных сегментов (вне учебной книги): «\"Cover\"»",
+  |     "S5: фактический охват 99.8% (E6) — указан в учебной книге"
+  |   ],
+  |   "epubcheck": {
+  |     "version": "EPUBCheck v5.3.0",
+  |     "available": true,
+  |     "errors": 0,
+  |     "warnings": 0,
+  |     "unavailable_reason": null
+  |   },
+  |   "alignment": {
+  |     "coverage": 0.998119,
+  |     "aligned": 1592,
+  |     "total": 1595,
+  |     "unaligned": 3,
+  |     "extra_blocks": 3,
+  |     "min_coverage": 0.995,
+  |     "report": "alignment_report.json"
+  |   },
+  |   "glossary": {
+  |     "total_terms": 846,
+  |     "kept_terms": 396,
+  |     "dropped_terms": 450,
+  |     "limit_chars": 8000,
+  |     "prompt_chars": 8000,
+  |     "truncated": true
+  |   }
+  | }
+--- glossary_consistency.json (сводка; mismatches — список)
+  | {
+  |   "stage": "L2",
+  |   "terms_checked": 846,
+  |   "occurrences_checked": 17151,
+  |   "consistent_occurrences": 17136,
+  |   "consistent_share": 0.999125,
+  |   "mismatches": [
+  |     {
+  |       "term": "20en Juni",
+  |       "translation_expected": "20hq Mxql",
+  |       "segment_id": "c6e47a6c4e1a6f9eaaaec59d14f4e8da4f7f5a7e6fb7231c11e9940b9be09747",
+  |       "source_text": "Sedert de Kerstvacantie was de jonge man niet meer in Loosdrecht geweest. In gewone omstandigheden zou het hem gemakkelijk gevallen zijn zoo nu en dan Zaterdagsmiddags daarheen en Zondagsavonds terug te wandelen. Maar de vervolging legde hem allerlei andere plichten op. Er viel voor hem veel meer te doen dan het onderwijzen van de kinderen. Wel had de kleine gemeente zeer goed begrepen dat de openbare onderwijzer niet het ambt van ouderling of diaken vervullen kon zonder haar zoowel als zichzelf noodeloos en onherstelbaar in moeite te brengen. Indien hij als ambtsdrager opgetreden ware, zou zijn ontslag slechts een kwestie van zeer korten tijd geweest zijn. En dan zou er heel waarschijnlijk een opvolger gekomen zijn, die „het gouvernement niet tegenwerkte”, en die dus met de kinderen der gemeente vrij spel had. Maar dat belette Gerrit niet in allerlei opzichten zijn eenvoudige en minder ontwikkelde geloofsgenooten met raad en daad bij te staan, waarmee hij de handen vol had. Voorzichtigheid gebood hem daarvoor uitsluitend zijn vrijen tijd te gebruiken. Daarenboven was zijn aanwezigheid van groot nut voor het gezin van zijn hospes Kramer, dat voordurend met inkwartiering gekweld werd. Vrouw en kinderen kon men geen oogenblik alleen in huis laten, zoolang de „gezegende werktuigen om Sion uit te breiden” daar nog gebruikt werden. Zijn vriend en hij waren dus om de beurt aan huis gebonden. Ten overvloede was hij sedert den 20en Juni zijn vriend Jan Verlinden als hulponderwijzer kwijt, zoodat voorshands al het werk in de school alleen voor zijne rekening kwam.",
+  |       "translation_text": "Vhghuw gh Nhuvwydfdqwlh zdv gh mrqjh pdq qlhw phhu lq Orrvguhfkw jhzhhvw. Lq jhzrqh rpvwdqgljkhghq crx khw khp jhpdnnholmn jhydoohq clmq crr qx hq gdq Cdwhugdjvplggdjv gddukhhq hq Crqgdjvdyrqgv whuxj wh zdqghohq. Pddu gh yhuyrojlqj ohjgh khp doohuohl dqghuh solfkwhq rs. Hu ylho yrru khp yhho phhu wh grhq gdq khw rqghuzlmchq ydq gh nlqghuhq. Zho kdg gh nohlqh jhphhqwh chhu jrhg ehjuhshq gdw gh rshqeduh rqghuzlmchu qlhw khw dpew ydq rxghuolqj ri gldnhq yhuyxoohq nrq crqghu kddu crrzho dov clfkchoi qrrghorrv hq rqkhuvwhoeddu lq prhlwh wh euhqjhq. Lqglhq klm dov dpewvgudjhu rsjhwuhghq zduh, crx clmq rqwvodj vohfkwv hhq nzhvwlh ydq chhu nruwhq wlmg jhzhhvw clmq. Hq gdq crx hu khho zdduvfklmqolmn hhq rsyrojhu jhnrphq clmq, glh „khw jrxyhuqhphqw qlhw whjhqzhunwh”, hq glh gxv phw gh nlqghuhq ghu jhphhqwh yulm vsho kdg. Pddu gdw ehohwwh Jhuulw qlhw lq doohuohl rsclfkwhq clmq hhqyrxgljh hq plqghu rqwzlnnhogh jhorrivjhqrrwhq phw uddg hq gddg elm wh vwddq, zdduphh klm gh kdqghq yro kdg. Yrruclfkwljkhlg jherrg khp gdduyrru xlwvoxlwhqg clmq yulmhq wlmg wh jheuxlnhq. Gdduhqeryhq zdv clmq ddqzhcljkhlg ydq jurrw qxw yrru khw jhclq ydq clmq krvshv Nudphu, gdw yrrugxuhqg phw lqnzduwlhulqj jhnzhog zhug. Yurxz hq nlqghuhq nrq phq jhhq rrjhqeoln doohhq lq kxlv odwhq, crrodqj gh „jhchjhqgh zhunwxljhq rp Vlrq xlw wh euhlghq” gddu qrj jheuxlnw zhughq. Clmq yulhqg hq klm zduhq gxv rp gh ehxuw ddq kxlv jherqghq. Whq ryhuyorhgh zdv klm vhghuw ghq 20 hq Mxql clmq yulhqg Mdq Yhuolqghq dov kxosrqghuzlmchu nzlmw, crrgdw yrruvkdqgv do khw zhun lq gh vfkrro doohhq yrru clmqh uhnhqlqj nzdp."
+  |     },
+  |     {
+  |       "term": "5en",
+  |       "translation_expected": "5hq",
+  |       "segment_id": "2efeb0844a12fb64ded815925755d5fe427499d9f7d9f0e59bdee55d4ac23bdd",
+  |       "source_text": "Het huis van Ds. Brummelkamp werd tevens tot een wachthuis gesteld, waar steeds drie manschappen moesten blijven, en een derzelve gedurende den nacht als schildwacht stond. Een der plaatselijke autoriteiten verklaarde aan den predikant, nadat de militairen den 5en December weer vertrokken waren, dat deze inlegering had plaats gehad als een lesje tot straf wegens het houden van openbare godsdienstoefening, en dat, indien het weder gebeurde, de straf veel zwaarder zou zijn.",
+  |       "translation_text": "Khw kxlv ydq Gv. Euxpphondps zhug whyhqv wrw hhq zdfkwkxlv jhvwhog, zddu vwhhgv gulh pdqvfkdsshq prhvwhq eolmyhq, hq hhq ghuchoyh jhgxuhqgh ghq qdfkw dov vfklogzdfkw vwrqg. Hhq ghu soddwvholmnh dxwrulwhlwhq yhunoddugh ddq ghq suhglndqw, qdgdw gh plolwdluhq ghq 5 hq Ghfhpehu zhhu yhuwurnnhq zduhq, gdw ghch lqohjhulqj kdg soddwv jhkdg dov hhq ohvmh wrw vwudi zhjhqv khw krxghq ydq rshqeduh jrgvglhqvwrhihqlqj, hq gdw, lqglhq khw zhghu jhehxugh, gh vwudi yhho czddughu crx clmq."
+  |     },
+  |     {
+  |       "term": "5en",
+  |       "translation_expected": "5hq",
+  |       "segment_id": "df7cbfa1ef6e98fcc398dc71500f2e450c904394e47ec8aa56cd04b8de31758b",
+  |       "source_text": "Ploeg, die reeds sedert een half jaar ouderling bij de Afgescheiden Gemeente was, betaalde niet; in overleg met zijn medeleden, om te zien wat er van de zaak worden zou. Den 10en September volgde een bevel tot executie. Den 5en October werd beslag op zijn inboedel gelegd, en nam zekere Willemse, tot gerechtelijk bewaarder aangesteld, intrek in de woning van Ploeg. Deze had den 16en September een rekwest aan Z. M. den koning ingediend; maar dat bleef onbeantwoord[1]. Den 15en October werd de inboedel voor zoover noodig, verkocht. Zoover noodig beteekende: ƒ2.50 hoofdsom en ƒ54.94 gerechtelijke onkosten.",
+  |       "translation_text": "Sorhj, glh uhhgv vhghuw hhq kdoi mddu rxghuolqj elm gh Dijhvfkhlghq Jhphhqwh zdv, ehwddogh qlhw; lq ryhuohj phw clmq phghohghq, rp wh clhq zdw hu ydq gh cddn zrughq crx. Ghq 10 hq Vhswhpehu yrojgh hhq ehyho wrw hahfxwlh. Ghq 5 hq Rfwrehu zhug ehvodj rs clmq lqerhgho jhohjg, hq qdp chnhuh Zloohpvh, wrw jhuhfkwholmn ehzddughu ddqjhvwhog, lqwuhn lq gh zrqlqj ydq Sorhj. Ghch kdg ghq 16 hq Vhswhpehu hhq uhnzhvw ddq C. P. ghq nrqlqj lqjhglhqg; pddu gdw eohhi rqehdqwzrrug [1] . Ghq 15 hq Rfwrehu zhug gh lqerhgho yrru crryhu qrrglj, yhunrfkw. Crryhu qrrglj ehwhhnhqgh: ƒ2.50 krrigvrp hq ƒ54.94 jhuhfkwholmnh rqnrvwhq."
+  |     },
+  |     {
+  |       "term": "Ben",
+  |       "translation_expected": "Ehq",
+  |       "segment_id": "d6f8f9d09ab0a5029837725f8e990c890534bdb0ff737c3cd4635043a478a8ec",
+  |       "source_text": "„Als ick door anghst en tegenspoet Ben in kleynmoet, Gij mij verquicket; Oock tegen myn wreetste vyant U rechter hant My hulp toeschicket. Gij zult myn kruys eyndigen hier; Want goedertier Zijt gy gestadigh: Het werck uwer handen sult gy Volvoeren vry, o Heer, genadigh.”",
+  |       "translation_text": "„ Dov lfn grru dqjkvw hq whjhqvsrhwEhq lq nohbqprhw,Jlm plm yhutxlfnhw;Rrfn whjhq pbq zuhhwvwh ybdqwX uhfkwhu kdqwPb kxos wrhvfklfnhw.Jlm cxow pbq nuxbv hbqgljhq klhu;Zdqw jrhghuwlhuClmw jb jhvwdgljk:Khw zhufn xzhu kdqghq vxow jbYroyrhuhq yub,r Khhu, jhqdgljk.”"
+  |     },
+  |     {
+  |       "term": "Daar",
+  |       "translation_expected": "Gddu",
+  |       "segment_id": "1e00fcab5de2704af2f477013b5853480a05d579e0c9fa6d7fe7766c646e88ab",
+  |       "source_text": "Gy verquickt uw volck goedertier, En maekt dat een yegelick dier Daar woont sonder verderven; Uwen kindren deelt gy uw goet, In 't kruys geeft gij hen goeden moet, Sonder troost sy niet sterven; Gij hebt, na uwe goedigheyt Den reynen jonckvrouwen bereyt Een oorsaeck, soo 't mag blijcken, Om te singen in 't gantsche lant, Als onze vijanden met schant Veltvluchtig moeten wijcken.",
+  |       "translation_text": "Jb yhutxlfnw xz yrofn jrhghuwlhu,Hq pdhnw gdw hhq bhjholfn glhuGddu zrrqw vrqghu yhughuyhq;Xzhq nlqguhq ghhow jb xz jrhw,Lq 'w nuxbv jhhiw jlm khq jrhghq prhw,Vrqghu wurrvw vb qlhw vwhuyhq;Jlm khew, qd xzh jrhgljkhbwGhq uhbqhq mrqfnyurxzhq ehuhbwHhq rruvdhfn, vrr 'w pdj eolmfnhq,Rp wh vlqjhq lq 'w jdqwvfkh odqw,Dov rqch ylmdqghq phw vfkdqwYhowyoxfkwlj prhwhq zlmfnhq."
+  |     },
+  |     {
+  |       "term": "Den",
+  |       "translation_expected": "Ghq",
+  |       "segment_id": "1e00fcab5de2704af2f477013b5853480a05d579e0c9fa6d7fe7766c646e88ab",
+  |       "source_text": "Gy verquickt uw volck goedertier, En maekt dat een yegelick dier Daar woont sonder verderven; Uwen kindren deelt gy uw goet, In 't kruys geeft gij hen goeden moet, Sonder troost sy niet sterven; Gij hebt, na uwe goedigheyt Den reynen jonckvrouwen bereyt Een oorsaeck, soo 't mag blijcken, Om te singen in 't gantsche lant, Als onze vijanden met schant Veltvluchtig moeten wijcken.",
+  |       "translation_text": "Jb yhutxlfnw xz yrofn jrhghuwlhu,Hq pdhnw gdw hhq bhjholfn glhuGddu zrrqw vrqghu yhughuyhq;Xzhq nlqguhq ghhow jb xz jrhw,Lq 'w nuxbv jhhiw jlm khq jrhghq prhw,Vrqghu wurrvw vb qlhw vwhuyhq;Jlm khew, qd xzh jrhgljkhbwGhq uhbqhq mrqfnyurxzhq ehuhbwHhq rruvdhfn, vrr 'w pdj eolmfnhq,Rp wh vlqjhq lq 'w jdqwvfkh odqw,Dov rqch ylmdqghq phw vfkdqwYhowyoxfkwlj prhwhq zlmfnhq."
+  |     },
+  |     {
+  |       "term": "DER",
+  |       "translation_expected": "GHU",
+  |       "segment_id": "1c3f87aefcd6cc35c31293e629beebcdd94ac0dff0937cb439750dc2dfa9c650",
+  |       "source_text": "Heer, tot wien wij in den noot vlien, Wilt uwen Gesalfden aansien; Want veel beter is slechts een ure In u huys, dan elders, dit 's klaer, Duysent sijn: beter is oock daer Een wachter te sijn aan de deure, Dan 't is in den palleysen soet Der godtloosen met overvloet.”",
+  |       "translation_text": "Khhu, wrw zlhq zlm lq ghq qrrw yolhq,Zlow xzhq Jhvdoighq ddqvlhq;Zdqw yhho ehwhu lv vohfkwv hhq xuhLq x kxbv, gdq hoghuv, glw 'v nodhu,Gxbvhqw vlmq: ehwhu lv rrfn gdhuHhq zdfkwhu wh vlmq ddq gh ghxuh,Gdq 'w lv lq ghq sdoohbvhq vrhwGhu jrgworrvhq phw ryhuyorhw.”"
+  |     },
+  |     {
+  |       "term": "En",
+  |       "translation_expected": "Hq",
+  |       "segment_id": "f35fb8b4c6be39c7a9da8e2e6925f734675f83a67891860d6499dcb25960652b",
+  |       "source_text": "Mijn tranen ende mijn klachten Zijn mijn spijs die mij steedts voedt; Als men mij vraeght met verachten: Waer is nu uw Godt soo goedt? Ick smelt als ick denck daeraen. Hoe ick voormaels plagh te gaen Met een hoop volcks hier te lande. Om u Heer, te doen offrande. Waerom wilt ghij u zoo quellen En beroert sijn, o ziel mijn? Wilt gantsch uw hoop op Godt stellen, Van u sal hij gedanckt zijn Als hij door sijn....",
+  |       "translation_text": "Plmq wudqhq hqgh plmq nodfkwhqClmq plmq vslmv glh plm vwhhgwv yrhgw;Dov phq plm yudhjkw phw yhudfkwhq:Zdhu lv qx xz Jrgw vrr jrhgw?Lfn vphow dov lfn ghqfn gdhudhq.Krh lfn yrrupdhov sodjk wh jdhqPhw hhq krrs yrofnv klhu wh odqgh.Rp x Khhu, wh grhq riiudqgh.Zdhurp zlow jklm x crr txhoohqHq ehurhuw vlmq, r clho plmq?Zlow jdqwvfk xz krrs rs Jrgw vwhoohq,Ydq x vdo klm jhgdqfnw clmqDov klm grru vlmq...."
+  |     },
+  |     {
+  |       "term": "en den",
+  |       "translation_expected": "hq ghq",
+  |       "segment_id": "3191dd8900cd9de6760e2e48651ebb75dbce685bf8259a155f6017055ae4aaaa",
+  |       "source_text": "„Opdat ick daer magh merken en aenschouwen, Heer, uwes huys seer schoone heerlickheyt En den tempel, vry synde van benouwen, Wel magh alsins doorsien met vrolickheyt. Want als ick sal wezen bezwaert met noot, Ick sal daer verborgen sijn taller tijt, En in een heymelick oort syn bevrydt, En daerna verhooght syn in eeren groot.”",
+  |       "translation_text": "„Rsgdw lfn gdhu pdjk phunhq hq dhqvfkrxzhq,Khhu, xzhv kxbv vhhu vfkrrqh khhuolfnkhbwHq ghq whpsho, yub vbqgh ydq ehqrxzhq,Zho pdjk dovlqv grruvlhq phw yurolfnkhbw.Zdqw dov lfn vdo zhchq ehczdhuw phw qrrw,Lfn vdo gdhu yhuerujhq vlmq wdoohu wlmw,Hq lq hhq khbpholfn rruw vbq ehyubgw,Hq gdhuqd yhukrrjkw vbq lq hhuhq jurrw.”"
+  |     },
+  |     {
+  |       "term": "Pres.",
+  |       "translation_expected": "Suhv.",
+  |       "segment_id": "9ff5c7d99e8620f2d42fc05181f0748d8a84e7d5ee86bcb24dfe66f4082bbd54",
+  |       "source_text": "H. H. Donker Curtius, Pres. J. J. Dermout, Secr.”",
+  |       "translation_text": "K. K. Grqnhu Fxuwlxv , Suhv.M. M. Ghuprxw , Vhfu. ”"
+  |     },
+  |     {
+  |       "term": "Staet",
+  |       "translation_expected": "Vwdhw",
+  |       "segment_id": "141729e1d22394f71183107f79f09e40bf6aa711441c8ca3927f6e5752e96bbb",
+  |       "source_text": "Soo haest als ick hoore spreken: Welaan, laat ons alle seer saen In dat huys onses Heeren gaen: Met vreught is mijn hert ontsteken; Dat ons voeten sullen hier naer Staen binnen de poorten eerbaer Van Jerusalem wel gestichtet. Jerusalem is gebouwt vast, En door vrede tsamengepast, En tot een stad Godts fijn gerichtet. Binnen uw mueren wonen sal, Liefde, vrede, met eenigheyt; De huysen en palleysen breyt Zijn vol van Godts zegening al! Om den wil der broederen mijn, En der vrienden die binnen sijn, Wensch ick u vreed in allen hoecken, Om dat oock Godts Tempel seer reyn Staet binnen u mueren niet kleyn, Wil ick steets uwen voorspoet soecken.",
+  |       "translation_text": "Vrr kdhvw dov lfn krruh vsuhnhq:Zhoddq, oddw rqv dooh vhhu vdhqLq gdw kxbv rqvhv Khhuhq jdhq:Phw yuhxjkw lv plmq khuw rqwvwhnhq;Gdw rqv yrhwhq vxoohq klhu qdhuVwdhq elqqhq gh srruwhq hhuedhuYdq Mhuxvdohp zho jhvwlfkwhw.Mhuxvdohp lv jherxzw ydvw,Hq grru yuhgh wvdphqjhsdvw,Hq wrw hhq vwdg Jrgwv ilmq jhulfkwhw.Elqqhq xz pxhuhq zrqhq vdo,Olhigh, yuhgh, phw hhqljkhbw;Gh kxbvhq hq sdoohbvhq euhbwClmq yro ydq Jrgwv chjhqlqj do!Rp ghq zlo ghu eurhghuhq plmq,Hq ghu yulhqghq glh elqqhq vlmq,Zhqvfk lfn x yuhhg lq doohq krhfnhq,Rp gdw rrfn Jrgwv Whpsho vhhu uhbqVwdhw elqqhq x pxhuhq qlhw nohbq,Zlo lfn vwhhwv xzhq yrruvsrhw vrhfnhq."
+  |     },
+  |     {
+  |       "term": "Staet",
+  |       "translation_expected": "Vwdhw",
+  |       "segment_id": "df80ed7e50bd0f9d433b52214eb12049e71d6662334f7964c4e17ae891445e4d",
+  |       "source_text": "„Godts bergh die is seer wonderbaer, Gelijck Basan den bergh voorwaer Staet hij hoogh onbesweken. Wat is 't dat gy bergen rebel, Met al uwe....”",
+  |       "translation_text": "„Jrgwv ehujk glh lv vhhu zrqghuedhu,Jholmfn Edvdq ghq ehujk yrruzdhuVwdhw klm krrjk rqehvzhnhq.Zdw lv 'w gdw jb ehujhq uheho,Phw do xzh....”"
+  |     },
+  |     {
+  |       "term": "U",
+  |       "translation_expected": "X",
+  |       "segment_id": "d6f8f9d09ab0a5029837725f8e990c890534bdb0ff737c3cd4635043a478a8ec",
+  |       "source_text": "„Als ick door anghst en tegenspoet Ben in kleynmoet, Gij mij verquicket; Oock tegen myn wreetste vyant U rechter hant My hulp toeschicket. Gij zult myn kruys eyndigen hier; Want goedertier Zijt gy gestadigh: Het werck uwer handen sult gy Volvoeren vry, o Heer, genadigh.”",
+  |       "translation_text": "„ Dov lfn grru dqjkvw hq whjhqvsrhwEhq lq nohbqprhw,Jlm plm yhutxlfnhw;Rrfn whjhq pbq zuhhwvwh ybdqwX uhfkwhu kdqwPb kxos wrhvfklfnhw.Jlm cxow pbq nuxbv hbqgljhq klhu;Zdqw jrhghuwlhuClmw jb jhvwdgljk:Khw zhufn xzhu kdqghq vxow jbYroyrhuhq yub,r Khhu, jhqdgljk.”"
+  |     },
+  |     {
+  |       "term": "Zijn",
+  |       "translation_expected": "Clmq",
+  |       "segment_id": "141729e1d22394f71183107f79f09e40bf6aa711441c8ca3927f6e5752e96bbb",
+  |       "source_text": "Soo haest als ick hoore spreken: Welaan, laat ons alle seer saen In dat huys onses Heeren gaen: Met vreught is mijn hert ontsteken; Dat ons voeten sullen hier naer Staen binnen de poorten eerbaer Van Jerusalem wel gestichtet. Jerusalem is gebouwt vast, En door vrede tsamengepast, En tot een stad Godts fijn gerichtet. Binnen uw mueren wonen sal, Liefde, vrede, met eenigheyt; De huysen en palleysen breyt Zijn vol van Godts zegening al! Om den wil der broederen mijn, En der vrienden die binnen sijn, Wensch ick u vreed in allen hoecken, Om dat oock Godts Tempel seer reyn Staet binnen u mueren niet kleyn, Wil ick steets uwen voorspoet soecken.",
+  |       "translation_text": "Vrr kdhvw dov lfn krruh vsuhnhq:Zhoddq, oddw rqv dooh vhhu vdhqLq gdw kxbv rqvhv Khhuhq jdhq:Phw yuhxjkw lv plmq khuw rqwvwhnhq;Gdw rqv yrhwhq vxoohq klhu qdhuVwdhq elqqhq gh srruwhq hhuedhuYdq Mhuxvdohp zho jhvwlfkwhw.Mhuxvdohp lv jherxzw ydvw,Hq grru yuhgh wvdphqjhsdvw,Hq wrw hhq vwdg Jrgwv ilmq jhulfkwhw.Elqqhq xz pxhuhq zrqhq vdo,Olhigh, yuhgh, phw hhqljkhbw;Gh kxbvhq hq sdoohbvhq euhbwClmq yro ydq Jrgwv chjhqlqj do!Rp ghq zlo ghu eurhghuhq plmq,Hq ghu yulhqghq glh elqqhq vlmq,Zhqvfk lfn x yuhhg lq doohq krhfnhq,Rp gdw rrfn Jrgwv Whpsho vhhu uhbqVwdhw elqqhq x pxhuhq qlhw nohbq,Zlo lfn vwhhwv xzhq yrruvsrhw vrhfnhq."
+  |     },
+  |     {
+  |       "term": "Zijn",
+  |       "translation_expected": "Clmq",
+  |       "segment_id": "f35fb8b4c6be39c7a9da8e2e6925f734675f83a67891860d6499dcb25960652b",
+  |       "source_text": "Mijn tranen ende mijn klachten Zijn mijn spijs die mij steedts voedt; Als men mij vraeght met verachten: Waer is nu uw Godt soo goedt? Ick smelt als ick denck daeraen. Hoe ick voormaels plagh te gaen Met een hoop volcks hier te lande. Om u Heer, te doen offrande. Waerom wilt ghij u zoo quellen En beroert sijn, o ziel mijn? Wilt gantsch uw hoop op Godt stellen, Van u sal hij gedanckt zijn Als hij door sijn....",
+  |       "translation_text": "Plmq wudqhq hqgh plmq nodfkwhqClmq plmq vslmv glh plm vwhhgwv yrhgw;Dov phq plm yudhjkw phw yhudfkwhq:Zdhu lv qx xz Jrgw vrr jrhgw?Lfn vphow dov lfn ghqfn gdhudhq.Krh lfn yrrupdhov sodjk wh jdhqPhw hhq krrs yrofnv klhu wh odqgh.Rp x Khhu, wh grhq riiudqgh.Zdhurp zlow jklm x crr txhoohqHq ehurhuw vlmq, r clho plmq?Zlow jdqwvfk xz krrs rs Jrgw vwhoohq,Ydq x vdo klm jhgdqfnw clmqDov klm grru vlmq...."
+  |     }
+  |   ]
+  | }
+--- l3_fix_report.json (сводка)
+  | {
+  |   "halted": false,
+  |   "fixable_segment_share": 0.007524,
+  |   "mismatches_input": 20,
+  |   "attempted": 17,
+  |   "applied": 5,
+  |   "rejected": 12,
+  |   "editable_share_before": 0.998566,
+  |   "editable_share_after": 0.998988,
+  |   "backup": "target.epub.l3bak"
+  | }
+--- vocabulary_cards.json (сводка + rejected)
+  | {
+  |   "book_words": 44390,
+  |   "density_cap_per_1000": 15.0,
+  |   "max_cards": 665,
+  |   "candidates_total": 4965,
+  |   "cards_issued": 665,
+  |   "cards_rejected": 974,
+  |   "cards_not_selected": 3326,
+  |   "book_example_share": 1.0,
+  |   "density_actual": 14.980852,
+  |   "rejected": [
+  |     {
+  |       "lemma": "naam",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "heilig",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vervolgd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "toevoegen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bestuur",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Nederlandsch",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vergrijpen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "stilzwijgen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kerkbestur",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "nagelacht",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Proofreading",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Vaderlandsch",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "doodgezwegen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "voorvaderen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gruwel",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Kerkelijk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "schets",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "onderscheiden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kAMPEN—J.",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "data",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hier-volgen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "brengen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "menschen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hand",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "laat",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ouderling",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "oog",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "en",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "riep",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vol",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ver",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "overig",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "behoren",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "geheeel",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "tussch",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hunner",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "groote",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "overbrengen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "overgaan",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ziel",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "best",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Teunis",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "grijpen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "zacht",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kwaad",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "langzaam",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "logeeren",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vroolijk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kerkvoogd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gemakkelijk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "meid",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Kijk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hernam",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "reformatie",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "tegengaan",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vloeken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aannemen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "stil",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "fijn",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "zoogenaamd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "inkwartieren",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gewetensvrijheid",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "versch",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Volgenden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "huisgenoot",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "lust",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitgaan",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "tocht",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "geweten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bidden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "getuigen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "been",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verkeerd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "wacht",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verhalen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kwamen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "rond",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kom",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ongehinderen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vreezen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verblijden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "volstrekt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "merkte",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "liepen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ei",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "begrip",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Kerk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "waar",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aflegeren",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "buar",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gescheideen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gevoellen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "handteekening",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "jongejuffrouw",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "notabe",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "steeon",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "geringen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "overgoot",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "totnogtoe",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "soude",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kerkvoogden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ingezetene",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "zweem",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afdeeling",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bemoeilijken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "opjagen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bedroefd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "behoorden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "enkelen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "mandje",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "overdragen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aankijken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "lip",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "weggaan",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vrouwelijk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "stapte",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vroegen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitzien",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ondergaan",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gepleegd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "geduld",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "raden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "nadenken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ophalen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "breed",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "trouw",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Rechtbank",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "slaap",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gevaar",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kon.",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Gaan",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aanstalt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "allezins",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "almeenen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "belangstel",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "binnenlaen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Coksejaansch",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "dauwdrupop",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gevoeln",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Geëischt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "inhatelijken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Jobsgeduld",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kerkeraadsled",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kleinsot",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "liefheven",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "molesteer",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "nadren",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "oneffenhede",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ongedacht",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ongewenscht",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "oosterkoeltje",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "quaeden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "samenstroomen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "schoolgegaan",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "souen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "sukkellen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "teekenid",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "tken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "tusschenkomend",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitbevelen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitnatellen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitonderscheiden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "veranderenen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verkwiken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vluchen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vooruitkoem",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "wasemde",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "zoogenoemd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "paardenvijg",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verkieslijk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "fijnen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "driekant",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "mooisten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "voornaamst",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "sult",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "woelde",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "goudglans",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gezon",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Philippens",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitkrijgen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "heining",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Bunschoter",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "denne",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "geklutst",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "schreien",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vorigen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Duitsch",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "terugzenden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "eischen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "grasspriet",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "desen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Kerkeraad",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "moeit",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitbranden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "dorpeling",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bevocht",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "nestjes",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "handschoentjes",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "beweegreden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "glimlachend",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "voorschreef",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gebeente",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "voorliegen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verzochten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bijbeltekst",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bedenkelijk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "beloon",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "weertje",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gloeien",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "rookte",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ziele",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "godsdienstvrijheid",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bederven",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afgestaan",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "geraden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "donkerbruin",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "naasten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kras",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "rijdend",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aannam",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gezworen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "overwonnen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vreedzaam",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bedrogen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "koelen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aangename",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "terugbrengen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "oprechte",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aangevoerd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "deelde",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Profeet",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hang",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "zijden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "stal",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Nest",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "varen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vervelend",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "blad",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "plaatsvinden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "inzetten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "dorpen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Tijdschrift",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Eindelijk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "nam",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "zat",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "goede",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bij",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "open",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bijwonen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vergaderd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vulde",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "innemen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "optreden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "onze",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gy",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aantrekken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afwachten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ging",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aanzittend",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "leerar",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "predikken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "leerrede",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gelaat",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "meesteres",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "nicht",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "liep",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "rest",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aerd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bruian",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "geloofsgenooten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "genoegelijk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gestooten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gewear",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hooor",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ingelegerd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Loosdrechtsch",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "psal",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "teecken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verrigting",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vuisat",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bekenen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gelooven",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "schill",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "menschelijk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "belanghebbend",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vergaderplaats",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "binnentrad",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gehoorzaamd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vloekt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aardigheid",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kajuit",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afwerpen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "weent",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aanhangen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afslaan",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "lichtte",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "huys",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "opsteken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "dopen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Juffrouw",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verheven",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "evangelie",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "piek",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bepaling",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verstoren",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bestemd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Aller",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "doek",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hielden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "legde",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Hart",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aanjammeren",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aenschouw",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afbonsen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "alsins",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "andersints",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "behoefot",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "beproven",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Bladstil",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "commandeeren",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "dienaer",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "dienzelfden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "domm",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "doogdten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "dooppen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "doops",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Duysent",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "eear",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "eerbaer",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "eyndigen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "feestvier",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gastheeur",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gebien",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "geheeol",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "genoodigd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gesalfden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gestellen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gevoeligen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "godsdienstvrede",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "henlied",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hinderpal",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "jonckvrouwen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kajui",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "keilde",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "klautren",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "koffiebooan",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kuddeke",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "logg",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "minvermogend",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "muer",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "nederzitt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "opgesto",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "overkleear",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "overtrijden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "overvloet",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "palley",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "passenden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "reiskoet",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "rooid",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "soolen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "stikdonok",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "stilmen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "sulen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "tenzelfden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitkloppenen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitzamelen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verboad",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verbrandid",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Verhooght",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verquicken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Verquicket",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vertrekk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verwensching",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vliegten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vrolickheyt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "watergolv",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "weckt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "wegstierf",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "wijcken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "zamenkomsut",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "zouod",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vertoonen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "zuchtten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "horon",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Leeraren",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "opeengehoopt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ingeworpen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ennen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "schatt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vreed",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "achterblijvend",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Wensch",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "geloofsgenoot",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "steets",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "dreunend",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "sond",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitnemend",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kleer",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bestierd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Heemse",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "appe",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "toegegaan",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "malkander",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "doorbladeren",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitzuigen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "piets",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "binnenkomend",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Tijt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Weerklonk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vlok",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "wieren",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "overvaren",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aanstalten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hagelbui",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hinderde",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitroep",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "beklaagd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "heele",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verkrijg",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "medegevangene",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Seer",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "schoone",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kruys",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verweerd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hoegenaamd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "deurtje",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "appeal",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "oort",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "beschuit",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ingestapt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verkorten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitgewerkte",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gespuis",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bemoeilijkt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "achterwiel",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verdraagzaamheid",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hiel",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "metten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "windt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "stoorde",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aangewend",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "benauwd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "baren",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "geschrift",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "schikken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "balken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "teruggeven",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "weiland",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kristal",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verdienste",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "sprongen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "laken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitlaten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Geestelijken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "dia",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uithalen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "dessert",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hert",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ongepast",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vrijgesproken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "genootschap",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vertrouwd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "geladen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "zwaarder",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aanvaller",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitbrengen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "oproepen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gold",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "middelbare",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "merken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "raam",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gaven",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "zette",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "merk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verklaring",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gesloten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bracht",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gingen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Leiden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "lees",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gaf",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "burgervader",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vorm",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "stoel",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "geloovig",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gezegen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "winkelkast",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "onrecht",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "slag",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ons",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "stokslag",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hoofdagent",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "volmacht",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gillen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ontvanger",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "luik",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitmaken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "papier",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "echtgenoot",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kost",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "elak",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "huisgodsdienst",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "preekleoz",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Separatis",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitbennen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Amsterdamsch",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aflaten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gemeenteleden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vergrijp",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "slaapplaats",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "dienstmeisje",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gruwelijk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verheug",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kreeft",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "begreep",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "stuurt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Burgemeester",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "namen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "X.",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hand.",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "3",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aangeklagen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afdeelen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afhoereeren",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afkanten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "angstkreet",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bezwek",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "binnenkomenen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "binnentraen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "boerenpaur",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "broedeur",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "doorprat",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "doorspeken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "halfdronk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "handboom",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "havenglen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "heiten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hofsted",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hoogeren",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hèmten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "infanteriste",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ingerukken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "inkwartieringskost",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kleedear",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "knen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kornuite",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "krijschte",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "laatstgemelde",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "manschapp",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "noodigen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ontveinzen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "oogenblikk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "opgeteekend",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "posteeren",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "samengekoam",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "schaterde",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Scholtianen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Spruiter",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "steean",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "stooot",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "toezonden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uiteengejagen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitniemanden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verblydten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verekskuseer",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verheerlickten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verklar",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verkwikte",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verrasen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verschriken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verwenscht",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "wanord",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "wanordelijkhed",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "zonnestraaltj",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "buken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "zoud",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "weesen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "lyden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "eyn",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verschrikken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "versnelden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ouw",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "houen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "heult",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "buter",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gestommel",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Dienstboden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "dienstboden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Mottige",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "onderschepten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "dienstdoen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "wegmoffelen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "moten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "eensklaps",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bezighoud",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "zwart-uitgeslagen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "klopp",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Sneeuwvlokken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "buitensluiten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "modderpoel",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verdoemd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Veldwachter",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "intreden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "inlaten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ontkom",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "openzetten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "slingerde",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Wege",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "komm",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "steenworp",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Pres.",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bejaard",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Geenen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitslaan",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "roode",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "eigenares",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitrekenen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "sfinx",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "schuit",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "patrouilles",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "luidkeels",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "meevallen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bevolen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afwerken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afwijken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Christ",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "overhouden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vernielde",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "restant",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "excellentie",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bijstaan",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "schokken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "opknappen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gunst",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "levenden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aangeraakt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "glijden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "nederlandsche",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "tikken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ingaat",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "nakomen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Groote",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verdreven",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ritje",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aftreden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "terugkomen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hitte",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "schouders",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "glazen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "woonden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Letter",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "trokken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verwoest",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Make",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "belangen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "jr.",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vielen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kabinet",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "onderwerpen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "berg",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verschillen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Fijne",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vertaling",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Wou",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "generaal",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gelegen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gehouden;—'t",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "zet",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Doe",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "deze",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afzetten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "rookwolk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "wandelden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "eindje",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afvragen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "overnemen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "zinne",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "begaven",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "neerkomen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Gaarne",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afstaan",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "groet",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "han",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "meen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afgeleg",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "alleenig",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "avondete",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bajonetstek",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "besen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "betaalen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bijgewoinden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "blootstonad",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "denzelfden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "doodranselen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "durflen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "eerstvolgen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "fladderlen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "geldboet",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "getuigeniss",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ghijlieden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Hervormod",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hollet",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hoofdelijak",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "huppellen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "jongverloofd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kniken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kromom",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "liederlijak",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "menschenkindeer",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "mishandlen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "notu",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "onkosot",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ontkenen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "opdraan",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "opzegen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ouderlij",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "overdrijfen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "potot",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "preekken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "seyen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "sulol",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "tegenoverstellen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "tegenwerk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "terugwandelen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "twaelve",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verslinde",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vogelt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "weggevalol",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "wijv",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "wélmaken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vermaan",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "mooien",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "opgespeeld",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Scheelden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "nabootsten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "geloovigen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "met-boter-besmeerde",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "zein",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "lispelen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "rooken,—Jannetje",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "rood-en-groen-gebloemd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "overlezen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Jongsaf",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vermaand",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bromde",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "somtijds",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Klippers",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afduwen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verketteren",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "jammerde",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "beraadslaging",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitdeelden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afgooien",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verharden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Orthodoxie",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "zwijgend",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "snikken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "leste",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "poo",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hullen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitgooien",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bedenking",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "doorvertellen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "inblazen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Gereformeerd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ferm",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hervormd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "diaken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "nalaten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "spreekwoord",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "doorgegaan",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hunne",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bedank",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ouden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "onderwijzen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "knijpen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hingen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "schonk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "insect",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bekeek",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verzenden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "toer",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vijandige",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kool",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Petrus",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "thuiskomen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hut",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kramer",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "konijn",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "schamen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "inschrijven",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "adem",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "geliefde",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "pan",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "stopte",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "beslist",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "schepen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "niet—tenminste",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "land—eenmaal",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Maandag",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vergeet",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bleef",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hond",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "links",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Gelukkig",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Wist",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "e",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vijf",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Vader",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "zeg",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kwam",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Hij—onder",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "geveld",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bajonette",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "leerred",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "misdad",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ingezegend",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "beroerd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "voortzetten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aller",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aanveranderen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "achtenen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afgetrokek",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bedsted",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "berooven",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bezweerd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bloead",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "doopvader",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "doorgesleurd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "dreund",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "geloofsgenoote",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "geloofsroem",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gerechtskost",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "geschoar",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "inscheppen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "jonggehuwd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kasot",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kerkerad",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kudd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "loopend",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "lotgevalol",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "ongemerken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "opbegeven",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "oproerling",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "psalmveroz",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "reiskost",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "scheien",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "slakek",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "stoote",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uiterlijkhed",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitniettegenstaanen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verhoed",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verlind",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "volhouen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "volhran",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "weshalve",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "eenigszins",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "pligt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "welbegrepen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "heven",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "lasteraars",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Afgescheidenen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afdoend",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gewisse",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "wijz",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "lidmaten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "herrinner",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bedeelde",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "topp",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "snapten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bovengenoemd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "moogt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Graveland",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "onverhoopt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "smeet",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "veracht",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Bezwijkt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "wies",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aflezen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "wreken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gesmeten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afliep",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "soo",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Generale",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "boon",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afwijzen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verhoor",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "wegnemen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vergat",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Procureur-generaal",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "handelt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "was—telde",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "beschuldigen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gewapende",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afgezet",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vloer",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "mist",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "sta",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "lichaam",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hou",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Goed",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gebiedpen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "geloof",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aanbidd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aangeschrev",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aantoonen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "achteruitspringen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "afgeloo",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "felal",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Ganschen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gehaven",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "gekrenken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "havengelde",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "heiligst",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Heiliog",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "instaaen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kastanjeboo",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "landpaal",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "moederweeld",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "nederbukk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "opgeschref",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "sporat",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "stande",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitbekenden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitgemaken",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "verschrik",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vroolijkheid",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "wandlen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "wijid",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "zwag",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Jubelde",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "fatsoenlijker",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hoogh",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "opgenoemd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "stoorden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "opendeed",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "assessor",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "toegestemd",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "navolgen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "stoof—zonderen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "opwachten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "spelfout",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "trapten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Verregaand",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "getroost",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "smijten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "kolk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "nachtwacht",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "bijgewoond",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "thuisblijven",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "zijt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "opgewekt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "uitdelen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "formulier",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "wijten",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "manschappen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aangedaan",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "veiliger",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "vet",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Dubbel",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "laatst",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "haalt",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "deden",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hield",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "UEdelAchtbaar",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "hernummeren",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "requir",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Reymeringer",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "donations",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "omen",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "agreement",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "License",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "aar",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     },
+  |     {
+  |       "lemma": "Overduidelijk",
+  |       "reasons": [
+  |         "лемма не соответствует словоформе по spaCy (S1.5)"
+  |       ]
+  |     }
+  |   ]
+  | }
+--- mwe_records.json (сводка + rejected)
+  | {
+  |   "candidates_total": 154,
+  |   "records_issued": 150,
+  |   "records_rejected": 4,
+  |   "separable_records": 131,
+  |   "rejected": [
+  |     {
+  |       "surface": "er was",
+  |       "phenomenon_id": "NL-ER-CONSTRUCTIE",
+  |       "reasons": [
+  |         "дублирующая запись MWE (S2.4)"
+  |       ]
+  |     },
+  |     {
+  |       "surface": "Er zijn",
+  |       "phenomenon_id": "NL-ER-CONSTRUCTIE",
+  |       "reasons": [
+  |         "дублирующая запись MWE (S2.4)"
+  |       ]
+  |     },
+  |     {
+  |       "surface": "er waren",
+  |       "phenomenon_id": "NL-ER-CONSTRUCTIE",
+  |       "reasons": [
+  |         "дублирующая запись MWE (S2.4)"
+  |       ]
+  |     },
+  |     {
+  |       "surface": "er viel",
+  |       "phenomenon_id": "NL-ER-CONSTRUCTIE",
+  |       "reasons": [
+  |         "дублирующая запись MWE (S2.4)"
+  |       ]
+  |     }
+  |   ]
+  | }
+--- grammar_notes.json (сводка)
+  | {
+  |   "book_words": 44390,
+  |   "candidates_total": 2376,
+  |   "notes_issued": 53,
+  |   "notes_rejected": 27,
+  |   "notes_not_selected": 2296,
+  |   "max_notes_per_chapter": 10
+  | }
+--- s5_report.json (сводка + zipinfo verbatim)
+  | {
+  |   "coverage": 0.998119,
+  |   "aligned": 1592,
+  |   "total": 1595,
+  |   "chapters_total": 9,
+  |   "chapters_with_sections": 8,
+  |   "skipped": [
+  |     {
+  |       "chapter_id": "coverpage-wrapper",
+  |       "title": "\"Cover\""
+  |     }
+  |   ],
+  |   "exports": {
+  |     "cards": 665,
+  |     "csv": 665,
+  |     "anki": 665,
+  |     "json": 665
+  |   },
+  |   "epub": {
+  |     "entries_total": 18,
+  |     "answers": "OEBPS/study-answers.xhtml",
+  |     "nav": null,
+  |     "ncx": "OEBPS/toc.ncx",
+  |     "epubcheck": {
+  |       "version": "EPUBCheck v5.3.0",
+  |       "available": true,
+  |       "errors": 0,
+  |       "warnings": 0,
+  |       "unavailable_reason": null
+  |     }
+  |   },
+  |   "zipinfo": "Archive:  /mdisk/EpubTranslator/data/v1/nl/jobs/j-20260914T060908Z-b91a9f/learning.epub\nZip file size: 385843 bytes, number of entries: 18\n?rw-------  2.0 unx       20 b- stor 26-Sep-11 12:53 mimetype\n?rw-------  2.0 unx    56891 b- defN 80-Jan-01 00:00 OEBPS/toc.ncx\n?rw-------  2.0 unx     3282 b- defN 80-Jan-01 00:00 OEBPS/content.opf\n?rw-------  2.0 unx    18060 b- defN 80-Jan-01 00:00 OEBPS/842701366549142707_27486-h-0.htm.html\n?rw-------  2.0 unx   158211 b- defN 80-Jan-01 00:00 OEBPS/842701366549142707_27486-h-1.htm.html\n?rw-------  2.0 unx   165048 b- defN 80-Jan-01 00:00 OEBPS/842701366549142707_27486-h-2.htm.html\n?rw-------  2.0 unx   155746 b- defN 80-Jan-01 00:00 OEBPS/842701366549142707_27486-h-3.htm.html\n?rw-------  2.0 unx   139397 b- defN 80-Jan-01 00:00 OEBPS/842701366549142707_27486-h-4.htm.html\n?rw-------  2.0 unx   114572 b- defN 80-Jan-01 00:00 OEBPS/842701366549142707_27486-h-5.htm.html\n?rw-------  2.0 unx    85559 b- defN 80-Jan-01 00:00 OEBPS/842701366549142707_27486-h-6.htm.html\n?rw-------  2.0 unx    83532 b- defN 80-Jan-01 00:00 OEBPS/842701366549142707_27486-h-7.htm.html\n?rw-------  2.0 unx      252 b- defN 26-Sep-11 12:53 META-INF/container.xml\n?rw-------  2.0 unx      783 b- defN 26-Sep-11 12:53 OEBPS/8813880640478014577_title.gif.png\n?rw-------  2.0 unx    49597 b- defN 26-Sep-11 12:53 OEBPS/4150880656332714179_27486-cover.png\n?rw-------  2.0 unx      782 b- defN 26-Sep-11 12:53 OEBPS/pgepub.css\n?rw-------  2.0 unx     3422 b- defN 26-Sep-11 12:53 OEBPS/0.css\n?rw-------  2.0 unx      437 b- defN 26-Sep-11 12:53 OEBPS/wrap0000.html\n?rw-------  2.0 unx    22981 b- defN 80-Jan-01 00:00 OEBPS/study-answers.xhtml\n18 files, 1058572 bytes uncompressed, 383343 bytes compressed:  63.8%\n"
+  | }
+--- plan.json (режим/сегменты)
+  | {
+  |   "mode": "bilingual",
+  |   "submit_mode": "APPEND_BLOCK"
+  | }
+
+Пороговая проверка:
+  OK: финальный статус COMPLETED/COMPLETED_WITH_WARNINGS
+  OK: охват выравнивания ≥ 0.995 (E5-2/E6): 0.998119
+  OK: EPUBCheck выхода: 0 ошибок (E5.7): 0
+  OK: L3: halted = false
+  OK: L3-1: согласованность (quality.json) ≥ 0.99: 0.999125 (расхождений: 15)
+  OK: S1: issued ≤ max_cards (665 ≤ 665)
+  OK: S5: learning.epub собран
+  OK: S5: learning.epub EPUBCheck 0 ошибок: 0
+
+ВЕРДИКТ: V1.13 nl — PASS
+
+ВЕРДИКТ: V1.13 nl — PASS (COMPLETED_WITH_WARNINGS)

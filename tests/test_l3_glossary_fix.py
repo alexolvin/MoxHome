@@ -358,7 +358,7 @@ class L3Env:
             pipeline.run_validating_output(repo, repo.require(job.id))
             repo.transition(job.id, JobStatus.GLOSSARY_FIX, reason="начало этапа (T-L3)")
 
-            job_dir = pipeline.job_dir(job.id)
+            job_dir = settings.job_dir(job.id)
             target_before = (job_dir / "target.epub").read_bytes()
             reqs_before = len(self.server.requests_log())
             error: AppError | None = None

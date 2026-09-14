@@ -87,7 +87,8 @@ def _read_json(run: S1Run, name: str) -> dict[str, Any]:
     path = run.job_dir / name
     if not path.is_file():
         return {}
-    return json.loads(path.read_text(encoding="utf-8"))
+    data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    return data
 
 
 # ------------------------------------------------------------------ S4-1/S4-8

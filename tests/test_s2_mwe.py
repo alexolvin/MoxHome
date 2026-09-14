@@ -119,7 +119,8 @@ def s2_env(tmp_path_factory: pytest.TempPathFactory) -> Iterator[S1Env]:
 def _mwe_report(run: S1Run) -> dict[str, Any]:
     path = run.job_dir / "mwe_records.json"
     assert path.is_file(), f"нет mwe_records.json: {run.error}"
-    return json.loads(path.read_text(encoding="utf-8"))
+    data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    return data
 
 
 def _golden_book(

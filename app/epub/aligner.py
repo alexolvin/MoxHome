@@ -133,11 +133,21 @@ class AlignmentReport:
 # ------------------------------------------------------------------- ядро пар
 
 def blocks(root: lxml.etree._Element, tags: frozenset[str]) -> list[lxml.etree._Element]:
-    """Блочные элементы из настраиваемого множества, в порядке документа."""
+    """Блочные элементы из настраиваемого множества, в порядке документа.
+
+    Пустые по тексту блоки исключены — то же правило, что в ридере
+    (app/epub/reader.py, _segment_body): сегмента для них нет, единицы
+    перевода нет; инвариант «сегментов == блоков» (align_document) требует
+    единого правила отбора на всех сторонах (исходник и выход, E5/E6).
+    """
     body = segmenter.find_body(root)
     if body is None:
         return []
-    return [el for el in body.iter() if segmenter.localname(el) in tags]
+    return [
+        el for el in body.iter()
+        if segmenter.localname(el) in tags
+        and segmenter.normalize_text(segmenter.full_text(el))
+    ]
 
 
 def match_originals(

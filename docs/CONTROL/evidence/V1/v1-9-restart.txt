@@ -1,0 +1,35 @@
+дата: 2026-09-14 14:32:32
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: V1-9 — перезапуск: старт → частичный прогон → kill -9 → старт → resume;
+прирост токенов ≤ 5% остатка (E3-4); задание не потеряно; EPUB валиден
+
+Метрики:
+  | {
+  |   "Z": 19710,
+  |   "X": 15850,
+  |   "progress_at_kill": 0.7,
+  |   "Y": 3860,
+  |   "final_tokens": 19710,
+  |   "share": 0.0,
+  |   "resume_rc": 1,
+  |   "final_status": "COMPLETED_WITH_WARNINGS",
+  |   "переслано_запросов (mock requests_log, дубликаты промптов)": 1,
+  |   "переслано_токенов (ground truth; БД их не видит при неflushed главе)": 706
+  | }
+
+CLI validate target.epub (verbatim):
+  | EPUBCheck v5.3.0: 0 FATAL, 0 ERROR, WARNING 0
+
+Пороговая проверка:
+  OK: Z (эталон, translation+fill): 19710 токенов
+  OK: X на момент kill (progress=0.70): 15850 токенов
+  OK: Y (финал − X): 3860 токенов
+  OK: доля повторного перевода max(0, X+Y−Z)/Z = 0.0000% ≤ 5% (E3-4)
+  OK: INTERRUPTED зафиксирован (история переходов БД): True
+  OK: resume rc: 1; финал: COMPLETED_WITH_WARNINGS
+  OK: задание не потеряно: строка в БД, стадийные результаты на месте
+  OK: финальный EPUB валиден (EPUBCheck 0 FATAL/ERROR)
+
+ВЕРДИКТ: V1-9 (перезапуск, E3-4 ≤ 5%) — PASS

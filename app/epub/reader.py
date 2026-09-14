@@ -193,6 +193,12 @@ def _segment_body(
     for element in segmenter.find_block_elements(body, block_tags):
         plain = segmenter.full_text(element)
         normalized = segmenter.normalize_text(plain)
+        if not normalized:
+            # Пустой блок или блок без текста (только изображения) — единицы
+            # перевода в нём нет; переводной блок для него не создаётся,
+            # учитывать его в E5-2/E6 нельзя (реальные книги содержат
+            # пустые <p> и разделители; V1.13).
+            continue
         segments.append(
             Segment(
                 segment_id=segmenter.make_segment_id(

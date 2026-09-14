@@ -322,7 +322,8 @@ def s4_env(tmp_path_factory: pytest.TempPathFactory) -> Iterator[S1Env]:
 def _read_json(run: S1Run, name: str) -> dict[str, Any]:
     path = run.job_dir / name
     assert path.is_file(), f"нет {name}: {run.error}"
-    return json.loads(path.read_text(encoding="utf-8"))
+    data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    return data
 
 
 def _summaries(run: S1Run) -> dict[str, Any]:
@@ -438,7 +439,7 @@ def test_s4_2_gap_missing_word_scenario(s4_env: S1Env) -> None:
 
 def test_s4_3_mc_two_correct_unit() -> None:
     # S4-3 (unit): два правильных варианта — отклонение; дубль — отклонение.
-    item = {
+    item: dict[str, Any] = {
         "question": "Выберите верный вариант по фрагменту: The fox runs.",
         "type": "mc",
         "level": "standard",

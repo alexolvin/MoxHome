@@ -131,7 +131,7 @@ class E5Env:
             pipeline.run_planning(self.repo, job_now)
             pipeline.run_translating(self.repo, job_now, lambda: None)
             warnings = pipeline.run_validating_output(self.repo, job_now)
-            job_dir = pipeline.job_dir(job.id)
+            job_dir = self.settings.job_dir(job.id)
             quality: dict[str, Any] = json.loads(
                 (job_dir / "quality.json").read_text(encoding="utf-8")
             )
@@ -454,7 +454,7 @@ def test_e5_7_glossary_truncation_recorded(
         pipeline.run_planning(repo, job_now)
         pipeline.run_translating(repo, job_now, lambda: None)
         warnings = pipeline.run_validating_output(repo, job_now)
-        job_dir = pipeline.job_dir(job.id)
+        job_dir = settings.job_dir(job.id)
         quality: dict[str, Any] = json.loads((job_dir / "quality.json").read_text(encoding="utf-8"))
         glossary = quality["glossary"]
         assert glossary["total_terms"] == 30
@@ -564,7 +564,7 @@ def test_e5_9_inprocess_unavailable_llm_raises(
         message = str(excinfo.value)
         assert "тракт T недоступен" in message
         assert "test-key-value-000" not in message
-        assert not (pipeline.job_dir(job.id) / "target.epub").exists()
+        assert not (settings.job_dir(job.id) / "target.epub").exists()
     finally:
         db.close()
 
@@ -628,7 +628,7 @@ def test_e5_2_job_mode_maps_to_engine_submit(
             pipeline.run_validating(repo, job_now)
             pipeline.run_planning(repo, job_now)
             plan: dict[str, Any] = json.loads(
-                (pipeline.job_dir(job.id) / "plan.json").read_text(encoding="utf-8")
+                (settings.job_dir(job.id) / "plan.json").read_text(encoding="utf-8")
             )
             assert plan["mode"] == mode
             assert plan["submit_mode"] == expected, (mode, plan["submit_mode"])
