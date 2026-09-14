@@ -34,38 +34,25 @@
   реальные прогоны не заявляются);
   **U1 (Web UI и API, ТЗ_04 §U1)** — CONTROL 9/9 PASS (U1-1…U1-9 +
   T-U1-1…10), 266/266 теста (на mock, BLOCKER-1 — реальные прогоны не
-  заявляются; Tailscale-привязка не проверялась — V1.11).
+  заявляются; Tailscale-привязка не проверялась — V1.11);
+  **U2 (CLI, ТЗ_04 §U2)** — CONTROL 3/3 PASS (U2-1…U2-3 + T-U2-1…4),
+  270/270 теста (на mock, BLOCKER-1 — реальные прогоны не
+  заявляются).
   Отчёты: `docs/ENGINE_PROBE.md`, `docs/CONTROL/E2.md`, `docs/CONTROL/E3.md`,
   `docs/CONTROL/E4.md`, `docs/CONTROL/E5.md`, `docs/CONTROL/E6.md`, `docs/CONTROL/L0.md`,
   `docs/CONTROL/L1.md`, `docs/CONTROL/L2.md`, `docs/CONTROL/L3.md`,
   `docs/CONTROL/S1.md`, `docs/CONTROL/S2.md`, `docs/CONTROL/S3.md`,
-  `docs/CONTROL/S4.md`, `docs/CONTROL/S5.md`, `docs/CONTROL/U1.md`;
+  `docs/CONTROL/S4.md`, `docs/CONTROL/S5.md`, `docs/CONTROL/U1.md`,
+  `docs/CONTROL/U2.md`;
   evidence:
   `docs/CONTROL/evidence/E1…E6/`, `docs/CONTROL/evidence/L0/`,
   `docs/CONTROL/evidence/L1/`, `docs/CONTROL/evidence/L2/`,
   `docs/CONTROL/evidence/L3/`, `docs/CONTROL/evidence/S1/`,
   `docs/CONTROL/evidence/S2/`, `docs/CONTROL/evidence/S3/`,
   `docs/CONTROL/evidence/S4/`, `docs/CONTROL/evidence/S5/`,
-  `docs/CONTROL/evidence/U1/`.
-- **Далее:** **U2 — CLI (ТЗ_04 §U2)**, затем V1 (программа приёмки).
-  U2: командный интерфейс поверх тех же сервисов (у CLI собственной
-  бизнес-логики НЕТ — U2-1). Команды: `epubtranslator analyze
-  <input.epub>`; `epubtranslator translate <input.epub> --source <lang>
-  --target <lang> --mode <mode> [--level <level>]`; `epubtranslator job
-  list`; `epubtranslator job status <JOB_ID>`; `epubtranslator job resume
-  <JOB_ID>`; `epubtranslator job cancel <JOB_ID>`; `epubtranslator
-  validate <file.epub>`; `epubtranslator languages`; `epubtranslator
-  export cards <JOB_ID> --format <csv|anki|json>`. Коды выхода: 0 —
-  успех, ≠ 0 — с различением классов ошибок (конфигурация, валидация
-  входа, недоступность LLM, отказ валидации выхода) — через
-  `AppError.exit_code`; успешный код выхода при неуспешном задании —
-  дефект. CONTROL U2-1…U2-3: U2-1 дублирование бизнес-логики между CLI
-  и API — 0 (проверка по вызываемым сервисам); U2-2 код выхода
-  соответствует исходу задания — 100% на 8 сценариях; U2-3 задание,
-  созданное через CLI, видно в UI и наоборот — 100%. Тесты
-  T-U2-1…T-U2-3 по критериям + T-U2-4 — `validate` на повреждённом
-  EPUB: ненулевой код выхода и внятное сообщение. V1 — программа
-  приёмки (все блоки обязательны, V1.1…V1.13: статический контроль
+  `docs/CONTROL/evidence/U1/`, `docs/CONTROL/evidence/U2/`.
+- **Далее:** **V1 — программа приёмки** (все блоки обязательны,
+  V1.1…V1.13: статический контроль
   ruff/mypy/pytest; аудит хардкода; аудит дублирующих механизмов;
   аудит честности интерфейса (`completed`/`success`/`100%`/`healthy`/
   `verified`/`ready`/`done` — каждое вхождение подкреплено состоянием
@@ -80,6 +67,91 @@
   0 errors, см. `.a/reports/v1_assets_prep.md`). Протокол этапов как в
   E/L/S/U-стадиях (ветка `stage/<S>`, явные пути в коммите, merge
   --no-ff, CONTROL + evidence, DECISIONS, HANDOFF).
+
+## Сделано в U2
+
+- **`app/cli.py` (новое):** командный интерфейс по ТЗ_04 §U2 — 9 команд
+  (`analyze <input.epub>`; `translate <input.epub> --source --target
+  --mode [--level]`; `job list|status|resume|cancel`; `validate
+  <file.epub>`; `languages`; `export cards <JOB_ID> --format
+  <csv|anki|json>`) + аддитивные `--wait [SECONDS]` и `--cefr`.
+  Собственной бизнес-логики нет (U2-1): те же сервисы, что API —
+  `create_job`, `scan_book` (services.analyze), `views.job_facts/
+  progress_facts/languages_view`, `JobRepository.list_jobs/get/
+  request_resume/request_cancel`, `read_epub` + `run_epubcheck`,
+  `PairResolver.resolve_pair` (предотбор пары — fail closed ДО создания;
+  язык задания НЕ устанавливает, детектор L0.5 в воркере). Контроль —
+  точный импорт-allowlist (12 модулей сервисного слоя) + 9/9 вызовов
+  (T-U2-1). Запуск — `python -m app.cli` (воркер — отдельный процесс,
+  подсказка в выводе translate). `--source` — только предпроверка пары
+  (UNSUPPORTED → код 3).
+- **`app/services/analyze.py` (новое, D70):** `scan_book` — единый
+  источник сканирования книги для API (`POST /api/books`) и CLI
+  (`analyze`); вынесен из `api._scan_book` (Rule 8), `api.py` — рефакторинг
+  (−50 строк).
+- **`app/learning/card_export.py`:** `CARDS_FILES` (csv/anki/json →
+  имена файлов) — единая таблица имён артефактов карточек (писатель
+  S5, API `/api/jobs/{id}/result`, CLI `export cards`; Rule 8);
+  `app/workers/pipeline.py` — `_s5_export_cards` использует её.
+- **`app/web/views.py`:** `_tail` — guard `lines <= 0` (CLI `job
+  status` логи с `lines=0`).
+- **`app/core/config.py` (фикс, D71):** `load_settings` — `.env`
+  парсится `dotenv_values` (без мутации `os.environ`; до этого
+  `load_dotenv` переносил переменные файла в окружение всего
+  процесса, и при нескольких конфигурациях в одном процессе —
+  тестовые профили — `SERVER_AUTH_SECRET` U1 перетекал в U2,
+  401 на каждом API-вызове; приоритет os.environ > файл сохранён).
+- **Коды выхода:** `AppError.exit_code` (`app/core/errors.py`): 0 —
+  успех; 1 — неуспешное задание (FAILED/CANCELLED/INTERRUPTED) либо
+  прочие; 2 — ConfigurationError; 3 — InputValidationError; 4 —
+  LLMUnavailableError; 5 — OutputValidationFailed. Исход задания
+  отражают `translate --wait` (опрос БД 0.5 c, тот же источник, что
+  UI; timeout → 1) и `job status` (терминальный неуспех → 1; статус и
+  причина verbatim). `validate` = `read_epub` (не-ZIP/структура → 3)
+  + `run_epubcheck` (недоступен → 2, fail closed Rule 6; FATAL/ERROR →
+  3 + 20 строк в stderr; иначе 0 + версия/счётчики). `export cards` —
+  гейт COMPLETED/COMPLETED_WITH_WARNINGS (иначе JobStateError → 1,
+  «карточки не готовы»).
+- **`pyproject.toml`:** `[project.scripts] epubtranslator =
+  "app.cli:main"` (установленный пакет — проверка V1.10).
+- **Тесты: 4 запуска `tests/test_u2_cli.py`** (T-U2-1…T-U2-4; CLI —
+  реальный subprocess `python -m app.cli` с `-u` (stdout — live), воркер
+  — реальный subprocess `--loop` (D69), LLM — MockLLMServer; T-U2-1 —
+  импорт-allowlist + паритет analyze/languages; T-U2-2 — 8 сценариев
+  кодов выхода реальными rc (COMPLETED-прогон tiny-книги Learning
+  ~20–40 s → COMPLETED_WITH_WARNINGS; CANCELLED — кооперативная отмена
+  в TRANSLATING; FAILED — мёртвый профиль `127.0.0.1:1`); T-U2-3 —
+  взаимная видимость + гейт `export cards`; T-U2-4 — validate
+  повреждённого/валидного). Evidence-скрипт `tests/u2_evidence.py`
+  (4 verbatim-файла).
+- **Измерено (evidence U2, `docs/CONTROL/evidence/U2/`, 4 файла):**
+  U2-1: 0 дублирования (12 импортов — точный allowlist, 9/9 вызовов,
+  паритет analyze 4/4 и languages 6/6 + 11/11); U2-2: 8/8 сценариев
+  (rc 0/0/1/1/2/3/3/3; причина FAILED verbatim «…ConnectError:
+  [Errno 111] Connection refused…(E4-4)»; export cards: COMPLETED → 0
+  (cards.csv, 3 карточки), CREATED → 1 «карточки не готовы»); U2-3:
+  2/2 направления (CLI job в `GET /api/jobs` + `/{id}` 200; API job в
+  `job list` + `job status`); T-U2-4: повреждённый → 3 «не является
+  ZIP-архивом», валидная → 0 «EPUBCheck v5.3.0: 0 FATAL, 0 ERROR,
+  WARNING 0». Регрессия U1 (рефакторинг api.py) — 10/10.
+- Тесты: 270/270 (266 + 4), ruff 0 (`app/` + `tests/`), mypy strict 0
+  (75 файлов).
+- Дефекты этапа: 1 в ядре (не CLI), пойман полным прогоном и исправлен
+  до коммита: `load_dotenv` в `load_settings` мутировал `os.environ`
+  — `SERVER_AUTH_SECRET` U1-профиля «auth» перетекал в профили U2
+  (401 на каждом API-вызове; изолированный запуск U2 — зелёный) —
+  фикс в `app/core/config.py` (D71), последовательная регрессия
+  U1+U2 — 14/14. Разработка (до коммита): гонка чтения `job id` из
+  лога CLI-subprocess (stdout блок-буферизуется при редиректе в файл
+  — `-u` + fallback после wait); двойная версия EPUBCheck в выводе
+  `validate` (исправлено: `outcome.version` уже несёт «EPUBCheck
+  v5.3.0»). Честные пределы (в CONTROL U2): коды 4/5
+  не порождаются 8 сценариями ТЗ (классы и маппинг существуют в
+  `AppError`; «LLM down» отражается исходом задания FAILED → 1 с
+  причиной as-is); confirm подозрительной книги — через UI `/jobs/<id>`
+  (команд ТЗ CLI confirm не включает); установленная команда
+  `epubtranslator` — V1.10; `--wait`/`--cefr` — аддитивные расширения;
+  LLM — mock (BLOCKER-1).
 
 ## Сделано в U1
 

@@ -2542,11 +2542,17 @@ class Pipeline:
         if not cards:
             return exports
         schema = load_card_schema(pack_dir, source_pack)
-        exports["csv"] = card_export.export_cards_csv(job_dir / "cards.csv", cards, schema)
-        exports["anki"] = card_export.export_cards_anki(
-            job_dir / "cards.anki.tsv", cards, schema
+        # Имена файлов — card_export.CARDS_FILES (единый источник, Rule 8:
+        # писатель, API result и CLI export cards — одна таблица).
+        exports["csv"] = card_export.export_cards_csv(
+            job_dir / card_export.CARDS_FILES["csv"], cards, schema
         )
-        exports["json"] = card_export.export_cards_json(job_dir / "cards.json", cards)
+        exports["anki"] = card_export.export_cards_anki(
+            job_dir / card_export.CARDS_FILES["anki"], cards, schema
+        )
+        exports["json"] = card_export.export_cards_json(
+            job_dir / card_export.CARDS_FILES["json"], cards
+        )
         return exports
 
     def _s5_finalize_quality(

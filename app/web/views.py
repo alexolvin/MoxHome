@@ -43,7 +43,7 @@ def read_json(path: Path) -> dict[str, Any] | None:
 
 
 def _tail(path: Path, lines: int) -> list[str]:
-    if not path.is_file():
+    if not path.is_file() or lines <= 0:
         return []
     try:
         return path.read_text(encoding="utf-8").splitlines()[-lines:]
