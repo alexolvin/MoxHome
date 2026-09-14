@@ -139,6 +139,28 @@ def _pair_unsupported_message(pair: PairReport) -> str:
     )
 
 
+def translation_phases(validation: Mapping[str, Any]) -> list[tuple[str, str]]:
+    """Последовательность фаз движка (E5.3) — (подпись, документ):
+    TOC? → metadata? → главы. ЕДИНЫЙ источник: колбэк прогресса
+    ``run_translating`` и отображение прогресса UI (U1) строят фазы
+    одинаково — из ``validation.json``."""
+    phases: list[tuple[str, str]] = []
+    if bool(validation.get("toc_present")):
+        phases.append(("TOC", "(TOC)"))
+    if bool(validation.get("meta_present")):
+        phases.append(("metadata", "(OPF metadata)"))
+    chapter_count = int(validation["stats"]["chapter_count"])
+    chapter_docs = [str(x) for x in validation.get("chapter_documents", [])]
+    for index in range(chapter_count):
+        doc = (
+            chapter_docs[index]
+            if index < len(chapter_docs)
+            else f"chapter{index + 1}"
+        )
+        phases.append((f"глава {index + 1} / {chapter_count}", doc))
+    return phases
+
+
 class Pipeline:
     def __init__(
         self, settings: Settings, glossary_provider: GlossaryProvider | None = None
@@ -386,22 +408,13 @@ class Pipeline:
         job_dir = self.job_dir(job.id)
         target = job_dir / "target.epub"
         validation = self._read_json(job_dir / "validation.json")
-        toc_present = bool(validation["toc_present"])
-        meta_present = bool(validation["meta_present"])
-        chapter_count = int(validation["stats"]["chapter_count"])
         per_chapter = [int(x) for x in validation["per_chapter_segments"]]
-        chapter_docs = [str(x) for x in validation["chapter_documents"]]
         total_segments = sum(per_chapter)
 
         # E5.3: последовательность фаз движка — on_progress вызывается после
         # каждой непустой фазы (concurrency=1: детерминированно).
-        phases: list[tuple[str, str]] = []  # (подпись, документ)
-        if toc_present:
-            phases.append(("TOC", "(TOC)"))
-        if meta_present:
-            phases.append(("metadata", "(OPF metadata)"))
-        for index in range(chapter_count):
-            phases.append((f"глава {index + 1} / {chapter_count}", chapter_docs[index]))
+        # Единый источник — translation_phases (его же читает UI, U1).
+        phases = translation_phases(validation)
 
         engine = EpubTranslatorEngine(settings, job_dir)
         fill_failures: list[dict[str, Any]] = []

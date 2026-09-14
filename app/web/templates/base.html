@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} · EpubTranslator</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <a class="brand" href="/jobs">EpubTranslator</a>
+  <nav>
+    <a href="/books">Books</a>
+    <a href="/jobs">Jobs</a>
+    <a href="/languages">Languages</a>
+    <a href="/models">Models</a>
+    <a href="/prompts">Prompts</a>
+    <a href="/settings">Settings</a>
+  </nav>
+</header>
+<main>
+{% block content %}{% endblock %}
+</main>
+<footer>
+  {% if auth_on %}
+    доступ: привязка к Tailscale + общий секрет (HTTP Basic)
+  {% else %}
+    доступ: привязка к Tailscale; auth: off (SERVER_AUTH_SECRET не задан)
+  {% endif %}
+  · воркер — отдельный процесс: <code>python -m app.workers.run --loop</code>
+  (запуск из UI: <span class="ni">Not implemented</span>)
+</footer>
+<script src="/static/app.js"></script>
+</body>
+</html>

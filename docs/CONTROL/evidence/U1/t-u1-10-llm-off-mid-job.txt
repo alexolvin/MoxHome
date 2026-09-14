@@ -1,0 +1,17 @@
+дата: 2026-09-14 03:11:22
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: T-U1-10 — LLM off в середине перевода: FAILED + причина в UI
+
+задание: j-20260914T001138Z-45f4ce (u1_slow.epub, 6 глав, LLM остановлен в TRANSLATING)
+статус: FAILED
+error (API, verbatim): задача glossary_annotation не выполнена: после 3 попыток ответ невалиден (последняя проблема: ConnectError: [Errno 111] Connection refused); пустой артефакт не создаётся (E4-4)
+progress_display (API, verbatim): фаза: TOC (сегментов 0 / 48)
+status_terminal: True
+
+страница /jobs/{id}: причина ошибки в HTML — да
+страница /jobs/{id}: статус-класс status-failed — да
+строка verbatim: <h1>Job j-20260914T001138Z-45f4ce <span class="status-failed">FAILED</span></h1>
+
+ВЕРДИКТ: FAILED + причина в UI/API, прогресс не «в работе» — PASS

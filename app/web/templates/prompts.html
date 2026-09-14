@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Prompts</h1>
+{% if rows %}
+<table>
+  <tr><th>задача</th><th>исходный</th><th>целевой</th><th>версии</th></tr>
+  {% for row in rows %}
+  <tr>
+    <td>{{ row.task }}</td>
+    <td>{{ row.source }}</td>
+    <td>{{ row.target }}</td>
+    <td>{{ row.versions | join(', ') }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p>Промпты не найдены.</p>
+{% endif %}
+{% endblock %}

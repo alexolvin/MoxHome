@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Books</h1>
+<form id="u1-upload">
+  <label>EPUB: <input type="file" id="u1-upload-file" accept=".epub"></label>
+  <button type="submit">Загрузить</button>
+  <span id="u1-upload-msg"></span>
+</form>
+<p class="hint">Определение языка при загрузке — тот же механизм L0, что и стадия validating (детектор + dc:language); уверенность показана явно.</p>
+<div id="u1-books" data-u1-fetch="/api/books" data-u1-render="books">загрузка…</div>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Settings</h1>
+<h2>Компоненты (health)</h2>
+<div id="u1-health" data-u1-fetch="/api/health" data-u1-render="health">загрузка…</div>
+<h2>Конфигурация</h2>
+<div id="u1-settings" data-u1-fetch="/api/config" data-u1-render="config">загрузка…</div>
+<p class="hint">Секреты (API-ключи, общий секрет доступа) не отображаются — только признак «задан».</p>
+{% endblock %}

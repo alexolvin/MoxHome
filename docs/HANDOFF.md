@@ -31,58 +31,125 @@
   PASS + S5-7 BLOCKER (Anki/pyanki отсутствуют в окружении — фактический
   импорт не проводился; формат экспорта верифицирован структурно)
   (S5-1…S5-9 + T-S5-10/11/12), 256/256 теста (на mock, BLOCKER-1 —
-  реальные прогоны не заявляются).
+  реальные прогоны не заявляются);
+  **U1 (Web UI и API, ТЗ_04 §U1)** — CONTROL 9/9 PASS (U1-1…U1-9 +
+  T-U1-1…10), 266/266 теста (на mock, BLOCKER-1 — реальные прогоны не
+  заявляются; Tailscale-привязка не проверялась — V1.11).
   Отчёты: `docs/ENGINE_PROBE.md`, `docs/CONTROL/E2.md`, `docs/CONTROL/E3.md`,
   `docs/CONTROL/E4.md`, `docs/CONTROL/E5.md`, `docs/CONTROL/E6.md`, `docs/CONTROL/L0.md`,
   `docs/CONTROL/L1.md`, `docs/CONTROL/L2.md`, `docs/CONTROL/L3.md`,
   `docs/CONTROL/S1.md`, `docs/CONTROL/S2.md`, `docs/CONTROL/S3.md`,
-  `docs/CONTROL/S4.md`, `docs/CONTROL/S5.md`; evidence:
+  `docs/CONTROL/S4.md`, `docs/CONTROL/S5.md`, `docs/CONTROL/U1.md`;
+  evidence:
   `docs/CONTROL/evidence/E1…E6/`, `docs/CONTROL/evidence/L0/`,
   `docs/CONTROL/evidence/L1/`, `docs/CONTROL/evidence/L2/`,
   `docs/CONTROL/evidence/L3/`, `docs/CONTROL/evidence/S1/`,
   `docs/CONTROL/evidence/S2/`, `docs/CONTROL/evidence/S3/`,
-  `docs/CONTROL/evidence/S4/`, `docs/CONTROL/evidence/S5/`.
-- **Далее:** **U1 — Web UI и API (ТЗ_04 §U1)**, затем U2 (CLI) и V1
-  (программа приёмки). U1: функциональный (НЕ демонстрационный)
-  интерфейс, доступный только внутри Tailscale. Стек — FastAPI +
-  серверный HTML + минимум JavaScript (D8); тяжёлый frontend-фреймворк и
-  сборщик — не вводить. Разделы: `Books`, `Jobs`, `Languages`, `Models`,
-  `Prompts`, `Settings`. Форма создания задания: файл EPUB, исходный язык
-  (предзаполнен результатом определения с показом уверенности), целевой
-  язык, режим (`Translation`/`Bilingual`/`Learning`), уровень
-  вмешательства, CEFR пользователя, профили LLM. `Languages` — матрица
-  пар со статусами резолвера L0 + перечень недостающих ресурсов для
-  каждой неполной пары; `cefr_source: derived` — единая подпись
-  `Estimated CEFR level` (L1-8). Страница задания — фактические данные:
-  статус, текущая глава, обработанные/неудавшиеся сегменты, повторы,
-  токены по профилям, прошедшее время, оценка остатка, охват
-  выравнивания, предупреждения, ошибки. ПРОЦЕНТЫ — только при
-  корректном вычислении, иначе «глава 8 / 14, сегментов 1284 / 2017»
-  (фиктивный процент — дефект). Логи задания (`job.log`, `errors.log`,
-  `quality.log`) — из интерфейса. `/api/health` — ПОКОМПОНЕНТНОЕ
-  состояние, НИКОГДА общий флаг: `{"app","database","storage","llm",
-  "epubcheck","nlp":{...}}`. Endpoint'ы (без потребителя не создаются):
-  `/api/health`; `/api/languages`; `GET|POST /api/books`; `GET|POST
-  /api/jobs`; `GET /api/jobs/{id}`; `POST /api/jobs/{id}/confirm`
-  (при NEEDS_CONFIRMATION); `POST /api/jobs/{id}/pause|resume|cancel`;
-  `GET /api/jobs/{id}/logs|result|quality` (quality — отчёт QC,
-  выравнивания и правок L3); `GET /api/models`; `GET /api/config`.
-  Доступ: привязка к Tailscale-адресу из конфигурации (public reverse
-  proxy не вводить) + общий секрет (env) либо basic auth; полноценная
-  система пользователей в первой версии не строится. Нереализованное —
-  `Not implemented`, не имитировать. CONTROL U1-1…U1-9: U1-1 прогресс
-  UI = БД (расхождение 0 на 20 срезах); U1-2 0 фиктивных процентов;
-  U1-3 `/api/health` при выключенном LLM — `llm: error`, общего
-  `healthy: true` нет (100%); U1-4 статусы пар UI = резолвер (0);
-  U1-5 `Estimated` во всех местах (100%); U1-6 неиспользуемые
-  endpoint'ы — 0; U1-7 доступ без общего секрета — отклонён (100%);
-  U1-8 секреты в HTML-ответах и логах доступа — 0; U1-9 правки L3 в UI
-  = `quality.log` (0). Тесты T-U1-1…T-U1-10: T-U1-9 — полный цикл через
-  API (загрузка → задание → подтверждение → прогресс → результат);
-  T-U1-10 — отключение LLM в середине задания: UI — ошибка с причиной,
-  а не замерший прогресс. Протокол этапов как в E/L/S-стадиях (ветка
-  `stage/U1`, явные пути в коммите, merge --no-ff, CONTROL + evidence,
-  DECISIONS).
+  `docs/CONTROL/evidence/S4/`, `docs/CONTROL/evidence/S5/`,
+  `docs/CONTROL/evidence/U1/`.
+- **Далее:** **U2 — CLI (ТЗ_04 §U2)**, затем V1 (программа приёмки).
+  U2: командный интерфейс поверх тех же сервисов (у CLI собственной
+  бизнес-логики НЕТ — U2-1). Команды: `epubtranslator analyze
+  <input.epub>`; `epubtranslator translate <input.epub> --source <lang>
+  --target <lang> --mode <mode> [--level <level>]`; `epubtranslator job
+  list`; `epubtranslator job status <JOB_ID>`; `epubtranslator job resume
+  <JOB_ID>`; `epubtranslator job cancel <JOB_ID>`; `epubtranslator
+  validate <file.epub>`; `epubtranslator languages`; `epubtranslator
+  export cards <JOB_ID> --format <csv|anki|json>`. Коды выхода: 0 —
+  успех, ≠ 0 — с различением классов ошибок (конфигурация, валидация
+  входа, недоступность LLM, отказ валидации выхода) — через
+  `AppError.exit_code`; успешный код выхода при неуспешном задании —
+  дефект. CONTROL U2-1…U2-3: U2-1 дублирование бизнес-логики между CLI
+  и API — 0 (проверка по вызываемым сервисам); U2-2 код выхода
+  соответствует исходу задания — 100% на 8 сценариях; U2-3 задание,
+  созданное через CLI, видно в UI и наоборот — 100%. Тесты
+  T-U2-1…T-U2-3 по критериям + T-U2-4 — `validate` на повреждённом
+  EPUB: ненулевой код выхода и внятное сообщение. V1 — программа
+  приёмки (все блоки обязательны, V1.1…V1.13: статический контроль
+  ruff/mypy/pytest; аудит хардкода; аудит дублирующих механизмов;
+  аудит честности интерфейса (`completed`/`success`/`100%`/`healthy`/
+  `verified`/`ready`/`done` — каждое вхождение подкреплено состоянием
+  в БД); дымовой тест (2 главы, 10–20 абзацев, физический EPUB);
+  инспекция EPUB (zipinfo verbatim); билингв-проверка; 16 сценариев
+  отказов; терминология; рестарт; чистая установка; Tailscale с другой
+  машины (вероятно честный BLOCKER — второй машины нет); README
+  (`README.md` отсутствует — написать); реальные прогоны 5 языков
+  (Learning, target ru, ≥8 глав; ассеты готовы: `books/v1_en.epub`
+  (19ch/62441), `v1_de.epub` (11ch/99010), `v1_fr.epub` (9ch/75923),
+  `v1_it.epub` (38ch/47224), `v1_nl.epub` (9ch/47510) — 5/5 EPUBCheck
+  0 errors, см. `.a/reports/v1_assets_prep.md`). Протокол этапов как в
+  E/L/S/U-стадиях (ветка `stage/<S>`, явные пути в коммите, merge
+  --no-ff, CONTROL + evidence, DECISIONS, HANDOFF).
+
+## Сделано в U1
+
+- **`app/web/` (новое):** слой представления (D69) — `app.py` (фабрика
+  `create_app(settings, db)`: FastAPI без docs/redoc, Basic-auth
+  middleware на ВСЕХ маршрутах, include api+pages, mount `/static`),
+  `auth.py` (`_authorized`: пустой `SERVER_AUTH_SECRET` → открыто;
+  Basic, любое имя, пароль = секрет, `hmac.compare_digest`;
+  `auth_check` → 401 + `WWW-Authenticate`), `health.py`
+  (`health_report`: app/database — `repo.ping`/storage — контрольная
+  запись в `storage.root`/llm — `GET {base}/models` Bearer, timeout 5 c,
+  по профилям/nlp — spacy по языкам, ru = «n/a (целевой язык)»/epubcheck
+  — jar+java; БЕЗ общего флага), `views.py` (чистые функции facts:
+  `progress_facts(job, validation)` — отображение «глава N / M,
+  сегментов X / Y», `elapsed_and_eta` (ETA = `elapsed·(1−p)/p`, метка
+  «оценка»), `job_facts`, `list_books`, `languages_view`, `models_view`,
+  `prompts_view`, `settings_view` (секреты — «задан»/«не задан»),
+  `quality_view` (l3.fixes из `l3_fix_report.json`)), `api.py` (16
+  endpoint'ов: health/languages/books GET|POST/jobs GET|POST/jobs/{id}/
+  confirm/pause/resume/cancel/logs/result/quality/models/config;
+  result — artifact main|cards.csv|cards.anki.tsv|cards.json, main =
+  learning.epub если есть, иначе target.epub), `pages.py` (6 разделов
+  Books/Jobs/Languages/Models/Prompts/Settings + 404; starlette 1.6:
+  `TemplateResponse(request, name, context, status_code)`), шаблоны
+  (9 HTML) + `static/style.css` + `static/app.js` (fetch по
+  `data-u1-fetch`, опрос задания 2 с с остановкой по терминальному
+  статусу/ошибке API — T-U1-10).
+- **`app/storage/database.py` (модификация):** подключения на нить
+  (`threading.local`): sync-эндпоинты FastAPI исполняются в пуле anyio,
+  соединение, привязанное к нити создания → `sqlite3.ProgrammingError`
+  (дефект, пойман тестами); `migrate()` fail-closed на WAL;
+  `busy_timeout` + WAL сериализуют межсоединенный доступ.
+- **`app/storage/jobs_repo.py`:** `list_jobs()` (ORDER BY created_at
+  DESC), `ping()` (SELECT 1) — для health.
+- **`app/languages/cefr.py`:** `language_cefr_label(pack)` — derived →
+  «Estimated CEFR level» (L1-8, единая подпись во всех местах).
+- **`app/workers/pipeline.py`:** `translation_phases(validation)` —
+  модульный уровень, ЕДИНЫЙ источник фаз (callback воркера и UI; Rule 8);
+  `run_translating` переиспользует его.
+- **`app/__main__.py`:** E0-заглушка → запуск uvicorn-сервера
+  (bind/port/auth из конфига, лог старта).
+- **Тесты: 10 запусков `tests/test_u1_web.py`** (T-U1-1…T-U1-10; U1Env —
+  mock-сервер + 3 профиля (main/dead/auth), книги slow-6ch/tiny-2ch/
+  full-20ch; воркеры — `--loop`; T-U1-9 — полный цикл 20ch Learning/B1,
+  result побайтово; T-U1-10 — `server.stop()` в окне TRANSLATING →
+  FAILED + причина в HTML). Evidence-скрипт `tests/u1_evidence.py`
+  (10 verbatim-файлов).
+- **Измерено (evidence U1, `docs/CONTROL/evidence/U1/`, 10 файлов):**
+  40/40 срезов progress(API) == progress(БД), 0 расхождений display, 0
+  «%»; все «%» = измеренный E6 (100.0 при coverage 1.0), JSON — без
+  «%»; LLM off (мёртвый порт) → llm/* = «error (ConnectError)» 3/3,
+  «healthy» отсутствует, nlp/ru = «n/a (целевой язык)»; 11/11 пар API
+  == свежему PairResolver (status/missing/creatable); 6/6 derived —
+  «Estimated CEFR level»; 16 endpoint'ов (19 метод-строк), 0 без
+  потребителя; 17/17 маршрутов — 401 без секрета / работают с ним,
+  неверный — 401; 0 вхождений 2 секретов (13 путей) в HTML/API и в
+  access log реального uvicorn; L3 (wexley +
+  `glossary_inconsistent` + `fix_enabled: true`): 3 фактические правки,
+  UI == quality.log 3/3 (0 расхождений в обе стороны); LLM off в
+  TRANSLATING → FAILED + причина verbatim в UI.
+- Тесты: 266/266 (256 + 10), ruff 0 (`app/` + `tests/`), mypy strict 0
+  (73 файла).
+- Дефекты: не обнаружено. Разработка (до коммита): sqlite-привязка к
+  нити (поймано тестами → thread-local); гонка `--once`-воркера
+  (выход после NEEDS_CONFIRMATION, подтверждённое задание без
+  исполнителя — поймано evidence u1-9 → воркеры evidence `--loop`,
+  зафиксировано в D69). Честные пределы (в CONTROL U1): Tailscale-
+  привязка (V1.11) не проверена (нет второй машины); LLM — mock
+  (BLOCKER-1); Anki-импорт не проверен (S5-7); kill -9 API-процесса —
+  не в критериях U1; запуск воркера из UI — Not implemented (Rule 7).
 
 ## Сделано в S5
 

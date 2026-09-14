@@ -2,11 +2,18 @@
 
 Единственный писатель — воркер; API пишет только создание задания и управляющие
 команды (E3.1). `busy_timeout` — из конфигурации (storage.busy_timeout_ms).
+
+Подключения — по одному на поток (``threading.local``): FastAPI/uvicorn
+выполняют синхронные endpoint'ы в пуле рабочих потоков, а соединение SQLite
+привязано к создавшему потоку. Конкурентность между соединениями
+сериализует сам SQLite (WAL + busy_timeout); общего соединения нет —
+гонки на одном объекте connection исключены по построению (U1).
 """
 
 from __future__ import annotations
 
 import sqlite3
+import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -106,23 +113,40 @@ _MIGRATED_JOB_COLUMNS: dict[str, str] = {
 
 
 class Database:
-    """Подключение SQLite (WAL) с выполненными миграциями."""
+    """Подключения SQLite (WAL) — по одному на поток — с миграциями."""
 
     def __init__(self, path: Path, busy_timeout_ms: int) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         self._path = path
-        self._conn = sqlite3.connect(str(path), timeout=max(busy_timeout_ms, 1) / 1000.0)
-        self._conn.row_factory = sqlite3.Row
-        self._conn.execute(f"PRAGMA busy_timeout = {int(busy_timeout_ms)}")
-        mode = self._conn.execute("PRAGMA journal_mode = WAL").fetchone()
-        if mode is None or str(mode[0]).lower() != "wal":
-            self._conn.close()
-            raise ConfigurationError(
-                f"не удаётся включить WAL для {path}",
-                details={"actual_mode": None if mode is None else str(mode[0])},
-            )
-        self._conn.execute("PRAGMA foreign_keys = ON")
+        self._busy_timeout_ms = int(busy_timeout_ms)
+        self._local = threading.local()
+        # Соединение создающего потока + миграции (fail closed, как раньше).
         self.migrate()
+
+    def _open_connection(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(
+            str(self._path), timeout=max(self._busy_timeout_ms, 1) / 1000.0
+        )
+        conn.row_factory = sqlite3.Row
+        conn.execute(f"PRAGMA busy_timeout = {self._busy_timeout_ms}")
+        conn.execute("PRAGMA foreign_keys = ON")
+        return conn
+
+    @property
+    def conn(self) -> sqlite3.Connection:
+        """Соединение ТЕКУЩЕГО потока (создаётся лениво)."""
+        conn = getattr(self._local, "conn", None)
+        if conn is None:
+            conn = self._open_connection()
+            mode = conn.execute("PRAGMA journal_mode = WAL").fetchone()
+            if mode is None or str(mode[0]).lower() != "wal":
+                conn.close()
+                raise ConfigurationError(
+                    f"не удаётся включить WAL для {self._path}",
+                    details={"actual_mode": None if mode is None else str(mode[0])},
+                )
+            self._local.conn = conn
+        return conn
 
     def migrate(self) -> None:
         """DDL новых баз + миграции существующих (E3 → E4: колонка tokens_total).
@@ -131,33 +155,33 @@ class Database:
         для старых баз (E3) недостающие колонки добавляются ALTER TABLE с
         бекфиллом инварианта tokens_total = translation + fill + analysis.
         """
-        self._conn.executescript(SCHEMA)
-        existing = {row[1] for row in self._conn.execute("PRAGMA table_info(jobs)")}
+        conn = self.conn
+        conn.executescript(SCHEMA)
+        existing = {row[1] for row in conn.execute("PRAGMA table_info(jobs)")}
         for column, ddl in _MIGRATED_JOB_COLUMNS.items():
             if column in existing:
                 continue
-            self._conn.execute(f"ALTER TABLE jobs ADD COLUMN {column} {ddl}")
+            conn.execute(f"ALTER TABLE jobs ADD COLUMN {column} {ddl}")
             if column == "tokens_total":
-                self._conn.execute(
+                conn.execute(
                     "UPDATE jobs SET tokens_total = "
                     "tokens_translation + tokens_fill + tokens_analysis"
                 )
-        self._conn.commit()
-
-    @property
-    def conn(self) -> sqlite3.Connection:
-        return self._conn
+        conn.commit()
 
     @property
     def path(self) -> Path:
         return self._path
 
     def integrity_check(self) -> str:
-        row = self._conn.execute("PRAGMA integrity_check").fetchone()
+        row = self.conn.execute("PRAGMA integrity_check").fetchone()
         return str(row[0]) if row is not None else "(нет ответа)"
 
     def close(self) -> None:
-        self._conn.close()
+        conn = getattr(self._local, "conn", None)
+        if conn is not None:
+            conn.close()
+            self._local.conn = None
 
     def __enter__(self) -> Database:
         return self
