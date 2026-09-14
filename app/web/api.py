@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import uuid
 from pathlib import Path
@@ -20,9 +21,8 @@ from fastapi.responses import FileResponse
 from app.core.config import Settings
 from app.core.errors import AppError
 from app.domain.job import Job, JobStatus
-from app.epub.reader import read_epub
-from app.languages.detect import detect_book
-from app.languages.registry import aliases_map, load_registry
+from app.learning import card_export
+from app.services.analyze import scan_book
 from app.services.jobs import confirm_job, create_job
 from app.storage.jobs_repo import JobRepository
 from app.web import views
@@ -31,6 +31,12 @@ from app.web.health import health_report
 router = APIRouter(prefix="/api")
 
 _COMPLETED_STATES = (JobStatus.COMPLETED, JobStatus.COMPLETED_WITH_WARNINGS)
+
+# Имена артефактов карточек — единый источник card_export.CARDS_FILES (Rule 8:
+# писатель S5, этот endpoint и CLI `export cards` — одна таблица имён).
+_RESULT_PATTERN = "^(main|" + "|".join(
+    re.escape(name) for name in card_export.CARDS_FILES.values()
+) + ")$"
 
 
 def get_deps(request: Request) -> tuple[Settings, JobRepository]:
@@ -84,44 +90,13 @@ async def upload_book(
     with dest.open("wb") as handle:
         shutil.copyfileobj(file.file, handle)
     try:
-        meta = _scan_book(settings, dest)
+        meta = scan_book(settings, dest)
     except AppError as exc:
         dest.unlink(missing_ok=True)
         raise HTTPException(status_code=400, detail=exc.message) from exc
     sidecar = dest.with_suffix(dest.suffix + ".detect.json")
     sidecar.write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
     return {"name": dest.name, **meta}
-
-
-def _scan_book(settings: Settings, path: Path) -> dict[str, Any]:
-    """Лёгкий разбор загруженной книги: заголовок + L0-определение языка.
-
-    Тот же путь, что и validating: ``read_epub`` + ``detect_book`` (L0.4/L0.5).
-    """
-    scan_dir = settings.working_dir / f"u1-scan-{uuid.uuid4().hex[:8]}"
-    try:
-        book = read_epub(path, scan_dir, settings)
-        report = detect_book(
-            book, settings, aliases=aliases_map(load_registry(settings.languages_root))
-        )
-    finally:
-        shutil.rmtree(scan_dir, ignore_errors=True)
-    probabilities = dict(sorted(report.probabilities.items(), key=lambda kv: -kv[1])[:3])
-    return {
-        "title": book.title,
-        "dc_language": report.dc_language,
-        "detected": report.detected,
-        "confidence": round(report.confidence, 4) if report.confidence is not None else None,
-        "probabilities": probabilities,
-        "decision": report.decision.value,
-        "accepted_language": report.accepted_language,
-        "reasons": list(report.reasons),
-        "stats": {
-            "chapter_count": book.stats.chapter_count,
-            "segment_count": book.stats.segment_count,
-            "word_count": book.stats.word_count,
-        },
-    }
 
 
 # ------------------------------------------------------------------ jobs
@@ -280,10 +255,7 @@ def job_logs(
 @router.get("/jobs/{job_id}/result")
 def job_result(
     job_id: str,
-    artifact: str = Query(
-        default="main",
-        pattern="^(main|cards\\.csv|cards\\.anki\\.tsv|cards\\.json)$",
-    ),
+    artifact: str = Query(default="main", pattern=_RESULT_PATTERN),
     deps: tuple[Settings, JobRepository] = Depends(get_deps),
 ) -> FileResponse:
     """Файл результата: main — learning.epub (Learning) либо target.epub;

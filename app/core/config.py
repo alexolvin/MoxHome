@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -485,13 +485,17 @@ def _format_validation_errors(exc: ValidationError) -> list[str]:
 def load_settings(config_yaml: Path, env_file: Path) -> Settings:
     """Загрузить и валидировать конфигурацию. Ошибка — ConfigurationError (fail closed)."""
     problems: list[str] = []
+    file_env: dict[str, str] = {}
     if not env_file.is_file():
         problems.append(
             f"не найден файл .env: {env_file} (секреты: LLM_API_KEY, LLM_ANALYSIS_API_KEY; "
             "адрес бинда: SERVER_BIND_ADDRESS)"
         )
     else:
-        load_dotenv(env_file, override=False)
+        # Без мутации os.environ (побочный эффект load_dotenv): при нескольких
+        # конфигурациях в одном процессе (тесты, профили) секрет одного .env
+        # перетекал бы в другую конфигурацию.
+        file_env = {key: (value or "") for key, value in dotenv_values(env_file).items()}
 
     data = _read_yaml(config_yaml, problems)
     if problems:
@@ -499,7 +503,10 @@ def load_settings(config_yaml: Path, env_file: Path) -> Settings:
             "источники конфигурации недоступны", details={"problems": problems}
         )
 
-    env = {key: os.environ.get(key, "").strip() for key in ALL_ENV_KEYS}
+    env = {
+        key: (os.environ[key] if key in os.environ else file_env.get(key, "")).strip()
+        for key in ALL_ENV_KEYS
+    }
 
     missing: list[str] = [key for key in REQUIRED_ENV_KEYS if not env[key]]
     storage_sub = _sub(data, "storage")

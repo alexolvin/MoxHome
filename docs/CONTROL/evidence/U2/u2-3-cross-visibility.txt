@@ -1,0 +1,23 @@
+дата: 2026-09-14 04:25:44
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: U2-3 — задание из CLI видно в UI (API) и наоборот (100%)
+
+1. Задание создано CLI (verbatim stdout):
+  | задание: j-20260914T012614Z-a83b25
+  | статус: CREATED
+  | воркер — отдельный процесс: python -m app.workers.run --loop
+
+   тот же id в GET /api/jobs (строка verbatim JSON):
+   | {"id": "j-20260914T012614Z-a83b25", "status": "CREATED", "source_language": null, "target_language": "ru", "mode": "bilingual", "learning_level": null, "learning_cefr": null, "progress": 0.0, "progress_display": "ожидание валидации (validation.json ещё не создан)", "alignment_coverage": null, "tokens_total": 0, "error": null, "created_at": 1789349174.7186108, "updated_at": 1789349174.7186108}
+   GET /api/jobs/j-20260914T012614Z-a83b25: HTTP 200, status='CREATED'
+
+2. Задание создано API (id=j-20260914T012614Z-844cdf, u2_slow.epub).
+   то же задание в CLI job list (строка verbatim):
+   | j-20260914T012614Z-844cdf  CREATED                   —→ru  bilingual  ожидание валидации (validation.json ещё не создан)
+   CLI job status (rc и строка статуса verbatim):
+   | rc=0 | статус: CREATED
+   API status: 'CREATED'
+
+ВЕРДИКТ: U2-3 (CLI→UI и UI→CLI) — PASS

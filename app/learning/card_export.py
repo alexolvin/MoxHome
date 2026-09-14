@@ -34,6 +34,15 @@ COMMON_COLUMNS: tuple[str, ...] = (
     "segment_id",
 )
 
+#: Имена артефактов карточек (S5.6): формат → файл задания. Единственный
+#: источник (Rule 8): писатель S5, API `/api/jobs/{id}/result`, CLI
+#: `epubtranslator export cards` (U2).
+CARDS_FILES: dict[str, str] = {
+    "csv": "cards.csv",
+    "anki": "cards.anki.tsv",
+    "json": "cards.json",
+}
+
 
 def extra_columns(schema: Mapping[str, Any]) -> tuple[str, ...]:
     """Языковые столбцы — свойства `card_schema.json` (порядок схемы),
