@@ -1038,13 +1038,27 @@ def _inject_inconsistent(text: str, scenario: str) -> str:
     return text
 
 
+_BARE_AMP_RE = re.compile(r"&(?!(?:[a-zA-Z][a-zA-Z0-9]*|#\d+|#x[0-9a-fA-F]+);)")
+_CTRL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+
+
+def _sanitize_xml_fragment(text: str) -> str:
+    """Устойчивость mock (не приложения): `encode_friendly` движка пишет
+    текстовые узлы без экранирования — сырой «&» из декодированного текста
+    книги (напр. «R. Bemporad & Figlio») делает fill-промпт невалидным XML.
+    Реальная LLM этим не ограничена; mock имитирует устойчивую модель:
+    не-сущностные «&» экранируем, управляющие символы XML 1.0 вырезаем."""
+    text = _BARE_AMP_RE.sub("&amp;", text)
+    return _CTRL_CHARS_RE.sub("", text)
+
+
 def _fill_response(user: str, scenario: str) -> str:
     if scenario == "fill_garbage":
         return "Sorry, I cannot produce the requested XML structure."
     match = _FILL_TEMPLATE_RE.search(user)
     if match is None:
         return "I cannot produce the requested XML structure."
-    root = ET.fromstring(match.group(1))
+    root = ET.fromstring(_sanitize_xml_fragment(match.group(1)))
     _apply_code_to_element(root)
     text = ET.tostring(root, encoding="unicode")
     return _inject_inconsistent(text, scenario)

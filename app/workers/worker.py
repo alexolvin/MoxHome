@@ -77,7 +77,7 @@ class Worker:
         if not self._repo.claim(job.id, self._pid, lease):
             logger.info("задание не занято (арена занята другим): %s", job.id)
             return job
-        handlers = attach_job_logs(self._pipeline.job_dir(job.id), self._settings.secrets())
+        handlers = attach_job_logs(self._settings.job_dir(job.id), self._settings.secrets())
         try:
             with job_context(job.id):
                 return self._run(job)
@@ -220,7 +220,7 @@ class Worker:
         # E5.6: движок пишет результат только через `.partial` → `os.replace`,
         # поэтому в момент отмены незавершённый файл уже помечен (`.partial`),
         # а существующий target.epub — предыдущий ВАЛИДНЫЙ результат: не трогаем.
-        job_dir = self._pipeline.job_dir(job_id)
+        job_dir = self._settings.job_dir(job_id)
         partial = job_dir / "target.epub.partial"
         target = job_dir / "target.epub"
         if partial.exists():

@@ -39,8 +39,10 @@ from app.epub.aligner import AlignmentReport
 
 
 def norm_text(text: str) -> str:
-    """Нормализация сравнения: NFC + casefold (как при отборе кандидатов)."""
-    return unicodedata.normalize("NFC", text).casefold()
+    """Нормализация сравнения: NFC + casefold + схлопывание пробельных в
+    один пробел (поверхности кандидатов отбираются тем же отбелом, V1.13:
+    пробел не несёт смысла по границе слова)."""
+    return re.sub(r"\s+", " ", unicodedata.normalize("NFC", text).casefold())
 
 
 def contains_form(haystack: str, needle: str) -> bool:

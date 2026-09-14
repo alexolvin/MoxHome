@@ -311,7 +311,7 @@ class L2Env:
             job_now = repo.require(job.id)
             pipeline.run_planning(repo, job_now)
             pipeline.run_translating(repo, job_now, lambda: None)
-            target_file = pipeline.job_dir(job.id) / "target.epub"
+            target_file = settings.job_dir(job.id) / "target.epub"
             hash_after_translating = (
                 _sha256(target_file.read_bytes()) if capture_target_hashes else None
             )
@@ -319,7 +319,7 @@ class L2Env:
             hash_after_validating = (
                 _sha256(target_file.read_bytes()) if capture_target_hashes else None
             )
-            job_dir = pipeline.job_dir(job.id)
+            job_dir = settings.job_dir(job.id)
             quality: dict[str, Any] = json.loads(
                 (job_dir / "quality.json").read_text(encoding="utf-8")
             )
@@ -425,7 +425,8 @@ _GOLDEN_COINCIDENCES: dict[str, str] = {
 
 
 def _golden_entries() -> list[dict[str, Any]]:
-    return yaml.safe_load(GOLDEN_PATH.read_text(encoding="utf-8"))
+    data: list[dict[str, Any]] = yaml.safe_load(GOLDEN_PATH.read_text(encoding="utf-8"))
+    return data
 
 
 def _golden_glossary(

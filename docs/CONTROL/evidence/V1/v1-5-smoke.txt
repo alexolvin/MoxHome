@@ -1,0 +1,76 @@
+дата: 2026-09-14 06:53:13
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: V1-5 — дымовой прогон: 2 главы, 10–20 абзацев, полный конвейер (Learning)
+
+$ python -m app.cli … translate v1_tiny.epub --source en --target ru --mode bilingual --level Learning --wait 1200
+rc = 0
+  | задание: j-20260914T035315Z-b2a3fd
+  | статус: CREATED
+  | исход: COMPLETED_WITH_WARNINGS
+
+статус: COMPLETED_WITH_WARNINGS
+target.epub: 3040 байт; глав 2; сегментов 32; слов 448
+learning.epub: 5769 байт; глав 3; сегментов 158; слов 1856
+
+CLI job status (verbatim):
+  | задание: j-20260914T035315Z-b2a3fd
+  | статус: COMPLETED_WITH_WARNINGS
+  | пара: en → ru  режим: bilingual
+  | learning, уровень: Learning
+  | прогресс: все фазы перевода завершены (сегментов 16 / 16)
+  | сегменты: 16 / 16
+  | охват выравнивания (E6): 16 / 16 (100.0%)
+  | токенов всего: 28289
+  | прошло: 3 c
+  | остаток (оценка): 0 c
+  | предупреждение: S1: 3 карточек отклонено: ring: лемма не соответствует словоформе по spaCy (S1.5); lie: лемма не соответствует словоформе по spaCy (S1.5); old: лемма не соответствует словоформе по spaCy (S1.5)
+  | предупреждение: S3: грамматические кандидаты не отобраны (0) — заметок нет
+  | результат готов: target.epub, learning.epub, cards.csv, cards.anki.tsv, cards.json
+
+CLI validate target.epub (verbatim, EPUBCheck):
+  | EPUBCheck v5.3.0: 0 FATAL, 0 ERROR, WARNING 0
+
+quality.json (warnings/epubcheck/alignment):
+  | {
+  |   "warnings": [
+  |     "S1: 3 карточек отклонено: ring: лемма не соответствует словоформе по spaCy (S1.5); lie: лемма не соответствует словоформе по spaCy (S1.5); old: лемма не соответствует словоформе по spaCy (S1.5)",
+  |     "S3: грамматические кандидаты не отобраны (0) — заметок нет"
+  |   ],
+  |   "epubcheck": {
+  |     "version": "EPUBCheck v5.3.0",
+  |     "available": true,
+  |     "errors": 0,
+  |     "warnings": 0,
+  |     "unavailable_reason": null
+  |   },
+  |   "alignment": {
+  |     "coverage": 1.0,
+  |     "aligned": 16,
+  |     "total": 16,
+  |     "unaligned": 0,
+  |     "extra_blocks": 0,
+  |     "min_coverage": 0.995,
+  |     "report": "alignment_report.json"
+  |   },
+  |   "glossary": {
+  |     "total_terms": 2,
+  |     "kept_terms": 2,
+  |     "dropped_terms": 0,
+  |     "limit_chars": 8000,
+  |     "prompt_chars": 150,
+  |     "truncated": false
+  |   }
+  | }
+
+Пороговая проверка:
+  OK: target.epub: ZIP + читается ридером (E2.5)
+  OK: target.epub: глав 2, сегментов 32, слов 448
+  OK: learning.epub: ZIP + читается ридером (E2.5)
+  OK: learning.epub: глав 3, сегментов 158, слов 1856
+  OK: EPUBCheck target.epub: 0 FATAL/ERROR
+  OK: S5: learning.epub собран
+  OK: S5: coverage > 0
+
+ВЕРДИКТ: V1-5 (дымовой прогон, физический EPUB) — PASS

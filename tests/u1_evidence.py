@@ -216,7 +216,7 @@ def ev_u1_1(main: U1Profile, server: MockLLMServer, base: Path, book: Path) -> s
                 job = repo.get(job_id)
                 if job is not None and job.progress == facts["progress"]:
                     validation = views.read_json(
-                        views.job_dir(settings, job_id) / "validation.json"
+                        settings.job_dir(job_id) / "validation.json"
                     )
                     expected = views.progress_facts(job, validation)["display"]
                     if facts["progress_display"] != expected:
@@ -526,7 +526,7 @@ def ev_u1_9(main: U1Profile, server: MockLLMServer, base: Path) -> str:
     lines.append(f"l3: attempted={quality.get('l3', {}).get('attempted')} "
                  f"applied={quality.get('l3', {}).get('applied')} "
                  f"rejected={quality.get('l3', {}).get('rejected')}")
-    log_path = views.job_dir(main.settings, job_id) / "quality.log"
+    log_path = main.settings.job_dir(job_id) / "quality.log"
     # тот же парсер, что в T-L3-2 (quality.log — JSONL, запись в поле msg)
     log_fixes = _fix_log_lines(log_path.read_text(encoding="utf-8"))
     lines.append(f"строк kind=glossary_fix в quality.log: {len(log_fixes)}")

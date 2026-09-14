@@ -45,9 +45,7 @@ def build_router(
     def jobs_page(request: Request) -> Response:
         rows: list[dict[str, object]] = []
         for job in repo.list_jobs():
-            validation = views.read_json(
-                views.job_dir(settings, job.id) / "validation.json"
-            )
+            validation = views.read_json(settings.job_dir(job.id) / "validation.json")
             rows.append(
                 {
                     "job": job,

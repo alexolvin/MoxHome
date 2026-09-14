@@ -175,9 +175,7 @@ def cmd_job_list(settings: Settings, args: argparse.Namespace) -> int:
         jobs = repo.list_jobs()
         rows = []
         for job in jobs:
-            validation = views.read_json(
-                views.job_dir(settings, job.id) / "validation.json"
-            )
+            validation = views.read_json(settings.job_dir(job.id) / "validation.json")
             display = views.progress_facts(job, validation)["display"]
             rows.append((job, display))
     finally:
@@ -336,7 +334,7 @@ def cmd_export_cards(settings: Settings, args: argparse.Namespace) -> int:
                 f"(доступно только COMPLETED/COMPLETED_WITH_WARNINGS)"
             )
         name = card_export.CARDS_FILES[args.format]
-        path = views.job_dir(settings, job.id) / name
+        path = settings.job_dir(job.id) / name
         if not path.is_file():
             raise JobStateError(
                 f"артефакт карточек отсутствует: {name} "

@@ -152,7 +152,7 @@ class AnalysisClient:
         self._job_id = job_id
         self._resolver = resolver or PromptResolver(settings.prompts_dir)
         self._attempts = attempts
-        self._job_dir = settings.jobs_dir / job_id
+        self._job_dir = settings.job_dir(job_id)
         self._raw_dir = self._job_dir / "raw"
 
     # ------------------------------------------------------------------ публичное

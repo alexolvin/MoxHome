@@ -24,12 +24,12 @@ spaCy-модели загружаются реально (кэш на проце
 
 from __future__ import annotations
 
+import importlib.metadata
 import re
 from pathlib import Path
 from typing import Any
 
 import pytest
-import spacy
 
 from app.languages.cards import issue_cards, load_card_schema
 from app.languages.cefr import CefrSource, label
@@ -84,7 +84,7 @@ def test_l1_1_pipelines_five_of_five_versions_once_per_process() -> None:
         assert report["model_version"] == "3.8.0", (
             f"{code}: версия модели изменилась: {report['model_version']}"
         )
-        assert report["spacy_version"] == spacy.__version__
+        assert report["spacy_version"] == importlib.metadata.version("spacy")
         assert report["disabled_components"] == list(DISABLED_COMPONENTS)
     for code in SOURCE_LANGUAGES:
         pack = registry[code]

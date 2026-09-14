@@ -170,9 +170,6 @@ class Pipeline:
 
     # ------------------------------------------------------------- служебное
 
-    def job_dir(self, job_id: str) -> Path:
-        return self._settings.jobs_dir / job_id
-
     def input_hash(self, job: Job) -> str:
         """Ключ идемпотентности: hash(вход + конфигурация + версия промпта) (E3.6)."""
         payload = "\n".join(
@@ -228,7 +225,7 @@ class Pipeline:
         L2.8: привязка к хэшу исходного файла). Загружает книгу и пары пакетов
         (исходный — подтверждённый язык задания, L0.5)."""
         settings = self._settings
-        book = read_epub(Path(job.source_path), self.job_dir(job.id) / "unpack", settings)
+        book = read_epub(Path(job.source_path), self._settings.job_dir(job.id) / "unpack", settings)
         registry = load_registry(settings.languages_root)
         source_code = job.source_language
         if source_code is None:
@@ -271,7 +268,7 @@ class Pipeline:
         consistency = check_consistency(book_glossary, alignment)
         report_dict = consistency.to_dict()
         report_dict["job_id"] = job.id
-        self._write_json(self.job_dir(job.id) / "glossary_consistency.json", report_dict)
+        self._write_json(self._settings.job_dir(job.id) / "glossary_consistency.json", report_dict)
         store = BookStore(self._settings.books_dir)
         store.save_mismatches(book_key_of(job.source_path), job.input_sha256, report_dict)
         section: dict[str, Any] = {
@@ -300,7 +297,7 @@ class Pipeline:
     def validation(self, job_id: str) -> dict[str, Any]:
         """validation.json задания (L0: секция language_detection; воркер строит
         причину NEEDS_CONFIRMATION из неё же — единый источник, Rule 8)."""
-        return self._read_json(self.job_dir(job_id) / "validation.json")
+        return self._read_json(self._settings.job_dir(job_id) / "validation.json")
 
     # ------------------------------------------------------------------ этапы
 
@@ -313,10 +310,12 @@ class Pipeline:
         unsupported — AppError → FAILED с точным перечнем недостающего (L0.2/L0.3).
         """
         if self._skipped(repo, job, "validating"):
-            payload = self._read_json(self.job_dir(job.id) / "validation.json")
+            payload = self._read_json(self._settings.job_dir(job.id) / "validation.json")
             detection = payload.get("language_detection") or {}
             return bool(payload["suspicious"]) or bool(detection.get("needs_confirmation"))
-        book = read_epub(Path(job.source_path), self.job_dir(job.id) / "unpack", self._settings)
+        book = read_epub(
+            Path(job.source_path), self._settings.job_dir(job.id) / "unpack", self._settings
+        )
         report = detect_book(
             book, self._settings, aliases=aliases_map(load_registry(self._settings.languages_root))
         )
@@ -340,7 +339,7 @@ class Pipeline:
             "per_chapter_segments": [len(chapter.segments) for chapter in book.chapters],
             "chapter_documents": [chapter.document_path for chapter in book.chapters],
         }
-        artifact = self.job_dir(job.id) / "validation.json"
+        artifact = self._settings.job_dir(job.id) / "validation.json"
         self._write_json(artifact, payload)
         repo.record_stage_result(job.id, "validating", self.input_hash(job), str(artifact))
         if book.suspicious or report.needs_confirmation:
@@ -367,7 +366,7 @@ class Pipeline:
         pair = self._resolve_pair(job.source_language, job.target_language)
         if pair is not None and pair.status is PairStatus.UNSUPPORTED:
             raise AppError(_pair_unsupported_message(pair))
-        validation = self._read_json(self.job_dir(job.id) / "validation.json")
+        validation = self._read_json(self._settings.job_dir(job.id) / "validation.json")
         profile = self._settings.llm.profile("translation")
         plan = {
             "target_language": job.target_language,
@@ -382,16 +381,15 @@ class Pipeline:
                 "max_retries": profile.max_retries,
                 "timeout_seconds": profile.timeout_seconds,
                 # D15: ключ кэша движка не включает модель → каталоги по моделям.
-                "cache_root": str(self.job_dir(job.id) / "engine_cache"),
+                "cache_root": str(self._settings.job_dir(job.id) / "engine_cache"),
                 "translation_model": self._settings.llm.profile("translation").model,
                 "fill_model": self._settings.llm.profile("fill").model,
             },
             "book": validation["stats"],
         }
-        self._write_json(self.job_dir(job.id) / "plan.json", plan)
-        repo.record_stage_result(
-            job.id, "planning", self.input_hash(job), str(self.job_dir(job.id) / "plan.json")
-        )
+        plan_path = self._settings.job_dir(job.id) / "plan.json"
+        self._write_json(plan_path, plan)
+        repo.record_stage_result(job.id, "planning", self.input_hash(job), str(plan_path))
 
     def run_translating(
         self, repo: JobRepository, job: Job, control_check: Callable[[], None]
@@ -399,13 +397,13 @@ class Pipeline:
         """Перевод адаптером TranslationEngine (E5.1, D17): `.partial` → валидация
         → EPUBCheck → бэкап → `os.replace` (E5.6). Возвращает число fill-сбоев."""
         if self._skipped(repo, job, "translating"):
-            failures_file = self.job_dir(job.id) / "fill_failures.json"
+            failures_file = self._settings.job_dir(job.id) / "fill_failures.json"
             if failures_file.is_file():
                 return int(self._read_json(failures_file)["count"])
             return 0
 
         settings = self._settings
-        job_dir = self.job_dir(job.id)
+        job_dir = self._settings.job_dir(job.id)
         target = job_dir / "target.epub"
         validation = self._read_json(job_dir / "validation.json")
         per_chapter = [int(x) for x in validation["per_chapter_segments"]]
@@ -614,16 +612,16 @@ class Pipeline:
                 "здесь проверяется механизм задания (состояния, идемпотентность, resume)"
             ),
         }
-        self._write_json(self.job_dir(job.id) / f"{stage}.json", payload)
-        repo.record_stage_result(
-            job.id, stage, self.input_hash(job), str(self.job_dir(job.id) / f"{stage}.json")
-        )
+        stage_path = self._settings.job_dir(job.id) / f"{stage}.json"
+        self._write_json(stage_path, payload)
+        repo.record_stage_result(job.id, stage, self.input_hash(job), str(stage_path))
 
     def run_validating_output(self, repo: JobRepository, job: Job) -> list[str]:
         """Проверка результата: ридер (E2) + 10-пунктный QC (E5.8). Возвращает предупреждения."""
         if self._skipped(repo, job, "validating_output"):
-            return list(self._read_json(self.job_dir(job.id) / "quality.json")["warnings"])
-        job_dir = self.job_dir(job.id)
+            quality = self._read_json(self._settings.job_dir(job.id) / "quality.json")
+            return list(quality["warnings"])
+        job_dir = self._settings.job_dir(job.id)
         target = job_dir / "target.epub"
         if not target.is_file():
             raise OutputValidationFailed("выходной файл не создан: target.epub")
@@ -659,7 +657,7 @@ class Pipeline:
         пересчёт после правки L3 (D61/L3.9: выравнивание и детерминированный
         QC выполняются заново по исправленному файлу).
         """
-        job_dir = self.job_dir(job.id)
+        job_dir = self._settings.job_dir(job.id)
         target = job_dir / "target.epub"
         try:
             out_book = read_epub(target, out_unpack, self._settings)
@@ -785,7 +783,7 @@ class Pipeline:
         доверяют устаревшему отчёту L2).
         """
         settings = self._settings
-        job_dir = self.job_dir(job.id)
+        job_dir = self._settings.job_dir(job.id)
         glossary_cfg = settings.glossary
 
         if not glossary_cfg.enabled or not glossary_cfg.fix_enabled:
@@ -911,7 +909,7 @@ class Pipeline:
         выбирает COMPLETED / COMPLETED_WITH_WARNINGS.
         """
         job = repo.require(job.id)
-        job_dir = self.job_dir(job.id)
+        job_dir = self._settings.job_dir(job.id)
         if job.learning_level is None:
             return self._learning_no_op(repo, job, job_dir)
         glossary_hash = self._learning_glossary_hash(job)
@@ -954,7 +952,7 @@ class Pipeline:
         пакет и пайплайн языка-ИСТОЧНИКА (learning-материалы строятся по
         исходному тексту — как S1)."""
         settings = self._settings
-        job_dir = self.job_dir(job.id)
+        job_dir = self._settings.job_dir(job.id)
         alignment = self._l3_alignment(self._read_json(job_dir / "alignment_report.json"))
         pairs = tuple(p for d in alignment.docs for p in d.aligned)
         book = read_epub(Path(job.source_path), job_dir / "unpack", settings)
@@ -3056,7 +3054,7 @@ class Pipeline:
         """Запись результата стадии L3 (no-op/halt: ключ = input_hash, L3.8)."""
         repo.record_stage_result(
             job.id, "glossary_fix", self.input_hash(job),
-            str(self.job_dir(job.id) / "l3_fix_report.json"),
+            str(self._settings.job_dir(job.id) / "l3_fix_report.json"),
         )
 
     @staticmethod

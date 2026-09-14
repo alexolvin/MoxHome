@@ -1,0 +1,49 @@
+дата: 2026-09-14 (финальная сводка; время отдельных прогонов — в
+пофайловых evidence)
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: V1 — сводка ВСЕХ блоков программы приёмки (детали — по файлам).
+В течение стадии main() tests/v1_evidence.py перезаписывал этот файл
+результатами последнего прогона части; итоговая сводка собрана при
+закрытии стадии по ВЕРДИКТ-строкам пофайловых evidence (см. CONTROL
+V1, docs/CONTROL/V1.md).
+
+v1-1   статика: ruff 0, mypy 0 (75 файлов), pytest 270/270,
+       TODO/FIXME 0, дубликаты — только осознанные замыкания
+                                                — PASS   v1-1-static.txt
+v1-2   аудит хардкода: 0 дефектов (76 строк НК/КОНФ; G1–G18)
+                                                — PASS   v1-2-4-audits.txt (V1.2)
+v1-3   аудит дублирующих механизмов: 0 неоправданных дублей (7/7)
+                                                — PASS   v1-2-4-audits.txt (V1.3)
+v1-4   аудит честности интерфейса: 0 неподкреплённых утверждений
+                                                — PASS   v1-2-4-audits.txt (V1.4)
+v1-5   дымовой прогон: физический EPUB, EPUBCheck 0/0
+                                                — PASS   v1-5-smoke.txt
+v1-6   инспекция EPUB: container/OPF/nav/zipinfo verbatim
+                                                — PASS   v1-6-inspection.txt
+v1-7   билингв-сверка: 16/16, 0 missing/dup/empty
+                                                — PASS   v1-7-bilingual.txt
+v1-8   16 сценариев отказов: 16/16 (итоговый прогон 17:04, 389 c;
+       правки харнесса — D73–D75)                        — PASS   v1-8-scenarios.txt
+v1-8a  терминология: 32 терминов, 24 расх. → L3 24/24,
+       share 1.0, повтор L3 = 0, diff quality.log == 24
+                                                — PASS   v1-8a-terminology.txt
+v1-9   перезапуск: E3-4 = 0.0000% ≤ 5%, задание не потеряно,
+       EPUBCheck 0/0                                   — PASS   v1-9-restart.txt
+v1-10  чистая установка: git diff пуст, uv+модели+EPUBCheck
+       (D76/D77)                                        — PASS   v1-10-clean-install.txt
+v1-11  Tailscale: 4/4 с внешней машины vzu5-claw (08:52)
+                                                — PASS   v1-11-tailnet.txt
+v1-12  README: 7/7 шагов на чистом инсталле (D78)
+                                                — PASS   v1-12-readme.txt
+v1-13  полный прогон 5 языков: 5/5 COMPLETED_WITH_WARNINGS,
+       ~21.1M токенов, EPUBCheck 0 errors (08:53)
+                                             — PASS   v1-13-summary.txt
+                                                      + v1-13-{en,de,fr,it,nl}.txt
+
+Ограничения (честно): все прогоны — детерминированный mock
+(BLOCKER-1; «PASS на реальном LLM» не заявлен); EPUBCheck —
+локальная копия W3C 5.3.0 (дистрибутив не в git).
+
+ВЕРДИКТ: V1 (все 13 блоков) — PASS

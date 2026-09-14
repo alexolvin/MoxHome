@@ -28,10 +28,6 @@ from app.storage.jobs_repo import JobRepository
 from app.workers.pipeline import translation_phases
 
 
-def job_dir(settings: Settings, job_id: str) -> Path:
-    return settings.jobs_dir / job_id
-
-
 def read_json(path: Path) -> dict[str, Any] | None:
     if not path.is_file():
         return None
@@ -165,7 +161,7 @@ def job_facts(
     log_lines: int = 200,
 ) -> dict[str, Any]:
     """Все фактические данные задания (У1.5) — только из БД и артефактов."""
-    jdir = job_dir(settings, job.id)
+    jdir = settings.job_dir(job.id)
     validation = read_json(jdir / "validation.json")
     alignment_report = read_json(jdir / "alignment_report.json")
     quality = read_json(jdir / "quality.json")
@@ -426,7 +422,7 @@ def quality_view(settings: Settings, job_id: str) -> dict[str, Any]:
     сверка с ``quality.log`` — критерий U1-9 (расхождение 0 проверяется
     тестом, а не «на глаз» в UI).
     """
-    jdir = job_dir(settings, job_id)
+    jdir = settings.job_dir(job_id)
     quality = read_json(jdir / "quality.json") or {}
     alignment = read_json(jdir / "alignment_report.json") or {}
     l3_report = read_json(jdir / "l3_fix_report.json")

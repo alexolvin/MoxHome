@@ -16,6 +16,7 @@ logs/
 data/lexicons/
 data/models/
 data/tools/
+data/v1/
 *.db
 *.db-wal
 *.db-shm

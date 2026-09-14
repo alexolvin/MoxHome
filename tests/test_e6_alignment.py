@@ -124,7 +124,7 @@ class E6Env:
             pipeline.run_planning(self.repo, job_now)
             pipeline.run_translating(self.repo, job_now, lambda: None)
             warnings = pipeline.run_validating_output(self.repo, job_now)
-            job_dir = pipeline.job_dir(job.id)
+            job_dir = self.settings.job_dir(job.id)
             quality: dict[str, Any] = json.loads(
                 (job_dir / "quality.json").read_text(encoding="utf-8")
             )
@@ -537,7 +537,7 @@ def test_e6_5_deterministic_report(e6_env: E6Env) -> None:
     first = (first_run.job_dir / "alignment_report.json").read_bytes()
     job, pipeline = _fresh_run(e6_env, "complex")
     pipeline.run_validating_output(e6_env.repo, e6_env.repo.require(job.id))
-    second = (pipeline.job_dir(job.id) / "alignment_report.json").read_bytes()
+    second = (e6_env.settings.job_dir(job.id) / "alignment_report.json").read_bytes()
     assert first == second
     assert hashlib.sha256(first).hexdigest() == hashlib.sha256(second).hexdigest()
 
@@ -665,7 +665,7 @@ def test_alignment_below_threshold_warns(e6_env: E6Env, tmp_path: Path) -> None:
     COMPLETED_WITH_WARNINGS по предупреждениям — логика воркера, доказана в E5.
     """
     job, pipeline = _fresh_run(e6_env, "complex")
-    job_dir = pipeline.job_dir(job.id)
+    job_dir = e6_env.settings.job_dir(job.id)
     tampered = _tampered(
         job_dir / "target.epub",
         Z_ALPHA,

@@ -26,8 +26,6 @@ from typing import Any
 
 import pytest
 
-from app.web import views
-
 ROOT = Path(__file__).resolve().parents[1]
 _TESTS_DIR = str(Path(__file__).resolve().parent)
 _PROBE_DIR = str(Path(__file__).resolve().parent / "probe")
@@ -442,7 +440,7 @@ def _scen_2_completed(ctx: U2Ctx) -> None:
         res = _cli(
             ctx.main.cfg, ctx.main.env_file, "export", "cards", done_id, "--format", "csv"
         )
-        jdir = views.job_dir(ctx.main.settings, done_id)
+        jdir = ctx.main.settings.job_dir(done_id)
         has_cards = (jdir / "cards.csv").is_file()
         if has_cards:
             ok = res.returncode == 0 and res.stdout.strip() != ""

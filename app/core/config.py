@@ -247,9 +247,15 @@ class AlignmentSection(BaseModel):
     #: Критерий белого списка «идентичен оригиналу» (E6.3): перевод,
     #: совпадающий с оригиналом, нарушением НЕ является, если нормализованный
     #: текст целиком соответствует шаблону (числа, имена собственные без
-    #: склонения и т.п. — настраиваемый критерий).
+    #: склонения, декоративная пунктуация разделителей «* * *» и т.п. —
+    #: настраиваемый критерий).
     identical_whitelist_pattern: str = Field(
-        default=r"^[\d\s.,;:()\-\u2013\u2014/%$€]+$", min_length=1
+        default=(
+            r"^[\d\s.,;:()\-\u2013\u2014/%$€"
+            r"\*\u00b7\u2022\u2026\u2020\u2021"
+            r"\u201c\u201d\u2018\u2019\u201e\u00ab\u00bb]+$"
+        ),
+        min_length=1,
     )
 
     @field_validator("identical_whitelist_pattern")
@@ -383,6 +389,10 @@ class Settings(BaseModel):
     @property
     def jobs_dir(self) -> Path:
         return self.storage.root / self.storage.dirs.jobs
+
+    def job_dir(self, job_id: str) -> Path:
+        """Каталог задания — единый источник формулы (V1.1/V1.3)."""
+        return self.jobs_dir / job_id
 
     @property
     def jobs_db_path(self) -> Path:

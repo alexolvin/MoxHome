@@ -236,7 +236,7 @@ class S5Env:
             learning_level=learning_level,
             learning_cefr=learning_cefr,
         )
-        job_dir = pipeline.job_dir(job.id)
+        job_dir = settings.job_dir(job.id)
         error: AppError | None = None
         warnings: list[str] = []
         handlers = attach_job_logs(job_dir, settings.secrets())
@@ -286,7 +286,7 @@ class S5Env:
             learning_level="Intensive",
             learning_cefr="A1",
         )
-        job_dir = pipeline.job_dir(job.id)
+        job_dir = settings.job_dir(job.id)
         _patch_alignment(job_dir, "chapter3.xhtml", coverage=0.9)
         repo.set_alignment_coverage(job.id, 0.9)
         error: AppError | None = None
@@ -474,7 +474,7 @@ def _rerun_s5_assembly(settings: Settings, repo: JobRepository, job_id: str) -> 
     """In-process повтор S5-сборки (детерминизм: тот же target + артефакты)."""
     pipeline = Pipeline(settings)
     job = repo.require(job_id)
-    job_dir = pipeline.job_dir(job.id)
+    job_dir = settings.job_dir(job.id)
     handlers = attach_job_logs(job_dir, settings.secrets())
     try:
         pipeline._s5_assembly(

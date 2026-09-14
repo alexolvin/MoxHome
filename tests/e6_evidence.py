@@ -118,7 +118,7 @@ def _run_to_translating(
     pipeline.run_validating(repo, job_now)
     pipeline.run_planning(repo, job_now)
     pipeline.run_translating(repo, job_now, lambda: None)
-    return job, pipeline, pipeline.job_dir(job.id)
+    return job, pipeline, settings.job_dir(job.id)
 
 
 def _run_inprocess(

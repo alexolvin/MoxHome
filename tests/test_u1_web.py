@@ -224,7 +224,8 @@ def u1_env(tmp_path_factory: pytest.TempPathFactory) -> Iterator[U1Env]:
 def _free_port() -> int:
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
+        port: int = sock.getsockname()[1]
+        return port
 
 
 def _upload_book(client: TestClient, path: Path) -> str:
@@ -317,7 +318,7 @@ def test_u1_1_progress_matches_db_over_slices(u1_env: U1Env) -> None:
                 job = repo.get(job_id)
                 if job is not None and job.progress == facts["progress"]:
                     validation = views.read_json(
-                        views.job_dir(settings, job_id) / "validation.json"
+                        settings.job_dir(job_id) / "validation.json"
                     )
                     expected = views.progress_facts(job, validation)["display"]
                     if facts["progress_display"] != expected:
@@ -675,7 +676,7 @@ def test_u1_9_full_api_cycle(u1_env: U1Env) -> None:
     assert facts["status"] in ("COMPLETED", "COMPLETED_WITH_WARNINGS"), facts["status"]
     assert facts["result_ready"] is True
 
-    jdir = views.job_dir(settings, job_id)
+    jdir = settings.job_dir(job_id)
     learning = jdir / "learning.epub"
     main_path = learning if learning.is_file() else jdir / "target.epub"
     assert main_path.is_file()

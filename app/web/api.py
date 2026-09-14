@@ -116,9 +116,7 @@ def list_jobs(
     settings, repo = deps
     rows: list[dict[str, Any]] = []
     for job in repo.list_jobs():
-        validation = views.read_json(
-            views.job_dir(settings, job.id) / "validation.json"
-        )
+        validation = views.read_json(settings.job_dir(job.id) / "validation.json")
         rows.append(
             {
                 "id": job.id,
@@ -266,7 +264,7 @@ def job_result(
         raise HTTPException(
             status_code=409, detail=f"результат не готов (статус: {job.status.value})"
         )
-    jdir = settings.jobs_dir / job.id
+    jdir = settings.job_dir(job.id)
     if artifact == "main":
         learning = jdir / "learning.epub"
         path = learning if learning.is_file() else jdir / "target.epub"
