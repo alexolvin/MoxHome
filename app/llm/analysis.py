@@ -189,6 +189,8 @@ class AnalysisClient:
                 {"role": "user", "content": user_prompt},
             ],
         }
+        # D80: дополнительные поля тела запроса из профиля (thinking-модели).
+        request_body.update(profile.extra_body)
         headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
 
         usage_acc = _UsageAccumulator(self._repo, self._job_id, "analysis")

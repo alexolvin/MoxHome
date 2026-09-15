@@ -200,6 +200,7 @@ class EpubTranslatorEngine:
             temperature=translation_profile.temperature,
             retry_times=translation_profile.retry_times,
             log_dir_path=self._job_dir / "engine_log" / "translation",
+            extra_body=translation_profile.extra_body or None,
         )
         fill_llm: Any = LLM(
             key=fill_api_key,
@@ -211,6 +212,7 @@ class EpubTranslatorEngine:
             temperature=fill_profile.temperature,
             retry_times=fill_profile.retry_times,
             log_dir_path=self._job_dir / "engine_log" / "fill",
+            extra_body=fill_profile.extra_body or None,
         )
         return translation_llm, fill_llm
 

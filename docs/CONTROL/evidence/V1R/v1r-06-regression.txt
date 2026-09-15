@@ -1,0 +1,30 @@
+# V1R.06 — Полный регресс после D80+D81
+
+Дата: 2026-09-14. Команда: `uv run pytest -q` (все тесты проекта, 496 c).
+
+## Результат (verbatim)
+```
+================= 273 passed, 2 warnings in 496.46s (0:08:16) ==================
+RC=0
+```
+
+## Состав
+- 270 — базовый регресс V1 (CONTROL V1 13/13, main @ b0807fd).
+- +2 — D80: `test_e5_d80_extra_body_reaches_engine_requests`
+  (tests/test_e5_translation.py), `test_e4_d80_extra_body_reaches_analysis_requests`
+  (tests/test_e4_llm.py) — passthrough `extra_body` в движковый LLM (translate/fill)
+  и в AnalysisClient (анализ/глоссарий/S-стадии).
+- +1 — D81: `test_l2_d81_store_does_not_collide_with_book_file`
+  (tests/test_l2_glossary.py) — store не сталкивается с файлом-книгой в `books/`.
+
+## Статика (до регресса, тот же срез кода)
+- `ruff check` — чисто.
+- `mypy` — чисто (75 файлов).
+
+## Оговорка
+2 warning pytest — существующие third-party deprecation (import-time, не связаны с
+изменениями V1R; присутствуют и на main @ b0807fd):
+- `StarletteDeprecationWarning: Using httpx with starlette.testclient is deprecated;
+  install httpx2 instead` (fastapi/testclient.py:1);
+- `DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use
+  anyio.from_thread.BlockingPortal instead` (starlette/testclient.py:53).

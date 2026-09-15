@@ -43,6 +43,8 @@ from mock_llm_server import MockLLMServer  # noqa: E402
 
 #: Адрес по умолчанию для YAML-профилей, когда mock-сервер не нужен (тестовая фикстура).
 DEFAULT_LLM_BASE_URL = "http://127.0.0.1:9999/v1"
+#: Реальный jar EPUBCheck 5.3.0 (D4) — совпадает с константой conftest.
+DEFAULT_EPUBCHECK_JAR = str(ROOT / "data" / "tools" / "epubcheck-5.3.0" / "epubcheck.jar")
 
 
 @pytest.fixture()
@@ -402,5 +404,49 @@ def test_describe_profiles_shows_all_three_profiles(
         assert text.count("model: test-model") == 3
         assert text.count("provider: openai-compatible") == 3
         assert "api_key: задан" in text
+    finally:
+        db.close()
+
+
+# ------------------------------------------------------------------ D80: extra_body
+
+
+def test_e4_d80_extra_body_reaches_analysis_requests(
+    tmp_path: Path,
+    make_env: Callable[[Mapping[str, str | None] | None], Path],
+    mock_server: MockLLMServer,
+) -> None:
+    # D80: extra_body analysis-профиля попадает в тело запроса (mock-лог).
+    work = tmp_path / "storage"
+    work.mkdir(parents=True)
+    (work / "config.yaml").write_text(
+        f"storage:\n  root: {work}\n"
+        "llm:\n"
+        "  profiles:\n"
+        f"    translation:\n      base_url: {mock_server.url}\n      model: test-model\n"
+        f"    fill:\n      base_url: {mock_server.url}\n      model: test-model\n"
+        "    analysis:\n"
+        f"      base_url: {mock_server.url}\n      model: test-model\n"
+        "      extra_body:\n"
+        "        chat_template_kwargs:\n"
+        "          enable_thinking: false\n"
+        f"epubcheck:\n  jar_path: {DEFAULT_EPUBCHECK_JAR}\n"
+        f"languages:\n  root: {ROOT / 'config' / 'languages'}\n"
+        f"  matrix: {ROOT / 'config' / 'language_matrix.yaml'}\n",
+        encoding="utf-8",
+    )
+    settings = load_settings(work / "config.yaml", make_env(None))
+    _copy_prompts(settings)
+    db = Database(settings.jobs_db_path, settings.storage.busy_timeout_ms)
+    try:
+        repo = JobRepository(db)
+        job = create_job(repo, settings, source_path=_COMPLEX, target_language="de")
+        client = AnalysisClient(settings, repo, job.id, attempts=1)
+        client.run_task(task("analysis_vocabulary"), "en", "de", "The fox jumps.")
+        entries = [entry for entry in mock_server.requests_log() if entry["kind"] == "analysis"]
+        assert entries, "analysis-запрос не был"
+        expected = {"chat_template_kwargs": {"enable_thinking": False}}
+        for entry in entries:
+            assert entry["extra"] == expected, entry["extra"]
     finally:
         db.close()

@@ -30,6 +30,10 @@ llm:
   # API-ключи — в .env (LLM_API_KEY; опционально LLM_ANALYSIS_API_KEY).
   # Опционально: цены за 1M токенов (input_price_per_mtok / output_price_per_mtok);
   # без них стоимость показывается как `Cost: unknown` (E4-6).
+  # extra_body: дополнительные поля тела запроса chat/completions — расширенные
+  # параметры владения OpenAI-совместимого эндпоинта (vLLM, Ollama, ...).
+  # Пример для thinking-моделей Qwen3 на vLLM (без него reasoning-поток
+  # попадает в контент ответа): extra_body: {chat_template_kwargs: {enable_thinking: false}}.
   # D62: корень промптов — по умолчанию <storage.root>/prompts; относительный путь
   # разрешается от storage.root, абсолютный — как есть. Явно заданный
   # несуществующий каталог — отказ старта (ConfigurationError).
@@ -45,6 +49,7 @@ llm:
       max_retries: 5
       concurrency: 1
       max_group_tokens: 2600
+      extra_body: {}
     fill:
       base_url: http://localhost:8000/v1
       model: example-model
@@ -55,6 +60,7 @@ llm:
       max_retries: 5
       concurrency: 1
       max_group_tokens: 2600
+      extra_body: {}
     analysis:
       base_url: http://localhost:8000/v1
       model: example-model
@@ -64,6 +70,7 @@ llm:
       retry_times: 3
       max_retries: 3
       concurrency: 1
+      extra_body: {}
 
 limits:
   vocabulary_max_cards_per_1000_words: 15

@@ -497,8 +497,7 @@ def _ev_s5_8(run: S5Run) -> None:
     e6 = _read_json(run, "alignment_report.json")
     answers = _answers_doc(run.job_dir / "learning.epub")
     match = re.search(
-        r'<p[^>]*data-s5-coverage="([\d.]+)"[^>]*data-s5-aligned="(\d+)"'
-        r'[^>]*data-s5-total="(\d+)"[^>]*>',
+        r'<p[^>]*title="s5-coverage=([\d.]+) s5-aligned=(\d+) s5-total=(\d+)"[^>]*>',
         answers,
     )
     assert match, "разметка охвата в книге не найдена"
@@ -523,7 +522,7 @@ def _ev_s5_8(run: S5Run) -> None:
         f"aligned={e6['aligned']} total={e6['total']}\n"
         + f"jobs.alignment_coverage: {run.job.alignment_coverage}\n"
         + f"s5_report.json «coverage»: {report['coverage']}\n"
-        + f"книга (data-s5-coverage/aligned/total): "
+        + f"книга (title s5-coverage/aligned/total, D86): "
         f"{book_coverage}/{book_aligned}/{book_total}\n\n"
         + "строка в книге (verbatim):\n  "
         + match.group(0)
@@ -770,7 +769,7 @@ def _ev_t10(run: S5Run) -> None:
     s5_hrefs = [h for h in _nav_hrefs(learning) if "#s5-" in h]
     answers = _answers_doc(learning)
     coverage_line = next(
-        (line.strip() for line in answers.splitlines() if "data-s5-coverage" in line),
+        (line.strip() for line in answers.splitlines() if "s5-coverage=" in line),
         "(не найдена)",
     )
     good = (
@@ -857,7 +856,7 @@ def _ev_t12(run: S5Run) -> None:
     report = _s5_report(run)
     e6 = _read_json(run, "alignment_report.json")
     answers = _answers_doc(run.job_dir / "learning.epub")
-    match = re.search(r'<p[^>]*data-s5-coverage="0\.900000"[^>]*>', answers)
+    match = re.search(r'<p[^>]*title="s5-coverage=0\.900000 [^"]*"[^>]*>', answers)
     skipped_lines = [
         line.strip()
         for line in answers.splitlines()

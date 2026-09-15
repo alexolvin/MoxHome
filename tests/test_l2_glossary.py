@@ -746,6 +746,19 @@ def test_l2_9_version_change(l2_env: L2Env) -> None:
     assert run2.quality["glossary_consistency"]["terms_checked"] >= 1
 
 
+def test_l2_d81_store_does_not_collide_with_book_file(tmp_path: Path) -> None:
+    """D81: исходная книга лежит в books/ под именем book_key — store не
+    сталкивается с файлом (прежнее расложение давало FileExistsError)."""
+    books = tmp_path / "books"
+    books.mkdir()
+    (books / "collide.epub").write_bytes(b"fake-zip")
+    store = BookStore(books)
+    version = store.register_version("collide.epub", "abc123")
+    assert version.hash == "abc123"
+    assert store.is_current("collide.epub", "abc123") is True
+    assert (books / "collide.epub").is_file(), "файл книги не должен затрагиваться"
+
+
 def test_l2_10_six_cases_no_mismatch(l2_env: L2Env) -> None:
     """T-L2-10: имя во всех 6 падежах ед. ч. в переводе → все вхождения —
     одно имя (парадигма), 0 расхождений; варианты = все 6 форм."""
