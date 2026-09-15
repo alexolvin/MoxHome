@@ -81,6 +81,90 @@
   (см. `.a/reports/v1_assets_prep.md`). Протокол этапов как в
   E/L/S/U-стадиях (ветка `stage/<S>`, явные пути в коммите, merge
   --no-ff, CONTROL + evidence, DECISIONS, HANDOFF).
+- **Завершено (2026-09-14/15): V1R — приёмка на реальном LLM** (ветка
+  `stage/V1R`; отчёт `docs/CONTROL/V1R.md`, evidence
+  `docs/CONTROL/evidence/V1R/`). **CONTROL V1R — 7/7 PASS (V1R.1–V1R.5,
+  V1R.6, V1R.6b); готово к merge `stage/V1R` → `main` (--no-ff).** **BLOCKER-1 снят**: реальный
+  OpenAI-совместимый эндпоинт (vLLM 0.26.0, модель `qwen3.8-27b`,
+  FP8, max_model_len 262144) предоставлен владельцем для тестов и
+  настройки; API-ключ — в `.env` (gitignored), адрес/модель — в
+  `config.yaml` (gitignored). Модель — thinking: добавлен механизм
+  `extra_body` в `LLMProfile` (D80) — passthrough `chat_template_kwargs:
+  {enable_thinking: false}` в оба разрешённых LLM-клиента (движковый `LLM`
+  и `AnalysisClient`), без которого reasoning-поток засорял контент
+  (измерено: `finish_reason: length` vs `stop`). CONTROL V1R — 7 блоков
+  (V1R.1 endpoint/D80, V1R.2 реальный прогон без learning, V1R.3
+  реальный прогон Learning (S-стадии), V1R.4 дефект D81, V1R.5
+  реальная книга, V1R.6 регресс 273/273, V1R.6b регресс после D82–D86):
+  - V1R.2/V1R.3 (`complex.epub`, en→de, реальный LLM): оба
+    COMPLETED_WITH_WARNINGS. Контроль качества честно поймал поведение
+    модели: 4 ячейки таблицы не переведены (E5 п.4 + E6 22/26 = 84.6%
+    < 99.5%), L2 согласованность 76–78% < 95%; S1: 88/98 и S4: 38/38
+    предложений реального LLM отклонены детерминированной валидацией
+    (вне-схемные JSON-поля; вымышленные сущности/segment_id) —
+    fail-closed подтверждён на реальной модели; S5 learning.epub + 4
+    экспорта собраны.
+  - V1R.4 (дефект D81, найден реальным прогоном): store L2.8
+    (`books/<book_key>/…`) сталкивался с файлом-книгой в `books/` —
+    `FileExistsError(17)` за 136 мс в TRANSLATING; фикс —
+    зарезервированное поддерево `books/_book_store/` (одна точка,
+    `BookStore.__init__`) + регрессионный тест; приёмка V1 дефект не
+    поймала (изоляция storage-root в харнесах + `glossary.enabled: false`
+    в модульных тестах).
+  - V1R.5: реальная книга `books/v1_en.epub` (17 глав), en→ru,
+    bilingual, Learning. Первый прогон `j-…af68b1` завершён
+    (COMPLETED_WITH_WARNINGS, 12 357 с, 2 950 045 токенов; E6 99.93%,
+    L2 44.0% < 95%, S1 893 issued/1492 rejected, S4 0/258, S5 893×4
+    экспорта — метрики verbatim в `v1r-05-run3-book.txt`), НО критерий
+    «EPUB валиден» не пройден: записанный «EPUBCheck 0/0» не подкреплён
+    артефактами — реальный замер: `target.epub` 8 ERROR, `learning.epub`
+    163 ERROR. Root cause воспроизведён: **D85** — конвейер валидует
+    `<target>.partial>`, EPUBCheck имена без `.epub` не проверяет
+    («Mode required for non-epub files», exit 1, без `Messages:`), и
+    **D82** — старая `run_epubcheck` читала это как «0 ошибок»
+    (fail-open). Т.е. ВСЕ записанные «0/0» до 2026-09-15 (включая V1.13)
+    — результат отказа валидатора; в V1R.2/V1R.3 (EPUB 3-фиксер) 0/0
+    реальным замером подкреплён. Фиксы **D82–D86** (D83 — OPF EPUB 2.0
+    движком, D84 — S5 `<section>` в XHTML 1.1, D86 — study-answers
+    `data-*`/`<section>`), тесты T-E5-12…18 + T-S5-13; офлайн на тех же
+    артефактах: 8/163 → с фиксами 0/0 и 0/0. **Повторный прогон (run 4)
+    запущен 2026-09-15 05:34 UTC по решению владельца (полный прогон без
+    посева кэша): задание `j-20260915T053454Z-c346b1`. Run 4: реальный
+    перевод+fill 1 187 576 токенов, TRANSLATING 108,7 мин, `target.epub`
+    (437 200 Б) прошёл валидационный гейт (VALIDATING_OUTPUT 07:23:53Z),
+    затем **FAILED 08:54:44Z** — «задача vocabulary_card не выполнена:
+    после 3 попыток ответ невалиден (последняя проблема: ReadTimeout:
+    timed out); пустой артефакт не создаётся (E4-4)»: загрузка общего GPU
+    (3×120 c read-timeout подряд на одном вызове S1) — внешний фактор,
+    fail-closed по дизайну (Rule 6), не дефект приложения. **Run 5
+    `j-20260915T090235Z-5daf8e` (09:02 UTC, штатное возобновление E3:
+    engine_cache c346b1 посеян — TRANSLATING 5 с / 0 токенов, 100% cache
+    hit, md5 target.epub byte-идентичен run 4; S-стадии — свежие реальные
+    вызовы) ТЕРМИНАЛЕН 11:17:39Z: COMPLETED_WITH_WARNINGS, 8 082 с
+    (2 ч 14 мин 42 с), analysis 1 542 794 токенов; E6 1525/1526 = 99.93%,
+    S1 893 issued / 1541 rejected (3719 candidates, 157 батч-вызовов по 25),
+    S2 243/2, S3 110/40, S4 1/263 (Learning: только вопросы), S5 17/19 глав,
+    L2 43.9% < 95%, L3 выключена (L3.10). **Независимый EPUBCheck:
+    target.epub 0/0/0 и learning.epub 0/0/0 (RC=0) — V1R.5 закрыт PASS**,
+    verbatim — `v1r-05b-run4-run5.txt`. Протокол фазы и «Итог» —
+    `docs/CONTROL/V1R.md`; оценка ~9 ч для S1 снята (ошибка пересчёта
+    «вызов на карточку»; S1 = батчи по 25, измерено 1.6–1.7 ч).
+  - V1R.6: полный регресс 273/273 (270 V1 + 2 D80 + 1 D81), ruff 0,
+    mypy 0 (75 файлов).
+  - V1R.6b: регресс после D82–D86 — **282/282** (1042.77 s; D85 добавил
+    реальный запуск EPUBCheck в pipeline-тесты), ruff 0, mypy 0
+    (76 файлов) (`v1r-06b-regression.txt`).
+  Правки кода V1R: `app/core/config.py`, `app/adapters/epub_engine/
+  engine.py`, `app/llm/analysis.py` (D80), `app/glossary/store.py`
+  (D81), `app/adapters/epub_engine/epubcheck.py` (D82/D85),
+  `app/adapters/epub_engine/opf_repair.py` (новый, D83),
+  `app/adapters/epub_engine/atomic.py` (D83), `app/learning/study_book.py`
+  (D84/D86), `config/config.example.yaml`, `tests/probe/mock_llm_server.py`,
+  тесты E4/E5/L2/S5, `tests/test_e5_epubcheck.py` (новый),
+  `tests/s5_evidence.py`. Решения D80–D86 в `docs/DECISIONS.md`.
+  Прочие языки V1.13 (de/fr/it/nl) на реальном LLM не перепрогонялись;
+  записанный там «EPUBCheck 0 ошибок» не подкреплён (D85) — оговорка в
+  `docs/CONTROL/V1R.md` «Честные пределы».
 
 ## Сделано в V1 (завершено, финальный amend коммита `ad16dd9`)
 
@@ -428,12 +512,15 @@ X=10142), прирост токенов `max(0, X+Y−Z)/Z` = **0.0000%** (≤5%
   OPF → nav/NCX по manifest), `append_sections_to_doc` (секции — в КОНЦЕ
   `<body>`, без смешивания; XMLParser `remove_blank_text=False`),
   `render_sections` (порядок SECTION_ORDER = summary, vocab,
-  expressions, grammar, questions, exercises; `<section
-  class="s5-section" id="s5-{type}-{chapter_id}">` + h2; ответы —
-  ВНЕ; summary — при `status=="issued"`), `render_answers_document`
+  expressions, grammar, questions, exercises; `<div
+  class="s5-section" id="s5-{type}-{chapter_id}">` + h2 — D84: `<div>`,
+  не `<section>`, валидно в DTD XHTML 1.1 (EPUB 2 книги) и в HTML5;
+  ответы — ВНЕ; summary — при `status=="issued"`), `render_answers_document`
   (финальный документ `study-answers.xhtml`, `lang=ru`, чистый
   XHTML-default-namespace: `nsmap={None: XHTML, "xml": XML_NS}`;
-  `data-s5-coverage/data-s5-aligned/data-s5-total`; перечень пропущенных
+  `<div id="s5-coverage">`/`<div id="s5-answers">` (D86, аналог D84),
+  данные охвата — `title="s5-coverage=… s5-aligned=… s5-total=…"` на
+  `<p>` (D86: `data-*` вне DTD XHTML 1.1); перечень пропущенных
   глав; «Ответ:» — только здесь), `update_opf`/`update_nav`/`update_ncx`
   (запись на каждую секцию + финальный документ; NCX — defensive,
   playOrder max+1), `assemble_learning_epub` (оригинальные записи — имя/
@@ -1479,15 +1566,25 @@ V1.2–V1.4 **PASS** (аудиты, D79), V1.10 **PASS**, V1.12 **PASS** —
   evidence-скриптов пишет полный трейсбэк в evidence (сейчас — только
   «Type: message»).
 
-**BLOCKER-1 (не снят):** реальный LLM-эндпоинт отсутствует (плейсхолдер
-`http://127.0.0.1:9999/v1`, модель `probe-model` — нужен реальный
-OpenAI-совместимый эндпоинт от владельца). ВСЕ прогоны (включая V1.13 —
-реальные книги) — на детерминированном mock; «PASS на реальном LLM» не
-заявлен (Rule). Соблюдение глоссария моделью — гарантия только с L3
-(жёсткая проверка/правка). Ограничения mock, учтённые в приёмке:
-fill-ответ строится из XML блока независимо от сценария (s3 — сценарий
-пустит и fill); ground truth пересланных запросов/токенов —
-`requests_log` mock (БД не видит не-flushed группы — V1.9).
+**BLOCKER-1 (снят 2026-09-14, V1R):** реальный OpenAI-совместимый
+эндпоинт предоставлен владельцем (vLLM 0.26.0, модель `qwen3.8-27b`,
+FP8, max_model_len 262144; в приёмочном окружении — `http://127.0.0.1:8004/v1`).
+API-ключ — в `.env` (gitignored), адрес/модель — в `config.yaml`
+(gitignored). Модель — thinking: без `chat_template_kwargs:
+{enable_thinking: false}` (передаётся через `extra_body`, D80)
+reasoning-поток засоряет контент ответа — без D80 реальный прогон
+невозможен. Приёмка на реальном LLM — CONTROL V1R (V1R.1–V1R.6b):
+полный цикл + S-стадии + реальная книга работают; контроль качества
+честно фиксирует модельные несоответствия (таблица не переведена →
+E6; L2 < 95% → CWW). Вывод V1, что «соблюдение глоссария моделью —
+гарантия только с L3», подтверждён реальным прогоном (L2 76–78% < 95%).
+Исторически: ВСЕ прогоны V1 (включая V1.13 — реальные книги) — на
+детерминированном mock; «PASS на реальном LLM» по блокам V1 не
+заявлялся (Rule) и именно поэтому фазой V1R закрыт. Ограничения
+mock, учтённые в приёмке V1: fill-ответ строится из XML блока
+независимо от сценария (s3 — сценарий пустит и fill); ground truth
+пересланных запросов/токенов — `requests_log` mock (БД не видит
+не-flushed группы — V1.9).
 
 **S5:** S5-7 — фактический импорт в Anki не верифицирован (pyanki
 отсутствует в окружении; формат экспорта верифицирован структурно).
@@ -1534,6 +1631,11 @@ fill-ответ строится из XML блока независимо от �
   рецепт слияния + sha256 — `.a/reports/v1_assets_prep.md`.
 - Вторая tailnet-машина для V1.11: `vzu5-claw` (100.95.195.40) —
   BLOCKER-3 снят (2026-09-14, PASS 4/4).
+- Реальный LLM-эндпоинт (BLOCKER-1, снят 2026-09-14): vLLM 0.26.0-tp2 на
+  этом же хосте, `http://127.0.0.1:8004/v1` (узел 3p14-aaa, порт 8004),
+  модель `qwen3.8-27b` (FP8, `root: /mdisk/models/Qwen3.8-27B-FP8`,
+  max_model_len 262144). Эндпоинт общий с кодом-агентом (GPU разделяется)
+  — длительности вызовов не воспроизводимы; токены/статусы — из БД.
 
 ## Правила (напоминание)
 

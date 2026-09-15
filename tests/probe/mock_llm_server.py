@@ -171,6 +171,29 @@ def _count_prompt_tokens(messages: list[dict[str, str]]) -> int:
 
 _TASK_RE = re.compile(r"\. Task: (\w+)\.")
 
+#: Стандартные поля OpenAI-совместимого запроса chat/completions:
+#: «extra» в requests_log содержит только нестандартные (extra_body профилей, D80).
+_STANDARD_REQUEST_KEYS = frozenset(
+    {
+        "model",
+        "messages",
+        "temperature",
+        "top_p",
+        "stream",
+        "stream_options",
+        "max_tokens",
+        "stop",
+        "seed",
+        "n",
+        "user",
+        "logprobs",
+        "top_logprobs",
+        "presence_penalty",
+        "frequency_penalty",
+        "response_format",
+    }
+)
+
 #: L2: mock-аннотация глоссария. Sentinel-термины (для T-L2-6/T-L2-11):
 #: «badparadigm» (casefold) — 12 идентичных форм БЕЗ объяснений →
 #: paradigm_unverified; «indeclinable» (casefold) — явная метка
@@ -1163,6 +1186,14 @@ def _build_server(
                         "system": system,
                         "user": user,
                         "response": response,
+                        # D80: нестандартные поля тела запроса (extra_body
+                        # профилей, напр. chat_template_kwargs) — для проверки
+                        # passthrough; {} — если их не было.
+                        "extra": {
+                            key: value
+                            for key, value in body.items()
+                            if key not in _STANDARD_REQUEST_KEYS
+                        },
                     }
                 )
 

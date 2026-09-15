@@ -49,6 +49,7 @@ from typing import Any
 import pytest
 from lxml import etree
 
+from app.adapters.epub_engine.epubcheck import run_epubcheck
 from app.core.config import Settings
 from app.core.errors import AppError
 from app.core.logging import attach_job_logs, detach_job_logs
@@ -73,7 +74,7 @@ if _PROBE_DIR not in sys.path:
     sys.path.insert(0, _PROBE_DIR)
 
 from mock_llm_server import MockLLMServer  # noqa: E402
-from test_l2_glossary import _make_storage  # noqa: E402
+from test_l2_glossary import _make_storage, _write_epub  # noqa: E402
 from test_l3_glossary_fix import _kill_all, _start_worker, _wait_status  # noqa: E402
 from test_s4_study import (  # noqa: E402
     _S4_DE_PARAS,
@@ -131,6 +132,110 @@ def _synth_s5_lang_book(out_path: Path, lang: str, uid: str) -> None:
         for _ in range(20)
     )
     _synth_book_multi(out_path, f"S5 Lang {lang.upper()}", lang, uid, bodies)
+
+
+#: EPUB 2.0 / XHTML 1.1 — паттерн гутенберговских книг (V1R.5 v1_en.epub).
+#: T-S5-13 (D83/D84): движок ломает OPF-атрибуты (ремонт — D83), S5 в XHTML 1.1
+#: вставляет секции (D84: div, не section) — на таком источнике оба дефекта
+#: реально проходят через конвейер, в отличие от HTML5-фикстур.
+_S5_EPUB2_UID = "http://example.org/s5-epub2"
+_S5_EPUB2_DOCTYPE = (
+    '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" '
+    '"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">'
+)
+
+
+def _synth_s5_epub2_book(out_path: Path) -> None:
+    """EPUB 2.0.1: XHTML 1.1 главы, NCX вместо nav, OPF 2.0 с opf:-атрибутами.
+
+    Источник обязан быть EPUBCheck-чистым (проверяется в T-S5-13), чтобы
+    ошибки в артефактах были произведением движка/S5, а не фикстуры.
+    """
+    chapters = []
+    for i, pool in enumerate(_S4_EN_POOLS[:3], start=1):
+        body = "\n".join(
+            f'    <p id="p{i}-{n}">{p}</p>'
+            for n, p in enumerate(_s5_10_paras(pool), start=1)
+        )
+        chapters.append(
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            + _S5_EPUB2_DOCTYPE
+            + f'\n<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">\n'
+            f"  <head><title>Chapter {i}</title></head>\n"
+            f"  <body>\n    <h1 id=\"h{i}\">Chapter {i}</h1>\n{body}\n  </body>\n"
+            "</html>\n"
+        )
+    items = "\n".join(
+        f'    <item id="ch{n}" href="ch{n}.xhtml" media-type="application/xhtml+xml"/>'
+        for n in range(1, 4)
+    )
+    itemrefs = "\n".join(f'    <itemref idref="ch{n}"/>' for n in range(1, 4))
+    navpoints = "\n".join(
+        '    <navPoint id="navpoint-'
+        f'{n}" playOrder="{n}">\n'
+        f"      <navLabel><text>Chapter {n}</text></navLabel>\n"
+        f'      <content src="ch{n}.xhtml"/>\n'
+        "    </navPoint>"
+        for n in range(1, 4)
+    )
+    opf = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<package xmlns="http://www.idpf.org/2007/opf" version="2.0" '
+        'unique-identifier="s5epub2id"\n'
+        '  xmlns:dc="http://purl.org/dc/elements/1.1/"\n'
+        '  xmlns:opf="http://www.idpf.org/2007/opf"\n'
+        '  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n'
+        "  <metadata>\n"
+        f'    <dc:identifier id="s5epub2id" opf:scheme="URI">{_S5_EPUB2_UID}</dc:identifier>\n'
+        '    <dc:creator opf:file-as="Author, S5" opf:role="aut">S5 Author</dc:creator>\n'
+        "    <dc:title>S5 EPUB 2.0 Book</dc:title>\n"
+        '    <dc:language xsi:type="dcterms:RFC4646">en</dc:language>\n'
+        '    <dc:date opf:event="publication">2001-10-01</dc:date>\n'
+        "  </metadata>\n"
+        "  <manifest>\n"
+        f"{items}\n"
+        '    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>\n'
+        "  </manifest>\n"
+        '  <spine toc="ncx">\n'
+        f"{itemrefs}\n"
+        "  </spine>\n"
+        "  <guide>\n"
+        '    <reference type="toc" title="Contents" href="ch1.xhtml"/>\n'
+        "  </guide>\n"
+        "</package>\n"
+    )
+    ncx = (
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">\n'
+        "  <head>\n"
+        f'    <meta name="dtb:uid" content="{_S5_EPUB2_UID}"/>\n'
+        '    <meta name="dtb:depth" content="1"/>\n'
+        '    <meta name="dtb:totalPageCount" content="0"/>\n'
+        '    <meta name="dtb:maxPageNumber" content="0"/>\n'
+        "  </head>\n"
+        "  <docTitle><text>S5 EPUB 2.0 Book</text></docTitle>\n"
+        "  <navMap>\n"
+        f"{navpoints}\n"
+        "  </navMap>\n"
+        "</ncx>\n"
+    )
+    files: dict[str, str | bytes] = {
+        "META-INF/container.xml": (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<container version="1.0" '
+            'xmlns="urn:oasis:names:tc:opendocument:xmlns:container">\n'
+            "  <rootfiles>\n"
+            '    <rootfile full-path="OEBPS/content.opf" '
+            'media-type="application/oebps-package+xml"/>\n'
+            "  </rootfiles>\n"
+            "</container>\n"
+        ),
+        "OEBPS/content.opf": opf,
+        "OEBPS/toc.ncx": ncx,
+    }
+    for n, chapter in enumerate(chapters, start=1):
+        files[f"OEBPS/ch{n}.xhtml"] = chapter
+    _write_epub(out_path, files)
 
 
 # ------------------------------------------------------------------ окружение
@@ -356,6 +461,7 @@ def s5_env(tmp_path_factory: pytest.TempPathFactory) -> Iterator[S5Env]:
     base = tmp_path_factory.mktemp("s5_module")
     books_dir = base / "books"
     books_dir.mkdir()
+    _synth_s5_epub2_book(books_dir / "s5_epub2.epub")
     _synth_s4_en_book(books_dir / "s5_en.epub")
     _synth_s4_en1_book(books_dir / "s5_en1.epub")
     _synth_s5_10_book(books_dir / "s5_10.epub")
@@ -372,6 +478,7 @@ def s5_env(tmp_path_factory: pytest.TempPathFactory) -> Iterator[S5Env]:
         server=server,
         base=base,
         books={
+            "s5_epub2.epub": books_dir / "s5_epub2.epub",
             "s5_en.epub": books_dir / "s5_en.epub",
             "s5_en1.epub": books_dir / "s5_en1.epub",
             "s5_10.epub": books_dir / "s5_10.epub",
@@ -744,11 +851,11 @@ def test_s5_8_coverage_matches_e6(s5_env: S5Env) -> None:
     assert abs(e6["coverage"] - run.job.alignment_coverage) < 1e-9
     assert abs(report["coverage"] - run.job.alignment_coverage) < 1e-9
     answers = _answers_doc(run.job_dir / "learning.epub")
-    assert (
-        f'data-s5-coverage="{run.job.alignment_coverage:.6f}"' in answers
-    ), "data-s5-coverage в книге != E6"
-    assert f'data-s5-aligned="{e6["aligned"]}"' in answers
-    assert f'data-s5-total="{e6["total"]}"' in answers
+    marker = (
+        f'title="s5-coverage={run.job.alignment_coverage:.6f} '
+        f"s5-aligned={e6['aligned']} s5-total={e6['total']}\""
+    )
+    assert marker in answers, f"метка охвата (D86) в книге != E6: {marker}"
 
 
 # ------------------------------------------------------------------ T-S5-9
@@ -918,7 +1025,7 @@ def test_s5_10_minimal_no_sections(s5_env: S5Env) -> None:
     assert s5_hrefs == [], f"Minimal: записи секций в оглавлении: {s5_hrefs}"
     answers = _answers_doc(learning)
     assert "Ответов нет" in answers
-    assert "data-s5-coverage=" in answers
+    assert "s5-coverage=" in answers
 
 
 # ------------------------------------------------------------------ T-S5-11
@@ -968,7 +1075,7 @@ def test_s5_12_partial_coverage_90(s5_env: S5Env) -> None:
     skipped = {s["chapter_id"] for s in report["skipped"]}
     assert "ch3" in skipped and len(skipped) == 1
     answers = _answers_doc(run.job_dir / "learning.epub")
-    assert 'data-s5-coverage="0.900000"' in answers
+    assert "s5-coverage=0.900000" in answers
     assert "S5 Ten — 3" in answers, "пропущенная глава не перечислена в книге"
     assert "90.0%" in answers
     target = run.job_dir / "target.epub"
@@ -983,3 +1090,64 @@ def test_s5_12_partial_coverage_90(s5_env: S5Env) -> None:
     # Предупреждения: частичный охват + пропущенная глава.
     assert any("0.9" in w or "90" in w for w in run.warnings), run.warnings
     assert any("S5" in w and "глав" in w for w in run.warnings), run.warnings
+
+
+# ------------------------------------------------------------------ T-S5-13
+
+_EPUBCHECK_JAR = ROOT / "data" / "tools" / "epubcheck-5.3.0" / "epubcheck.jar"
+
+
+@pytest.mark.skipif(
+    shutil.which("java") is None or not _EPUBCHECK_JAR.is_file(),
+    reason="EPUBCheck (java + jar) недоступен в окружении",
+)
+def test_s5_13_epub2_xhtml11_learning_epubcheck(s5_env: S5Env) -> None:
+    # T-S5-13 (D83/D84): источник EPUB 2.0 / XHTML 1.1 (паттерн гутенберга,
+    # как v1_en.epub из V1R.5) — чист по EPUBCheck; движок ломает атрибуты
+    # OPF (ремонт — D83 в atomic_finalize), S5 вставляет секции в XHTML 1.1
+    # (D84: <div>, не <section>). Оба артефакта обязаны пройти EPUBCheck
+    # с 0 ошибок — на HTML5-фикстурах (T-S5-1) оба дефекта не проявляются.
+    book = s5_env.books["s5_epub2.epub"]
+    src = run_epubcheck(_EPUBCHECK_JAR, book, 300)
+    assert src.available is True, f"исходник: {src.unavailable_reason}"
+    assert src.fatals == () and src.errors == (), f"исходник не чист: {src.errors}"
+
+    run = s5_env.run("epub2_xhtml11", "s5_epub2.epub", learning_level="Balanced")
+    report = _s5_report(run)
+    # E5: target.epub — 0 ошибок (D83: ремонт OPF-атрибутов перед валидацией).
+    e5 = run.quality["epubcheck"]
+    assert e5["available"] is True, f"E5 EPUBCheck: {e5}"
+    assert e5["errors"] == 0, f"target.epub: {e5}"
+    # D83 явно: атрибуты метаданных — в OPF-нс, а не без нс/в XSI-нс.
+    with zipfile.ZipFile(run.job_dir / "target.epub") as tzip:
+        opf_root = etree.fromstring(tzip.read("OEBPS/content.opf"))
+    opf_ns = "http://www.idpf.org/2007/opf"
+    dc_ns = "http://purl.org/dc/elements/1.1/"
+    identifier = opf_root.find(f"{{{opf_ns}}}metadata/{{{dc_ns}}}identifier")
+    assert identifier is not None and identifier.get(f"{{{opf_ns}}}scheme") == "URI", (
+        "D83: dc:identifier@scheme не в OPF-нс — ремонт не сработал"
+    )
+    # S5: learning.epub — 0 ошибок (D83 + D84).
+    s5check = report["epub"]["epubcheck"]
+    assert s5check["available"] is True, f"S5 EPUBCheck: {s5check}"
+    assert s5check["errors"] == 0, f"learning.epub: {s5check}"
+    # D84: секции — <div class="s5-section">, <section> отсутствует.
+    learning = run.job_dir / "learning.epub"
+    div_sections = 0
+    with zipfile.ZipFile(learning) as archive:
+        for name in archive.namelist():
+            if not name.endswith(".xhtml") or study_book.ANSWERS_HREF in name:
+                continue
+            root = etree.fromstring(archive.read(name))
+            bad = [
+                el
+                for el in root.iter(f"{{{study_book.XHTML}}}section")
+                if el.get("class") == "s5-section"
+            ]
+            assert bad == [], f"{name}: <section class='s5-section'> (D84)"
+            div_sections += sum(
+                1
+                for el in root.iter(f"{{{study_book.XHTML}}}div")
+                if el.get("class") == "s5-section"
+            )
+    assert div_sections > 0, "секции в книге отсутствуют"

@@ -69,6 +69,11 @@ class LLMProfile(BaseModel):
     max_group_tokens: int = Field(default=2600, gt=0)
     input_price_per_mtok: float | None = Field(default=None, ge=0.0)
     output_price_per_mtok: float | None = Field(default=None, ge=0.0)
+    #: Дополнительные поля тела запроса chat/completions (OpenAI-совместимый
+    #: эндпоинт, расширенные параметры владения: vLLM, Ollama, ...). Пример:
+    #: `chat_template_kwargs: {enable_thinking: false}` для thinking-моделей,
+    #: чей reasoning-поток иначе попадает в контент ответа (D80).
+    extra_body: dict[str, Any] = Field(default_factory=dict)
 
     @property
     def cost_defined(self) -> bool:

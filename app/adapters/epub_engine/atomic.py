@@ -16,6 +16,7 @@ import time
 from pathlib import Path
 
 from app.adapters.epub_engine.epubcheck import EpubcheckOutcome, run_epubcheck
+from app.adapters.epub_engine.opf_repair import repair_epub2_opf_namespaces
 from app.adapters.epub_engine.validation import validate_output_epub
 from app.core.config import Settings
 from app.core.errors import OutputValidationFailed
@@ -44,11 +45,14 @@ def atomic_finalize(
 ) -> tuple[EpubcheckOutcome, Path | None]:
     """Публикует `partial` как `target` атомарно.
 
+    Перед валидацией — ремонт OPF (D83: пересерилизация движка ломает
+    пространства имён атрибутов EPUB 2.0; единая точка для E5/L3/S5).
     Внутренняя валидация или EPUBCheck (FATAL/ERROR) — отказ публикации
     (OutputValidationFailed): `target` не изменяется (Rule 6: fail closed).
     Возвращает (результат EPUBCheck, путь резервной копии | None).
     """
     fsync_file(partial)
+    repair_epub2_opf_namespaces(partial)
     problems = validate_output_epub(partial, settings)
     if problems:
         raise OutputValidationFailed(

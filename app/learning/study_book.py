@@ -71,7 +71,9 @@ _NEW_ENTRY_DATE = (1980, 1, 1, 0, 0, 0)
 
 _OPTION_LETTERS = "АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩ"
 
-_COVERAGE_RE = re.compile(r'data-s5-coverage="([0-9.]+)"')
+#: Охват E6 в финальном документе — в `title` тега `<p>` (D86: валидно в
+#: XHTML 1.1 и HTML5; data-* в DTD XHTML 1.1 отсутствуют).
+_COVERAGE_RE = re.compile(r"[\s\"']s5-coverage=([0-9.]+)")
 
 
 def _el(parent: etree._Element, tag: str, **attrs: str) -> etree._Element:
@@ -95,7 +97,11 @@ def _span(parent: etree._Element, text: str) -> etree._Element:
 
 
 def _make_section(chapter_id: str, section_type: str) -> etree._Element:
-    section = etree.Element(f"{{{XHTML}}}section")
+    # D84: `div`, а не `section` — учебные вставки должны быть валидны в
+    # документах любого doctype исходника: в XHTML 1.1 (EPUB 2 книги)
+    # элемента `<section>` нет в DTD, EPUBCheck даёт ERROR на каждой
+    # вставке (измерено: 155 ошибок на learning.epub v1_en.epub).
+    section = etree.Element(f"{{{XHTML}}}div")
     section.set("class", "s5-section")
     section.set("id", f"s5-{section_type}-{chapter_id}")
     return section
@@ -373,13 +379,18 @@ def render_answers_document(
     body = _el(root, "body")
     _sub(body, "h1", "Ответы и охват")
 
-    coverage_section = etree.SubElement(body, f"{{{XHTML}}}section")
+    # D86: как и в главах (D84) — только синтаксис, валидный в XHTML 1.1:
+    # `<div>` вместо `<section>`, сервисные данные — в `title` (атрибуты
+    # data-* в DTD XHTML 1.1 отсутствуют; EPUBCheck: 11 ERROR на
+    # study-answers.xhtml реального learning.epub).
+    coverage_section = etree.SubElement(body, f"{{{XHTML}}}div")
     coverage_section.set("id", "s5-coverage")
     _sub(coverage_section, "h2", "Охват")
     coverage_p = _el(coverage_section, "p")
-    coverage_p.set("data-s5-coverage", f"{coverage:.6f}")
-    coverage_p.set("data-s5-aligned", str(aligned))
-    coverage_p.set("data-s5-total", str(total))
+    coverage_p.set(
+        "title",
+        f"s5-coverage={coverage:.6f} s5-aligned={aligned} s5-total={total}",
+    )
     coverage_p.text = f"Выравнивание (E6): {coverage:.1%} ({aligned} из {total} сегментов)."
     _sub(
         coverage_section,
@@ -394,7 +405,7 @@ def render_answers_document(
             label = f"«{title}»" if title else chapter_id
             _sub(ul, "li", f"{label} — без выровненных сегментов")
 
-    answers_section = etree.SubElement(body, f"{{{XHTML}}}section")
+    answers_section = etree.SubElement(body, f"{{{XHTML}}}div")
     answers_section.set("id", "s5-answers")
     _sub(answers_section, "h2", "Ответы")
     if not questions and not exercises:
@@ -635,7 +646,7 @@ def _check_chapter_doc(
     for anchor in anchors:
         if f'id="{anchor}"' not in new_text:
             issues.append(f"{doc}: якорь {anchor} отсутствует")
-    for section in new_body.iter(f"{{{XHTML}}}section"):
+    for section in new_body.iter(f"{{{XHTML}}}div"):
         if (
             section.get("class") == "s5-section"
             and ANSWER_MARKER in etree.tostring(section, encoding="unicode")
@@ -684,7 +695,7 @@ def _check_opf_and_answers(
     answers_text = pzip.read(p_answers).decode("utf-8", errors="replace")
     match = _COVERAGE_RE.search(answers_text)
     if match is None:
-        issues.append("финальный документ: нет data-s5-coverage")
+        issues.append("финальный документ: нет метки охвата (title s5-coverage=…, D86)")
     elif abs(float(match.group(1)) - coverage) > 1e-9:
         issues.append(f"финальный документ: охват {match.group(1)} != E6 {coverage:.6f}")
 

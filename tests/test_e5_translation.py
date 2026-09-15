@@ -709,3 +709,64 @@ def test_find_broken_links_detects_missing_file_and_anchor() -> None:
     assert any("gone.xhtml" in p for p in problems), problems
     assert any("#nope" in p for p in problems), problems
     assert any("img.png" in p for p in problems), problems
+
+
+# ------------------------------------------------------------------ D80: extra_body
+
+
+def test_e5_d80_extra_body_reaches_engine_requests(
+    tmp_path: Path,
+    make_env: Callable[[Mapping[str, str | None] | None], Path],
+) -> None:
+    """D80: extra_body профилей translation/fill попадает в запросы движка (mock-лог)."""
+    server = MockLLMServer()
+    server.start()
+    try:
+        work = tmp_path / "storage"
+        work.mkdir(parents=True)
+        (work / "test.env").write_text(
+            "SERVER_BIND_ADDRESS=127.0.0.1\nLLM_API_KEY=test-key-value-000\n",
+            encoding="utf-8",
+        )
+        extra_body_yaml = (
+            "      extra_body:\n"
+            "        chat_template_kwargs:\n"
+            "          enable_thinking: false\n"
+        )
+        (work / "config.yaml").write_text(
+            f"storage:\n  root: {work}\n"
+            f"epubcheck:\n  jar_path: {DEFAULT_EPUBCHECK_JAR}\n"
+            f"languages:\n  root: {ROOT / 'config' / 'languages'}\n"
+            f"  matrix: {ROOT / 'config' / 'language_matrix.yaml'}\n"
+            "llm:\n  profiles:\n"
+            + "".join(
+                f"    {name}:\n      base_url: {server.url}\n      model: test-model\n"
+                + extra_body_yaml
+                for name in ("translation", "fill", "analysis")
+            ),
+            encoding="utf-8",
+        )
+        settings = load_settings(work / "config.yaml", make_env(None))
+        db = Database(settings.jobs_db_path, settings.storage.busy_timeout_ms)
+        try:
+            repo = JobRepository(db)
+            job = create_job(repo, settings, source_path=_COMPLEX, target_language="de")
+            pipeline = Pipeline(settings)
+            job_now = repo.require(job.id)
+            pipeline.run_validating(repo, job_now)
+            pipeline.run_planning(repo, job_now)
+            pipeline.run_translating(repo, job_now, lambda: None)
+            pipeline.run_validating_output(repo, job_now)
+        finally:
+            db.close()
+        engine_requests = [
+            entry
+            for entry in server.requests_log()
+            if entry["kind"] in ("translate", "fill")
+        ]
+        assert engine_requests, "запросов движка не было"
+        expected = {"chat_template_kwargs": {"enable_thinking": False}}
+        for entry in engine_requests:
+            assert entry["extra"] == expected, (entry["kind"], entry["extra"])
+    finally:
+        server.stop()
