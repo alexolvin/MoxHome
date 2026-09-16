@@ -5,11 +5,15 @@
 # Секреты (E0.9)
 .env
 
+# Сигнал «воркер жив» (D87): runtime-файл heartbeat в корне storage.root
+.worker-heartbeat
+
 # Реальный YAML-конфиг (в репо — только example)
 config/config.yaml
 
 # Данные и рабочие области (E0.9)
 cache/
+input/
 jobs/
 books/
 logs/

@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Mapping
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -45,6 +46,16 @@ def _tail(path: Path, lines: int) -> list[str]:
         return path.read_text(encoding="utf-8").splitlines()[-lines:]
     except OSError:
         return []
+
+
+def human_ts(epoch: float | None) -> str:
+    """Эпоха БД → человекочитаемая строка локального времени (или «—»).
+
+    До V2 UI показывал сырые epoch-секунды (``created_at | round(0)``) —
+    нечитабельно для пользователя; единый формат в HTML и JSON."""
+    if not epoch:
+        return "—"
+    return datetime.fromtimestamp(epoch).strftime("%Y-%m-%d %H:%M:%S")
 
 
 # ---------------------------------------------------------------- прогресс (U1-1/U1-2)
@@ -234,6 +245,19 @@ def job_facts(
         "error": job.error_message,
         "created_at": job.created_at,
         "updated_at": job.updated_at,
+        "created_at_human": human_ts(job.created_at),
+        "updated_at_human": human_ts(job.updated_at),
+        # Таймлайн стадий — из БД (transitions), тот же источник, что и CLI
+        # (E3.3): пользователь видит, какие этапы пройдены и когда.
+        "stages": [
+            {
+                "from": record.from_status.value,
+                "to": record.to_status.value,
+                "at_human": human_ts(record.at),
+                "reason": record.reason,
+            }
+            for record in transitions
+        ],
         "language_detection": validation.get("language_detection") if validation else None,
         "files": files,
         "result_ready": result_ready,

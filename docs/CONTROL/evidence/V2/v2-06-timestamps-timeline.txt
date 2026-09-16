@@ -1,0 +1,58 @@
+V2.6 — Человекочитаемые метки времени + таймлайн стадий
+========================================================
+Среда: боевой сервер 127.0.0.1:8321, задание run 5
+(`j-20260915T090235Z-5daf8e`, COMPLETED_WITH_WARNINGS).
+Метод: сырые значения из БД (`jobs.created_at/updated_at`, `transitions`),
+`curl` страницы задания и `/jobs`, сверка: (а) сырой epoch в HTML — 0
+вхождений, (б) человекочитаемые строки на месте, (в) таймлайн == БД.
+
+§1. Исходные значения (БД)
+-----------------------------------------------------------------
+created_at_raw: 1789462955.8299882
+updated_at_raw: 1789471059.305119
+int(created_at): 1789462955
+int(updated_at): 1789471059
+(до V2 UI показывал именно `created_at | round(0)` — эти числа)
+
+§2. Страница задания (curl /jobs/<id>)
+-----------------------------------------------------------------
+created_at_human: 2026-09-15 12:02:35
+updated_at_human: 2026-09-15 14:17:39
+(локальное время UTC+3; 09:02:35Z / 11:17:39Z UTC — совпадает с id задания
+и терминальным переходом run 5, V1R.5)
+
+Проверки по HTML страницы задания:
+    raw epoch created в HTML: False   (1789462955 — 0 вхождений)
+    raw epoch updated в HTML: False   (1789471059 — 0 вхождений)
+    raw float created в HTML: False
+    human created в HTML: True        (2026-09-15 12:02:35)
+    human updated в HTML: True        (2026-09-15 14:17:39)
+    таймлайн заголовок: True          (стадии (9 переходов))
+    все 9 переходов в HTML: True
+      CREATED → VALIDATING, VALIDATING → PLANNING, PLANNING → TRANSLATING,
+      TRANSLATING → ANALYZING, ANALYZING → GENERATING,
+      GENERATING → VALIDATING_OUTPUT, VALIDATING_OUTPUT → GLOSSARY_FIX,
+      GLOSSARY_FIX → LEARNING, LEARNING → COMPLETED_WITH_WARNINGS
+
+§3. Страница /jobs
+-----------------------------------------------------------------
+    колонка «создано»: True          (<th>создано</th>)
+    human created (2026-09-15 12:02:35) в HTML: True
+    raw epoch 1789462955 в HTML: False
+    строка воркера: True
+
+§4. Таймлайн == БД (unit T-V2-4)
+-----------------------------------------------------------------
+`job_facts.stages` == переходы `repo.list_transitions` поэлементно
+(from/to/reason + `at_human = human_ts(at)`); в HTML — «стадии (N
+переходов)» + каждая пара. Source — тот же `transitions` из БД (Rule 8:
+единый источник с CLI, E3.3).
+
+§5. Unit-слой (tests/test_v2_web.py::test_v2_3 / test_v2_4)
+-----------------------------------------------------------------
+формат `%Y-%m-%d %H:%M:%S`; API-строки `/api/jobs` и `/api/jobs/{id}`
+несут `created_at_human`; в HTML 0 сырого epoch; таймлайн == БД — passed.
+
+Вывод: сырой epoch в пользовательских HTML отсутствует (0 вхождений на
+двух страницах); время и стадии задания читаются без конвертера; единая
+функция `views.human_ts` (HTML и JSON) и единый источник переходов.

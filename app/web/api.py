@@ -34,8 +34,12 @@ _COMPLETED_STATES = (JobStatus.COMPLETED, JobStatus.COMPLETED_WITH_WARNINGS)
 
 # Имена артефактов карточек — единый источник card_export.CARDS_FILES (Rule 8:
 # писатель S5, этот endpoint и CLI `export cards` — одна таблица имён).
+# V2: именованные артефакты задания (перевод/учебная книга/отчёт QC) —
+# тот же endpoint, тот же контроль «только завершённые задания».
+_NAMED_RESULT_ARTIFACTS = ("target.epub", "learning.epub", "quality.json")
 _RESULT_PATTERN = "^(main|" + "|".join(
-    re.escape(name) for name in card_export.CARDS_FILES.values()
+    re.escape(name)
+    for name in (*_NAMED_RESULT_ARTIFACTS, *card_export.CARDS_FILES.values())
 ) + ")$"
 
 
@@ -133,6 +137,7 @@ def list_jobs(
                 "error": job.error_message,
                 "created_at": job.created_at,
                 "updated_at": job.updated_at,
+                "created_at_human": views.human_ts(job.created_at),
             }
         )
     return rows

@@ -483,39 +483,87 @@ def _top_level_ol(toc_nav: etree._Element) -> etree._Element:
     raise AppError("S5: в nav.xhtml нет списка оглавления (<ol> в <nav>)")
 
 
+def _li_for_href(ol: etree._Element, base_href: str) -> etree._Element | None:
+    """Имеющийся <li> оглавления, чья ссылка ведёт на тот же документ
+    (часть href без «#якорь»)."""
+    for li in ol.findall(f"{{{XHTML}}}li"):
+        a = li.find(f"{{{XHTML}}}a")
+        if a is None:
+            continue
+        if (a.get("href") or "").split("#", 1)[0] == base_href:
+            return li
+    return None
+
+
+def _nav_point_for_href(
+    nav_map: etree._Element, base_href: str
+) -> etree._Element | None:
+    """Имеющийся navPoint, чей content ведёт на тот же документ (без #якоря)."""
+    for nav_point in nav_map.findall(f"{{{NCX_NS}}}navPoint"):
+        content = nav_point.find(f"{{{NCX_NS}}}content")
+        if content is None:
+            continue
+        if (content.get("src") or "").split("#", 1)[0] == base_href:
+            return nav_point
+    return None
+
+
 def update_nav(nav_bytes: bytes, entries: Sequence[tuple[str, str]]) -> bytes:
-    """Плоские записи оглавления в конец верхнего <ol> nav[epub:type=toc]."""
+    """Записи оглавления в spine-порядке (D88): якорь секции — после записи
+    оглавления той же главы (иначе EPUB 3 EPUBCheck NAV-011: «toc must be in
+    reading order»), новый документ (ответы) — в конец верхнего
+    <ol> nav[epub:type=toc]. Порядок секций внутри главы сохраняется."""
     nav_root = etree.fromstring(nav_bytes, etree.XMLParser(remove_blank_text=False))
     toc_nav = _toc_nav(nav_root)
     ol = _top_level_ol(toc_nav)
+    last_by_base: dict[str, etree._Element] = {}
     for href, label in entries:
-        li = etree.SubElement(ol, f"{{{XHTML}}}li")
+        li = etree.Element(f"{{{XHTML}}}li")
         a = etree.SubElement(li, f"{{{XHTML}}}a")
         a.set("href", href)
         a.text = label
+        base = href.split("#", 1)[0]
+        anchor = last_by_base.get(base)
+        if anchor is None:
+            anchor = _li_for_href(ol, base)
+        if anchor is not None:
+            anchor.addnext(li)
+        else:
+            ol.append(li)
+        last_by_base[base] = li
     return _serialize(nav_root)
 
 
 def update_ncx(ncx_bytes: bytes, entries: Sequence[tuple[str, str]]) -> bytes:
-    """navPoints в конец navMap; playOrder — продолжение нумерации (max+1)."""
+    """navPoints в spine-порядке (D88): якорь секции — после navPoint той же
+    главы, новый документ — в конец navMap; playOrder перенумерован по
+    документному порядку (1..N) — важен порядок, а не абсолютные значения."""
     ncx = etree.fromstring(ncx_bytes)
     nav_map = ncx.find(f"{{{NCX_NS}}}navMap")
     if nav_map is None:
         raise AppError("S5: в NCX нет navMap")
-    play = 1
-    for nav_point in nav_map:
-        order = nav_point.get("playOrder")
-        if order and order.isdigit():
-            play = max(play, int(order) + 1)
+    last_by_base: dict[str, etree._Element] = {}
+    s5_nav_index = sum(1 for _ in nav_map)
     for href, label in entries:
-        nav_point = etree.SubElement(nav_map, f"{{{NCX_NS}}}navPoint")
-        nav_point.set("id", f"s5-navpoint-{play}")
-        nav_point.set("playOrder", str(play))
+        nav_point = etree.Element(f"{{{NCX_NS}}}navPoint")
+        nav_point.set("id", f"s5-navpoint-{s5_nav_index}")
+        s5_nav_index += 1
+        nav_point.set("playOrder", "0")
         nav_label = etree.SubElement(nav_point, f"{{{NCX_NS}}}navLabel")
         etree.SubElement(nav_label, f"{{{NCX_NS}}}text").text = label
         content = etree.SubElement(nav_point, f"{{{NCX_NS}}}content")
         content.set("src", href)
-        play += 1
+        base = href.split("#", 1)[0]
+        anchor = last_by_base.get(base)
+        if anchor is None:
+            anchor = _nav_point_for_href(nav_map, base)
+        if anchor is not None:
+            anchor.addnext(nav_point)
+        else:
+            nav_map.append(nav_point)
+        last_by_base[base] = nav_point
+    for index, nav_point in enumerate(nav_map, start=1):
+        nav_point.set("playOrder", str(index))
     return _serialize(ncx)
 
 

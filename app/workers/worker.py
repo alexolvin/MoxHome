@@ -22,6 +22,7 @@ import time
 from app.core.config import Settings
 from app.core.errors import AppError
 from app.core.logging import attach_job_logs, detach_job_logs, job_context
+from app.core.worker_signal import write_heartbeat
 from app.domain.job import NEXT_STAGE, WORKING_STATES, Job, JobStatus
 from app.storage.database import Database
 from app.storage.jobs_repo import JobRepository
@@ -66,6 +67,7 @@ class Worker:
             job = self._repo.next_claimable()
             if job is None:
                 time.sleep(poll_seconds)
+                self.write_alive()
                 self.startup()
                 continue
             self._execute(job)
@@ -249,6 +251,14 @@ class Worker:
 
     # ------------------------------------------------------------------ heartbeat
 
+    def write_alive(self) -> None:
+        """Сигнал «воркер жив» для UI/health (D87). Ошибка записи не
+        прерывает цикл: статус деградирует до «оффлайн», не ломая воркер."""
+        try:
+            write_heartbeat(self._settings, self._pid)
+        except OSError as exc:
+            logger.warning("heartbeat воркера не записан: %s", exc)
+
     def _start_heartbeat(self) -> None:
         self._stop_event.clear()
         self._lease_lost.clear()
@@ -272,6 +282,9 @@ class Worker:
                 job_id = self._active_job_id
                 if job_id is None:
                     return
+                # Глобальный «воркер жив» — и во время активного задания
+                # (главный цикл заблокирован в _execute, D87).
+                self.write_alive()
                 if not hb_repo.heartbeat(job_id, self._pid, lease):
                     logger.error("арена продлена не была (занято другим): %s", job_id)
                     self._lease_lost.set()
