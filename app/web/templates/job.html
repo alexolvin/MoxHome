@@ -17,8 +17,20 @@
     </td></tr>
     <tr><th>время</th><td>прошло: {{ facts.elapsed_seconds }} c{% if facts.eta_seconds is not none %} · осталось (оценка): {{ facts.eta_seconds }} c{% endif %}</td></tr>
     <tr><th>ошибки / повторы</th><td>сегментов с ошибками: {{ facts.failed_segments }} · повторов: {{ facts.retries }}</td></tr>
-    <tr><th>создано / обновлено</th><td>{{ facts.created_at | round(0) }} / {{ facts.updated_at | round(0) }}</td></tr>
+    <tr><th>создано</th><td>{{ facts.created_at_human }}</td></tr>
+    <tr><th>обновлено</th><td>{{ facts.updated_at_human }}</td></tr>
   </table>
+  {% if facts.stages %}
+  <details id="u1-stages-details">
+    <summary>стадии ({{ facts.stages | length }} переходов)</summary>
+    <table>
+      <tr><th>время</th><th>переход</th><th>причина</th></tr>
+      {% for s in facts.stages %}
+      <tr><td>{{ s.at_human }}</td><td>{{ s.from }} → {{ s.to }}</td><td>{{ s.reason or '' }}</td></tr>
+      {% endfor %}
+    </table>
+  </details>
+  {% endif %}
   {% if facts.warnings %}
   <p><b>предупреждения:</b></p>
   <ul>{% for w in facts.warnings %}<li>{{ w }}</li>{% endfor %}</ul>
@@ -53,9 +65,12 @@
   {% endif %}
   {% if facts.result_ready %}
     <a class="btn" href="/api/jobs/{{ facts.id }}/result">Скачать результат</a>
+    {% if facts.files['target.epub'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=target.epub">Перевод (target.epub)</a>{% endif %}
+    {% if facts.files['learning.epub'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=learning.epub">Учебная книга (learning.epub)</a>{% endif %}
     {% if facts.files['cards.csv'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=cards.csv">карточки CSV</a>{% endif %}
     {% if facts.files['cards.anki.tsv'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=cards.anki.tsv">карточки Anki TSV</a>{% endif %}
     {% if facts.files['cards.json'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=cards.json">карточки JSON</a>{% endif %}
+    {% if facts.files['quality.json'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=quality.json">отчёт QC (quality.json)</a>{% endif %}
   {% else %}
     <span class="hint">Результат появится после завершения задания.</span>
   {% endif %}

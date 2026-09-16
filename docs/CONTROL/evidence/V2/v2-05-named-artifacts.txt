@@ -1,0 +1,62 @@
+V2.5 — Именованные скачивания результатов (UI)
+==============================================
+Среда: боевой сервер 127.0.0.1:8321, завершённое задание run 5
+(`j-20260915T090235Z-5daf8e`, COMPLETED_WITH_WARNINGS, en→ru, bilingual,
+Learning — V1R.5). Каталог задания: `jobs/j-20260915T090235Z-5daf8e/`.
+Метод: `curl` каждого именованного артефакта → md5 скачанного vs md5
+файла на диске (байт-в-байт); `main`; negative-кейсы; ссылки HTML.
+
+§1. md5: диск vs скачанный из UI (все 6 — совпадение 100%)
+-----------------------------------------------------------------
+--- md5 на диске ---
+4270e04cc0de5d9a69af4361fd2d7f3e  jobs/j-20260915T090235Z-5daf8e/target.epub
+7720ec465b50f70c2cfba229c7cb82fa  jobs/j-20260915T090235Z-5daf8e/learning.epub
+8f36a7c71a8d6e2f7dd1a9b7cd73d4ce  jobs/j-20260915T090235Z-5daf8e/quality.json
+adfbbb570f0752a5df56747ceb26904a  jobs/j-20260915T090235Z-5daf8e/cards.csv
+05596232646cf439c3b1e8621cc14151  jobs/j-20260915T090235Z-5daf8e/cards.anki.tsv
+caeb40b958b4a429b405bed119dfe0bb  jobs/j-20260915T090235Z-5daf8e/cards.json
+
+--- md5 скачанного из UI ---
+4270e04cc0de5d9a69af4361fd2d7f3e  target.epub
+7720ec465b50f70c2cfba229c7cb82fa  learning.epub
+8f36a7c71a8d6e2f7dd1a9b7cd73d4ce  quality.json
+adfbbb570f0752a5df56747ceb26904a  cards.csv
+05596232646cf439c3b1e8621cc14151  cards.anki.tsv
+caeb40b958b4a429b405bed119dfe0bb  cards.json
+
+Примечание: md5 `target.epub` = 4270e04c… — тот же хэш, что зафиксирован
+V1R (run 4 == run 5, 100% cache hit, v1r-05b): скачанный из UI файл —
+байт-в-байт тот, что проходил независимый EPUBCheck 0/0 в V1R.
+
+§2. main = learning.epub (Learning есть)
+-----------------------------------------------------------------
+--- main (должен = learning.epub) ---
+7720ec465b50f70c2cfba229c7cb82fa  -
+→ совпадает с learning.epub.
+
+§3. Negative-кейсы
+-----------------------------------------------------------------
+traversal (`?artifact=../jobs.db`)          → 422
+имя вне allow-list (`?artifact=nope.bin`)   → 422
+незавершённое задание (unit T-V2-2)         → 409 «результат не готов»
+файла нет в каталоге (unit T-V2-2, cards)  → 404
+
+§4. Ссылки на странице задания (HTML, вербатим)
+-----------------------------------------------------------------
+<a class="btn" href="/api/jobs/j-20260915T090235Z-5daf8e/result">Скачать результат</a>
+<a class="btn" href="…/result?artifact=target.epub">Перевод (target.epub)</a>
+<a class="btn" href="…/result?artifact=learning.epub">Учебная книга (learning.epub)</a>
+<a class="btn" href="…/result?artifact=cards.csv">карточки CSV</a>
+<a class="btn" href="…/result?artifact=cards.anki.tsv">карточки Anki TSV</a>
+<a class="btn" href="…/result?artifact=cards.json">карточки JSON</a>
+<a class="btn" href="…/result?artifact=quality.json">отчёт QC (quality.json)</a>
+→ 7 ссылок: main + 6 именованных, каждая на имеющийся файл.
+
+§5. Unit-слой (tests/test_v2_web.py::test_v2_2)
+-----------------------------------------------------------------
+байт-в-байт ×3 артефакта + main=learning + 404 + 422 + 409 + ссылки HTML
+(только существующие) — всё покрыто; passed.
+
+Вывод: именованные артефакты скачиваются байт-в-байт; `main` — learning.epub
+при наличии; path traversal и чужие имена — 422 (allow-list
+`_NAMED_RESULT_ARTIFACTS` + `card_export.CARDS_FILES`, единый источник имён).

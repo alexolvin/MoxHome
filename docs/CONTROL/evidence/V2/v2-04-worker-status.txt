@@ -1,0 +1,65 @@
+V2.4 — Статус воркера в UI: «жив» и «оффлайн» измеряются (D87)
+=================================================================
+Среда: боевой сервер 127.0.0.1:8321 (Tailscale 100.124.155.106:8321),
+реальный воркер `python -m app.workers.run --config config/config.yaml
+--env .env --loop` (pid 2937162), `server.heartbeat_seconds: 15.0`.
+Метод: `curl /api/health` + HTML страницы Jobs; kill -TERM воркера;
+повторный замер после истечения свежести (3 × 15 c = 45 c).
+
+§1. Живой воркер (до kill)
+-----------------------------------------------------------------
+Файл heartbeat в корне storage.root (`/mdisk/EpubTranslator/.worker-heartbeat`):
+    -rw-r--r--. 1 user user 27 Sep 16 00:12 .worker-heartbeat
+    2937162
+    1789506776.3173401
+
+`curl /api/health` (вербатим, json):
+    {
+        "app": "ok",
+        "database": "ok",
+        "storage": "ok",
+        "worker": "ok (pid 2937162)",
+        "llm": {"translation": "ok", "fill": "ok", "analysis": "ok"},
+        "epubcheck": "ok",
+        "nlp": {"de": "ok", "en": "ok", "fr": "ok", "it": "ok",
+                "nl": "ok", "ru": "n/a (целевой язык)"}
+    }
+→ компонент `worker` = "ok (pid 2937162)"; в секции `detail` ключа
+  `worker` НЕТ (пустое пояснение не выводится).
+
+§2. Moment kill (2026-09-15T21:14:01Z), heartbeat ещё свеж
+-----------------------------------------------------------------
+    $ date -u +%FT%TZ && kill 2937162 && sleep 3 && ...
+    2026-09-15T21:14:01Z
+    worker 2937162 stopped
+    ---health (сразу после kill, heartbeat ещё свеж)---
+    worker: ok (pid 2937162)
+    detail: —
+→ честно: процесс уже мёртв, но письмо свежее (< 45 c) — «ok»
+  до истечения (не ложный «оффлайн» на 0 c).
+
+§3. После истечения свежести (замер 2026-09-15T21:15:11Z, ~70 c)
+-----------------------------------------------------------------
+    worker: error
+    detail: оффлайн (последний heartbeat 70 c назад, pid 2937162)
+
+HTML страницы Jobs (вербатим, строка статуса):
+    26:  Воркер:
+    27-  <span class="err">error</span>
+    28-  <span class="hint">— оффлайн (последний heartbeat 86 c назад, pid 2937162)</span>
+    29-  · <span class="hint">страница обновляется сама, пока есть активные задания</span>
+    30-</p>
+→ страница показывает ТОТ ЖЕ источник (`worker_alive`), что и /api/health;
+  класс `err` при статусе `error`.
+
+§4. Unit-слой (tests/test_v2_web.py::test_v2_1, воркер-процесс --loop,
+     heartbeat_seconds=1.0, свежесть 3 c)
+-----------------------------------------------------------------
+- файла нет → `worker_alive` = ("error", "heartbeat не найден (воркер не запущен?)")
+- повреждённый (1 строка) → "error"; протухший (−3600 c) → "…оффлайн…"
+- живой --loop воркер → /api/health `worker == "ok (pid {proc.pid})"` (pid совпал)
+- kill → /api/health `worker == "error"`, `detail.worker` содержит "оффлайн"
+5 passed, 2 warnings in 7.49s (весь файл test_v2_web.py).
+
+Вывод: «жив» и «оффлайн» — оба измерены реальным процессом; единая точка
+`worker_alive` для health и Jobs; нет агрегированного «healthy» (U1-3).

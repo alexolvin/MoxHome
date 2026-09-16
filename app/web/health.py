@@ -23,6 +23,7 @@ import shutil
 import httpx
 
 from app.core.config import PROFILE_NAMES, Settings
+from app.core.worker_signal import worker_alive
 from app.languages.registry import load_registry
 from app.languages.resolver import spacy_model_available
 from app.storage.jobs_repo import JobRepository
@@ -96,10 +97,12 @@ def health_report(settings: Settings, repo: JobRepository) -> dict[str, object]:
     db_status, db_detail = _probe_database(repo)
     storage_status, storage_detail = _probe_storage(settings)
     epub_status, epub_detail = _probe_epubcheck(settings)
+    worker_status, worker_detail = worker_alive(settings)
     report: dict[str, object] = {
         "app": "ok",
         "database": db_status,
         "storage": storage_status,
+        "worker": worker_status,
         "llm": _probe_llm(settings),
         "epubcheck": epub_status,
         "nlp": _probe_nlp(settings),
@@ -111,6 +114,8 @@ def health_report(settings: Settings, repo: JobRepository) -> dict[str, object]:
         details["storage"] = storage_detail
     if epub_detail:
         details["epubcheck"] = epub_detail
+    if worker_detail:
+        details["worker"] = worker_detail
     if details:
         report["detail"] = details
     return report

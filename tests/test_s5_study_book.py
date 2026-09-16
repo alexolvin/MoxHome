@@ -26,6 +26,11 @@
   «артефакт ⇔ секция»), ответы только в финальном документе.
 - T-S5-12 — искусственный охват 90%: отражён в книге, пропущенные главы
   перечислены, расхождение с E6 = 0.
+- T-S5-13 — источник EPUB 2.0 / XHTML 1.1: target.epub и learning.epub —
+  EPUBCheck 0 ошибок (D83/D84).
+- T-S5-14 — EPUB 3 (HTML5), 20 глав: оглавление learning.epub в spine-порядке
+  (D88: якорь секции — после записи оглавления главы, а не в конец) —
+  независимый EPUBCheck 0/0/0 (NAV-011).
 """
 
 from __future__ import annotations
@@ -43,6 +48,7 @@ import time
 import zipfile
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
@@ -1151,3 +1157,77 @@ def test_s5_13_epub2_xhtml11_learning_epubcheck(s5_env: S5Env) -> None:
                 if el.get("class") == "s5-section"
             )
     assert div_sections > 0, "секции в книге отсутствуют"
+
+
+# ------------------------------------------------------------------ T-S5-14
+
+
+@pytest.mark.skipif(
+    shutil.which("java") is None or not _EPUBCHECK_JAR.is_file(),
+    reason="EPUBCheck (java + jar) недоступен в окружении",
+)
+def test_s5_14_toc_spine_order_epub3(s5_env: S5Env) -> None:
+    # T-S5-14 (D88): источник EPUB 3 (HTML5), 20 глав. До D88 S5 дописывал
+    # записи оглавления секций в КОНЕЦ <ol> — якорь главы 1 оказывался после
+    # записи главы 20 → EPUBCheck NAV-011 ("toc must be in reading order")
+    # в learning.epub (ошибка видна на реальных EPUB 3 книгах; на 1-главных
+    # фикстурах «в конец» случайно совпадал с spine-порядком). Теперь якорь
+    # секции — после записи оглавления той же главы, «Ответы и охват» — конец.
+    run = s5_env.run("intensive_en20", "s5_en.epub", learning_level="Intensive")
+    report = _s5_report(run)
+    assert report["sections"], "Intensive: секции должны быть"
+    learning = run.job_dir / "learning.epub"
+
+    with zipfile.ZipFile(learning) as archive:
+        opf_root = etree.fromstring(archive.read("OEBPS/content.opf"))
+        nav_root = etree.fromstring(archive.read("OEBPS/nav.xhtml"))
+
+    opf_ns = "http://www.idpf.org/2007/opf"
+    manifest = {
+        item.get("id"): item.get("href") or ""
+        for item in opf_root.find(f"{{{opf_ns}}}manifest")
+    }
+    spine: dict[str, int] = {}
+    for index, ref in enumerate(opf_root.find(f"{{{opf_ns}}}spine")):
+        href = manifest.get(ref.get("idref") or "")
+        if href is not None:
+            spine.setdefault(href, index)
+
+    toc_nav = None
+    for nav in nav_root.iter(f"{{{study_book.XHTML}}}nav"):
+        if nav.get(f"{{{study_book.EPUB_NS}}}type") == "toc":
+            toc_nav = nav
+            break
+    assert toc_nav is not None, "nav[epub:type=toc] отсутствует"
+    ol = None
+    for candidate in toc_nav.iter(f"{{{study_book.XHTML}}}ol"):
+        parent = candidate.getparent()
+        if parent is not None and segmenter.localname(parent) == "nav":
+            ol = candidate
+            break
+    assert ol is not None, "список оглавления (<ol> в <nav>) отсутствует"
+
+    hrefs: list[str] = []
+    for li in ol.findall(f"{{{study_book.XHTML}}}li"):
+        a = li.find(f"{{{study_book.XHTML}}}a")
+        if a is not None:
+            hrefs.append(a.get("href") or "")
+    assert any("#s5-" in href for href in hrefs), "записи секций в оглавлении"
+
+    # spine-инвариант: позиции документов подряд идущих записей не убывают.
+    positions = [spine.get(href.split("#", 1)[0]) for href in hrefs]
+    missing = [h for h, p in zip(hrefs, positions, strict=True) if p is None]
+    assert not missing, f"документы оглавления не в spine: {missing}"
+    assert all(a <= b for a, b in pairwise(positions)), (
+        f"оглавление не в spine-порядке (NAV-011): {hrefs}"
+    )
+    # «Ответы и охват» — последняя запись (документ в конце spine).
+    assert hrefs[-1] == "study-answers.xhtml", hrefs[-1]
+
+    # Независимый EPUBCheck: 0 fatals / 0 errors / 0 warnings (NAV-011).
+    src = run_epubcheck(_EPUBCHECK_JAR, learning, 300)
+    assert src.available is True, f"EPUBCheck: {src.unavailable_reason}"
+    assert src.fatals == () and src.errors == (), (
+        f"learning.epub: fatals={src.fatals} errors={src.errors}"
+    )
+    assert src.warnings == (), f"learning.epub: warnings={src.warnings}"

@@ -14,6 +14,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.responses import Response
 
 from app.core.config import Settings
+from app.core.worker_signal import worker_alive
 from app.domain.job import Job
 from app.languages.cefr import CEFR_LEVELS
 from app.languages.registry import load_registry
@@ -50,8 +51,10 @@ def build_router(
                 {
                     "job": job,
                     "progress_display": views.progress_facts(job, validation)["display"],
+                    "created_at_human": views.human_ts(job.created_at),
                 }
             )
+        worker_status, worker_detail = worker_alive(settings)
         return templates.TemplateResponse(
             request,
             "jobs.html",
@@ -61,6 +64,8 @@ def build_router(
                 "books": views.list_books(settings),
                 "registry_codes": sorted(load_registry(settings.languages_root)),
                 "cefr_levels": sorted(CEFR_LEVELS),
+                "worker_status": worker_status,
+                "worker_detail": worker_detail,
             },
         )
 

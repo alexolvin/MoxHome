@@ -65,11 +65,12 @@ const RENDERERS = {
 
   jobs(el, rows) {
     if (!rows.length) {
-      el.innerHTML = "<tr><td colspan='8'>Заданий нет.</td></tr>";
+      el.innerHTML = "<tr><td colspan='9'>Заданий нет.</td></tr>";
       return;
     }
     let html =
       "<tr><th>задание</th><th>статус</th><th>пара</th><th>режим / уровень</th>" +
+      "<th>создано</th>" +
       "<th>прогресс (реальные единицы)</th><th>выравнивание</th><th>токены</th><th>ошибка</th></tr>";
     for (const j of rows) {
       html +=
@@ -79,6 +80,7 @@ const RENDERERS = {
         "<td>" + esc(j.mode) +
         (j.learning_level ? " / " + esc(j.learning_level) +
           (j.learning_cefr ? " (" + esc(j.learning_cefr) + ")" : "") : "") + "</td>" +
+        "<td>" + esc(j.created_at_human) + "</td>" +
         "<td>" + esc(j.progress_display) + "</td>" +
         "<td>" + (j.alignment_coverage != null
           ? (j.alignment_coverage * 100).toFixed(1) + "%" : "—") + "</td>" +
@@ -215,11 +217,28 @@ function renderProgress(f) {
     .join(" · ");
   const eta = f.eta_seconds != null
     ? " · осталось (оценка): " + f.eta_seconds + " c" : "";
+  let stages = "";
+  if (f.stages && f.stages.length) {
+    const rows = f.stages.map((s) =>
+      "<tr><td>" + esc(s.at_human) + "</td><td>" +
+      esc(s.from) + " → " + esc(s.to) + "</td><td>" +
+      esc(s.reason || "") + "</td></tr>").join("");
+    stages =
+      "<details id='u1-stages-details'><summary>стадии (" +
+      f.stages.length + " переходов)</summary>" +
+      "<table><tr><th>время</th><th>переход</th><th>причина</th></tr>" +
+      rows + "</table></details>";
+  }
   return (
     "<table>" +
     "<tr><th>статус</th><td class='status-" + esc(String(f.status).toLowerCase()) +
     "'>" + esc(f.status) +
     (f.error ? " — <span class='err'>" + esc(f.error) + "</span>" : "") + "</td></tr>" +
+    "<tr><th>пара</th><td>" + esc(f.source_language || "—") + " → " +
+    esc(f.target_language) + "</td></tr>" +
+    "<tr><th>режим / уровень</th><td>" + esc(f.mode) +
+    (f.learning_level ? " / " + esc(f.learning_level) +
+      (f.learning_cefr ? " (" + esc(f.learning_cefr) + ")" : "") : "") + "</td></tr>" +
     "<tr><th>прогресс (реальные единицы)</th><td>" + esc(f.progress_display) + "</td></tr>" +
     "<tr><th>фаза</th><td>" + (f.phase ? esc(f.phase) : "—") +
     " (" + f.phases.completed + " / " + f.phases.total + ")</td></tr>" +
@@ -230,11 +249,47 @@ function renderProgress(f) {
     "<tr><th>время</th><td>прошло: " + f.elapsed_seconds + " c" + eta + "</td></tr>" +
     "<tr><th>ошибки / повторы</th><td>сегментов с ошибками: " + f.failed_segments +
     " · повторов: " + f.retries + "</td></tr>" +
+    "<tr><th>создано</th><td>" + esc(f.created_at_human) + "</td></tr>" +
+    "<tr><th>обновлено</th><td>" + esc(f.updated_at_human) + "</td></tr>" +
     "</table>" +
+    stages +
     (f.warnings && f.warnings.length
       ? "<p><b>предупреждения:</b></p><ul>" +
         f.warnings.map((w) => "<li>" + esc(w) + "</li>").join("") + "</ul>" : "")
   );
+}
+
+/* Статусы, при которых список заданий НЕ нужно обновлять: терминальные
+ * + PAUSED (ожидает «Продолжить», без него прогресса нет). */
+const INACTIVE_JOB_STATUSES = new Set([
+  "COMPLETED",
+  "COMPLETED_WITH_WARNINGS",
+  "FAILED",
+  "CANCELLED",
+  "PAUSED",
+]);
+
+function startJobsPolling() {
+  const el = document.getElementById("u1-jobs-table");
+  if (!el || !el.dataset.u1Fetch) return;
+  let timer = null;
+  const stop = () => {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+  };
+  const tick = async () => {
+    try {
+      const rows = await fetchJSON(el.dataset.u1Fetch);
+      RENDERERS.jobs(el, rows);
+      const active = rows.some((j) => !INACTIVE_JOB_STATUSES.has(j.status));
+      if (!active) stop();
+    } catch {
+      /* API-сбой не замораживает список: пробуем на следующем цикле. */
+    }
+  };
+  timer = setInterval(tick, 5000);
 }
 
 function startJobPolling() {
@@ -367,6 +422,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
   startJobPolling();
+  startJobsPolling();
   bindUpload();
   bindCreate();
   bindJobActions();

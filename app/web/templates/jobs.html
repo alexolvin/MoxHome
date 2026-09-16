@@ -2,6 +2,13 @@
 {% block content %}
 <h1>Jobs</h1>
 
+<p>
+  Воркер:
+  <span class="{{ 'ok' if worker_status.startswith('ok') else 'err' }}">{{ worker_status }}</span>
+  {% if worker_detail %}<span class="hint">— {{ worker_detail }}</span>{% endif %}
+  · <span class="hint">страница обновляется сама, пока есть активные задания</span>
+</p>
+
 <form id="u1-create" data-jobs-page="1">
   <label>Книга:
     <select name="book" required>
@@ -42,6 +49,7 @@
 <table id="u1-jobs-table" data-u1-fetch="/api/jobs" data-u1-render="jobs">
   <tr>
     <th>задание</th><th>статус</th><th>пара</th><th>режим / уровень</th>
+    <th>создано</th>
     <th>прогресс (реальные единицы)</th><th>выравнивание</th>
     <th>токены</th><th>ошибка</th>
   </tr>
@@ -52,6 +60,7 @@
     <td class="status-{{ j.status.value | lower }}">{{ j.status.value }}</td>
     <td>{{ j.source_language or '—' }} → {{ j.target_language }}</td>
     <td>{{ j.mode }}{% if j.learning_level %} / {{ j.learning_level }}{% if j.learning_cefr %} ({{ j.learning_cefr }}){% endif %}{% endif %}</td>
+    <td>{{ row.created_at_human }}</td>
     <td>{{ row.progress_display }}</td>
     <td>{% if j.alignment_coverage is not none %}{{ '%.1f' | format(j.alignment_coverage * 100) }}%{% else %}—{% endif %}</td>
     <td>{{ j.tokens_total }}</td>

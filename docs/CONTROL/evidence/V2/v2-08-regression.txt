@@ -1,0 +1,81 @@
+V2.8 — Регресс + статика после всех правок V2
+================================================
+Порог: 0 провалов (`pytest tests`, `ruff check app tests`, `mypy app`).
+Код — финальный (все правки V2, включая D88 в его финальном виде).
+
+Контекст (честно): первый прогон этого набора (17:36:49Z–17:53:42Z 2026-09-16,
+код D88 до доводки) — pytest 0 провалов (288 точек, PYTEST_RC=0), ruff 0,
+НО mypy 1 ошибка: `app/learning/study_book.py:548: Argument 1 to "len" has
+incompatible type "_Element"; expected "Sized"` — lxml-стабы не объявляют
+`__len__` на `_Element` в `f"s5-navpoint-{len(nav_map)}"`. Фикс
+(semantics-нейтральный: счётчик вместо `len`, значения id идентичны) →
+повторный полный прогон ниже — НА ФИНАЛЬНОМ коде.
+
+Отдельно: pytest 9.1.1 в режиме `-q` (addopts проекта) не печатает
+summary-строку «N passed in X s» — воспроизведено на малом подмножестве
+(`-q` → строки нет, без `-q` → «4 passed in 0.04s»). Поэтому прогон
+выполнен без `-q` (`-o addopts=`), чтобы summary была verbatim.
+
+Команды (единый фоновый процесс, вывод в файл, реальные коды выхода —
+без маскировки пайпом):
+    { date -u;
+      .venv/bin/python -m pytest tests -p no:cacheprovider -o addopts=;
+      echo "PYTEST_RC=$?";
+      .venv/bin/ruff check app tests; echo "RUFF_RC=$?";
+      .venv/bin/mypy app; echo "MYPY_RC=$?";
+      date -u; echo REGRESSION_DONE; } > /tmp/v28_regression_final.txt 2>&1
+
+=== /tmp/v28_regression_final.txt (verbatim, целиком) ===
+Wed Sep 16 18:00:39 UTC 2026
+============================= test session starts ==============================
+platform linux -- Python 3.11.13, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mdisk/EpubTranslator
+configfile: pyproject.toml
+plugins: anyio-4.15.1
+collected 288 items
+
+tests/test_e0_config.py ...................                              [  6%]
+tests/test_e0_logging.py ....                                            [  7%]
+tests/test_e1_probe.py ...                                               [  9%]
+tests/test_e2_reader.py ........                                         [ 11%]
+tests/test_e3_worker.py .......                                          [ 14%]
+tests/test_e4_llm.py ................                                    [ 19%]
+tests/test_e5_epubcheck.py ........                                      [ 22%]
+tests/test_e5_translation.py .................................           [ 34%]
+tests/test_e6_alignment.py ..........                                    [ 37%]
+tests/test_l0_languages.py .....................                         [ 44%]
+tests/test_l1_packages.py ...........................                    [ 54%]
+tests/test_l2_glossary.py ............                                   [ 58%]
+tests/test_l3_glossary_fix.py ..............                             [ 63%]
+tests/test_s1_vocabulary.py ..............                               [ 68%]
+tests/test_s2_mwe.py .................                                   [ 73%]
+tests/test_s3_grammar.py .....................                           [ 81%]
+tests/test_s4_study.py .....................                             [ 88%]
+tests/test_s5_study_book.py ..............                               [ 93%]
+tests/test_u1_web.py ..........                                          [ 96%]
+tests/test_u2_cli.py ....                                                [ 98%]
+tests/test_v2_web.py .....                                               [100%]
+
+=============================== warnings summary ===============================
+.venv/lib64/python3.11/site-packages/fastapi/testclient.py:1
+  /mdisk/EpubTranslator/.venv/lib64/python3.11/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+.venv/lib64/python3.11/site-packages/starlette/testclient.py:53
+  /mdisk/EpubTranslator/.venv/lib64/python3.11/site-packages/starlette/testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================= 288 passed, 2 warnings in 1005.04s (0:16:45) =================
+PYTEST_RC=0
+All checks passed!
+RUFF_RC=0
+Success: no issues found in 77 source files
+MYPY_RC=0
+Wed Sep 16 18:17:26 UTC 2026
+REGRESSION_DONE
+
+Итог: pytest 288/288 passed (1005.04 s), ruff 0, mypy 0 (77 файлов) —
+ВСЕ на финальном коде V2 (288 = 282 V1R + T-S5-14 + T-V2-1..5).
+
+ВЕРДИКТ: V2.8 — PASS

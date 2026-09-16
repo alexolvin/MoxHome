@@ -84,6 +84,13 @@ cp .env.example .env
 Если задан `SERVER_AUTH_SECRET` — HTTP Basic: любое имя, пароль = секрет.
 Разделы: Books (книги), Jobs (задания), Languages, Models, Prompts, Settings.
 
+Страница Jobs показывает статус воркера: «ok (pid …)», пока воркер жив,
+либо «error» с пояснением (heartbeat не найден / оффлайн). Статус читается
+из файла `.worker-heartbeat` в корне `storage.root`, который воркер в
+режиме `--loop` периодически перезаписывает (в режиме без `--loop` он не
+ведётся). Список заданий на странице обновляется сам, пока есть активные
+задания.
+
 ### Шаг 5. Перевод тестовой книги
 
 В репозитории есть тестовая книга: `tests/fixtures/epub/probe.en.epub`
@@ -107,16 +114,20 @@ cp .env.example .env
 
 ### Шаг 6. Поиск результата
 
-**Через UI:** Jobs → задание → статус `COMPLETED` / `COMPLETED_WITH_WARNINGS`,
-скачать результат (артефакт `main`: при Learning — `learning.epub`, иначе
-`target.epub`; экспорты `cards.*` — отдельные артефакты).
+**Через UI:** Jobs → задание → статус `COMPLETED` / `COMPLETED_WITH_WARNINGS`.
+На странице задания — ссылки на результат: «Скачать результат» (артефакт
+`main`: при Learning — `learning.epub`, иначе `target.epub`) и именованные
+ссылки на каждый имеющийся файл: «Перевод (target.epub)», «Учебная книга
+(learning.epub)», «карточки CSV» / «карточки Anki TSV» / «карточки JSON»,
+«отчёт QC (quality.json)». Та же страница показывает время создания/
+обновления (человекочитаемое) и таймлайн стадий задания (переходы из БД).
 
 **Через CLI:**
 
 ```bash
 .venv/bin/python -m app.cli job list
 .venv/bin/python -m app.cli job status <job_id>
-.venv/bin/python -m app.cli export cards <job_id>                 # учебные материалы
+.venv/bin/python -m app.cli export cards <job_id> --format csv    # карточки (csv/anki/json)
 .venv/bin/python -m app.cli validate <storage.root>/jobs/<job_id>/target.epub   # структура + EPUBCheck
 ```
 
@@ -161,7 +172,7 @@ site-packages не устанавливается).
 | `job resume <id>` / `job cancel <id>` | возобновить (только из `PAUSED`) / отменить |
 | `validate <epub>` | валидация EPUB (структура + EPUBCheck) |
 | `languages` | языки и пары (резолвер L0) |
-| `export cards <id> [--format ..] [--output ..]` | экспорт карточек |
+| `export cards <id> --format {csv,anki,json} [--output ..]` | экспорт карточек (`--format` обязателен) |
 
 ## Конфигурация
 
