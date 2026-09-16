@@ -127,7 +127,7 @@ cp .env.example .env
 ```bash
 .venv/bin/python -m app.cli job list
 .venv/bin/python -m app.cli job status <job_id>
-.venv/bin/python -m app.cli export cards <job_id>                 # учебные материалы
+.venv/bin/python -m app.cli export cards <job_id> --format csv    # карточки (csv/anki/json)
 .venv/bin/python -m app.cli validate <storage.root>/jobs/<job_id>/target.epub   # структура + EPUBCheck
 ```
 
@@ -172,7 +172,7 @@ site-packages не устанавливается).
 | `job resume <id>` / `job cancel <id>` | возобновить (только из `PAUSED`) / отменить |
 | `validate <epub>` | валидация EPUB (структура + EPUBCheck) |
 | `languages` | языки и пары (резолвер L0) |
-| `export cards <id> [--format ..] [--output ..]` | экспорт карточек |
+| `export cards <id> --format {csv,anki,json} [--output ..]` | экспорт карточек (`--format` обязателен) |
 
 ## Конфигурация
 
