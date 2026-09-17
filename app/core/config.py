@@ -355,6 +355,36 @@ class TranslationSection(BaseModel):
         return value
 
 
+class UiSection(BaseModel):
+    """Параметры Web-интерфейса (U3). Значения — только конфигурация (Rule 1):
+    веб-код, шаблоны и app.js числовых дефолтов не содержат — все читают
+    ``settings.ui.*``. Дефолты живут в этой YAML-схеме (единое место)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    #: Размер страницы списка заданий (пагинация, U3 3.4.16).
+    page_size: int = Field(default=50, ge=1)
+    #: Интервал автообновления, с (U3 3.11.47).
+    refresh_seconds: float = Field(default=3.0, gt=0.0)
+    #: Верхняя граница экспоненциального backoff при ошибке API, с (U3 3.11.49).
+    refresh_max_seconds: float = Field(default=30.0, gt=0.0)
+    #: Число строк tail логов по умолчанию (U3 3.8).
+    log_tail_lines: int = Field(default=200, ge=1)
+    #: Минимальный возраст задания (дни) для массовой очистки purge (U3 3.5.24).
+    purge_min_age_days: float = Field(default=1.0, ge=0.0)
+    #: Точка перелома «таблица → карточки», px (U3 3.2.5); используется
+    #: генератором CSS-переменной в base.html.
+    mobile_breakpoint_px: int = Field(default=640, ge=1)
+
+    @model_validator(mode="after")
+    def _check_refresh_bounds(self) -> UiSection:
+        if self.refresh_max_seconds < self.refresh_seconds:
+            raise ValueError(
+                "ui.refresh_max_seconds должен быть ≥ ui.refresh_seconds"
+            )
+        return self
+
+
 class Settings(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -369,6 +399,8 @@ class Settings(BaseModel):
     languages: LanguagesSection
     epubcheck: EpubcheckSection
     translation: TranslationSection
+    #: Параметры Web-интерфейса (U3); опциональная секция YAML (дефолты в схеме).
+    ui: UiSection = Field(default_factory=UiSection)
 
     @model_validator(mode="after")
     def _check_lease_heartbeat(self) -> Settings:
@@ -574,6 +606,7 @@ def load_settings(config_yaml: Path, env_file: Path) -> Settings:
         languages_section = LanguagesSection.model_validate(_sub(data, "languages"))
         epubcheck_section = EpubcheckSection.model_validate(_sub(data, "epubcheck"))
         translation_section = TranslationSection.model_validate(_sub(data, "translation"))
+        ui_section = UiSection.model_validate(_sub(data, "ui"))
     except ValidationError as exc:
         raise ConfigurationError(
             "конфигурация не прошла валидацию", details={"errors": _format_validation_errors(exc)}
@@ -591,6 +624,7 @@ def load_settings(config_yaml: Path, env_file: Path) -> Settings:
         languages=languages_section,
         epubcheck=epubcheck_section,
         translation=translation_section,
+        ui=ui_section,
     )
 
     if settings.server.bind_address == WILDCARD_ADDRESS and not settings.server.allow_wildcard_bind:
