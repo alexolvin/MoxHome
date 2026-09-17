@@ -1,11 +1,74 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Books</h1>
-<form id="u1-upload">
-  <label>EPUB: <input type="file" id="u1-upload-file" accept=".epub"></label>
-  <button type="submit">Загрузить</button>
-  <span id="u1-upload-msg"></span>
+<h1>{{ s["title_books"] }}</h1>
+
+<form id="u1-upload" class="u3-panel">
+  <label>{{ s["books_upload_label"] }}:
+    <input type="file" id="u1-upload-file" accept=".epub">
+  </label>
+  <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+  <button type="submit">{{ s["books_upload_btn"] }}</button>
+  <span id="u1-upload-msg" role="status"></span>
 </form>
-<p class="hint">Определение языка при загрузке — тот же механизм L0, что и стадия validating (детектор + dc:language); уверенность показана явно.</p>
-<div id="u1-books" data-u1-fetch="/api/books" data-u1-render="books">загрузка…</div>
+<p class="hint">{{ s["books_upload_hint"] }}</p>
+
+<div id="u1-books" data-u1-fetch="/api/books" data-u1-render="books">
+  {% if books %}
+  <table class="u3-table">
+    <thead>
+      <tr>
+        <th scope="col">{{ s["books_col_file"] }}</th>
+        <th scope="col">{{ s["books_col_title"] }}</th>
+        <th scope="col">{{ s["books_col_dc_lang"] }}</th>
+        <th scope="col">{{ s["books_col_detected"] }}</th>
+        <th scope="col">{{ s["books_col_confidence"] }}</th>
+        <th scope="col">{{ s["books_col_size"] }}</th>
+        <th scope="col">{{ s["books_col_chapters"] }}</th>
+        <th scope="col">{{ s["books_col_segments"] }}</th>
+        <th scope="col">{{ s["books_col_uploaded"] }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in books %}
+      <tr>
+        <td>
+          <span class="u3-mono">{{ b.name }}</span>
+          <button type="button" class="btn u3-danger u3-row-action" data-book-delete="{{ b.name }}">{{ s["books_delete_btn"] }}</button>
+        </td>
+        <td>{{ b.title or s["common_not_set"] }}</td>
+        <td>{{ b.dc_language or s["common_not_set"] }}</td>
+        <td>{{ b.detected or s["common_not_set"] }}</td>
+        <td>{{ b.confidence if b.confidence is not none else s["common_not_set"] }}</td>
+        <td>{{ b.size_human }}</td>
+        <td>{{ b.chapters if b.chapters is not none else s["common_not_set"] }}</td>
+        <td>{{ b.segments if b.segments is not none else s["common_not_set"] }}</td>
+        <td>{{ b.uploaded_at_human }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="u3-cards">
+    {% for b in books %}
+    <article class="u3-card">
+      <dl class="u3-card-fields">
+        <div class="u3-field"><dt>{{ s["books_col_file"] }}</dt><dd><span class="u3-mono">{{ b.name }}</span></dd></div>
+        <div class="u3-field"><dt>{{ s["books_col_title"] }}</dt><dd>{{ b.title or s["common_not_set"] }}</dd></div>
+        <div class="u3-field"><dt>{{ s["books_col_dc_lang"] }}</dt><dd>{{ b.dc_language or s["common_not_set"] }}</dd></div>
+        <div class="u3-field"><dt>{{ s["books_col_detected"] }}</dt><dd>{{ b.detected or s["common_not_set"] }}</dd></div>
+        <div class="u3-field"><dt>{{ s["books_col_confidence"] }}</dt><dd>{{ b.confidence if b.confidence is not none else s["common_not_set"] }}</dd></div>
+        <div class="u3-field"><dt>{{ s["books_col_size"] }}</dt><dd>{{ b.size_human }}</dd></div>
+        <div class="u3-field"><dt>{{ s["books_col_chapters"] }}</dt><dd>{{ b.chapters if b.chapters is not none else s["common_not_set"] }}</dd></div>
+        <div class="u3-field"><dt>{{ s["books_col_segments"] }}</dt><dd>{{ b.segments if b.segments is not none else s["common_not_set"] }}</dd></div>
+        <div class="u3-field"><dt>{{ s["books_col_uploaded"] }}</dt><dd>{{ b.uploaded_at_human }}</dd></div>
+      </dl>
+      <div class="u3-card-actions">
+        <button type="button" class="btn u3-danger u3-row-action" data-book-delete="{{ b.name }}">{{ s["books_delete_btn"] }}</button>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="u3-empty">{{ s["books_empty"] }}</p>
+  {% endif %}
+</div>
 {% endblock %}

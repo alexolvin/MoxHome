@@ -1,74 +1,218 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Jobs</h1>
+<h1>{{ s["title_jobs"] }}</h1>
 
-<p>
-  Воркер:
+<p class="u3-workline">
+  {{ s["jobs_worker"] }}
   <span class="{{ 'ok' if worker_status.startswith('ok') else 'err' }}">{{ worker_status }}</span>
-  {% if worker_detail %}<span class="hint">— {{ worker_detail }}</span>{% endif %}
-  · <span class="hint">страница обновляется сама, пока есть активные задания</span>
+  {% if worker_detail %}<span class="hint"> — {{ worker_detail }}</span>{% endif %}
+  · {{ s["jobs_autorefresh"] }}
+  · <span id="u3-jobs-refresh" class="hint"></span>
 </p>
+<p class="hint" id="u3-jobs-announce" aria-live="polite"></p>
 
-<form id="u1-create" data-jobs-page="1">
-  <label>Книга:
-    <select name="book" required>
-      {% for b in books %}<option value="{{ b.name }}">{{ b.name }}{% if b.title %} — {{ b.title }}{% endif %}</option>{% endfor %}
-    </select>
-  </label>
-  <label>Целевой язык:
-    <select name="target_language" required>
-      {% for code in registry_codes %}<option value="{{ code }}">{{ code }}</option>{% endfor %}
-    </select>
-  </label>
-  <label>Режим:
-    <select name="mode">
-      <option value="bilingual" selected>bilingual</option>
-      <option value="translation">translation</option>
-    </select>
-  </label>
-  <label>Learning-уровень:
-    <select name="learning_level">
-      <option value="" selected>— нет —</option>
-      <option value="Minimal">Minimal</option>
-      <option value="Balanced">Balanced</option>
-      <option value="Learning">Learning</option>
-      <option value="Intensive">Intensive</option>
-    </select>
-  </label>
-  <label>CEFR пользователя:
-    <select name="learning_cefr">
-      <option value="" selected>— нет —</option>
-      {% for l in cefr_levels %}<option value="{{ l }}">{{ l }}</option>{% endfor %}
-    </select>
-  </label>
-  <button type="submit">Создать задание</button>
-  <span id="u1-create-msg"></span>
-</form>
+<div class="u3-panel">
+  <h2>{{ s["jobs_filter_title"] }}</h2>
+  <form method="get" action="/jobs" class="u3-filter">
+    <fieldset>
+      <legend>{{ s["jobs_f_status"] }}</legend>
+      {% for st in all_statuses %}
+      <label class="u3-check">
+        <input type="checkbox" name="status" value="{{ st }}" {% if st in f_status %}checked{% endif %}>
+        {{ st }}
+      </label>
+      {% endfor %}
+    </fieldset>
+    <label>{{ s["jobs_f_book_filter"] }}:
+      <select name="book">
+        <option value="">{{ s["jobs_opt_none"] }}</option>
+        {% for b in books %}
+        <option value="{{ b.name }}" {% if b.name == f_book %}selected{% endif %}>{{ b.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>{{ s["jobs_f_pair"] }}:
+      <select name="pair">
+        <option value="">{{ s["jobs_opt_none"] }}</option>
+        {% for p in matrix_pairs %}
+        <option value="{{ p.value }}" {% if p.value == f_pair %}selected{% endif %}>{{ p.source }} → {{ p.target }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>{{ s["jobs_f_created_from"] }}:
+      <input type="date" name="created_from" value="{{ f_created_from }}">
+    </label>
+    <label>{{ s["jobs_f_created_to"] }}:
+      <input type="date" name="created_to" value="{{ f_created_to }}">
+    </label>
+    <label>{{ s["jobs_sort_label"] }}:
+      <select name="sort">
+        <option value="created_at" {% if sort_field == 'created_at' %}selected{% endif %}>{{ s["jobs_sort_created"] }}</option>
+        <option value="updated_at" {% if sort_field == 'updated_at' %}selected{% endif %}>{{ s["jobs_sort_updated"] }}</option>
+      </select>
+    </label>
+    <label>{{ s["jobs_sort_direction"] }}:
+      <select name="direction">
+        <option value="desc" {% if sort_direction == 'desc' %}selected{% endif %}>{{ s["jobs_sort_desc"] }}</option>
+        <option value="asc" {% if sort_direction == 'asc' %}selected{% endif %}>{{ s["jobs_sort_asc"] }}</option>
+      </select>
+    </label>
+    <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+    <span class="u3-filter-actions">
+      <button type="submit">{{ s["jobs_filter_apply"] }}</button>
+      <a class="btn" href="/jobs">{{ s["jobs_filter_reset"] }}</a>
+    </span>
+  </form>
+  <p class="hint">{{ s["jobs_sort_current"].format(field=sort_label, dir=direction_label) }}</p>
+</div>
 
-{% if rows %}
-<table id="u1-jobs-table" data-u1-fetch="/api/jobs" data-u1-render="jobs">
-  <tr>
-    <th>задание</th><th>статус</th><th>пара</th><th>режим / уровень</th>
-    <th>создано</th>
-    <th>прогресс (реальные единицы)</th><th>выравнивание</th>
-    <th>токены</th><th>ошибка</th>
-  </tr>
-  {% for row in rows %}
-  {% set j = row.job %}
-  <tr>
-    <td><a href="/jobs/{{ j.id }}">{{ j.id }}</a></td>
-    <td class="status-{{ j.status.value | lower }}">{{ j.status.value }}</td>
-    <td>{{ j.source_language or '—' }} → {{ j.target_language }}</td>
-    <td>{{ j.mode }}{% if j.learning_level %} / {{ j.learning_level }}{% if j.learning_cefr %} ({{ j.learning_cefr }}){% endif %}{% endif %}</td>
-    <td>{{ row.created_at_human }}</td>
-    <td>{{ row.progress_display }}</td>
-    <td>{% if j.alignment_coverage is not none %}{{ '%.1f' | format(j.alignment_coverage * 100) }}%{% else %}—{% endif %}</td>
-    <td>{{ j.tokens_total }}</td>
-    <td class="err">{{ j.error_message or '' }}</td>
-  </tr>
-  {% endfor %}
-</table>
-{% else %}
-<p>Заданий нет. Загрузите книгу в <a href="/books">Books</a> и создайте задание.</p>
+<div class="u3-panel">
+  <h2>{{ s["jobs_create_btn"] }}</h2>
+  <form id="u1-create" class="u3-filter">
+    <label>{{ s["jobs_f_book"] }}:
+      <select name="book" required>
+        {% for b in books %}
+        <option value="{{ b.name }}">{{ b.name }}{% if b.title %} — {{ b.title }}{% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>{{ s["jobs_f_target"] }}:
+      <select name="target_language" required>
+        {% for code in registry_codes %}
+        <option value="{{ code }}">{{ code }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>{{ s["jobs_f_mode"] }}:
+      <select name="mode">
+        <option value="bilingual" selected>bilingual</option>
+        <option value="translation">translation</option>
+      </select>
+    </label>
+    <label>{{ s["jobs_f_level"] }}:
+      <select name="learning_level">
+        <option value="" selected>{{ s["jobs_opt_none"] }}</option>
+        <option value="Minimal">Minimal</option>
+        <option value="Balanced">Balanced</option>
+        <option value="Learning">Learning</option>
+        <option value="Intensive">Intensive</option>
+      </select>
+    </label>
+    <label>{{ s["jobs_f_cefr"] }}:
+      <select name="learning_cefr">
+        <option value="" selected>{{ s["jobs_opt_none"] }}</option>
+        {% for l in cefr_levels %}
+        <option value="{{ l }}">{{ l }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+    <span class="u3-filter-actions">
+      <button type="submit">{{ s["jobs_create_btn"] }}</button>
+      <span id="u1-create-msg" role="status"></span>
+    </span>
+  </form>
+</div>
+
+<div id="u1-jobs" data-u1-fetch="/api/jobs" data-u1-render="jobs">
+  {% if rows %}
+  <table class="u3-table">
+    <thead>
+      <tr>
+        <th scope="col">{{ s["jobs_col_id"] }}</th>
+        <th scope="col">{{ s["jobs_col_book"] }}</th>
+        <th scope="col">{{ s["jobs_col_pair"] }}</th>
+        <th scope="col">{{ s["jobs_col_mode"] }}</th>
+        <th scope="col">{{ s["jobs_col_status"] }}</th>
+        <th scope="col">{{ s["jobs_col_progress"] }}</th>
+        <th scope="col">{{ s["jobs_col_alignment"] }}</th>
+        <th scope="col">{{ s["jobs_col_created"] }}</th>
+        <th scope="col">{{ s["jobs_col_updated"] }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      {% set j = row.job %}
+      <tr>
+        <td><a href="/jobs/{{ j.id }}">{{ j.id }}</a></td>
+        <td>{{ row.book_name }}</td>
+        <td>{{ j.source_language or '—' }} → {{ j.target_language }}</td>
+        <td>{{ j.mode }}{% if j.learning_level %} / {{ j.learning_level }}{% if j.learning_cefr %} ({{ j.learning_cefr }}){% endif %}{% endif %}</td>
+        <td class="status-{{ j.status.value | lower }}">{{ j.status.value }}</td>
+        <td>{{ row.progress_display }}</td>
+        <td>{% if j.alignment_coverage is not none %}{{ '%.1f' | format(j.alignment_coverage * 100) }}%{% else %}{{ s["common_not_set"] }}{% endif %}</td>
+        <td>{{ row.created_at_human }}</td>
+        <td>{{ row.updated_at_human }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="u3-cards">
+    {% for row in rows %}
+    {% set j = row.job %}
+    <article class="u3-card">
+      <dl class="u3-card-fields">
+        <div class="u3-field"><dt>{{ s["jobs_col_id"] }}</dt><dd><a href="/jobs/{{ j.id }}">{{ j.id }}</a></dd></div>
+        <div class="u3-field"><dt>{{ s["jobs_col_book"] }}</dt><dd>{{ row.book_name }}</dd></div>
+        <div class="u3-field"><dt>{{ s["jobs_col_pair"] }}</dt><dd>{{ j.source_language or '—' }} → {{ j.target_language }}</dd></div>
+        <div class="u3-field"><dt>{{ s["jobs_col_mode"] }}</dt><dd>{{ j.mode }}{% if j.learning_level %} / {{ j.learning_level }}{% if j.learning_cefr %} ({{ j.learning_cefr }}){% endif %}{% endif %}</dd></div>
+        <div class="u3-field"><dt>{{ s["jobs_col_status"] }}</dt><dd class="status-{{ j.status.value | lower }}">{{ j.status.value }}</dd></div>
+        <div class="u3-field"><dt>{{ s["jobs_col_progress"] }}</dt><dd>{{ row.progress_display }}</dd></div>
+        <div class="u3-field"><dt>{{ s["jobs_col_alignment"] }}</dt><dd>{% if j.alignment_coverage is not none %}{{ '%.1f' | format(j.alignment_coverage * 100) }}%{% else %}{{ s["common_not_set"] }}{% endif %}</dd></div>
+        <div class="u3-field"><dt>{{ s["jobs_col_created"] }}</dt><dd>{{ row.created_at_human }}</dd></div>
+        <div class="u3-field"><dt>{{ s["jobs_col_updated"] }}</dt><dd>{{ row.updated_at_human }}</dd></div>
+      </dl>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="u3-empty">{{ s["jobs_empty_filtered"] if has_filters else s["jobs_empty"] }}</p>
+  {% endif %}
+</div>
+
+{% if prev_href or next_href %}
+<nav class="u3-pager" aria-label="{{ s["jobs_pager_label"] }}">
+  {% if prev_href %}<a class="btn" href="{{ prev_href }}">{{ s["jobs_prev"] }}</a>{% endif %}
+  <span class="hint">{{ s["jobs_page"].format(page=page, pages=total_pages) }} · {{ s["jobs_page_total"].format(n=total) }}</span>
+  {% if next_href %}<a class="btn" href="{{ next_href }}">{{ s["jobs_next"] }}</a>{% endif %}
+</nav>
 {% endif %}
+
+<details class="u3-panel">
+  <summary>{{ s["jobs_purge_title"] }}</summary>
+  <p class="hint">{{ s["jobs_purge_hint"].format(days=ui.purge_min_age_days) }}</p>
+  <form id="u3-purge-form" class="u3-filter">
+    <fieldset>
+      <legend>{{ s["jobs_purge_statuses"] }}</legend>
+      {% for st in terminal_statuses %}
+      <label class="u3-check">
+        <input type="checkbox" name="status" value="{{ st }}" checked>
+        {{ st }}
+      </label>
+      {% endfor %}
+    </fieldset>
+    <label>{{ s["jobs_purge_book"] }}:
+      <select name="book">
+        <option value="">{{ s["jobs_opt_none"] }}</option>
+        {% for b in books %}
+        <option value="{{ b.name }}">{{ b.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>{{ s["jobs_purge_pair"] }}:
+      <select name="pair">
+        <option value="">{{ s["jobs_opt_none"] }}</option>
+        {% for p in matrix_pairs %}
+        <option value="{{ p.value }}">{{ p.source }} → {{ p.target }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+    <span class="u3-filter-actions">
+      <button type="button" id="u3-purge-dry">{{ s["jobs_purge_dry_btn"] }}</button>
+      <button type="button" id="u3-purge-confirm" disabled>{{ s["jobs_purge_confirm_btn"] }}</button>
+      <span id="u3-purge-msg" role="status"></span>
+    </span>
+  </form>
+</details>
 {% endblock %}

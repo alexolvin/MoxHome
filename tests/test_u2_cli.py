@@ -26,6 +26,8 @@ from typing import Any
 
 import pytest
 
+from app.web.auth import csrf_token
+
 ROOT = Path(__file__).resolve().parents[1]
 _TESTS_DIR = str(Path(__file__).resolve().parent)
 _PROBE_DIR = str(Path(__file__).resolve().parent / "probe")
@@ -37,8 +39,10 @@ if _PROBE_DIR not in sys.path:
 from mock_llm_server import MockLLMServer  # noqa: E402
 from test_l3_glossary_fix import _kill_all  # noqa: E402
 from test_u1_web import (  # noqa: E402
+    AUTH_SECRET,
     U1Env,
     U1Profile,
+    _auth_header,
     _create_job,
     _make_u1_storage,
     _synth_u1_slow_book,
@@ -83,9 +87,44 @@ def u2_env(tmp_path_factory: pytest.TempPathFactory) -> Iterator[U1Env]:
         books={"slow": books_dir / "u2_slow.epub", "tiny": books_dir / "u2_tiny.epub"},
     )
     try:
-        for name, url in (("main", server.url), ("dead", "http://127.0.0.1:1/v1")):
-            settings, db, cfg, env_file = _make_u1_storage(base, f"u2_{name}", url)
-            env.add_profile(name, settings, db, cfg, env_file)
+        # main: U3 3.9 (fail closed) — у профиля есть SECRET, клиент шлёт
+        # Basic + X-U3-CSRF по умолчанию (мутации через HTTP — только так).
+        main_settings, main_db, main_cfg, main_env = _make_u1_storage(
+            base,
+            "u2_main",
+            server.url,
+            env_extra=f"SERVER_AUTH_SECRET={AUTH_SECRET}\n",
+        )
+        env.add_profile(
+            "main",
+            main_settings,
+            main_db,
+            main_cfg,
+            main_env,
+            client_headers={
+                **_auth_header(),
+                "X-U3-CSRF": csrf_token(main_settings, "any-user"),
+            },
+        )
+        # dead: тот же секрет — confirm (POST) в NEEDS_CONFIRMATION проходит;
+        # LLM-down поведение от секрета не зависит (web-auth vs LLM — разное).
+        dead_settings, dead_db, dead_cfg, dead_env = _make_u1_storage(
+            base,
+            "u2_dead",
+            "http://127.0.0.1:1/v1",
+            env_extra=f"SERVER_AUTH_SECRET={AUTH_SECRET}\n",
+        )
+        env.add_profile(
+            "dead",
+            dead_settings,
+            dead_db,
+            dead_cfg,
+            dead_env,
+            client_headers={
+                **_auth_header(),
+                "X-U3-CSRF": csrf_token(dead_settings, "any-user"),
+            },
+        )
         yield env
     finally:
         env.close()

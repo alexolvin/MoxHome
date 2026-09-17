@@ -1,6 +1,78 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Languages</h1>
-<div id="u1-languages" data-u1-fetch="/api/languages" data-u1-render="languages">загрузка…</div>
-<p class="hint">Статусы пар — из резолвера L0 (та же функция, что используется при создании задания); подписи CEFR — единая точка ``cefr.label``.</p>
+<h1>{{ s["title_languages"] }}</h1>
+<p class="hint">{{ s["languages_hint"] }}</p>
+
+<div id="u1-languages" data-u1-fetch="/api/languages" data-u1-render="languages">
+  <h2>{{ s["languages_h2"] }}</h2>
+  <table class="u3-table">
+    <thead>
+      <tr>
+        <th scope="col">{{ s["languages_col_code"] }}</th>
+        <th scope="col">{{ s["languages_col_name"] }}</th>
+        <th scope="col">{{ s["languages_col_spacy"] }}</th>
+        <th scope="col">{{ s["languages_col_cefr"] }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in data.languages %}
+      <tr>
+        <td class="u3-mono">{{ l.code }}</td>
+        <td>{{ l.name }}</td>
+        <td class="u3-mono">{{ l.spacy_model or s["common_not_set"] }}</td>
+        <td>{{ l.cefr_label or s["common_not_set"] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="u3-cards">
+    {% for l in data.languages %}
+    <article class="u3-card">
+      <dl class="u3-card-fields">
+        <div class="u3-field"><dt>{{ s["languages_col_code"] }}</dt><dd class="u3-mono">{{ l.code }}</dd></div>
+        <div class="u3-field"><dt>{{ s["languages_col_name"] }}</dt><dd>{{ l.name }}</dd></div>
+        <div class="u3-field"><dt>{{ s["languages_col_spacy"] }}</dt><dd class="u3-mono">{{ l.spacy_model or s["common_not_set"] }}</dd></div>
+        <div class="u3-field"><dt>{{ s["languages_col_cefr"] }}</dt><dd>{{ l.cefr_label or s["common_not_set"] }}</dd></div>
+      </dl>
+    </article>
+    {% endfor %}
+  </div>
+
+  <h2>{{ s["pairs_h2"] }}</h2>
+  <table class="u3-table">
+    <thead>
+      <tr>
+        <th scope="col">{{ s["pairs_col_source"] }}</th>
+        <th scope="col">{{ s["pairs_col_target"] }}</th>
+        <th scope="col">{{ s["pairs_col_status"] }}</th>
+        <th scope="col">{{ s["pairs_col_creatable"] }}</th>
+        <th scope="col">{{ s["pairs_col_missing"] }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in data.pairs %}
+      <tr>
+        <td class="u3-mono">{{ p.source }}</td>
+        <td class="u3-mono">{{ p.target }}</td>
+        <td>{{ p.status }}</td>
+        <td>{{ s["pairs_creatable_yes"] if p.creatable else s["pairs_creatable_no"] }}</td>
+        <td class="u3-mono">{{ p.missing | join("; ") or s["common_not_set"] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="u3-cards">
+    {% for p in data.pairs %}
+    <article class="u3-card">
+      <dl class="u3-card-fields">
+        <div class="u3-field"><dt>{{ s["pairs_col_source"] }}</dt><dd class="u3-mono">{{ p.source }}</dd></div>
+        <div class="u3-field"><dt>{{ s["pairs_col_target"] }}</dt><dd class="u3-mono">{{ p.target }}</dd></div>
+        <div class="u3-field"><dt>{{ s["pairs_col_status"] }}</dt><dd>{{ p.status }}</dd></div>
+        <div class="u3-field"><dt>{{ s["pairs_col_creatable"] }}</dt><dd>{{ s["pairs_creatable_yes"] if p.creatable else s["pairs_creatable_no"] }}</dd></div>
+        <div class="u3-field"><dt>{{ s["pairs_col_missing"] }}</dt><dd class="u3-mono">{{ p.missing | join("; ") or s["common_not_set"] }}</dd></div>
+      </dl>
+    </article>
+    {% endfor %}
+  </div>
+</div>
 {% endblock %}

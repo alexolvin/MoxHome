@@ -1,0 +1,14 @@
+дата: 2026-09-17 21:39:18
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: U3-8 — новая версия промпта: v(N+1) создан, vN идентичен, resolved_prompts фиксирует N+1
+
+задача: book_style (generic); версий до: [1]
+ответ POST /api/prompts (verbatim JSON): {"path": "book_style/v2.yaml", "version": 2}
+v1 побайтово идентичен: да
+резолвер: version=2 file=book_style/v2.yaml level=generic (ожидалось 2)
+полный прогон: задание j-20260917T183920Z-1a8ac4, статус COMPLETED
+resolved_prompts (book_style): version=2 file=book_style/v2.yaml level=generic (ожидалось 2)
+
+ВЕРДИКТ: v(N+1) создан и применён, vN идентичен — PASS

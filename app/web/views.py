@@ -1,4 +1,4 @@
-"""Модели представлений U1: страницы и API читают ТОЛЬКО эти функции.
+"""Модели представлений U1/U3: страницы и API читают ТОЛЬКО эти функции.
 
 Честность прогресса (У1.1/У1.2): отображаемые величины — чистые функции
 состояния в БД (``jobs.progress`` + артефакт ``validation.json``) и
@@ -8,7 +8,12 @@
 
 Дублирования бизнес-логики нет: статусы пар — ``services.languages``
 (L0-5), CEFR-подпись — ``languages.cefr.label`` (L1-8), фазы перевода —
-``workers.pipeline.translation_phases`` (E5.3, единый источник).
+``workers.pipeline.translation_phases`` (E5.3, единый источник),
+реестр задач и резолвер промптов — ``app.llm`` (E4.5).
+
+U3: строки интерфейса — только из ``app.web.strings`` (критерий U3-1);
+статусы заданий, коды языков, имена задач/файлов и причины отказов
+выводятся verbatim (3.1.3).
 """
 
 from __future__ import annotations
@@ -24,9 +29,20 @@ from app.core.config import PROFILE_NAMES, Settings
 from app.domain.job import TERMINAL_STATES, Job, JobStatus
 from app.languages.cefr import language_cefr_label
 from app.languages.registry import load_registry
+from app.llm.prompts import (
+    LEVEL_GENERIC,
+    LEVEL_PAIR,
+    LEVEL_SOURCE,
+    VERSION_FILE_RE,
+    PromptResolver,
+)
+from app.llm.tasks import all_tasks
 from app.services.languages import matrix_report
 from app.storage.jobs_repo import JobRepository
-from app.workers.pipeline import translation_phases
+from app.web.strings import UI_STRINGS
+from app.workers.pipeline import CHAPTER_LABEL_PREFIX, translation_phases
+
+_S = UI_STRINGS
 
 
 def read_json(path: Path) -> dict[str, Any] | None:
@@ -58,6 +74,35 @@ def human_ts(epoch: float | None) -> str:
     return datetime.fromtimestamp(epoch).strftime("%Y-%m-%d %H:%M:%S")
 
 
+def human_size(num_bytes: int | None) -> str:
+    """Размер файла в человекочитаемых единицах (измеренное, не оценка)."""
+    if num_bytes is None:
+        return "—"
+    for divider, key in (
+        (1024 * 1024 * 1024, "common_size_gb"),
+        (1024 * 1024, "common_size_mb"),
+        (1024, "common_size_kb"),
+    ):
+        if num_bytes >= divider:
+            return f"{num_bytes / divider:.1f} {_S[key]}"
+    return f"{num_bytes} {_S['common_size_b']}"
+
+
+def day_to_epoch(value: str | None, *, end_of_day: bool = False) -> float | None:
+    """Дата YYYY-MM-DD (локальное время) → epoch; некорректная — None.
+
+    Единый источник для страницы /jobs и фильтра GET /api/jobs (U3 3.4.17)."""
+    if not value:
+        return None
+    try:
+        moment = datetime.strptime(value, "%Y-%m-%d")
+    except ValueError:
+        return None
+    if end_of_day:
+        moment = moment.replace(hour=23, minute=59, second=59)
+    return moment.timestamp()
+
+
 # ---------------------------------------------------------------- прогресс (U1-1/U1-2)
 
 
@@ -66,7 +111,7 @@ def _phase_weights(phases: list[tuple[str, str]]) -> list[float]:
     остальные 1.0 — поровну между главами. Та же формула, что в движке —
     она зафиксирована E5-3 (progress_mapping), здесь она нужна только для
     отображения «какая фаза активна по дробной БД»."""
-    chapters = sum(1 for label, _doc in phases if label.startswith("глава "))
+    chapters = sum(1 for label, _doc in phases if label.startswith(CHAPTER_LABEL_PREFIX))
     toc = 0.05 if any(label == "TOC" for label, _doc in phases) else 0.0
     meta = 0.05 if any(label == "metadata" for label, _doc in phases) else 0.0
     chapter_weight = (1.0 - toc - meta) / chapters if chapters else 0.0
@@ -93,7 +138,7 @@ def progress_facts(
     """
     if validation is None:
         return {
-            "display": "ожидание валидации (validation.json ещё не создан)",
+            "display": _S["progress_awaiting"],
             "phase": None,
             "completed": 0,
             "total_phases": 0,
@@ -103,7 +148,7 @@ def progress_facts(
     total = len(phases)
     if total == 0:
         return {
-            "display": "фазы перевода не обнаружены (книга пуста?)",
+            "display": _S["progress_no_phases"],
             "phase": None,
             "completed": 0,
             "total_phases": 0,
@@ -121,25 +166,29 @@ def progress_facts(
     total_segments = sum(per_chapter)
     processed = 0
     for label, _doc in phases[:completed]:
-        if label.startswith("глава "):
+        if label.startswith(CHAPTER_LABEL_PREFIX):
             index = int(label.split()[1]) - 1
             if 0 <= index < len(per_chapter):
                 processed += per_chapter[index]
     if completed >= total:
-        display = f"все фазы перевода завершены (сегментов {total_segments} / {total_segments})"
+        display = _S["progress_all_finished"].format(total=total_segments)
         phase: str | None = None
     else:
         label, _doc = phases[completed]
         phase = label
-        if label.startswith("глава "):
+        if label.startswith(CHAPTER_LABEL_PREFIX):
             chapter_no = int(label.split()[1])
             chapter_count = int(validation["stats"]["chapter_count"])
-            display = (
-                f"глава {chapter_no} / {chapter_count}, "
-                f"сегментов {processed} / {total_segments}"
+            display = _S["progress_chapter"].format(
+                no=chapter_no,
+                count=chapter_count,
+                processed=processed,
+                total=total_segments,
             )
         else:
-            display = f"фаза: {label} (сегментов {processed} / {total_segments})"
+            display = _S["progress_phase"].format(
+                label=label, processed=processed, total=total_segments
+            )
     return {
         "display": display,
         "phase": phase,
@@ -277,6 +326,8 @@ def list_books(settings: Settings) -> list[dict[str, Any]]:
 
     Определение — тот же механизм L0, что и стадия validating:
     ``detect_book`` (детектор + dc:language, L0.5) — не дублируется.
+    Числа глав/сегментов — из ``services.analyze.scan_book`` (D70),
+    повторной реализации сканирования нет (U3 3.6.29).
     """
     books: list[dict[str, Any]] = []
     input_dir = settings.input_dir
@@ -285,12 +336,15 @@ def list_books(settings: Settings) -> list[dict[str, Any]]:
     for path in sorted(input_dir.glob("*.epub")):
         meta = read_json(path.with_suffix(path.suffix + ".detect.json")) or {}
         stats = meta.get("stats") or {}
+        st = path.stat()
         books.append(
             {
                 "name": path.name,
                 "path": str(path),
-                "size_bytes": path.stat().st_size,
-                "modified_at": path.stat().st_mtime,
+                "size_bytes": st.st_size,
+                "size_human": human_size(st.st_size),
+                "modified_at": st.st_mtime,
+                "uploaded_at_human": human_ts(st.st_mtime),
                 "title": meta.get("title"),
                 "dc_language": meta.get("dc_language"),
                 "detected": meta.get("detected"),
@@ -361,7 +415,7 @@ def models_view(settings: Settings) -> list[dict[str, Any]]:
                 "retry_times": profile.retry_times,
                 "max_retries": profile.max_retries,
                 "concurrency": profile.concurrency,
-                "cost": "заданы" if profile.cost_defined else "не заданы (Cost: unknown)",
+                "cost": _S["models_cost_set"] if profile.cost_defined else _S["models_cost_unset"],
             }
         )
     return profiles
@@ -369,29 +423,135 @@ def models_view(settings: Settings) -> list[dict[str, Any]]:
 
 # ---------------------------------------------------------------- промпты (Prompts)
 
+_LEVEL_RANK = {LEVEL_PAIR: 0, LEVEL_SOURCE: 1, LEVEL_GENERIC: 2}
+
+
+def _prompt_level_label(level: str) -> str:
+    return {
+        LEVEL_PAIR: _S["prompts_level_pair"],
+        LEVEL_SOURCE: _S["prompts_level_source"],
+        LEVEL_GENERIC: _S["prompts_level_generic"],
+    }[level]
+
 
 def prompts_view(settings: Settings) -> list[dict[str, Any]]:
-    """Промпты на диске: ``prompts/<task>/<src>/<tgt>/vN.yaml`` (данные)."""
-    rows: list[dict[str, Any]] = []
+    """ВСЕ версии всех промптов на диске (U3 3.7.30).
+
+    Строка = файл ``vN.yaml``; уровень — пара / язык / generic (как у
+    резолвера, E4.5). ``selected`` — помечен тот файл, который выберет
+    ``PromptResolver`` для пары (max N на выигравшем уровне): перезапись
+    версии запрещена, победитель — max N (D20). Резолвер — тот же
+    ``app.llm.prompts``, что исполняет задание (Rule 8: нет второй
+    реализации разрешения).
+    """
     root = settings.prompts_dir
     if not root.is_dir():
-        return rows
+        return []
+    pairs = [(p.source, p.target) for p in matrix_report(settings)]
+    winners = _resolver_winners(root, pairs)
+
+    def _selected(
+        task: str, level: str, source: str | None, target: str | None, file_rel: str
+    ) -> bool:
+        if level == LEVEL_PAIR:
+            return (
+                source is not None
+                and target is not None
+                and winners.get((task, source, target)) == file_rel
+            )
+        if level == LEVEL_SOURCE:
+            if source is None:
+                return False
+            return any(
+                winners.get((task, source, t)) == file_rel for _s, t in pairs if _s == source
+            )
+        return any(w == file_rel for (t, _s, _g), w in winners.items() if t == task)
+
+    # Каталоги уровней: generic (task/), source (task/src/), pair (task/src/tgt/).
+    candidates: list[tuple[str, str, str | None, str | None, Path]] = []
     for task_dir in sorted(p for p in root.iterdir() if p.is_dir()):
+        task = task_dir.name
+        candidates.append((task, LEVEL_GENERIC, None, None, task_dir))
         for src_dir in sorted(p for p in task_dir.iterdir() if p.is_dir()):
+            source = src_dir.name
+            candidates.append((task, LEVEL_SOURCE, source, None, src_dir))
             for tgt_dir in sorted(p for p in src_dir.iterdir() if p.is_dir()):
-                versions = sorted(tgt_dir.glob("v*.yaml"))
-                if versions:
-                    best = versions[-1]
-                    rows.append(
-                        {
-                            "task": task_dir.name,
-                            "source": src_dir.name,
-                            "target": tgt_dir.name,
-                            "versions": [p.name for p in versions],
-                            "file": str(best),
-                        }
-                    )
+                candidates.append((task, LEVEL_PAIR, source, tgt_dir.name, tgt_dir))
+
+    rows: list[dict[str, Any]] = []
+    for task_name, level, src, tgt, directory in candidates:
+        level_label = _prompt_level_label(level)
+        for path in sorted(directory.glob("v*.yaml")):
+            version = _prompt_version(path)
+            if version is None:
+                continue
+            file_rel = path.relative_to(root).as_posix()
+            rows.append(
+                {
+                    "task": task_name,
+                    "source": src,
+                    "target": tgt,
+                    "level": level,
+                    "level_label": level_label,
+                    "version": version,
+                    "file_name": path.name,
+                    "file_rel": file_rel,
+                    "selected": _selected(task_name, level, src, tgt, file_rel),
+                }
+            )
+    rows.sort(
+        key=lambda r: (
+            r["task"],
+            _LEVEL_RANK[r["level"]],
+            r["source"] or "",
+            r["target"] or "",
+            r["version"],
+        )
+    )
     return rows
+
+
+def _resolver_winners(
+    root: Path, pairs: list[tuple[str, str]]
+) -> dict[tuple[str, str, str], str | None]:
+    """Файл, который выберет резолвер для каждой пары (task, source, target) —
+    единая точка разрешения (Rule 8: нет второй реализации). Не разрешается
+    (нет уровня для pair_required / нет файлов) — None."""
+    resolver = PromptResolver(root)
+    winners: dict[tuple[str, str, str], str | None] = {}
+    for spec in all_tasks():
+        for source, target in pairs:
+            try:
+                resolved = resolver.resolve(
+                    spec.name, source, target, pair_required=spec.pair_required
+                )
+            except Exception:
+                winners[(spec.name, source, target)] = None
+            else:
+                winners[(spec.name, source, target)] = resolved.file
+    return winners
+
+
+def _prompt_version(path: Path) -> int | None:
+    """Номер версии vN.yaml (None — файл не версии)."""
+    match = VERSION_FILE_RE.match(path.name)
+    return int(match.group(1)) if match else None
+
+
+def prompts_tasks_view(settings: Settings) -> list[dict[str, Any]]:
+    """Реестр задач анализа (``app/llm/tasks.py``) для формы создания промпта.
+
+    Имя задачи проверяется по этому реестру (U3 3.7.33): неизвестная —
+    400, файл не создаётся.
+    """
+    return [
+        {
+            "name": spec.name,
+            "description": spec.description,
+            "pair_required": spec.pair_required,
+        }
+        for spec in sorted(all_tasks(), key=lambda s: s.name)
+    ]
 
 
 # ---------------------------------------------------------------- настройки (Settings)
@@ -405,7 +565,7 @@ def settings_view(settings: Settings) -> dict[str, Any]:
         "server": {
             "bind_address": settings.server.bind_address,
             "port": settings.server.port,
-            "auth": "on (общий секрет)" if settings.server.auth_secret else "off",
+            "auth": _S["models_key_set"] if settings.server.auth_secret else _S["models_key_unset"],
             "heartbeat_seconds": settings.server.heartbeat_seconds,
             "lease_seconds": settings.server.lease_seconds,
         },
@@ -417,7 +577,7 @@ def settings_view(settings: Settings) -> dict[str, Any]:
             "books": str(settings.books_dir),
         },
         "llm_keys": {
-            name: "задан" if settings.llm.api_key_for(name) else "не задан"
+            name: _S["models_key_set"] if settings.llm.api_key_for(name) else _S["models_key_unset"]
             for name in PROFILE_NAMES
         },
         "limits": settings.limits.model_dump(),
@@ -433,6 +593,7 @@ def settings_view(settings: Settings) -> dict[str, Any]:
             "root": str(settings.languages_root),
             "matrix": str(settings.language_matrix_path),
         },
+        "ui": settings.ui.model_dump(),
     }
 
 

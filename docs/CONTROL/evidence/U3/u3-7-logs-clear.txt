@@ -1,0 +1,25 @@
+дата: 2026-09-17 21:39:18
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: U3-7 — очистка логов; quality.log не тронут
+
+задание: j-20260917T183920Z-4d830c
+ответ POST /api/jobs/{id}/logs/clear (verbatim JSON):
+{
+  "cleared": true,
+  "job_bytes": 300,
+  "errors_bytes": 150
+}
+
+errors.log после: 0 байт (до: 150)
+job.log после: 88 байт (до: 300)
+job.log после очистки (строка факта, verbatim):
+2026-09-17 21:39:20 логи очищены any-user: job.log 300 Б, errors.log 150 Б
+
+quality.log: sha256 до = 36377a729892e56da4f0893eb6085c3d0f3f9ef3cce88f46021b32f85f15514c
+quality.log: sha256 после = 36377a729892e56da4f0893eb6085c3d0f3f9ef3cce88f46021b32f85f15514c
+quality.log побайтово идентичен: да
+мутирующих /api-маршрутов с «quality» в пути: 0
+
+ВЕРДИКТ: job.log/errors.log = 0 + строка факта, quality.log идентичен, маршрута усечения нет — PASS

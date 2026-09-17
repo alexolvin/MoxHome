@@ -341,10 +341,10 @@ def test_v2_3_human_timestamps_no_raw_epoch(v2_env: V2Env) -> None:
     assert facts["created_at_human"] in page
     assert facts["updated_at_human"] in page
 
-    # Страница Jobs: колонка «создано» с той же меткой.
+    # Страница Jobs: колонка «создано» с той же меткой (U3: th scope="col").
     jobs_page = client.get("/jobs").text
     assert row["created_at_human"] in jobs_page
-    assert "<th>создано</th>" in jobs_page
+    assert "<th scope=\"col\">создано</th>" in jobs_page
 
 
 # ------------------------------------------------------------------ T-V2-4
@@ -370,7 +370,8 @@ def test_v2_4_stage_timeline_from_db(v2_env: V2Env) -> None:
     assert facts["stages"] == expected
 
     page = client.get(f"/jobs/{job_id}").text
-    assert f"стадии ({len(transitions)} переходов)" in page
+    # U3: подпись из strings.py (job_stages).
+    assert f"история переходов ({len(transitions)})" in page
     for record in transitions:
         assert f"{record.from_status.value} → {record.to_status.value}" in page
 

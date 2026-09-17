@@ -1,19 +1,108 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Prompts</h1>
+<h1>{{ s["title_prompts"] }}</h1>
+<p class="hint">{{ s["prompts_hint"] }}</p>
+<p class="hint u3-warn">{{ s["prompts_warning"] }}</p>
+
 {% if rows %}
-<table>
-  <tr><th>задача</th><th>исходный</th><th>целевой</th><th>версии</th></tr>
-  {% for row in rows %}
-  <tr>
-    <td>{{ row.task }}</td>
-    <td>{{ row.source }}</td>
-    <td>{{ row.target }}</td>
-    <td>{{ row.versions | join(', ') }}</td>
-  </tr>
-  {% endfor %}
+<table class="u3-table">
+  <thead>
+    <tr>
+      <th scope="col">{{ s["prompts_col_task"] }}</th>
+      <th scope="col">{{ s["prompts_col_source"] }}</th>
+      <th scope="col">{{ s["prompts_col_target"] }}</th>
+      <th scope="col">{{ s["prompts_col_level"] }}</th>
+      <th scope="col">{{ s["prompts_col_version"] }}</th>
+      <th scope="col">{{ s["prompts_col_file"] }}</th>
+      <th scope="col">{{ s["prompts_col_selected"] }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+    <tr>
+      <td class="u3-mono">
+        {{ row.task }}
+        <span class="u3-row-actions">
+          <button type="button" class="btn" data-prompt-view="{{ row.file_rel }}">{{ s["prompts_view_btn"] }}</button>
+          <button type="button" class="btn" data-prompt-edit="{{ row.file_rel }}" data-task="{{ row.task }}" data-level="{{ row.level }}" data-source="{{ row.source or '' }}" data-target="{{ row.target or '' }}" data-version="{{ row.version }}">{{ s["prompts_edit_btn"] }}</button>
+          <button type="button" class="btn u3-danger" data-prompt-delete="{{ row.file_rel }}">{{ s["prompts_delete_btn"] }}</button>
+        </span>
+      </td>
+      <td class="u3-mono">{{ row.source or s["common_not_set"] }}</td>
+      <td class="u3-mono">{{ row.target or s["common_not_set"] }}</td>
+      <td>{{ row.level_label }}</td>
+      <td class="u3-mono">{{ row.file_name }}</td>
+      <td class="u3-mono u3-nowrap">{{ row.file_rel }}</td>
+      <td>{{ s["common_yes"] if row.selected else s["prompts_selected_no"] }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
 </table>
+<div class="u3-cards">
+  {% for row in rows %}
+  <article class="u3-card">
+    <dl class="u3-card-fields">
+      <div class="u3-field"><dt>{{ s["prompts_col_task"] }}</dt><dd class="u3-mono">{{ row.task }}</dd></div>
+      <div class="u3-field"><dt>{{ s["prompts_col_source"] }}</dt><dd class="u3-mono">{{ row.source or s["common_not_set"] }}</dd></div>
+      <div class="u3-field"><dt>{{ s["prompts_col_target"] }}</dt><dd class="u3-mono">{{ row.target or s["common_not_set"] }}</dd></div>
+      <div class="u3-field"><dt>{{ s["prompts_col_level"] }}</dt><dd>{{ row.level_label }}</dd></div>
+      <div class="u3-field"><dt>{{ s["prompts_col_version"] }}</dt><dd class="u3-mono">{{ row.file_name }}</dd></div>
+      <div class="u3-field"><dt>{{ s["prompts_col_file"] }}</dt><dd class="u3-mono u3-nowrap">{{ row.file_rel }}</dd></div>
+      <div class="u3-field"><dt>{{ s["prompts_col_selected"] }}</dt><dd>{{ s["common_yes"] if row.selected else s["prompts_selected_no"] }}</dd></div>
+    </dl>
+    <div class="u3-card-actions">
+      <button type="button" class="btn" data-prompt-view="{{ row.file_rel }}">{{ s["prompts_view_btn"] }}</button>
+      <button type="button" class="btn" data-prompt-edit="{{ row.file_rel }}" data-task="{{ row.task }}" data-level="{{ row.level }}" data-source="{{ row.source or '' }}" data-target="{{ row.target or '' }}" data-version="{{ row.version }}">{{ s["prompts_edit_btn"] }}</button>
+      <button type="button" class="btn u3-danger" data-prompt-delete="{{ row.file_rel }}">{{ s["prompts_delete_btn"] }}</button>
+    </div>
+  </article>
+  {% endfor %}
+</div>
 {% else %}
-<p>Промпты не найдены.</p>
+<p class="u3-empty">{{ s["prompts_empty"] }}</p>
 {% endif %}
+
+<details class="u3-panel" open>
+  <summary id="u3-prompt-form-title">{{ s["prompts_create_title"] }}</summary>
+  <form id="u3-prompt-form" class="u3-filter" data-mode="create">
+    <label>{{ s["prompts_create_task"] }}:
+      <select name="task" required>
+        <option value="">{{ s["jobs_opt_none"] }}</option>
+        {% for t in tasks %}
+        <option value="{{ t.name }}">{{ t.name }}{% if t.pair_required %} ({{ s["prompts_task_pair_required"] }}){% endif %} — {{ t.description }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>{{ s["prompts_create_level"] }}:
+      <select name="level" required>
+        <option value="pair">{{ s["prompts_level_pair"] }}</option>
+        <option value="source">{{ s["prompts_level_source"] }}</option>
+        <option value="generic">{{ s["prompts_level_generic"] }}</option>
+      </select>
+    </label>
+    <label>{{ s["prompts_create_source"] }}:
+      <input type="text" name="source" maxlength="32">
+    </label>
+    <label>{{ s["prompts_create_target"] }}:
+      <input type="text" name="target" maxlength="32">
+    </label>
+    <label>{{ s["prompts_create_yaml"] }}:
+      <textarea name="content" rows="10" class="u3-mono" required></textarea>
+    </label>
+    <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+    <span class="u3-filter-actions">
+      <button type="submit" id="u3-prompt-submit">{{ s["prompts_create_btn"] }}</button>
+      <button type="button" id="u3-prompt-reset" class="btn">{{ s["jobs_filter_reset"] }}</button>
+      <span id="u3-prompt-msg" role="status"></span>
+    </span>
+  </form>
+</details>
+
+<dialog id="u3-prompt-view">
+  <h2 id="u3-prompt-view-title"></h2>
+  <pre id="u3-prompt-view-content" class="u3-pre u3-overflow"></pre>
+  <form method="dialog">
+    <button type="submit" class="btn">{{ s["common_close"] }}</button>
+  </form>
+</dialog>
 {% endblock %}

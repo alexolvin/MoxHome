@@ -37,7 +37,9 @@ sys.path.insert(0, str(ROOT / "tests" / "probe"))
 from mock_llm_server import MockLLMServer  # noqa: E402
 from test_l3_glossary_fix import _kill_all  # noqa: E402
 from test_u1_web import (  # noqa: E402
+    AUTH_SECRET,
     U1Profile,
+    _auth_header,
     _create_job,
     _make_u1_storage,
     _synth_u1_slow_book,
@@ -47,6 +49,7 @@ from test_u1_web import (  # noqa: E402
 
 from app.storage.jobs_repo import JobRepository  # noqa: E402
 from app.web.app import create_app  # noqa: E402
+from app.web.auth import csrf_token  # noqa: E402
 
 EVIDENCE = ROOT / "docs" / "CONTROL" / "evidence" / "U2"
 STAMP = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -56,15 +59,26 @@ _WORKERS: list[subprocess.Popen[bytes]] = []
 _BOOKS: dict[str, Path] = {}
 
 
-def _profile(base: Path, name: str, url: str) -> U1Profile:
-    settings, db, cfg, env_file = _make_u1_storage(base, f"u2ev_{name}", url)
+def _profile(base: Path, name: str, url: str, *, secret: bool = False) -> U1Profile:
+    """Профиль evidence. ``secret=True`` — U3 3.9 (fail closed): у стенда
+    есть SERVER_AUTH_SECRET, клиент шлёт Basic + X-U3-CSRF по умолчанию."""
+    env_extra = f"SERVER_AUTH_SECRET={AUTH_SECRET}\n" if secret else ""
+    settings, db, cfg, env_file = _make_u1_storage(
+        base, f"u2ev_{name}", url, env_extra=env_extra
+    )
     app = create_app(settings, db=db)
+    client_headers = None
+    if secret:
+        client_headers = {
+            **_auth_header(),
+            "X-U3-CSRF": csrf_token(settings, "any-user"),
+        }
     return U1Profile(
         settings=settings,
         db=db,
         repo=JobRepository(db),
         app=app,
-        client=TestClient(app),
+        client=TestClient(app, headers=client_headers or {}),
         cfg=cfg,
         env_file=env_file,
     )
@@ -618,8 +632,10 @@ def main() -> int:
     server.start()
     profiles: dict[str, U1Profile] = {}
     try:
-        profiles["main"] = _profile(base, "main", server.url)
-        profiles["dead"] = _profile(base, "dead", "http://127.0.0.1:1/v1")
+        profiles["main"] = _profile(base, "main", server.url, secret=True)
+        # dead: тот же секрет — confirm (POST) в NEEDS_CONFIRMATION проходит;
+        # LLM-down поведение от секрета не зависит (web-auth vs LLM — разное).
+        profiles["dead"] = _profile(base, "dead", "http://127.0.0.1:1/v1", secret=True)
         print("[u2-evidence] окружение готово")
         evidence("u2-1-no-duplication.txt", ev_u2_1(profiles["main"]))
         evidence("u2-2-exit-codes.txt", ev_u2_2(profiles["main"], profiles["dead"], base, server))

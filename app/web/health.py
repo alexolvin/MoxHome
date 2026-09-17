@@ -27,6 +27,9 @@ from app.core.worker_signal import worker_alive
 from app.languages.registry import load_registry
 from app.languages.resolver import spacy_model_available
 from app.storage.jobs_repo import JobRepository
+from app.web.strings import UI_STRINGS
+
+_S = UI_STRINGS
 
 
 def _probe_database(repo: JobRepository) -> tuple[str, str]:
@@ -42,7 +45,7 @@ def _probe_storage(settings: Settings) -> tuple[str, str]:
     try:
         probe.write_bytes(b"u1")
         ok = probe.read_bytes() == b"u1"
-        return ("ok" if ok else "error"), "" if ok else "чтение/запись не совпала"
+        return ("ok" if ok else "error"), "" if ok else _S["health_read_write_mismatch"]
     except OSError as exc:
         return "error", str(exc)
     finally:
@@ -75,20 +78,20 @@ def _probe_nlp(settings: Settings) -> dict[str, str]:
     result: dict[str, str] = {}
     for code, pack in sorted(registry.items()):
         if pack.spacy_model is None:
-            result[code] = "n/a (целевой язык)"
+            result[code] = _S["health_na_target"]
         elif spacy_model_available(pack.spacy_model):
             result[code] = "ok"
         else:
-            result[code] = f"error (нет пайплайна {pack.spacy_model})"
+            result[code] = _S["health_no_pipeline"].format(model=pack.spacy_model)
     return result
 
 
 def _probe_epubcheck(settings: Settings) -> tuple[str, str]:
     jar = settings.epubcheck_jar_path
     if not jar.is_file():
-        return "error", f"jar не найден: {jar}"
+        return "error", _S["health_jar_missing"].format(jar=jar)
     if shutil.which("java") is None:
-        return "error", "java не найдена в PATH"
+        return "error", _S["health_java_missing"]
     return "ok", ""
 
 

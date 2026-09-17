@@ -130,20 +130,153 @@ class JobRepository:
         row = self._db.conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
         return self._row_to_job(row) if row is not None else None
 
-    def list_jobs(self) -> list[Job]:
-        """Все задания, новые первыми (U1: список заданий в UI/API).
+    def list_jobs(
+        self,
+        limit: int | None = None,
+        offset: int = 0,
+        *,
+        statuses: tuple[str, ...] | None = None,
+        book: str | None = None,
+        source_language: str | None = None,
+        target_language: str | None = None,
+        created_from: float | None = None,
+        created_to: float | None = None,
+        updated_before: float | None = None,
+        sort: str = "created_at",
+        direction: str = "desc",
+    ) -> list[Job]:
+        """Задания с фильтрами/сортировкой/пагинацией — ЕДИНСТВЕННЫЙ источник
+        списка (U3 3.4.16: ``list_jobs(limit, offset, …)``). Без параметров —
+        все задания, новые первыми (поведение U1 сохранено).
 
-        Только чтение — API/UI не пишут рабочие состояния (E3.1).
-        """
-        rows = self._db.conn.execute(
-            "SELECT * FROM jobs ORDER BY created_at DESC, id DESC"
-        ).fetchall()
+        Фильтрация — в SQL (не в шаблоне). Только чтение — API/UI не пишут
+        рабочие состояния (E3.1). ``updated_before`` — для mass-purge U3:
+        «в терминальном статусе не младше N дней» (updated_at терминального
+        перехода)."""
+        where, params = self._jobs_filter_clause(
+            statuses=statuses,
+            book=book,
+            source_language=source_language,
+            target_language=target_language,
+            created_from=created_from,
+            created_to=created_to,
+            updated_before=updated_before,
+        )
+        sort_col, direction_norm = self._jobs_sort_clause(sort, direction)
+        limit_sql = " LIMIT ? OFFSET ?" if limit is not None else ""
+        sql = f"SELECT * FROM jobs{where} ORDER BY {sort_col} {direction_norm}, id DESC{limit_sql}"
+        query_params = [*params, *((limit, max(offset, 0)) if limit is not None else ())]
+        rows = self._db.conn.execute(sql, query_params).fetchall()
         jobs: list[Job] = []
         for row in rows:
             job = self._row_to_job(row)
             if job is not None:
                 jobs.append(job)
         return jobs
+
+    def count_jobs(
+        self,
+        *,
+        statuses: tuple[str, ...] | None = None,
+        book: str | None = None,
+        source_language: str | None = None,
+        target_language: str | None = None,
+        created_from: float | None = None,
+        created_to: float | None = None,
+        updated_before: float | None = None,
+    ) -> int:
+        """Число заданий по тем же фильтрам, что ``list_jobs`` (для пагинации)."""
+        where, params = self._jobs_filter_clause(
+            statuses=statuses,
+            book=book,
+            source_language=source_language,
+            target_language=target_language,
+            created_from=created_from,
+            created_to=created_to,
+            updated_before=updated_before,
+        )
+        row = self._db.conn.execute(
+            f"SELECT COUNT(*) AS n FROM jobs{where}", params
+        ).fetchone()
+        return int(row["n"]) if row is not None else 0
+
+    def list_job_ids_by_book(self, filename: str) -> list[str]:
+        """Задания, ссылающиеся на книгу по имени файла (U3: fail closed
+        при удалении книги). Сопоставление: сохранённый ``source_path``
+        равен имени либо оканчивается на ``/<имя>``."""
+        rows = self._db.conn.execute(
+            "SELECT id FROM jobs WHERE source_path = ? OR source_path LIKE ? "
+            "ORDER BY id",
+            (filename, "%/" + filename),
+        ).fetchall()
+        return [str(row["id"]) for row in rows]
+
+    def delete_job(self, job_id: str) -> int:
+        """U3 3.5.22: удаление строк задания — ОДНА транзакция по всем
+        таблицам (jobs, transitions, job_tokens, stage_results,
+        resolved_prompts). Каталог с артефактами — не дело БД: его удаляет
+        вызывающий (API) после commit. Возврат — число удалённых строк
+        (строка аудита, 3.5.27)."""
+        total = 0
+        with transaction(self._db.conn) as conn:
+            for statement in (
+                "DELETE FROM transitions WHERE job_id = ?",
+                "DELETE FROM job_tokens WHERE job_id = ?",
+                "DELETE FROM stage_results WHERE job_id = ?",
+                "DELETE FROM resolved_prompts WHERE job_id = ?",
+                "DELETE FROM jobs WHERE id = ?",
+            ):
+                total += conn.execute(statement, (job_id,)).rowcount
+        return total
+
+    @staticmethod
+    def _jobs_filter_clause(
+        *,
+        statuses: tuple[str, ...] | None,
+        book: str | None,
+        source_language: str | None,
+        target_language: str | None,
+        created_from: float | None,
+        created_to: float | None,
+        updated_before: float | None = None,
+    ) -> tuple[str, list[object]]:
+        where: list[str] = []
+        params: list[object] = []
+        if statuses:
+            where.append(f"status IN ({', '.join('?' for _ in statuses)})")
+            params.extend(statuses)
+        if book:
+            where.append("(source_path = ? OR source_path LIKE ?)")
+            params.extend([book, "%/" + book])
+        if source_language:
+            where.append("source_language = ?")
+            params.append(source_language)
+        if target_language:
+            where.append("target_language = ?")
+            params.append(target_language)
+        if created_from is not None:
+            where.append("created_at >= ?")
+            params.append(created_from)
+        if created_to is not None:
+            where.append("created_at <= ?")
+            params.append(created_to)
+        if updated_before is not None:
+            where.append("updated_at < ?")
+            params.append(updated_before)
+        where_sql = (" WHERE " + " AND ".join(where)) if where else ""
+        return where_sql, params
+
+    @staticmethod
+    def _jobs_sort_clause(sort: str, direction: str) -> tuple[str, str]:
+        if sort not in ("created_at", "updated_at"):
+            raise ValueError(
+                f"сортировка: допустимы created_at | updated_at (получено {sort!r})"
+            )
+        if direction not in ("asc", "desc"):
+            raise ValueError(
+                f"направление сортировки: допустимы asc | desc (получено {direction!r})"
+            )
+        return sort, direction.upper()
 
     def ping(self) -> None:
         """Жив ли БД (U1 /api/health): ``SELECT 1``; сбой — исключение."""
