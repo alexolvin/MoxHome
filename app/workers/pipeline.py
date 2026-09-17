@@ -139,6 +139,11 @@ def _pair_unsupported_message(pair: PairReport) -> str:
     )
 
 
+#: Префикс подписи фазы главы (E5.3) — ЕДИНЫЙ источник: колбэк прогресса
+#: ``run_translating`` и отображение прогресса UI (``app.web.views``).
+CHAPTER_LABEL_PREFIX = "глава "
+
+
 def translation_phases(validation: Mapping[str, Any]) -> list[tuple[str, str]]:
     """Последовательность фаз движка (E5.3) — (подпись, документ):
     TOC? → metadata? → главы. ЕДИНЫЙ источник: колбэк прогресса
@@ -157,7 +162,7 @@ def translation_phases(validation: Mapping[str, Any]) -> list[tuple[str, str]]:
             if index < len(chapter_docs)
             else f"chapter{index + 1}"
         )
-        phases.append((f"глава {index + 1} / {chapter_count}", doc))
+        phases.append((f"{CHAPTER_LABEL_PREFIX}{index + 1} / {chapter_count}", doc))
     return phases
 
 
@@ -559,7 +564,7 @@ class Pipeline:
             _flush_tokens()
             state["calls"] += 1
             label, doc = _phase_at(state["calls"] - 1)
-            if label.startswith("глава "):
+            if label.startswith(CHAPTER_LABEL_PREFIX):
                 k = int(label.split()[1])
                 units = f"{label}, сегментов {sum(per_chapter[:k])} / {total_segments} ({doc})"
             else:

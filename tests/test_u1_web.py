@@ -41,6 +41,7 @@ from app.storage.database import Database
 from app.storage.jobs_repo import JobRepository
 from app.web import views
 from app.web.app import create_app
+from app.web.auth import csrf_token
 
 ROOT = Path(__file__).resolve().parents[1]
 _TESTS_DIR = str(Path(__file__).resolve().parent)
@@ -166,6 +167,8 @@ class U1Env:
         db: Database,
         cfg: Path,
         env_file: Path,
+        *,
+        client_headers: dict[str, str] | None = None,
     ) -> None:
         app = create_app(settings, db=db)
         self.profiles[name] = U1Profile(
@@ -173,7 +176,9 @@ class U1Env:
             db=db,
             repo=JobRepository(db),
             app=app,
-            client=TestClient(app),
+            # U3 3.9: у main включён SECRET — все его запросы несут Basic +
+            # CSRF по умолчанию (мутации fail closed без аутентификации).
+            client=TestClient(app, headers=client_headers or {}),
             cfg=cfg,
             env_file=env_file,
         )
@@ -204,8 +209,25 @@ def u1_env(tmp_path_factory: pytest.TempPathFactory) -> Iterator[U1Env]:
         },
     )
     try:
+        # main: U3 3.9 (fail closed) — мутирующие маршруты требуют
+        # SERVER_AUTH_SECRET + CSRF, поэтому у профиля есть секрет, а его
+        # клиент шлёт Basic + X-U3-CSRF по умолчанию (чтение с заголовками
+        # открыто; U1-критерии на main не зависят от режима аутентификации).
+        main_settings, main_db, main_cfg, main_env = _make_u1_storage(
+            base, "storage_main", server.url, env_extra=f"SERVER_AUTH_SECRET={AUTH_SECRET}\n"
+        )
+        env.add_profile(
+            "main",
+            main_settings,
+            main_db,
+            main_cfg,
+            main_env,
+            client_headers={
+                **_auth_header(),
+                "X-U3-CSRF": csrf_token(main_settings, "any-user"),
+            },
+        )
         for name, url, kwargs in (
-            ("main", server.url, {}),
             # мёртвый порт: connection refused мгновенно (T-U1-3)
             ("dead", "http://127.0.0.1:1/v1", {}),
             ("auth", server.url, {"env_extra": f"SERVER_AUTH_SECRET={AUTH_SECRET}\n"}),
@@ -466,8 +488,9 @@ def test_u1_5_estimated_cefr_labels_everywhere(u1_env: U1Env) -> None:
 
 
 #: Путь endpoint'а → потребители КАЖДОГО метода (файл, литерал в файле).
-#: У /api/books и /api/jobs по два метода — у каждого свой потребитель
-#: (GET — fetch страницы, POST — форма загрузки/создания).
+#: У /api/books и /api/jobs по несколько методов — у каждого свой
+#: потребитель (GET — fetch страницы, POST — форма загрузки/создания,
+#: DELETE — кнопка удаления U3).
 _CONSUMERS: dict[str, tuple[tuple[str, str], ...]] = {
     "/api/health": (("app/web/templates/settings.html", 'data-u1-fetch="/api/health"'),),
     "/api/languages": (("app/web/templates/languages.html", 'data-u1-fetch="/api/languages"'),),
@@ -475,12 +498,22 @@ _CONSUMERS: dict[str, tuple[tuple[str, str], ...]] = {
         ("app/web/templates/books.html", 'data-u1-fetch="/api/books"'),  # GET
         ("app/web/static/app.js", 'fetchJSON("/api/books", { method: "POST"'),  # POST
     ),
+    "/api/books/{filename}": (
+        ("app/web/static/app.js", '"/api/books/" + encodeURIComponent(name)'),  # DELETE
+    ),
     "/api/jobs": (
         ("app/web/templates/jobs.html", 'data-u1-fetch="/api/jobs"'),  # GET
         ("app/web/static/app.js", 'fetchJSON("/api/jobs", {'),  # POST
     ),
     "/api/jobs/{job_id}": (
-        ("app/web/static/app.js", '"/api/jobs/" + encodeURIComponent(jobId)'),
+        ("app/web/static/app.js", '"/api/jobs/" + encodeURIComponent(jobId)'),  # GET
+        (
+            "app/web/static/app.js",
+            '"/api/jobs/" + encodeURIComponent(job), { method: "DELETE"',  # DELETE
+        ),
+    ),
+    "/api/jobs/purge": (
+        ("app/web/static/app.js", 'fetchJSON("/api/jobs/purge", {'),  # POST
     ),
     "/api/jobs/{job_id}/confirm": (("app/web/static/app.js", '"/confirm"'),),
     "/api/jobs/{job_id}/pause": (("app/web/static/app.js", '"u1-pause", "pause"'),),
@@ -488,6 +521,9 @@ _CONSUMERS: dict[str, tuple[tuple[str, str], ...]] = {
     "/api/jobs/{job_id}/cancel": (("app/web/static/app.js", '"u1-cancel", "cancel"'),),
     "/api/jobs/{job_id}/logs": (
         ("app/web/templates/job.html", "/api/jobs/{{ facts.id }}/logs"),
+    ),
+    "/api/jobs/{job_id}/logs/clear": (
+        ("app/web/static/app.js", '"/logs/clear"'),  # POST
     ),
     "/api/jobs/{job_id}/quality": (
         ("app/web/templates/job.html", "/api/jobs/{{ facts.id }}/quality"),
@@ -497,6 +533,15 @@ _CONSUMERS: dict[str, tuple[tuple[str, str], ...]] = {
     ),
     "/api/models": (("app/web/templates/models.html", 'data-u1-fetch="/api/models"'),),
     "/api/config": (("app/web/templates/settings.html", 'data-u1-fetch="/api/config"'),),
+    "/api/prompts": (
+        ("app/web/static/app.js", 'fetchJSON("/api/prompts", {'),  # POST
+    ),
+    "/api/prompts/content": (
+        ("app/web/static/app.js", '"/api/prompts/content?path="'),  # GET
+    ),
+    "/api/prompts/version": (
+        ("app/web/static/app.js", '"/api/prompts/version?path="'),  # DELETE
+    ),
 }
 
 

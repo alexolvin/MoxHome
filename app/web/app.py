@@ -48,7 +48,7 @@ def create_app(settings: Settings, db: Database | None = None) -> FastAPI:
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
-        denied = auth_check(settings, request)
+        denied = await auth_check(settings, request)
         if denied is not None:
             return denied
         return await call_next(request)

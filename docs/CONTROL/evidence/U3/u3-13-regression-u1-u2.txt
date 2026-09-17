@@ -1,0 +1,520 @@
+дата: 2026-09-17 21:39:18
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: U3-13 — регрессия: evidence U1 (10) + U2 (4) на коде U3
+
+| u1-1 | PASS | ВЕРДИКТ: 53 >= 20 срезов, 0 расхождений, 0 % — PASS |
+| u1-2 | PASS | ВЕРДИКТ: все «%» = измеренный охват E6; фиктивных — 0 — PASS |
+| u1-3 | PASS | ВЕРДИКТ: llm/* = error c причиной, общего флага нет — PASS |
+| u1-4 | PASS | ВЕРДИКТ: PASS |
+| u1-5 | PASS | ВЕРДИКТ: 100% мест отображения — PASS |
+| u1-6 | PASS | ВЕРДИКТ: 0 endpoint'ов без потребителя — PASS |
+| u1-7 | PASS | ВЕРДИКТ: 100% маршрутов — 401 без секрета / работают с ним — PASS |
+| u1-8 | PASS | ВЕРДИКТ: 0 вхождений в ответах и access log — PASS |
+| u1-9 | PASS | ВЕРДИКТ: UI == quality.log, правок фактических: 3 — PASS |
+| u2-1 | PASS | ВЕРДИКТ: U2-1 (0 дублирования, паритет вывода) — PASS |
+| u2-2 | PASS | ВЕРДИКТ: U2-2 (8/8 сценариев кодов выхода) — PASS |
+| u2-3 | PASS | ВЕРДИКТ: U2-3 (CLI→UI и UI→CLI) — PASS |
+| t-u2-4 | PASS | ВЕРДИКТ: T-U2-4 (повреждённый → код 3 + сообщение; валидная → 0 + версия) — PASS |
+| t-u1-10 | PASS | ВЕРДИКТ: FAILED + причина в UI/API, прогресс не «в работе» — PASS |
+
+проверок прошло: 14/14
+
+ВЕРДИКТ: U1+U2 регрессия 14/14 — PASS
+
+========================================================================
+ПОЛНЫЕ ЗАХВАТЫ (verbatim, Rule 3)
+========================================================================
+
+########## u1-1 ##########
+дата: 2026-09-17 21:39:18
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: U1-1 — progress из API == БД на срезах живого прогона
+
+задание: j-20260917T183928Z-94649e (u1_slow.epub, 6 глав, delay 0.3 c)
+срезов (API progress == БД): 53
+расхождений progress_display с чистой функцией: 0
+итоговый статус: COMPLETED
+
+| # | progress (БД = API) | progress_display (API) |
+|---|---|---|
+| 1 | 0.0000 | ожидание валидации (validation.json ещё не создан) |
+| 2 | 0.0000 | ожидание валидации (validation.json ещё не создан) |
+| 3 | 0.0000 | ожидание валидации (validation.json ещё не создан) |
+| 4 | 0.0000 | ожидание валидации (validation.json ещё не создан) |
+| 5 | 0.0000 | ожидание валидации (validation.json ещё не создан) |
+| 6 | 0.0000 | ожидание валидации (validation.json ещё не создан) |
+| 7 | 0.0000 | ожидание валидации (validation.json ещё не создан) |
+| 8 | 0.0000 | ожидание валидации (validation.json ещё не создан) |
+| 9 | 0.0000 | ожидание валидации (validation.json ещё не создан) |
+| 10 | 0.0000 | ожидание валидации (validation.json ещё не создан) |
+| 11 | 0.0000 | ожидание валидации (validation.json ещё не создан) |
+| 12 | 0.0000 | фаза: TOC (сегментов 0 / 48) |
+| 13 | 0.0000 | фаза: TOC (сегментов 0 / 48) |
+| 14 | 0.0000 | фаза: TOC (сегментов 0 / 48) |
+| 15 | 0.0000 | фаза: TOC (сегментов 0 / 48) |
+| 16 | 0.0000 | фаза: TOC (сегментов 0 / 48) |
+| 17 | 0.0000 | фаза: TOC (сегментов 0 / 48) |
+| 18 | 0.0000 | фаза: TOC (сегментов 0 / 48) |
+| 19 | 0.0000 | фаза: TOC (сегментов 0 / 48) |
+| 20 | 0.0000 | фаза: TOC (сегментов 0 / 48) |
+| 21 | 0.0000 | фаза: TOC (сегментов 0 / 48) |
+| 22 | 0.0000 | фаза: TOC (сегментов 0 / 48) |
+| 23 | 0.0000 | фаза: TOC (сегментов 0 / 48) |
+| 24 | 0.0000 | фаза: TOC (сегментов 0 / 48) |
+| 25 | 0.0000 | фаза: TOC (сегментов 0 / 48) |
+| 26 | 0.0000 | фаза: TOC (сегментов 0 / 48) |
+| 27 | 0.1000 | глава 1 / 6, сегментов 0 / 48 |
+| 28 | 0.1000 | глава 1 / 6, сегментов 0 / 48 |
+| 29 | 0.1000 | глава 1 / 6, сегментов 0 / 48 |
+| 30 | 0.1000 | глава 1 / 6, сегментов 0 / 48 |
+| … | (23 ещё) | |
+
+вхождений «%» в progress_display за все срезы: 0
+
+ВЕРДИКТ: 53 >= 20 срезов, 0 расхождений, 0 % — PASS
+
+########## u1-2 ##########
+дата: 2026-09-17 21:39:18
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: U1-2 — 0 фиктивных процентов
+
+задание: j-20260917T183937Z-410678 (u1_tiny.epub, 2 главы, bilingual)
+статус: COMPLETED; alignment_coverage = 1.0
+допустимое значение «%» (измеренный охват E6): ['100.0']
+
+страница задания /jobs/{id}: вхождений «%» = 1, значения = ['100.0']
+  не из охвата выравнивания: []
+список /jobs: вхождений «%» = 6, значения = ['100.0', '100.0', '100.0', '100.0', '100.0', '100.0']
+  не из охвата выравнивания: []
+JSON API: progress_display = 'все фазы перевода завершены (сегментов 16 / 16)' — «%»: False
+JSON API: segments = {'processed': 16, 'total': 16} (реальные единицы)
+
+ВЕРДИКТ: все «%» = измеренный охват E6; фиктивных — 0 — PASS
+
+########## u1-3 ##########
+дата: 2026-09-17 21:39:18
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: U1-3 — LLM выключен (мёртвый порт 127.0.0.1:1)
+
+ответ GET /api/health (verbatim):
+{
+  "app": "ok",
+  "database": "ok",
+  "storage": "ok",
+  "worker": "error",
+  "llm": {
+    "translation": "error (ConnectError)",
+    "fill": "error (ConnectError)",
+    "analysis": "error (ConnectError)"
+  },
+  "epubcheck": "ok",
+  "nlp": {
+    "de": "ok",
+    "en": "ok",
+    "fr": "ok",
+    "it": "ok",
+    "nl": "ok",
+    "ru": "n/a (целевой язык)"
+  },
+  "detail": {
+    "worker": "heartbeat не найден (воркер не запущен?)"
+  }
+}
+
+llm/translation = 'error (ConnectError)' — error
+llm/fill = 'error (ConnectError)' — error
+llm/analysis = 'error (ConnectError)' — error
+ключ 'healthy' в ответе: False
+nlp/ru = 'n/a (целевой язык)' (целевой язык)
+
+ВЕРДИКТ: llm/* = error c причиной, общего флага нет — PASS
+
+########## u1-4 ##########
+дата: 2026-09-17 21:39:18
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: U1-4 — статусы пар API == свежему резолверу L0
+
+пар в матрице: 11; пар в API: 11
+
+| пара | API | резолвер (свежий) | не хватает (API) | совпадает |
+|---|---|---|---|---|
+| en → ru | supported | supported | — | да |
+| de → ru | supported | supported | — | да |
+| fr → ru | supported | supported | — | да |
+| nl → ru | supported | supported | — | да |
+| it → ru | supported | supported | — | да |
+| en → de | degraded | degraded | нет pair-промпта задачи analysis_vocabulary (пара en/de) — fallback на уровень generic; нет pair-промпта задачи analysis_grammar (пара en/de) — fallback на уровень generic | да |
+| de → en | degraded | degraded | нет pair-промпта задачи analysis_vocabulary (пара de/en) — fallback на уровень generic; нет pair-промпта задачи analysis_grammar (пара de/en) — fallback на уровень generic | да |
+| fr → en | degraded | degraded | нет pair-промпта задачи analysis_vocabulary (пара fr/en) — fallback на уровень generic; нет pair-промпта задачи analysis_grammar (пара fr/en) — fallback на уровень generic | да |
+| it → en | degraded | degraded | нет pair-промпта задачи analysis_vocabulary (пара it/en) — fallback на уровень generic; нет pair-промпта задачи analysis_grammar (пара it/en) — fallback на уровень generic | да |
+| nl → en | degraded | degraded | нет pair-промпта задачи analysis_vocabulary (пара nl/en) — fallback на уровень generic; нет pair-промпта задачи analysis_grammar (пара nl/en) — fallback на уровень generic | да |
+| en → ja | unsupported | unsupported | нет пакета целевого языка: ja/pack.yaml; нет pair-промпта задачи analysis_vocabulary (пара en/ja) — fallback на уровень generic; нет pair-промпта задачи analysis_grammar (пара en/ja) — fallback на уровень generic; промпт задачи analysis_glossary не резолвится (пара en/ja) (pair_required: ошибка на этапе анализа, E4.3 — тихого fallback нет) | да |
+
+расхождений: 0
+
+ВЕРДИКТ: PASS
+
+########## u1-5 ##########
+дата: 2026-09-17 21:39:18
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: U1-5 — «Estimated CEFR level» для всех derived-языков
+
+языков в реестре: 6; derived (фактически): ['de', 'en', 'fr', 'it', 'nl', 'ru']
+
+| код | название | cefr_source | cefr_label (API, verbatim) |
+|---|---|---|---|
+| de | German | derived | Estimated CEFR level |
+| en | English | derived | Estimated CEFR level |
+| fr | French | derived | Estimated CEFR level |
+| it | Italian | derived | Estimated CEFR level |
+| nl | Dutch | derived | Estimated CEFR level |
+| ru | Russian | derived | Estimated CEFR level |
+
+«Estimated CEFR level» в ответе: 6 (derived-языков: 6)
+
+ВЕРДИКТ: 100% мест отображения — PASS
+
+########## u1-6 ##########
+дата: 2026-09-17 21:39:18
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: U1-6 — каждый /api-endpoint (каждый метод) имеет потребителя
+
+endpoint'ов API: 23
+
+| endpoint | методы | потребитель (файл, литерал) | найден |
+|---|---|---|---|
+| /api/books | GET | app/web/templates/books.html: 'data-u1-fetch="/api/books"' | да |
+| /api/books | GET | app/web/static/app.js: 'fetchJSON("/api/books", { method: "POST"' | да |
+| /api/books | POST | app/web/templates/books.html: 'data-u1-fetch="/api/books"' | да |
+| /api/books | POST | app/web/static/app.js: 'fetchJSON("/api/books", { method: "POST"' | да |
+| /api/books/{filename} | DELETE | app/web/static/app.js: '"/api/books/" + encodeURIComponent(name)' | да |
+| /api/config | GET | app/web/templates/settings.html: 'data-u1-fetch="/api/config"' | да |
+| /api/health | GET | app/web/templates/settings.html: 'data-u1-fetch="/api/health"' | да |
+| /api/jobs | GET | app/web/templates/jobs.html: 'data-u1-fetch="/api/jobs"' | да |
+| /api/jobs | GET | app/web/static/app.js: 'fetchJSON("/api/jobs", {' | да |
+| /api/jobs | POST | app/web/templates/jobs.html: 'data-u1-fetch="/api/jobs"' | да |
+| /api/jobs | POST | app/web/static/app.js: 'fetchJSON("/api/jobs", {' | да |
+| /api/jobs/purge | POST | app/web/static/app.js: 'fetchJSON("/api/jobs/purge", {' | да |
+| /api/jobs/{job_id} | DELETE | app/web/static/app.js: '"/api/jobs/" + encodeURIComponent(jobId)' | да |
+| /api/jobs/{job_id} | DELETE | app/web/static/app.js: '"/api/jobs/" + encodeURIComponent(job), { method: "DELETE"' | да |
+| /api/jobs/{job_id} | GET | app/web/static/app.js: '"/api/jobs/" + encodeURIComponent(jobId)' | да |
+| /api/jobs/{job_id} | GET | app/web/static/app.js: '"/api/jobs/" + encodeURIComponent(job), { method: "DELETE"' | да |
+| /api/jobs/{job_id}/cancel | POST | app/web/static/app.js: '"u1-cancel", "cancel"' | да |
+| /api/jobs/{job_id}/confirm | POST | app/web/static/app.js: '"/confirm"' | да |
+| /api/jobs/{job_id}/logs | GET | app/web/templates/job.html: '/api/jobs/{{ facts.id }}/logs' | да |
+| /api/jobs/{job_id}/logs/clear | POST | app/web/static/app.js: '"/logs/clear"' | да |
+| /api/jobs/{job_id}/pause | POST | app/web/static/app.js: '"u1-pause", "pause"' | да |
+| /api/jobs/{job_id}/quality | GET | app/web/templates/job.html: '/api/jobs/{{ facts.id }}/quality' | да |
+| /api/jobs/{job_id}/result | GET | app/web/templates/job.html: '/api/jobs/{{ facts.id }}/result' | да |
+| /api/jobs/{job_id}/resume | POST | app/web/static/app.js: '"u1-resume", "resume"' | да |
+| /api/languages | GET | app/web/templates/languages.html: 'data-u1-fetch="/api/languages"' | да |
+| /api/models | GET | app/web/templates/models.html: 'data-u1-fetch="/api/models"' | да |
+| /api/prompts | POST | app/web/static/app.js: 'fetchJSON("/api/prompts", {' | да |
+| /api/prompts/content | GET | app/web/static/app.js: '"/api/prompts/content?path="' | да |
+| /api/prompts/version | DELETE | app/web/static/app.js: '"/api/prompts/version?path="' | да |
+
+расхождений: 0
+
+ВЕРДИКТ: 0 endpoint'ов без потребителя — PASS
+
+########## u1-7 ##########
+дата: 2026-09-17 21:39:18
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: U1-7 — доступ без секрета: 401; с секретом: работают
+
+маршрутов проверено: 17
+
+| маршрут | без секрета | с секретом |
+|---|---|---|
+| / | 401 | 200 |
+| /books | 401 | 200 |
+| /jobs | 401 | 200 |
+| /languages | 401 | 200 |
+| /models | 401 | 200 |
+| /prompts | 401 | 200 |
+| /settings | 401 | 200 |
+| /api/health | 401 | 200 |
+| /api/languages | 401 | 200 |
+| /api/books | 401 | 200 |
+| /api/jobs | 401 | 200 |
+| /api/models | 401 | 200 |
+| /api/config | 401 | 200 |
+| /jobs/no-such-job | 401 | 404 |
+| /api/jobs/no-such-job | 401 | 404 |
+| /static/app.js | 401 | 200 |
+| /static/style.css | 401 | 200 |
+
+неправильный секрет: 401 (ожидался 401)
+POST /api/jobs без секрета: 401 (ожидался 401)
+WWW-Authenticate (verbatim): 'Basic realm="epubtranslator"'
+
+ВЕРДИКТ: 100% маршрутов — 401 без секрета / работают с ним — PASS
+
+########## u1-8 ##########
+дата: 2026-09-17 21:39:18
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: U1-8 — 0 секретов в HTML/JSON и access log реального uvicorn
+
+секреты: 'u1-secret-auth-7f3a', 'u1-secret-llm-91c4'
+ответов проверено: 13 × 2 секретов; вхождений: 0
+
+access log (первые 12 строк, verbatim):
+Started server process [1302455]
+Waiting for application startup.
+Application startup complete.
+Uvicorn running on http://127.0.0.1:51117 (Press CTRL+C to quit)
+127.0.0.1:54114 - "GET /jobs HTTP/1.1" 200
+127.0.0.1:54114 - "GET /api/health HTTP/1.1" 200
+127.0.0.1:54114 - "GET /static/app.js HTTP/1.1" 200
+127.0.0.1:54114 - "GET /jobs HTTP/1.1" 401
+Shutting down
+Waiting for application shutdown.
+Application shutdown complete.
+Finished server process [1302455]
+вхождений секретов в access log: 0
+
+ВЕРДИКТ: 0 вхождений в ответах и access log — PASS
+
+########## u1-9 ##########
+дата: 2026-09-17 21:39:18
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: U1-9 — список правок L3 в UI == quality.log (0 расхождений)
+
+задание: j-20260917T183946Z-d3f8ab (wexley-книга, 7 сегментов, сценарий glossary_inconsistent)
+статус: COMPLETED
+l3: attempted=3 applied=3 rejected=0
+строк kind=glossary_fix в quality.log: 3
+правок в UI (GET /api/jobs/j-20260917T183946Z-d3f8ab/quality → l3.fixes): 3
+
+| segment_id | doc | термин | UI applied | в quality.log |
+|---|---|---|---|---|
+| 2489455fc18ac6b23ac296bbdb1f0ec4e083597b3078d90508f9346839d2d95a | OEBPS/chapter1.xhtml | Wexley | да | да |
+| 533ccc006c8a97c149a60c74ed02f9fcdcdb93241776c7d784454e36dcc4c179 | OEBPS/chapter1.xhtml | Wexley | да | да |
+| 759ecabc3d20304bab278c1c2fc39ae78a741957f82ed20c0ad2ee81ddf9a66d | OEBPS/chapter1.xhtml | Wexley | да | да |
+
+расхождений: 0
+
+ВЕРДИКТ: UI == quality.log, правок фактических: 3 — PASS
+
+########## u2-1 ##########
+дата: 2026-09-17 21:39:18
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: U2-1 — дублирование бизнес-логики CLI/API = 0 (проверка по сервисам)
+
+1. Таблица «команда → сервис» (docstring app/cli.py, verbatim):
+
+  Командный интерфейс ``epubtranslator`` (U2, ТЗ_04 §U2).
+  
+  CLI поверх тех же сервисов, что API (U2-1: собственной бизнес-логики нет —
+  проверка по вызываемым сервисам):
+  - ``app.services.jobs`` — ``create_job`` (тот же вызов, что ``POST /api/jobs``);
+  - ``app.services.analyze`` — ``scan_book`` (тот же вызов, что ``POST /api/books``);
+  - ``app.storage.jobs_repo`` — ``list_jobs``/``get``/``request_resume``/
+    ``request_cancel`` (то же, что job-endpoint'ы API, E3.1);
+  - ``app.web.views`` — ``job_facts``/``progress_facts``/``languages_view``
+    (то же, что ``GET /api/jobs/{id}``/``GET /api/jobs``/``GET /api/languages``);
+  - ``app.epub.reader`` + ``app.adapters.epub_engine.epubcheck`` — ``validate``
+    (тот же ридер E2.5 и тот же EPUBCheck E5.7, что стадия валидации выхода);
+  - ``app.languages.resolver`` — предотбор пары (тот же механизм, что
+    предпроверка ``dc:language`` в ``create_job``, L0.7).
+  
+  Коды выхода (``app.core.errors``, U2-2): 0 — успех; 1 — неуспешное задание
+  (FAILED/CANCELLED/INTERRUPTED) либо прочие; 2 — конфигурация; 3 — валидация
+  входа; 4 — недоступность LLM; 5 — отказ валидации выхода. Успешный код выхода
+  при неуспешном задании — дефект: исход задания отражают ``translate --wait``
+  и ``job status``.
+  
+  Запуск: ``python -m app.cli <команда> …`` (после установки —
+  ``epubtranslator <команда>``). Воркер — отдельный процесс
+  (``python -m app.workers.run --loop``); CLI не запускает его.
+
+2. Все импорты app.* в app/cli.py (verbatim; только сервисный слой):
+  from app.adapters.epub_engine.epubcheck import run_epubcheck
+  from app.core.config import Settings, load_settings
+  from app.core.errors import (
+  from app.domain.job import TERMINAL_STATES, Job, JobStatus
+  from app.epub.reader import read_epub
+  from app.languages.resolver import PairResolver, PairStatus
+  from app.learning import card_export
+  from app.services.analyze import scan_book
+  from app.services.jobs import create_job
+  from app.storage.database import Database
+  from app.storage.jobs_repo import JobRepository
+  from app.web import views
+
+3. Паритет «CLI analyze» и «POST /api/books» (одна книга, один scan_book):
+  $ python -m app.cli --config <cfg> --env <env> analyze u3_tiny.epub  →  rc=0
+  | заголовок: U1 Tiny EN
+  | dc:language: en
+  | определён: en (уверенность 1.0)
+  | вероятности: en 1.0
+  | решение L0.5: accepted (принят: en)
+  | статистика: глав 2, сегментов 16, слов 224
+  API /api/books (та же книга, verbatim ключевые поля):
+  | {"title": "U1 Tiny EN", "dc_language": "en", "detected": "en", "confidence": 1.0, "decision": "accepted", "probabilities": {"en": 1.0}}
+  сверка (строка CLI == значение API):
+    заголовок: OK
+    определён (detected): OK
+    решение L0.5: OK
+    вероятности (top-3): OK
+
+4. Паритет «CLI languages» и «GET /api/languages» (languages_view):
+  языков: CLI 6 / API 6; пар: CLI 11 / API 11
+  все коды языков API присутствуют в CLI: OK
+
+ВЕРДИКТ: U2-1 (0 дублирования, паритет вывода) — PASS
+
+########## u2-2 ##########
+дата: 2026-09-17 21:39:18
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: U2-2 — код выхода соответствует исходу задания (8 сценариев, verbatim)
+
+--- сценарий 5: translate со сломанным конфигом → 2
+  $ python -m app.cli --config <cfg> --env <env> translate u2_tiny.epub --source en --target ru --mode bilingual  [cfg не существует]
+  rc = 2
+  | ошибка конфигурации: источники конфигурации недоступны
+
+--- сценарий 6: translate несуществующего файла → 3
+  $ python -m app.cli --config <cfg> --env <env> translate no_such_book.epub --source en --target ru --mode bilingual
+  rc = 3
+  | ошибка: файл не найден: /tmp/u3-evidence-x7to71ra/no_such_book.epub
+
+--- сценарий 7: translate не-ZIP → 3
+  $ python -m app.cli --config <cfg> --env <env> translate u2ev_not_zip.epub --source en --target ru --mode bilingual
+  rc = 3
+  | ошибка: не является ZIP-архивом: u2ev_not_zip.epub
+
+--- сценарий 8: validate повреждённого EPUB → 3
+  $ python -m app.cli --config <cfg> --env <env> validate u2ev_not_zip.epub
+  rc = 3
+  | ошибка: не является ZIP-архивом: u2ev_not_zip.epub
+
+--- сценарий 1: translate валидное → 0
+  $ python -m app.cli --config <cfg> --env <env> translate u2_tiny.epub --source en --target ru --mode bilingual
+  rc = 0
+  | задание: j-20260917T184005Z-0e6647
+  | статус: CREATED
+  | воркер — отдельный процесс: python -m app.workers.run --loop
+
+--- сценарий 3: translate --wait при LLM down → 1 (FAILED, причина as-is)
+  $ python -m app.cli --config <cfg> --env <env> translate u2_tiny.epub --source en --target ru --mode bilingual --wait 180  [профиль: LLM base_url = 127.0.0.1:1 (dead)]
+  rc = 1
+  | задание: j-20260917T184006Z-9815a6
+  | статус: CREATED
+  | исход: FAILED
+  | причина: задача glossary_annotation не выполнена: после 3 попыток ответ невалиден (последняя проблема: ConnectError: [Errno 111] Connection refused); пустой артефакт не создаётся (E4-4)
+
+--- сценарий 2: translate --wait → COMPLETED → 0
+  $ python -m app.cli --config <cfg> --env <env> translate u2_tiny.epub --source en --target ru --mode bilingual --level Learning --wait 300
+  rc = 0
+  | задание: j-20260917T184009Z-8c5497
+  | статус: CREATED
+  | исход: COMPLETED_WITH_WARNINGS
+
+--- сценарий 2b: job status COMPLETED → 0
+  $ python -m app.cli --config <cfg> --env <env> job status j-20260917T184009Z-8c5497
+  rc = 0
+  | задание: j-20260917T184009Z-8c5497
+  | статус: COMPLETED_WITH_WARNINGS
+  | пара: en → ru  режим: bilingual
+  | learning, уровень: Learning
+
+--- сценарий 4: job status CANCELLED → 1
+  $ python -m app.cli --config <cfg> --env <env> job status j-20260917T184019Z-f5b496  [job cancel: rc=0]
+  rc = 1
+  | задание: j-20260917T184019Z-f5b496
+  | статус: CANCELLED
+  | пара: en → ru  режим: bilingual
+  | прогресс: фаза: metadata (сегментов 0 / 48)
+
+сценариев: 9/8 (+2b)
+не сошлись: нет (0)
+
+ВЕРДИКТ: U2-2 (8/8 сценариев кодов выхода) — PASS
+
+########## u2-3 ##########
+дата: 2026-09-17 21:39:18
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: U2-3 — задание из CLI видно в UI (API) и наоборот (100%)
+
+1. Задание создано CLI (verbatim stdout):
+  | задание: j-20260917T184026Z-8648a8
+  | статус: CREATED
+  | воркер — отдельный процесс: python -m app.workers.run --loop
+
+   тот же id в GET /api/jobs (строка verbatim JSON):
+   | {"id": "j-20260917T184026Z-8648a8", "status": "CREATED", "source_language": null, "target_language": "ru", "mode": "bilingual", "learning_level": null, "learning_cefr": null, "progress": 0.0, "progress_display": "ожидание валидации (validation.json ещё не создан)", "alignment_coverage": null, "tokens_total": 0, "error": null, "book_name": "u3_tiny.epub", "created_at": 1789670426.9656174, "updated_at": 1789670426.9656174, "created_at_human": "2026-09-17 21:40:26", "updated_at_human": "2026-09-17 21:40:26"}
+   GET /api/jobs/j-20260917T184026Z-8648a8: HTTP 200, status='CREATED'
+
+2. Задание создано API (id=j-20260917T184027Z-5eee36, u2_slow.epub).
+   то же задание в CLI job list (строка verbatim):
+   | j-20260917T184027Z-5eee36  CREATED                   —→ru  bilingual  ожидание валидации (validation.json ещё не создан)
+   CLI job status (rc и строка статуса verbatim):
+   | rc=0 | статус: CREATED
+   API status: 'CREATED'
+
+ВЕРДИКТ: U2-3 (CLI→UI и UI→CLI) — PASS
+
+########## t-u2-4 ##########
+дата: 2026-09-17 21:39:18
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: T-U2-4 — validate повреждённого EPUB: ненулевой код + внятное сообщение
+
+1. Повреждённый EPUB (текстовый файл с расширением .epub):
+   $ python -m app.cli --config <cfg> --env <env> validate u2ev_broken.epub
+   rc = 3
+   | ошибка: не является ZIP-архивом: u2ev_broken.epub
+
+2. Контроль: валидная книга (u2_tiny.epub):
+   $ python -m app.cli --config <cfg> --env <env> validate u2_tiny.epub
+   rc = 0
+   | EPUBCheck v5.3.0: 0 FATAL, 0 ERROR, WARNING 0
+
+ВЕРДИКТ: T-U2-4 (повреждённый → код 3 + сообщение; валидная → 0 + версия) — PASS
+
+########## t-u1-10 ##########
+дата: 2026-09-17 21:39:18
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: T-U1-10 — LLM off в середине перевода: FAILED + причина в UI
+
+задание: j-20260917T184035Z-e7f782 (u1_slow.epub, 6 глав, LLM остановлен в TRANSLATING)
+статус: FAILED
+error (API, verbatim): задача glossary_annotation не выполнена: после 3 попыток ответ невалиден (последняя проблема: ConnectError: [Errno 111] Connection refused); пустой артефакт не создаётся (E4-4)
+progress_display (API, verbatim): фаза: TOC (сегментов 0 / 48)
+status_terminal: True
+
+страница /jobs/{id}: причина ошибки в HTML — да
+страница /jobs/{id}: статус-класс status-failed — да
+строка verbatim: <span class="status-failed">FAILED</span>
+
+ВЕРДИКТ: FAILED + причина в UI/API, прогресс не «в работе» — PASS

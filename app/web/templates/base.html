@@ -3,32 +3,38 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ title }} · EpubTranslator</title>
+  <title>{{ s["brand"] }} — {{ title }}</title>
   <link rel="stylesheet" href="/static/style.css">
+  <script id="u3-strings" type="application/json">{{ s | tojson }}</script>
+  <script id="u3-ui" type="application/json">{{ ui | tojson }}</script>
+  <meta name="u3-csrf" content="{{ csrf }}">
+  {# U3-2.5: mobile-first: base state = cards; table switches on from
+     ui.mobile_breakpoint_px+1 (value from YAML, Rule 1). #}
+  <style>
+    @media (min-width: {{ ui.mobile_breakpoint_px + 1 }}px) {
+      .u3-cards { display: none; }
+      .u3-table { display: table; }
+    }
+  </style>
 </head>
 <body>
-<header>
-  <a class="brand" href="/jobs">EpubTranslator</a>
-  <nav>
-    <a href="/books">Books</a>
-    <a href="/jobs">Jobs</a>
-    <a href="/languages">Languages</a>
-    <a href="/models">Models</a>
-    <a href="/prompts">Prompts</a>
-    <a href="/settings">Settings</a>
+<header class="u3-header">
+  <a class="u3-brand" href="/jobs">{{ s["brand"] }}</a>
+  <nav class="u3-nav" aria-label="{{ s["brand"] }}">
+    <a class="u3-nav-link{% if current == 'books' %} is-current{% endif %}" href="/books" {% if current == 'books' %}aria-current="page"{% endif %}>{{ s["nav_books"] }}</a>
+    <a class="u3-nav-link{% if current == 'jobs' %} is-current{% endif %}" href="/jobs" {% if current == 'jobs' %}aria-current="page"{% endif %}>{{ s["nav_jobs"] }}</a>
+    <a class="u3-nav-link{% if current == 'languages' %} is-current{% endif %}" href="/languages" {% if current == 'languages' %}aria-current="page"{% endif %}>{{ s["nav_languages"] }}</a>
+    <a class="u3-nav-link{% if current == 'models' %} is-current{% endif %}" href="/models" {% if current == 'models' %}aria-current="page"{% endif %}>{{ s["nav_models"] }}</a>
+    <a class="u3-nav-link{% if current == 'prompts' %} is-current{% endif %}" href="/prompts" {% if current == 'prompts' %}aria-current="page"{% endif %}>{{ s["nav_prompts"] }}</a>
+    <a class="u3-nav-link{% if current == 'settings' %} is-current{% endif %}" href="/settings" {% if current == 'settings' %}aria-current="page"{% endif %}>{{ s["nav_settings"] }}</a>
   </nav>
 </header>
-<main>
+<main class="u3-main">
 {% block content %}{% endblock %}
 </main>
-<footer>
-  {% if auth_on %}
-    доступ: привязка к Tailscale + общий секрет (HTTP Basic)
-  {% else %}
-    доступ: привязка к Tailscale; auth: off (SERVER_AUTH_SECRET не задан)
-  {% endif %}
-  · воркер — отдельный процесс: <code>python -m app.workers.run --loop</code>
-  (запуск из UI: <span class="ni">Not implemented</span>)
+<footer class="u3-footer">
+  <p>{{ s["footer_auth_on"] if auth_on else s["footer_auth_off"] }}</p>
+  <p>{{ s["footer_worker_pre"] }} <code>{{ s["footer_worker_cmd"] }}</code> — {{ s["footer_worker_ui"] }}</p>
 </footer>
 <script src="/static/app.js"></script>
 </body>

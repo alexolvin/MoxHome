@@ -1,0 +1,15 @@
+дата: 2026-09-17 21:39:18
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: U3-12 — честность: 7 слов × все страницы
+
+допустимый словарь (статусы + ошибки + причины): ['ANALYZING', 'CANCELLED', 'COMPLETED', 'COMPLETED_WITH_WARNINGS', 'CREATED', 'FAILED', 'GENERATING', 'GLOSSARY_FIX', 'INTERRUPTED', 'LEARNING', 'NEEDS_CONFIRMATION', 'PAUSED', 'PLANNING', 'TRANSLATING', 'VALIDATING', 'VALIDATING_OUTPUT', 'u3-ev-2', 'u3-ev-5-1', 'u3-ev-5-2', 'u3-ev-5-3', 'u3-ev-5-4', 'u3-ev-6', 'u3-ev-8-backlog', 'начало этапа', 'результат валидирован (вкл. L3, S)']
+
+| страница | слово | вхождений | допустимо |
+|---|---|---|---|
+| jobs | completed | 12 | да |
+
+недопустимых вхождений: 0
+
+ВЕРДИКТ: недопустимых вхождений 0 — PASS

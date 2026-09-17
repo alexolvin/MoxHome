@@ -1,6 +1,52 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Models</h1>
-<div id="u1-models" data-u1-fetch="/api/models" data-u1-render="models">загрузка…</div>
-<p class="hint">LLM-профили (translation / fill / analysis). API-ключи не отображаются — только признак «задан».</p>
+<h1>{{ s["title_models"] }}</h1>
+<p class="hint">{{ s["models_hint"] }}</p>
+
+<div id="u1-models" data-u1-fetch="/api/models" data-u1-render="models">
+  <table class="u3-table">
+    <thead>
+      <tr>
+        <th scope="col">{{ s["models_col_profile"] }}</th>
+        <th scope="col">{{ s["models_col_endpoint"] }}</th>
+        <th scope="col">{{ s["models_col_model"] }}</th>
+        <th scope="col">{{ s["models_col_key"] }}</th>
+        <th scope="col">{{ s["models_col_timeout"] }}</th>
+        <th scope="col">{{ s["models_col_retry"] }}</th>
+        <th scope="col">{{ s["models_col_concurrency"] }}</th>
+        <th scope="col">{{ s["models_col_cost"] }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in models %}
+      <tr>
+        <td class="u3-mono">{{ m.name }}</td>
+        <td class="u3-mono u3-nowrap">{{ m.base_url }}</td>
+        <td class="u3-mono">{{ m.model }}</td>
+        <td>{{ s["models_key_set"] if m.api_key_set else s["models_key_unset"] }}</td>
+        <td>{{ m.timeout_seconds }}</td>
+        <td>{{ m.retry_times }}</td>
+        <td>{{ m.concurrency }}</td>
+        <td>{{ m.cost }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="u3-cards">
+    {% for m in models %}
+    <article class="u3-card">
+      <dl class="u3-card-fields">
+        <div class="u3-field"><dt>{{ s["models_col_profile"] }}</dt><dd class="u3-mono">{{ m.name }}</dd></div>
+        <div class="u3-field"><dt>{{ s["models_col_endpoint"] }}</dt><dd class="u3-mono">{{ m.base_url }}</dd></div>
+        <div class="u3-field"><dt>{{ s["models_col_model"] }}</dt><dd class="u3-mono">{{ m.model }}</dd></div>
+        <div class="u3-field"><dt>{{ s["models_col_key"] }}</dt><dd>{{ s["models_key_set"] if m.api_key_set else s["models_key_unset"] }}</dd></div>
+        <div class="u3-field"><dt>{{ s["models_col_timeout"] }}</dt><dd>{{ m.timeout_seconds }}</dd></div>
+        <div class="u3-field"><dt>{{ s["models_col_retry"] }}</dt><dd>{{ m.retry_times }}</dd></div>
+        <div class="u3-field"><dt>{{ s["models_col_concurrency"] }}</dt><dd>{{ m.concurrency }}</dd></div>
+        <div class="u3-field"><dt>{{ s["models_col_cost"] }}</dt><dd>{{ m.cost }}</dd></div>
+      </dl>
+    </article>
+    {% endfor %}
+  </div>
+</div>
 {% endblock %}

@@ -13,6 +13,18 @@ import pytest
 
 from app.core.config import ALL_ENV_KEYS, PROFILE_NAMES
 
+if __package__ in (None, ""):  # запуск не через pytest: tests/ на sys.path
+    import sys as _sys
+    from pathlib import Path as _Path
+
+    _tests_dir = str(_Path(__file__).resolve().parent)
+    if _tests_dir not in _sys.path:
+        _sys.path.insert(0, _tests_dir)
+
+# U1Env (tests/test_u1_web.py) — общее окружение для последующих стадий:
+# tests/test_u3_web.py просит фикстуру u1_env без собственного дубля.
+from test_u1_web import u1_env  # noqa: F401 — фикстура, не вызов
+
 #: Секреты и адрес бинда (E4.1: адрес/модель LLM сюда не входят).
 DEFAULT_ENV: dict[str, str] = {
     "SERVER_BIND_ADDRESS": "127.0.0.1",

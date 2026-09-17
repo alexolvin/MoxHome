@@ -1,0 +1,26 @@
+дата: 2026-09-17 21:39:18
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: U3-11 — доступность (статически по HTML и CSS)
+
+контролов без label/aria-label: 0
+<th> без scope: 0
+
+| пара | контраст | ≥ 4.5:1 |
+|---|---|---|
+| --u3-text / --u3-bg | 17.40 | да |
+| --u3-muted / --u3-bg | 7.46 | да |
+| --u3-accent / --u3-bg | 8.22 | да |
+| --u3-ok / --u3-bg | 5.47 | да |
+| --u3-err / --u3-bg | 7.33 | да |
+| --u3-warn / --u3-bg | 4.92 | да |
+| --u3-cancelled / --u3-bg | 5.74 | да |
+| --u3-text / --u3-head-bg | 15.82 | да |
+| --u3-text / --u3-pre-bg | 16.10 | да |
+
+тап-цель: --u3-tap = 44px; область: button, .btn, select, input, textarea, summary, .u3-nav-link, .u3-check (ссылка-логотип <a> вне области)
+базовых селекторов без min-height: var(--u3-tap): 0
+height/min-height в px < 44 на интерактивных элементах: 0
+
+ВЕРДИКТ: 0/0/0/0 (label/scope/контраст/тап) — PASS

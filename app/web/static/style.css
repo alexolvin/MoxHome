@@ -1,24 +1,388 @@
-/* U1: минимальный CSS (ТЗ: без фреймворков и build-инструментов). */
-body { font-family: system-ui, -apple-system, sans-serif; margin: 0; color: #1a1a1a; }
-header { display: flex; gap: 1rem; align-items: baseline; padding: .75rem 1rem; border-bottom: 1px solid #ccc; }
-.brand { font-weight: 700; text-decoration: none; color: #1a1a1a; }
-nav a { margin-right: .75rem; text-decoration: none; color: #14508c; }
-main { padding: 1rem; max-width: 1100px; }
-table { border-collapse: collapse; margin: .5rem 0 1rem; width: 100%; }
-th, td { border: 1px solid #ccc; padding: .3rem .5rem; text-align: left; vertical-align: top; font-size: .9rem; }
-th { background: #f4f4f4; }
-footer { padding: .75rem 1rem; border-top: 1px solid #ccc; font-size: .8rem; color: #555; }
-.err { color: #b00020; }
-.ok { color: #0a7a2f; }
-.hint { color: #555; font-size: .85rem; }
-.ni { font-weight: 600; }
-form label { margin-right: 1rem; }
-.actions { margin: 1rem 0; display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
-button, .btn { padding: .3rem .7rem; }
-a.btn { text-decoration: none; }
-pre { background: #f6f6f6; padding: .5rem; overflow-x: auto; font-size: .8rem; }
-.status-completed, .status-completed_with_warnings { color: #0a7a2f; font-weight: 600; }
-.status-failed { color: #b00020; font-weight: 600; }
-.status-cancelled { color: #666; }
-.status-paused { color: #8a6d00; font-weight: 600; }
-details { margin: .75rem 0; }
+/* U3: mobile-first. Все цвета — только в :root (U3-3); числовые значения
+ * интерфейса — в settings.ui (Rule 1), в CSS их нет, кроме тап-цели 44 px
+ * (критерий 3.3.14 — фиксированный минимум, не настраиваемый параметр).
+ * Базовое состояние — карточки (.u3-cards видно, .u3-table скрыт);
+ * переключение на таблицу делает медиазапрос в base.html (ui.mobile_breakpoint_px+1).
+ */
+
+:root {
+  --u3-bg: #ffffff;
+  --u3-text: #1a1a1a;
+  --u3-muted: #555555;
+  --u3-accent: #14508c;
+  --u3-ok: #0a7a2f;
+  --u3-err: #b00020;
+  --u3-warn: #8a6d00;
+  --u3-cancelled: #666666;
+  --u3-head-bg: #f4f4f4;
+  --u3-pre-bg: #f6f6f6;
+  --u3-border: #cccccc;
+  --u3-tap: 44px;
+  --u3-radius: 6px;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.4;
+  background: var(--u3-bg);
+  color: var(--u3-text);
+}
+
+/* ---------------------------------------------------------------- каркас */
+
+.u3-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--u3-head-bg);
+  border-bottom: 1px solid var(--u3-border);
+}
+
+.u3-brand {
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-decoration: none;
+  color: var(--u3-text);
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--u3-tap);
+}
+
+.u3-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  /* навигация переносится внутри СВОЕГО блока, без влияния на layout */
+}
+
+.u3-nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--u3-tap);
+  min-width: var(--u3-tap);
+  padding: 0.25rem 0.6rem;
+  text-decoration: none;
+  color: var(--u3-accent);
+  border-radius: var(--u3-radius);
+}
+
+.u3-nav-link.is-current {
+  background: var(--u3-bg);
+  border-bottom: 2px solid var(--u3-accent);
+  font-weight: 600;
+}
+
+.u3-main {
+  padding: 1rem;
+  max-width: 70rem;
+  margin: 0 auto;
+}
+
+.u3-footer {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--u3-border);
+  font-size: 0.85rem;
+  color: var(--u3-muted);
+}
+
+.u3-footer p { margin: 0.25rem 0; overflow-wrap: anywhere; }
+
+h1 { font-size: 1.4rem; margin: 0.5rem 0; }
+h2 { font-size: 1.15rem; margin: 1rem 0 0.5rem; }
+
+/* ---------------------------------------------------------------- панели/формы */
+
+.u3-panel {
+  border: 1px solid var(--u3-border);
+  border-radius: var(--u3-radius);
+  padding: 0.75rem;
+  margin: 0.75rem 0;
+}
+
+.u3-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.u3-filter fieldset {
+  border: 1px solid var(--u3-border);
+  border-radius: var(--u3-radius);
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.u3-filter fieldset legend { padding: 0 0.25rem; font-weight: 600; }
+
+.u3-filter label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.u3-check {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: var(--u3-tap);
+  padding: 0 0.25rem;
+}
+
+.u3-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ---------------------------------------------------------------- контролы (тап-цель 44 px) */
+
+button,
+.btn,
+select,
+input[type="text"],
+input[type="date"],
+input[type="file"] {
+  font: inherit;
+  color: var(--u3-text);
+  background: var(--u3-bg);
+  border: 1px solid var(--u3-border);
+  border-radius: var(--u3-radius);
+  min-height: var(--u3-tap);
+  min-width: var(--u3-tap);
+  /* интринсивная ширина (select = самая длинная опция, file-input =
+     UA-default) не должна расширять контейнер — TZ U3 п. 6:
+     body без горизонтальной прокрутки */
+  max-width: 100%;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+}
+
+select, input[type="text"], input[type="date"] { cursor: default; }
+input[type="file"] { padding: 0.4rem; }
+
+.u3-filter label,
+.u3-filter fieldset {
+  min-width: 0;
+}
+
+button[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+a.btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: var(--u3-text);
+}
+
+a { color: var(--u3-accent); overflow-wrap: anywhere; }
+
+textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+  color: var(--u3-text);
+  background: var(--u3-bg);
+  border: 1px solid var(--u3-border);
+  border-radius: var(--u3-radius);
+  padding: 0.5rem;
+  width: 100%;
+  min-height: var(--u3-tap);
+}
+
+:focus-visible {
+  outline: 2px solid var(--u3-accent);
+  outline-offset: 2px;
+}
+
+details { margin: 0.75rem 0; }
+
+summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--u3-tap);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------------- таблицы (desktop) */
+
+.u3-table {
+  display: none; /* включается медиазапросом base.html (ui.mobile_breakpoint_px+1) */
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5rem 0 1rem;
+}
+
+.u3-table th,
+.u3-table td,
+.u3-facts th,
+.u3-facts td {
+  border: 1px solid var(--u3-border);
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.u3-table thead th { background: var(--u3-head-bg); }
+
+.u3-facts { border-collapse: collapse; margin: 0.5rem 0; width: 100%; }
+.u3-facts th[scope="row"] {
+  background: var(--u3-head-bg);
+  min-width: 120px;
+  white-space: nowrap;
+}
+
+/* компактные таблицы без карточного дубля (health, правки L3) */
+.u3-static {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+}
+
+.u3-static th,
+.u3-static td {
+  border: 1px solid var(--u3-border);
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.u3-static thead th { background: var(--u3-head-bg); }
+
+/* ---------------------------------------------------------------- карточки (mobile) */
+
+.u3-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.75rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.u3-card {
+  border: 1px solid var(--u3-border);
+  border-radius: var(--u3-radius);
+  padding: 0.5rem 0.75rem 0.75rem;
+}
+
+.u3-card-fields {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 0.75rem;
+  margin: 0;
+}
+
+.u3-field { display: contents; }
+
+.u3-card-fields dt {
+  color: var(--u3-muted);
+  overflow-wrap: anywhere;
+  align-self: start;
+}
+
+.u3-card-fields dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.u3-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--u3-border);
+}
+
+.u3-row-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+/* ---------------------------------------------------------------- служебное */
+
+.hint { color: var(--u3-muted); font-size: 0.85rem; }
+.err { color: var(--u3-err); font-weight: 600; }
+.ok { color: var(--u3-ok); font-weight: 600; }
+.u3-warn { color: var(--u3-warn); font-weight: 600; }
+.u3-danger { color: var(--u3-err); font-weight: 600; }
+.u3-empty { padding: 1rem 0; }
+.u3-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+pre, .u3-pre {
+  background: var(--u3-pre-bg);
+  border: 1px solid var(--u3-border);
+  border-radius: var(--u3-radius);
+  padding: 0.5rem;
+  overflow-x: auto;
+  font-size: 0.8rem;
+  max-width: 100%;
+}
+
+.u3-logs-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.u3-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.u3-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.u3-workline { overflow-wrap: anywhere; }
+
+#u3-prompt-view {
+  border: 1px solid var(--u3-border);
+  border-radius: var(--u3-radius);
+  padding: 1rem;
+  width: 100%;
+  max-width: 90vw;
+}
+
+#u3-prompt-view::backdrop { background: var(--u3-head-bg); }
+
+/* ---------------------------------------------------------------- статусы */
+
+.status-completed { color: var(--u3-ok); font-weight: 600; }
+.status-completed_with_warnings { color: var(--u3-warn); font-weight: 600; }
+.status-failed { color: var(--u3-err); font-weight: 600; }
+.status-cancelled, .status-interrupted, .status-paused { color: var(--u3-cancelled); }
+.status-created { color: var(--u3-muted); }
+.status-needs_confirmation { color: var(--u3-warn); font-weight: 600; }
+.status-validating, .status-planning, .status-translating, .status-analyzing,
+.status-generating, .status-validating_output { color: var(--u3-accent); }

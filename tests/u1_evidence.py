@@ -70,6 +70,7 @@ from app.languages.resolver import PairResolver  # noqa: E402
 from app.storage.jobs_repo import JobRepository  # noqa: E402
 from app.web import views  # noqa: E402
 from app.web.app import create_app  # noqa: E402
+from app.web.auth import csrf_token  # noqa: E402
 
 EVIDENCE = ROOT / "docs" / "CONTROL" / "evidence" / "U1"
 STAMP = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -122,15 +123,27 @@ def header() -> str:
     return f"дата: {STAMP}\nверсии: {VERSIONS}\n\n"
 
 
-def _profile(base: Path, name: str, url: str, env_extra: str = "") -> U1Profile:
+def _profile(
+    base: Path, name: str, url: str, *, secret: bool = False, client_auth: bool = False
+) -> U1Profile:
+    """Профиль evidence. ``secret=True`` — U3 3.9 (fail closed): у стенда
+    есть SERVER_AUTH_SECRET; ``client_auth=True`` — клиент шлёт Basic +
+    X-U3-CSRF по умолчанию (мутирующие запросы проходят)."""
+    env_extra = f"SERVER_AUTH_SECRET={AUTH_SECRET}\n" if secret else ""
     settings, db, cfg, env_file = _make_u1_storage(base, f"ev_{name}", url, env_extra=env_extra)
     app = create_app(settings, db=db)
+    client_headers = None
+    if client_auth:
+        client_headers = {
+            **_auth_header(),
+            "X-U3-CSRF": csrf_token(settings, "any-user"),
+        }
     return U1Profile(
         settings=settings,
         db=db,
         repo=JobRepository(db),
         app=app,
-        client=TestClient(app),
+        client=TestClient(app, headers=client_headers or {}),
         cfg=cfg,
         env_file=env_file,
     )
@@ -158,6 +171,9 @@ def _api_paths(app: Any) -> list[tuple[str, str]]:
     ]
 
 
+#: U3: карта расширена (purge, logs/clear, DELETE /api/jobs/{job_id},
+#: DELETE /api/books, versioning промптов) — синхронно с _CONSUMERS в
+#: test_u1_web.py.
 _CONSUMER_CHECKS: dict[str, list[tuple[str, str]]] = {
     "/api/health": [("app/web/templates/settings.html", 'data-u1-fetch="/api/health"')],
     "/api/languages": [("app/web/templates/languages.html", 'data-u1-fetch="/api/languages"')],
@@ -165,12 +181,19 @@ _CONSUMER_CHECKS: dict[str, list[tuple[str, str]]] = {
         ("app/web/templates/books.html", 'data-u1-fetch="/api/books"'),
         ("app/web/static/app.js", 'fetchJSON("/api/books", { method: "POST"'),
     ],
+    "/api/books/{filename}": [
+        ("app/web/static/app.js", '"/api/books/" + encodeURIComponent(name)'),
+    ],
     "/api/jobs": [
         ("app/web/templates/jobs.html", 'data-u1-fetch="/api/jobs"'),
         ("app/web/static/app.js", 'fetchJSON("/api/jobs", {'),
     ],
     "/api/jobs/{job_id}": [
         ("app/web/static/app.js", '"/api/jobs/" + encodeURIComponent(jobId)'),
+        ("app/web/static/app.js", '"/api/jobs/" + encodeURIComponent(job), { method: "DELETE"'),
+    ],
+    "/api/jobs/purge": [
+        ("app/web/static/app.js", 'fetchJSON("/api/jobs/purge", {'),
     ],
     "/api/jobs/{job_id}/confirm": [("app/web/static/app.js", '"/confirm"')],
     "/api/jobs/{job_id}/pause": [("app/web/static/app.js", '"u1-pause", "pause"')],
@@ -178,6 +201,9 @@ _CONSUMER_CHECKS: dict[str, list[tuple[str, str]]] = {
     "/api/jobs/{job_id}/cancel": [("app/web/static/app.js", '"u1-cancel", "cancel"')],
     "/api/jobs/{job_id}/logs": [
         ("app/web/templates/job.html", "/api/jobs/{{ facts.id }}/logs"),
+    ],
+    "/api/jobs/{job_id}/logs/clear": [
+        ("app/web/static/app.js", '"/logs/clear"'),
     ],
     "/api/jobs/{job_id}/quality": [
         ("app/web/templates/job.html", "/api/jobs/{{ facts.id }}/quality"),
@@ -187,6 +213,15 @@ _CONSUMER_CHECKS: dict[str, list[tuple[str, str]]] = {
     ],
     "/api/models": [("app/web/templates/models.html", 'data-u1-fetch="/api/models"')],
     "/api/config": [("app/web/templates/settings.html", 'data-u1-fetch="/api/config"')],
+    "/api/prompts": [
+        ("app/web/static/app.js", 'fetchJSON("/api/prompts", {'),
+    ],
+    "/api/prompts/content": [
+        ("app/web/static/app.js", '"/api/prompts/content?path="'),
+    ],
+    "/api/prompts/version": [
+        ("app/web/static/app.js", '"/api/prompts/version?path="'),
+    ],
 }
 
 
@@ -623,10 +658,11 @@ def main() -> int:
     server.start()
     profiles: dict[str, U1Profile] = {}
     try:
-        profiles["main"] = _profile(base, "main", server.url)
+        profiles["main"] = _profile(base, "main", server.url, secret=True, client_auth=True)
         profiles["dead"] = _profile(base, "dead", "http://127.0.0.1:1/v1")
-        auth_extra = f"SERVER_AUTH_SECRET={AUTH_SECRET}\n"
-        profiles["auth"] = _profile(base, "auth", server.url, env_extra=auth_extra)
+        # auth: секрет задан, но клиент БЕЗ заголовков — ev_u1_7 меряет
+        # именно 401 без Basic и 200 с ним (явные заголовки в запросах).
+        profiles["auth"] = _profile(base, "auth", server.url, secret=True)
         print("[u1-evidence] окружение готово")
         evidence("u1-1-progress-db-slices.txt",
                  ev_u1_1(profiles["main"], server, base, books_dir / "u1_slow.epub"))

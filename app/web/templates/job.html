@@ -1,49 +1,70 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Job {{ facts.id }} <span class="status-{{ facts.status | lower }}">{{ facts.status }}</span></h1>
+<h1>{{ s["title_job"].format(id=facts.id) }}
+  <span class="status-{{ facts.status | lower }}">{{ facts.status }}</span>
+</h1>
 
 <div id="u1-progress" data-u1-poll="{{ facts.id }}" data-u1-status="{{ facts.status }}">
-  <table>
-    <tr><th>статус</th><td class="status-{{ facts.status | lower }}">{{ facts.status }}{% if facts.error %} — <span class="err">{{ facts.error }}</span>{% endif %}</td></tr>
-    <tr><th>пара</th><td>{{ facts.source_language or '—' }} → {{ facts.target_language }}</td></tr>
-    <tr><th>режим / уровень</th><td>{{ facts.mode }}{% if facts.learning_level %} / {{ facts.learning_level }}{% if facts.learning_cefr %} ({{ facts.learning_cefr }}){% endif %}{% endif %}</td></tr>
-    <tr><th>прогресс (реальные единицы)</th><td>{{ facts.progress_display }}</td></tr>
-    <tr><th>фаза</th><td>{{ facts.phase or '—' }} ({{ facts.phases.completed }} / {{ facts.phases.total }})</td></tr>
-    <tr><th>сегменты</th><td>{% if facts.segments %}{{ facts.segments.processed }} / {{ facts.segments.total }}{% else %}—{% endif %}</td></tr>
-    <tr><th>выравнивание</th><td>{% if facts.alignment.coverage is not none %}{{ '%.1f' | format(facts.alignment.coverage * 100) }}% ({{ facts.alignment.aligned }} / {{ facts.alignment.total }}){% else %}—{% endif %}</td></tr>
-    <tr><th>токены</th><td>
+  <table class="u3-facts">
+    <tr><th scope="row">{{ s["job_row_status"] }}</th><td class="status-{{ facts.status | lower }}">{{ facts.status }}{% if facts.error %} — <span class="err">{{ facts.error }}</span>{% endif %}</td></tr>
+    <tr><th scope="row">{{ s["job_row_pair"] }}</th><td>{{ facts.source_language or s["common_not_set"] }} → {{ facts.target_language }}</td></tr>
+    <tr><th scope="row">{{ s["job_row_mode"] }}</th><td>{{ facts.mode }}{% if facts.learning_level %} / {{ facts.learning_level }}{% if facts.learning_cefr %} ({{ facts.learning_cefr }}){% endif %}{% endif %}</td></tr>
+    <tr><th scope="row">{{ s["job_row_progress"] }}</th><td>{{ facts.progress_display }}</td></tr>
+    <tr><th scope="row">{{ s["job_row_phase"] }}</th><td>{{ facts.phase or s["common_not_set"] }} ({{ facts.phases.completed }} / {{ facts.phases.total }})</td></tr>
+    <tr><th scope="row">{{ s["job_row_segments"] }}</th><td>{% if facts.segments %}{{ facts.segments.processed }} / {{ facts.segments.total }}{% else %}{{ s["common_not_set"] }}{% endif %}</td></tr>
+    <tr><th scope="row">{{ s["job_row_alignment"] }}</th><td>{% if facts.alignment.coverage is not none %}{{ '%.1f' | format(facts.alignment.coverage * 100) }}% ({{ facts.alignment.aligned }} / {{ facts.alignment.total }}){% else %}{{ s["common_not_set"] }}{% endif %}</td></tr>
+    <tr><th scope="row">{{ s["job_row_tokens"] }}</th><td>
       {% for name, t in facts.tokens.items() %}{% if name != 'total' %}{{ name }}: {{ t.total }}{% if not loop.last %} · {% endif %}{% endif %}{% endfor %}
-      · всего: {{ facts.tokens.total }}
+      · {{ s["job_tokens_total"] }}: {{ facts.tokens.total }}
     </td></tr>
-    <tr><th>время</th><td>прошло: {{ facts.elapsed_seconds }} c{% if facts.eta_seconds is not none %} · осталось (оценка): {{ facts.eta_seconds }} c{% endif %}</td></tr>
-    <tr><th>ошибки / повторы</th><td>сегментов с ошибками: {{ facts.failed_segments }} · повторов: {{ facts.retries }}</td></tr>
-    <tr><th>создано</th><td>{{ facts.created_at_human }}</td></tr>
-    <tr><th>обновлено</th><td>{{ facts.updated_at_human }}</td></tr>
+    <tr><th scope="row">{{ s["job_row_time"] }}</th><td>{{ s["job_time_elapsed"].format(n=facts.elapsed_seconds) }}{% if facts.eta_seconds is not none %} · {{ s["job_time_eta"].format(n=facts.eta_seconds) }}{% endif %}</td></tr>
+    <tr><th scope="row">{{ s["job_row_errors"] }}</th><td>{{ s["job_errors_segments"].format(n=facts.failed_segments) }} · {{ s["job_errors_retries"].format(n=facts.retries) }}</td></tr>
+    <tr><th scope="row">{{ s["job_row_created"] }}</th><td>{{ facts.created_at_human }}</td></tr>
+    <tr><th scope="row">{{ s["job_row_updated"] }}</th><td>{{ facts.updated_at_human }}</td></tr>
   </table>
   {% if facts.stages %}
   <details id="u1-stages-details">
-    <summary>стадии ({{ facts.stages | length }} переходов)</summary>
-    <table>
-      <tr><th>время</th><th>переход</th><th>причина</th></tr>
-      {% for s in facts.stages %}
-      <tr><td>{{ s.at_human }}</td><td>{{ s.from }} → {{ s.to }}</td><td>{{ s.reason or '' }}</td></tr>
-      {% endfor %}
+    <summary>{{ s["job_stages"].format(n=facts.stages | length) }}</summary>
+    <table class="u3-table">
+      <thead>
+        <tr>
+          <th scope="col">{{ s["job_stages_col_time"] }}</th>
+          <th scope="col">{{ s["job_stages_col_transition"] }}</th>
+          <th scope="col">{{ s["job_stages_col_reason"] }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for st in facts.stages %}
+        <tr><td>{{ st.at_human }}</td><td>{{ st.from }} → {{ st.to }}</td><td>{{ st.reason or s["common_not_set"] }}</td></tr>
+        {% endfor %}
+      </tbody>
     </table>
+    <div class="u3-cards">
+      {% for st in facts.stages %}
+      <article class="u3-card">
+        <dl class="u3-card-fields">
+          <div class="u3-field"><dt>{{ s["job_stages_col_time"] }}</dt><dd>{{ st.at_human }}</dd></div>
+          <div class="u3-field"><dt>{{ s["job_stages_col_transition"] }}</dt><dd>{{ st.from }} → {{ st.to }}</dd></div>
+          <div class="u3-field"><dt>{{ s["job_stages_col_reason"] }}</dt><dd>{{ st.reason or s["common_not_set"] }}</dd></div>
+        </dl>
+      </article>
+      {% endfor %}
+    </div>
   </details>
   {% endif %}
   {% if facts.warnings %}
-  <p><b>предупреждения:</b></p>
+  <p>{{ s["job_warnings"] }}</p>
   <ul>{% for w in facts.warnings %}<li>{{ w }}</li>{% endfor %}</ul>
   {% endif %}
 </div>
 
-<div class="actions">
+<div class="u3-actions">
   {% if facts.status == 'NEEDS_CONFIRMATION' %}
   <form id="u1-confirm" data-job="{{ facts.id }}">
-    <label>Исходный язык:
+    <label>{{ s["job_confirm_label"] }}:
       <select id="u1-confirm-lang">
         {% if detected %}
-        <option value="{{ detected }}" selected>{{ detected }} (детекция, уверенность {{ facts.language_detection.confidence }})</option>
+        <option value="{{ detected }}" selected>{{ detected }} ({{ s["job_confirm_detection"].format(conf=facts.language_detection.confidence) }})</option>
         {% endif %}
         {% for code in registry_codes %}
         {% if code != detected %}
@@ -52,37 +73,51 @@
         {% endfor %}
       </select>
     </label>
-    <button type="submit">Подтвердить и запустить</button>
-    <span id="u1-confirm-msg"></span>
+    <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+    <button type="submit">{{ s["job_confirm_btn"] }}</button>
+    <span id="u1-confirm-msg" role="status"></span>
   </form>
   {% endif %}
   {% if not facts.status_terminal %}
-    <button id="u1-pause" data-job="{{ facts.id }}">Пауза</button>
-    <button id="u1-cancel" data-job="{{ facts.id }}">Отменить</button>
+  <button type="button" id="u1-pause" data-job="{{ facts.id }}">{{ s["job_pause_btn"] }}</button>
+  <button type="button" id="u1-cancel" data-job="{{ facts.id }}">{{ s["job_cancel_btn"] }}</button>
   {% endif %}
   {% if facts.status == 'PAUSED' %}
-    <button id="u1-resume" data-job="{{ facts.id }}">Продолжить</button>
+  <button type="button" id="u1-resume" data-job="{{ facts.id }}">{{ s["job_resume_btn"] }}</button>
   {% endif %}
+  <button type="button" id="u3-clear-logs" class="btn" data-job="{{ facts.id }}">{{ s["job_clear_logs_btn"] }}</button>
+  {% if facts.status_terminal %}
+  <button type="button" id="u3-delete-job" class="btn u3-danger" data-job="{{ facts.id }}">{{ s["job_delete_btn"] }}</button>
+  {% endif %}
+  <span id="u3-job-msg" role="status"></span>
   {% if facts.result_ready %}
-    <a class="btn" href="/api/jobs/{{ facts.id }}/result">Скачать результат</a>
-    {% if facts.files['target.epub'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=target.epub">Перевод (target.epub)</a>{% endif %}
-    {% if facts.files['learning.epub'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=learning.epub">Учебная книга (learning.epub)</a>{% endif %}
-    {% if facts.files['cards.csv'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=cards.csv">карточки CSV</a>{% endif %}
-    {% if facts.files['cards.anki.tsv'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=cards.anki.tsv">карточки Anki TSV</a>{% endif %}
-    {% if facts.files['cards.json'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=cards.json">карточки JSON</a>{% endif %}
-    {% if facts.files['quality.json'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=quality.json">отчёт QC (quality.json)</a>{% endif %}
+  <a class="btn" href="/api/jobs/{{ facts.id }}/result">{{ s["job_download_result"] }}</a>
+  {% if facts.files['target.epub'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=target.epub">{{ s["job_download_target"] }}</a>{% endif %}
+  {% if facts.files['learning.epub'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=learning.epub">{{ s["job_download_learning"] }}</a>{% endif %}
+  {% if facts.files['cards.csv'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=cards.csv">{{ s["job_download_cards_csv"] }}</a>{% endif %}
+  {% if facts.files['cards.anki.tsv'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=cards.anki.tsv">{{ s["job_download_cards_anki"] }}</a>{% endif %}
+  {% if facts.files['cards.json'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=cards.json">{{ s["job_download_cards_json"] }}</a>{% endif %}
+  {% if facts.files['quality.json'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=quality.json">{{ s["job_download_quality"] }}</a>{% endif %}
   {% else %}
-    <span class="hint">Результат появится после завершения задания.</span>
+  <span class="hint">{{ s["job_result_pending"] }}</span>
   {% endif %}
 </div>
 
-<details>
-  <summary>Качество (QC, выравнивание, правки L3)</summary>
-  <div id="u1-quality" data-u1-fetch="/api/jobs/{{ facts.id }}/quality" data-u1-render="quality">загрузка…</div>
+<details class="u3-panel">
+  <summary>{{ s["job_details_quality"] }}</summary>
+  <div id="u1-quality" data-u1-fetch="/api/jobs/{{ facts.id }}/quality" data-u1-render="quality">{{ s["common_loading"] }}</div>
 </details>
 
-<details>
-  <summary>Логи (job / errors / quality)</summary>
-  <div id="u1-logs" data-u1-fetch="/api/jobs/{{ facts.id }}/logs" data-u1-render="logs">загрузка…</div>
+<details class="u3-panel">
+  <summary>{{ s["job_details_logs"] }}</summary>
+  <p class="u3-logs-controls">
+    <label>{{ s["job_logs_lines"] }}:
+      <select id="u3-logs-lines">
+        <option value="{{ log_tail_lines }}" selected>{{ log_tail_lines }}</option>
+      </select>
+    </label>
+    <button type="button" id="u3-logs-more" class="btn">{{ s["job_logs_more"] }}</button>
+  </p>
+  <div id="u1-logs" data-u1-fetch="/api/jobs/{{ facts.id }}/logs" data-u1-render="logs">{{ s["common_loading"] }}</div>
 </details>
 {% endblock %}

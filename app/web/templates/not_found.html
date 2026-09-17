@@ -1,5 +1,5 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Not found</h1>
-<p>Страница или ресурс не найдены. <a href="/jobs">К списку заданий</a></p>
+<h1>{{ s["title_not_found"] }}</h1>
+<p>{{ s["nf_body"] }} <a href="/jobs">{{ s["nf_to_jobs"] }}</a></p>
 {% endblock %}

@@ -1,0 +1,14 @@
+дата: 2026-09-17 21:39:18
+версии: python=3.11.13 spacy=3.8.16
+
+
+K: U3-9 — отказы записи промпта: 400, файлов 0, LLM-запросов 0
+
+кейс «невалидный YAML»: HTTP 400, detail: 'промпт не прошёл валидацию: while parsing a flow sequence\n  in "<unicode string>", line 1, column 9:\n    system: [broken\n            ^\nexpected \',\' or \']\', but got \':\'\n  in "<unicode string>", line 2, column 14:\n    user_template: x\n                 ^'
+кейс «нет обязательного поля»: HTTP 400, detail: 'промпт не прошёл валидацию: user_template: expected a non-empty string'
+кейс «неизвестная задача»: HTTP 400, detail: 'задача не найдена в реестре: no_such_task'
+
+файлов в prompts/: до = 34, после = 34
+LLM-запросов: до = 4, после = 4
+
+ВЕРДИКТ: 400 × 3/3, файлов создано 0, LLM-запросов 0 — PASS

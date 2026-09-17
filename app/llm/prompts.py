@@ -19,8 +19,10 @@ import yaml
 
 from app.core.errors import ConfigurationError
 
-#: Имя файла промпта: vN.yaml, N — целая версия.
-_VERSION_RE = re.compile(r"^v(\d+)\.yaml$")
+#: Имя файла промпта: vN.yaml, N — целая версия. ЕДИНЫЙ источник: резолвер,
+#: web-слой (``app.web.views.prompts_view``) и запись новых версий
+#: (``app.web.api``, U3 3.7).
+VERSION_FILE_RE = re.compile(r"^v(\d+)\.yaml$")
 
 LEVEL_PAIR = "pair"
 LEVEL_SOURCE = "source"
@@ -44,7 +46,7 @@ class ResolvedPrompt:
 
 
 def _parse_prompt_file(path: Path) -> tuple[int, str, str]:
-    match = _VERSION_RE.match(path.name)
+    match = VERSION_FILE_RE.match(path.name)
     if match is None:
         raise PromptError(f"недопустимое имя файла промпта (нужно vN.yaml): {path.name}")
     version = int(match.group(1))
@@ -69,7 +71,7 @@ def _best_version(directory: Path) -> Path | None:
         return None
     best: tuple[int, Path] | None = None
     for candidate in sorted(directory.iterdir()):
-        match = _VERSION_RE.match(candidate.name)
+        match = VERSION_FILE_RE.match(candidate.name)
         if match is None:
             continue
         version = int(match.group(1))
