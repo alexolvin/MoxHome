@@ -73,6 +73,10 @@ import tiktoken
 
 from app.learning.study import blank_first_occurrence
 
+# Явный re-export (mypy strict: no_implicit_reexport): v111_tailnet.py
+# читает и заменяет mls.ThreadingHTTPServer.
+__all__ = ["MockLLMServer", "ThreadingHTTPServer"]
+
 _ROT = 3
 _FILL_TEMPLATE_RE = re.compile(r"```XML\n(.*?)\n```", re.DOTALL)
 

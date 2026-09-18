@@ -73,7 +73,7 @@ def _mock_on_any_addr() -> tuple[int, mls.MockLLMServer]:
     def _bind_any(bind: tuple[str, int], handler: Any) -> ThreadingHTTPServer:
         return real(("0.0.0.0", bind[1]), handler)
 
-    mls.ThreadingHTTPServer = _bind_any  # type: ignore[method-assign]
+    mls.ThreadingHTTPServer = _bind_any  # type: ignore[misc,assignment]
     server = mls.MockLLMServer()
     server.start()
     return server._port, server

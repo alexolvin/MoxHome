@@ -120,7 +120,8 @@ def _read_json(run: S5Run, name: str) -> dict[str, Any]:
     path = run.job_dir / name
     if not path.is_file():
         return {}
-    return json.loads(path.read_text(encoding="utf-8"))
+    data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    return data
 
 
 # Наполняется в main(): профиль → Settings (для вспомогательных сборщиков).
@@ -252,6 +253,7 @@ def _ev_s5_3(run: S5Run) -> None:
             new_body = segmenter.find_body(
                 etree.fromstring(lzip.read(chapter.document_path))
             )
+            assert old_body is not None and new_body is not None, "нет <body>"
             old_blocks = [
                 segmenter.full_text(e)
                 for e in segmenter.find_block_elements(old_body, tags)
@@ -504,6 +506,7 @@ def _ev_s5_8(run: S5Run) -> None:
     book_coverage = float(match.group(1))
     book_aligned = int(match.group(2))
     book_total = int(match.group(3))
+    assert run.job.alignment_coverage is not None, "alignment_coverage не задан"
     diff_e6_job = abs(e6["coverage"] - run.job.alignment_coverage)
     diff_report = abs(report["coverage"] - run.job.alignment_coverage)
     diff_book = abs(book_coverage - run.job.alignment_coverage)
@@ -872,6 +875,7 @@ def _ev_t12(run: S5Run) -> None:
         ch1_has_sections = 'class="s5-section"' in ch1_text
     cov_warnings = [w for w in run.warnings if "0.9" in w or "90" in w]
     skip_warnings = [w for w in run.warnings if "S5" in w and "глав" in w]
+    assert run.job.alignment_coverage is not None, "alignment_coverage не задан"
     good = (
         abs(report["coverage"] - 0.9) < 1e-9
         and abs(run.job.alignment_coverage - 0.9) < 1e-9

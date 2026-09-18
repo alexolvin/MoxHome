@@ -692,6 +692,7 @@ def test_s5_3_preservation(s5_env: S5Env) -> None:
             new_body = segmenter.find_body(
                 etree.fromstring(lzip.read(chapter.document_path))
             )
+            assert old_body is not None and new_body is not None, "нет <body>"
             old_blocks = [
                 segmenter.full_text(e)
                 for e in segmenter.find_block_elements(old_body, tags)
@@ -1072,6 +1073,7 @@ def test_s5_12_partial_coverage_90(s5_env: S5Env) -> None:
     # перечислены, расхождение с E6 = 0.
     run = s5_env.run_coverage90("cover90", "s5_10.epub")
     report = _s5_report(run)
+    assert run.job.alignment_coverage is not None, "alignment_coverage не задан"
     assert abs(report["coverage"] - 0.9) < 1e-9
     assert abs(run.job.alignment_coverage - 0.9) < 1e-9
     e6 = json.loads((run.job_dir / "alignment_report.json").read_text(encoding="utf-8"))
@@ -1183,12 +1185,15 @@ def test_s5_14_toc_spine_order_epub3(s5_env: S5Env) -> None:
         nav_root = etree.fromstring(archive.read("OEBPS/nav.xhtml"))
 
     opf_ns = "http://www.idpf.org/2007/opf"
+    manifest_el = opf_root.find(f"{{{opf_ns}}}manifest")
+    spine_el = opf_root.find(f"{{{opf_ns}}}spine")
+    assert manifest_el is not None and spine_el is not None, "нет manifest/spine"
     manifest = {
         item.get("id"): item.get("href") or ""
-        for item in opf_root.find(f"{{{opf_ns}}}manifest")
+        for item in manifest_el
     }
     spine: dict[str, int] = {}
-    for index, ref in enumerate(opf_root.find(f"{{{opf_ns}}}spine")):
+    for index, ref in enumerate(spine_el):
         href = manifest.get(ref.get("idref") or "")
         if href is not None:
             spine.setdefault(href, index)
@@ -1218,7 +1223,8 @@ def test_s5_14_toc_spine_order_epub3(s5_env: S5Env) -> None:
     positions = [spine.get(href.split("#", 1)[0]) for href in hrefs]
     missing = [h for h, p in zip(hrefs, positions, strict=True) if p is None]
     assert not missing, f"документы оглавления не в spine: {missing}"
-    assert all(a <= b for a, b in pairwise(positions)), (
+    ordered = [p for p in positions if p is not None]
+    assert all(a <= b for a, b in pairwise(ordered)), (
         f"оглавление не в spine-порядке (NAV-011): {hrefs}"
     )
     # «Ответы и охват» — последняя запись (документ в конце spine).

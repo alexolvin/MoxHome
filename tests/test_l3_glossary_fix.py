@@ -219,7 +219,8 @@ def _read_l3_report(job_dir: Path) -> dict[str, Any] | None:
     path = job_dir / "l3_fix_report.json"
     if not path.is_file():
         return None
-    return json.loads(path.read_text(encoding="utf-8"))
+    data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    return data
 
 
 def _fix_log_lines(quality_log: str) -> list[dict[str, Any]]:
@@ -497,6 +498,7 @@ def test_l3_2_every_fix_logged(l3_env: L3Env) -> None:
     segment_id совпадают, поля записи заполнены."""
     run = l3_env.run("fix", "wexley_fix.epub")
     report = run.l3_report
+    assert report is not None, "нет L3-отчёта"
     lines = _fix_log_lines(run.quality_log)
     assert len(lines) == report["applied"] == 3
     applied_ids = sorted(f["segment_id"] for f in report["fixes"] if f["applied"])
@@ -514,6 +516,7 @@ def test_l3_2_every_fix_logged(l3_env: L3Env) -> None:
 def test_l3_3_no_unvalidated_applied(l3_env: L3Env) -> None:
     """L3-3: 0 применённых правок, не прошедших ВСЕ 5 пунктов валидации."""
     run = l3_env.run("fix", "wexley_fix.epub")
+    assert run.l3_report is not None, "нет L3-отчёта"
     applied = [f for f in run.l3_report["fixes"] if f["applied"]]
     assert applied, "правок нет — тест не о чём"
     assert all(f["validation_points"] == [] for f in applied), (
@@ -528,6 +531,7 @@ def test_l3_4_markup_preserved(l3_env: L3Env) -> None:
     run = l3_env.run("markup", "wexley_markup.epub")
     assert run.error is None, str(run.error)
     report = run.l3_report
+    assert report is not None, "нет L3-отчёта"
     applied = [f for f in report["fixes"] if f["applied"]]
     assert len(applied) == 2, "оба сегмента с Wexley (обычный и с разметкой) правятся"
     job_dir = run.job_dir
@@ -589,6 +593,7 @@ def test_l3_7_rebuild_epubcheck(l3_env: L3Env) -> None:
     """L3-7: пересобранный архив — EPUBCheck 0 ERROR (FATAL отклоняет
     публикацию до os.replace); mimetype — первой записью, без сжатия."""
     run = l3_env.run("fix", "wexley_fix.epub")
+    assert run.l3_report is not None, "нет L3-отчёта"
     rebuild = run.l3_report["rebuild"]
     assert rebuild is not None and rebuild["available"] is True
     assert rebuild["errors"] == 0, f"EPUBCheck: {rebuild}"
@@ -827,6 +832,7 @@ def test_l3_11_three_variants_20_occurrences(l3_env: L3Env) -> None:
                      scenario="glossary_inconsistent_triple")
     assert run.error is None, str(run.error)
     report = run.l3_report
+    assert report is not None, "нет L3-отчёта"
     wrong = ("Xrongy", "Yrrqjz", "Zssabw")
     pre_chapter = _chapter_of(run.job_dir / "target.epub.l3bak").decode("utf-8")
     present = {v for v in wrong if v in pre_chapter}
@@ -850,6 +856,7 @@ def test_l3_12_hyperlink_footnote_preserved(l3_env: L3Env) -> None:
     run = l3_env.run("markup", "wexley_markup.epub")
     assert run.error is None, str(run.error)
     report = run.l3_report
+    assert report is not None, "нет L3-отчёта"
     applied = [f for f in report["fixes"] if f["applied"]]
     assert len(applied) == 2
     markup_fixes = [f for f in applied if f.get("new_html") and "notefoot" in f["new_html"]]
@@ -895,6 +902,7 @@ def test_l3_15_backup_diff_equals_log(l3_env: L3Env) -> None:
     архива побайтово не изменились."""
     run = l3_env.run("fix", "wexley_fix.epub")
     report = run.l3_report
+    assert report is not None, "нет L3-отчёта"
     job_dir = run.job_dir
     l3bak = job_dir / "target.epub.l3bak"
     target = job_dir / "target.epub"
@@ -905,8 +913,11 @@ def test_l3_15_backup_diff_equals_log(l3_env: L3Env) -> None:
                 assert zbak.read(name) == ztarget.read(name), f"лишнее изменение: {name}"
         old_root = lxml.etree.fromstring(zbak.read(L3_CHAPTER))
         new_root = lxml.etree.fromstring(ztarget.read(L3_CHAPTER))
-    old_blocks = list(old_root.find(_XH + "body"))
-    new_blocks = list(new_root.find(_XH + "body"))
+    old_body = old_root.find(_XH + "body")
+    new_body = new_root.find(_XH + "body")
+    assert old_body is not None and new_body is not None, "нет <body>"
+    old_blocks = list(old_body)
+    new_blocks = list(new_body)
     assert len(old_blocks) == len(new_blocks)
     changed: list[int] = []
     for i in range(len(old_blocks)):

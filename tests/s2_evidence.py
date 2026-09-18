@@ -88,7 +88,8 @@ def _header() -> str:
 def _mwe_report(run: S1Run) -> dict[str, Any]:
     path = run.job_dir / "mwe_records.json"
     assert path.is_file(), f"нет mwe_records.json: {run.error}"
-    return json.loads(path.read_text(encoding="utf-8"))
+    data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    return data
 
 
 # ------------------------------------------------------------------ S2-1…S2-6
@@ -141,13 +142,13 @@ def _ev_s2_2(env: S1Env, de_run: S1Run, nl_run: S1Run) -> None:
     end_rows = ""
     for run in (de_run, nl_run):
         rep = _mwe_report(run)
-        separable = [r for r in rep["records"] if r["unit_lemma"]]
-        both = sum(1 for r in separable if len(r["parts"]) >= 2)
-        ok = ok and bool(separable) and both == len(separable)
+        separable_records = [r for r in rep["records"] if r["unit_lemma"]]
+        both = sum(1 for r in separable_records if len(r["parts"]) >= 2)
+        ok = ok and bool(separable_records) and both == len(separable_records)
         end_rows += (
             f"  {rep['source_language']}: записей={rep['records_issued']} "
-            f"разорванных={len(separable)}; без второй части: "
-            f"{len(separable) - both}\n"
+            f"разорванных={len(separable_records)}; без второй части: "
+            f"{len(separable_records) - both}\n"
         )
     verdict = "PASS" if ok else "FAIL"
     content = (

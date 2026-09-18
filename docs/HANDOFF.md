@@ -245,7 +245,8 @@
   `style.css` (D105), после фикса CONTROL U3 14/14 PASS
   (evidence перегенерирован). Тесты: 305/305 (288 main + 17 T-U3),
   ruff 0, mypy app 0 (78 файлов; gate — D103: `mypy app tests` не
-  gate, базовая линия 101 pre-existing ошибок в tests).
+  gate, базовая линия 101 pre-existing ошибок в tests — исправлена
+  в D106 (2026-09-18): `mypy app tests` = 0, 124 файла).
 
 ## Сделано в V1 (завершено, финальный amend коммита `ad16dd9`)
 

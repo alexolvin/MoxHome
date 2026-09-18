@@ -38,13 +38,13 @@ if _TESTS_DIR not in sys.path:
 if _PROBE_DIR not in sys.path:
     sys.path.insert(0, _PROBE_DIR)
 
+from test_l3_glossary_fix import _start_worker  # noqa: E402
 from test_u1_web import (  # noqa: E402
     AUTH_SECRET,
     U1Env,
     _auth_header,
     _create_job,
     _make_u1_storage,
-    _start_worker,
     _upload_book,
     _wait_job_terminal,
 )
@@ -844,6 +844,7 @@ def test_u3_15_autorefresh_harness(tmp_path: Path, scenario: str) -> None:
     опрос при возврате), экспоненциальный backoff до ui.refresh_max_seconds
     при ошибке API (сообщение verbatim), остановка на терминальном статусе.
     Проверка — по последовательности запросов к API (3.11.47-50)."""
+    assert _NODE is not None, "node не установлен"
     requests, final = _run_harness(_NODE, tmp_path, scenario)
     times = [int(c["t"]) for c in requests]
     if scenario == "visible":

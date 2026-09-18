@@ -52,6 +52,7 @@ from test_l2_glossary import _make_storage  # noqa: E402
 from test_l3_glossary_fix import (  # noqa: E402
     L3_CHAPTER,
     L3Env,
+    L3Run,
     _build_l3_books,
     _chapter_of,
     _fix_log_lines,
@@ -89,26 +90,30 @@ def _header() -> str:
     return f"дата: {STAMP}\nверсии: {VERSIONS}\n\n"
 
 
-def _log_lines_block(run) -> str:
+def _log_lines_block(run: L3Run) -> str:
     return "".join(
         "  " + json.dumps(line, ensure_ascii=False) + "\n"
         for line in _fix_log_lines(run.quality_log)
     )
 
 
-def _block_signature(doc_bytes: bytes, xpath: str) -> Counter:
+def _block_signature(
+    doc_bytes: bytes, xpath: str
+) -> Counter[tuple[str, tuple[str, ...]]]:
     return markup_signature(lxml.etree.fromstring(block_bytes(doc_bytes, xpath)))
 
 
-def _target_unchanged(run) -> bool:
+def _target_unchanged(run: L3Run) -> bool:
     return _sha(run.target_before) == _sha((run.job_dir / "target.epub").read_bytes())
 
 
 # ------------------------------------------------------------------ L3-1…L3-10
 
 
-def _ev_l3_1(fix, triple) -> None:
+def _ev_l3_1(fix: L3Run, triple: L3Run) -> None:
     report = fix.l3_report
+    assert report is not None, "нет L3-отчёта"
+    assert triple.l3_report is not None, "нет L3-отчёта (triple)"
     chapter = _chapter_of(fix.job_dir / "target.epub").decode("utf-8")
     pre_chapter = _chapter_of(fix.job_dir / "target.epub.l3bak").decode("utf-8")
     pre_triple = _chapter_of(triple.job_dir / "target.epub.l3bak").decode("utf-8")
@@ -148,7 +153,9 @@ def _ev_l3_1(fix, triple) -> None:
     evidence("l3-1-full-fixable.txt", content)
 
 
-def _ev_l3_2(fix, triple) -> None:
+def _ev_l3_2(fix: L3Run, triple: L3Run) -> None:
+    assert fix.l3_report is not None, "нет L3-отчёта"
+    assert triple.l3_report is not None, "нет L3-отчёта (triple)"
     lines = _fix_log_lines(fix.quality_log)
     applied_ids = sorted(f["segment_id"] for f in fix.l3_report["fixes"] if f["applied"])
     logged_ids = sorted(line["segment_id"] for line in lines)
@@ -165,7 +172,9 @@ def _ev_l3_2(fix, triple) -> None:
     evidence("l3-2-fix-log.txt", content)
 
 
-def _ev_l3_3(fix, noterm) -> None:
+def _ev_l3_3(fix: L3Run, noterm: L3Run) -> None:
+    assert fix.l3_report is not None, "нет L3-отчёта"
+    assert noterm.l3_report is not None, "нет L3-отчёта (noterm)"
     applied = [f for f in fix.l3_report["fixes"] if f["applied"]]
     content = (
         _header()
@@ -190,8 +199,9 @@ def _ev_l3_3(fix, noterm) -> None:
     evidence("l3-3-validated.txt", content)
 
 
-def _ev_l3_4(markup) -> None:
+def _ev_l3_4(markup: L3Run) -> None:
     mreport = markup.l3_report
+    assert mreport is not None, "нет L3-отчёта"
     with zipfile.ZipFile(markup.job_dir / "target.epub.l3bak") as zbak:
         old_chapter = zbak.read(L3_CHAPTER)
     new_chapter = _chapter_of(markup.job_dir / "target.epub")
@@ -226,8 +236,9 @@ def _ev_l3_4(markup) -> None:
     evidence("l3-4-markup.txt", content)
 
 
-def _ev_l3_5(fix, rerun, sha_after_first: str) -> None:
+def _ev_l3_5(fix: L3Run, rerun: L3Run, sha_after_first: str) -> None:
     rr = rerun.l3_report
+    assert rr is not None, "нет L3-отчёта (rerun)"
     sha_after_rerun = _sha((fix.job_dir / "target.epub").read_bytes())
     content = (
         _header()
@@ -245,7 +256,7 @@ def _ev_l3_5(fix, rerun, sha_after_first: str) -> None:
     evidence("l3-5-rerun.txt", content)
 
 
-def _ev_l3_6(halt) -> None:
+def _ev_l3_6(halt: L3Run) -> None:
     hreport = halt.l3_report
     content = (
         _header()
@@ -264,8 +275,9 @@ def _ev_l3_6(halt) -> None:
     evidence("l3-6-halt.txt", content)
 
 
-def _ev_l3_7(fix) -> None:
+def _ev_l3_7(fix: L3Run) -> None:
     report = fix.l3_report
+    assert report is not None, "нет L3-отчёта"
     target = fix.job_dir / "target.epub"
     with zipfile.ZipFile(target) as archive:
         first = archive.infolist()[0]
@@ -276,7 +288,7 @@ def _ev_l3_7(fix) -> None:
         + json.dumps(report["rebuild"], ensure_ascii=False, indent=2)
         + f"\ntarget.epub: первая запись = {first.filename!r}, "
         f"compress_type = {first.compress_type} ({zipfile.ZIP_STORED} = ZIP_STORED)\n"
-        + f"  mimetype = {mimetype}\n"
+        + f"  mimetype = {mimetype!r}\n"
         + "  (внутренняя валидация + EPUBCheck — до os.replace; FATAL/ERROR →\n"
         "   отказ публикации, target не изменяется — Rule 6)\n\n"
         + "L3-7: PASS — 0 ERROR, mimetype первой записью без сжатия\n"
@@ -284,8 +296,9 @@ def _ev_l3_7(fix) -> None:
     evidence("l3-7-rebuild.txt", content)
 
 
-def _ev_l3_9(unverif) -> None:
+def _ev_l3_9(unverif: L3Run) -> None:
     ureport = unverif.l3_report
+    assert ureport is not None, "нет L3-отчёта"
     content = (
         _header()
         + "unverif.epub: Badparadigm (mock: 12 идентичных форм → парадигма "
@@ -308,7 +321,7 @@ def _ev_l3_9(unverif) -> None:
     evidence("l3-9-unverified.txt", content)
 
 
-def _ev_l3_10(lang_runs, nofix) -> None:
+def _ev_l3_10(lang_runs: list[L3Run], nofix: L3Run) -> None:
     rows: list[str] = []
     ok = 0
     for run10 in lang_runs:
