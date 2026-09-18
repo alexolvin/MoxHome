@@ -40,7 +40,6 @@ from typing import Any
 import pytest
 from lxml import etree
 
-from app.adapters.epub_engine import epubcheck as epubcheck_mod
 from app.adapters.epub_engine.epubcheck import run_epubcheck
 from app.adapters.epub_engine.opf_repair import (
     OPF_NS,
@@ -161,7 +160,7 @@ def test_e5_12_crashed_validator_is_unavailable_not_zero(
             ),
         )
 
-    monkeypatch.setattr(epubcheck_mod.subprocess, "run", fake_run)
+    monkeypatch.setattr(subprocess, "run", fake_run)
     jar = tmp_path / "epubcheck.jar"
     jar.write_bytes(b"fake")
     epub = tmp_path / "book.epub"
@@ -197,7 +196,7 @@ def test_e5_13_summary_vs_parsed_drift_is_unavailable(
             stderr="",
         )
 
-    monkeypatch.setattr(epubcheck_mod.subprocess, "run", fake_run)
+    monkeypatch.setattr(subprocess, "run", fake_run)
     jar = tmp_path / "epubcheck.jar"
     jar.write_bytes(b"fake")
     epub = tmp_path / "book.epub"

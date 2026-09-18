@@ -47,7 +47,7 @@ from test_l3_glossary_fix import _kill_all  # noqa: E402
 from test_s4_study import _synth_book_multi  # noqa: E402
 from test_u1_web import _synth_u1_slow_book, _synth_u1_tiny_book  # noqa: E402
 
-from app.core.config import load_settings  # noqa: E402
+from app.core.config import Settings, load_settings  # noqa: E402
 from app.epub.reader import read_epub  # noqa: E402
 from app.languages.cefr import language_cefr_label  # noqa: E402
 from app.languages.registry import load_registry  # noqa: E402
@@ -130,7 +130,7 @@ def _make_v1_storage(
     jar: Path | None = None,
     languages_root: Path | None = None,
     matrix: Path | None = None,
-):
+) -> tuple[Settings, Database, Path, Path]:
     """Изолированное хранилище (паттерн U1) + настраиваемые профили/jar/языки."""
     work = base / name
     work.mkdir(parents=True, exist_ok=True)
@@ -162,7 +162,9 @@ def _make_v1_storage(
     return settings, db, cfg, env_file
 
 
-def _profile(base: Path, name: str, url: str, **kwargs: Any):
+def _profile(
+    base: Path, name: str, url: str, **kwargs: Any
+) -> tuple[Settings, Database, JobRepository, TestClient, Path, Path]:
     """Хранилище + app/TestClient + репозиторий (для подтверждения L0.5)."""
     settings, db, cfg, env_file = _make_v1_storage(base, name, url, **kwargs)
     app = create_app(settings, db=db)
@@ -595,15 +597,21 @@ def _container_opf(
             ".//{urn:oasis:names:tc:opendocument:xmlns:container}rootfile"
         )
         if rootfile is not None:
-            opf_path = dest / rootfile.get("full-path")
+            full_path = rootfile.get("full-path")
+            if full_path is not None:
+                opf_path = dest / full_path
     if opf_path is None or not opf_path.is_file():
         lines.append("OPF: не найден (дефект)")
         return None, {}
     opf = ET.parse(opf_path).getroot()
-    manifest = {
-        item.get("id"): item for item in opf.findall(f"{{{OPF_NS}}}manifest/{{{OPF_NS}}}item")
+    manifest: dict[str, Any] = {
+        item.get("id") or "": item
+        for item in opf.findall(f"{{{OPF_NS}}}manifest/{{{OPF_NS}}}item")
     }
-    spine = [i.get("idref") for i in opf.findall(f"{{{OPF_NS}}}spine/{{{OPF_NS}}}itemref")]
+    spine = [
+        i.get("idref") or ""
+        for i in opf.findall(f"{{{OPF_NS}}}spine/{{{OPF_NS}}}itemref")
+    ]
     lines.append(f"OPF ({opf_path.relative_to(dest)}): "
                  f"manifest {len(manifest)} items, spine {len(spine)} itemref")
     lines += [
@@ -753,7 +761,8 @@ def part_v7(ctx: Ctx, books: dict[str, Path]) -> bool:
             for pair in pairs
             if not re.sub(r"\s+", " ", str(pair.get("translation_text") or "")).strip()
         ]
-        trans_texts, src_seen = [], {}
+        trans_texts: list[str] = []
+        src_seen: dict[str, int] = {}
         dup_src = 0
         for pair in pairs:
             src_norm = re.sub(r"\s+", " ", str(pair.get("source_text") or "")).strip()
@@ -910,8 +919,8 @@ def _v8_03(ctx: Ctx, books: dict[str, Path], lines: list[str]) -> bool:
     status = job.status.value if job else "NO_JOB"
     reason = (job.error_message or "") if job else ""
     artifacts3 = sorted(p.name for p in r["jdir"].glob("*.json")) if r["jdir"] else []
-    ok = (status == "FAILED" and reason
-          and "vocabulary_cards.json" not in artifacts3)
+    ok = bool(status == "FAILED" and reason
+              and "vocabulary_cards.json" not in artifacts3)
     _scen(lines, "3", "пустой ответ модели (mock, analysis) → ошибка задачи, "
           "пустой артефакт не создан",
           ok, [
@@ -934,8 +943,8 @@ def _v8_04(ctx: Ctx, books: dict[str, Path], lines: list[str]) -> bool:
     job = r["job"]
     reason = (job.error_message or "") if job else ""
     artifacts4 = sorted(p.name for p in r["jdir"].glob("*.json")) if r["jdir"] else []
-    ok = (job is not None and job.status.value == "FAILED" and reason
-          and "vocabulary_cards.json" not in artifacts4)
+    ok = bool(job is not None and job.status.value == "FAILED" and reason
+              and "vocabulary_cards.json" not in artifacts4)
     _scen(lines, "4", "невалидный JSON ответа (mock bad_json) → ошибка задачи, "
           "артефакт не создан",
           ok, [
@@ -1155,7 +1164,7 @@ def _v8_11(ctx: Ctx, books: dict[str, Path], lines: list[str]) -> bool:
           ok, [
               f"статус: {job.status.value if job else None}",
               "warnings (verbatim):",
-              *[_dump_lines(warnings)],
+              *_dump_lines(warnings),
           ])
     _stop_worker(r["worker"])
     r["db"].close()
@@ -1545,7 +1554,9 @@ def part_v8a(ctx: Ctx, books: dict[str, Path]) -> bool:
 # ------------------------------------------------------------------ V1.9
 
 
-def _v9_wait_kill(repo, client, job_id: str) -> tuple[bool, Any]:
+def _v9_wait_kill(
+    repo: JobRepository, client: TestClient, job_id: str
+) -> tuple[bool, Any]:
     """Опрос 0.2 c: подтверждение L0.5, точка kill (TRANSLATING, progress ≥ 0.3
     + сдвиг 0.5 c в fill-фазу), терминал (kill не выполнен). Возврат
     (kill_point, job).
@@ -1581,7 +1592,7 @@ def _v9_wait_kill(repo, client, job_id: str) -> tuple[bool, Any]:
     return False, job
 
 
-def _v9_resends(requests: list[dict[str, object]], from_idx: int) -> tuple[int, int]:
+def _v9_resends(requests: list[dict[str, Any]], from_idx: int) -> tuple[int, int]:
     """Дубликаты промптов в requests_log с from_idx (пересылка при resume)."""
     seen: set[str] = set()
     resends = 0
@@ -1629,7 +1640,7 @@ def _v9_kill_and_resume(ctx: Ctx, run: dict[str, Any], job: Any) -> dict[str, An
     }
 
 
-def _v9_verdict(*, cfg: str, env_file: str, jdir: Path, z: int,
+def _v9_verdict(*, cfg: Path, env_file: Path, jdir: Path, z: int,
                 kr: dict[str, Any], lines: list[str]) -> bool:
     """Проверки и метрики V1.9 → v1-9-restart.txt; возвращает вердикт.
 
@@ -1751,10 +1762,10 @@ def part_v9(ctx: Ctx, books: dict[str, Path]) -> bool:
         db.close()
         return False
     ok = _v9_verdict(
-        cfg=cfg, env_file=env_file, jdir=run["jdir"], z=z,
+        cfg=cfg, env_file=env_file, jdir=settings.job_dir(job_id), z=z,
         kr=_v9_kill_and_resume(ctx, run, job), lines=lines,
     )
-    run["db"].close()
+    db.close()
     return ok
 
 

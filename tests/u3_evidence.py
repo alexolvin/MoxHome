@@ -44,12 +44,11 @@ sys.path.insert(0, str(ROOT / "tests"))
 sys.path.insert(0, str(ROOT / "tests" / "probe"))
 
 from mock_llm_server import MockLLMServer  # noqa: E402
-from test_l3_glossary_fix import _kill_all  # noqa: E402
+from test_l3_glossary_fix import _kill_all, _start_worker  # noqa: E402
 from test_u1_web import (  # noqa: E402
     U1Profile,
     _auth_header,
     _create_job,
-    _start_worker,
     _synth_u1_slow_book,
     _synth_u1_tiny_book,
     _upload_book,

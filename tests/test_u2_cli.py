@@ -468,6 +468,7 @@ def _scen_2_completed(ctx: U2Ctx) -> None:
         assert code == 0 and (
             "исход: COMPLETED" in log or "исход: COMPLETED_WITH_WARNINGS" in log
         ), f"сценарий 2: rc={code} tail={log.strip().splitlines()[-2:]}"
+        assert done_id is not None, "сценарий 2: id задания не возвращён"
         ctx.done_job_id = done_id
         res = _cli(ctx.main.cfg, ctx.main.env_file, "job", "status", done_id)
         ctx.record(
@@ -510,7 +511,9 @@ def _scen_4_cancelled(ctx: U2Ctx) -> None:
             "--mode",
             "bilingual",
         )
-        cancel_id = re.search(r"задание: (\S+)", res.stdout).group(1)
+        match = re.search(r"задание: (\S+)", res.stdout)
+        assert match is not None, "id задания не найден в stdout"
+        cancel_id = match.group(1)
         worker = _start_loop_worker(
             ctx.main.cfg, ctx.main.env_file, ctx.env.base / "w4.log"
         )
@@ -597,7 +600,9 @@ def test_u2_3_cross_visibility_cli_api(u2_env: U1Env) -> None:
         "bilingual",
     )
     assert res.returncode == 0, res.stderr
-    cli_job_id = re.search(r"задание: (\S+)", res.stdout).group(1)
+    match = re.search(r"задание: (\S+)", res.stdout)
+    assert match is not None, "id задания не найден в stdout"
+    cli_job_id = match.group(1)
     rows = client.get("/api/jobs").json()
     row = next((r for r in rows if r["id"] == cli_job_id), None)
     assert row is not None, f"задание из CLI не в GET /api/jobs: {cli_job_id}"

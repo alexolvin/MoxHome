@@ -489,7 +489,9 @@ def _ev_scen_4(ctx: U2EvCtx) -> None:
             ctx.main, "translate", str(_BOOKS["slow"]),
             "--source", "en", "--target", "ru", "--mode", "bilingual",
         )
-        cancel_id = re.search(r"задание: (\S+)", res.stdout).group(1)
+        match = re.search(r"задание: (\S+)", res.stdout)
+        assert match is not None, "id задания не найден в stdout"
+        cancel_id = match.group(1)
         worker = _start_worker_loop(ctx.main.cfg, ctx.main.env_file, ctx.base / "u2ev_w4.log")
         _WORKERS.append(worker)
         try:
@@ -546,7 +548,9 @@ def ev_u2_3(main: U1Profile) -> str:
         main, "translate", str(_BOOKS["tiny"]),
         "--source", "en", "--target", "ru", "--mode", "bilingual",
     )
-    cli_job_id = re.search(r"задание: (\S+)", res.stdout).group(1)
+    match = re.search(r"задание: (\S+)", res.stdout)
+    assert match is not None, "id задания не найден в stdout"
+    cli_job_id = match.group(1)
     lines.append("1. Задание создано CLI (verbatim stdout):")
     lines += [f"  | {line}" for line in res.stdout.strip().splitlines()]
     row = next(r for r in main.client.get("/api/jobs").json() if r["id"] == cli_job_id)

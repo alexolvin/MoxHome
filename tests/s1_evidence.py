@@ -79,6 +79,7 @@ def _header() -> str:
 
 
 def _ev_s1_1(run: S1Run) -> None:
+    assert run.s1_report is not None, f"нет S1-отчёта: {run.error}"
     cards: list[dict[str, Any]] = run.s1_report["cards"]
     rows: list[str] = []
     ok = 0
@@ -103,6 +104,9 @@ def _ev_s1_1(run: S1Run) -> None:
 
 
 def _ev_s1_2(en_run: S1Run, de_run: S1Run, nl_run: S1Run) -> None:
+    assert en_run.s1_report is not None, f"нет S1-отчёта: {en_run.error}"
+    assert de_run.s1_report is not None, f"нет S1-отчёта: {de_run.error}"
+    assert nl_run.s1_report is not None, f"нет S1-отчёта: {nl_run.error}"
     en_cards: list[dict[str, Any]] = en_run.s1_report["cards"]
     de_nouns = [c for c in de_run.s1_report["cards"] if c["pos"] == "noun"]
     nl_nouns = [c for c in nl_run.s1_report["cards"] if c["pos"] == "noun"]
@@ -143,11 +147,14 @@ def _ev_s1_2(en_run: S1Run, de_run: S1Run, nl_run: S1Run) -> None:
 
 
 def _density_ok(rep: dict[str, Any], cap: int, n: float) -> bool:
-    return rep["cards_issued"] <= cap and 0 < rep["density_actual"] <= n + 1e-9
+    return bool(
+        rep["cards_issued"] <= cap and 0 < rep["density_actual"] <= n + 1e-9
+    )
 
 
 def _ev_s1_3(run: S1Run, n: float) -> None:
     rep = run.s1_report
+    assert rep is not None, f"нет S1-отчёта: {run.error}"
     words = rep["book_words"]
     cap = rep["max_cards"]
     content = (
@@ -171,6 +178,7 @@ def _ev_s1_3(run: S1Run, n: float) -> None:
 
 def _ev_s1_4(run: S1Run, settings: Any) -> None:
     rep = run.s1_report
+    assert rep is not None, f"нет S1-отчёта: {run.error}"
     registry = load_registry(settings.languages_root)
     schema = load_card_schema(settings.languages_root / "en", registry["en"])
     rejected = rep["rejected"]
@@ -197,6 +205,9 @@ def _ev_s1_4(run: S1Run, settings: Any) -> None:
 
 
 def _ev_s1_5(first: S1Run, second: S1Run, ghost: S1Run) -> None:
+    assert first.s1_report is not None, f"нет S1-отчёта: {first.error}"
+    assert second.s1_report is not None, f"нет S1-отчёта: {second.error}"
+    assert ghost.s1_report is not None, f"нет S1-отчёта: {ghost.error}"
     same = first.s1_report["candidates"] == second.s1_report["candidates"]
     ghosts = [r for r in ghost.s1_report["rejected"] if r["lemma"] == "Ghostlemma"]
     ghost_rows = "".join(
@@ -222,6 +233,7 @@ def _ev_s1_5(first: S1Run, second: S1Run, ghost: S1Run) -> None:
 
 def _ev_s1_6(run: S1Run) -> None:
     rep = run.s1_report
+    assert rep is not None, f"нет S1-отчёта: {run.error}"
     cards: list[dict[str, Any]] = rep["cards"]
     generated = [c for c in cards if c["example_generated"]]
     share = rep["book_example_share"]
@@ -256,9 +268,9 @@ def _ev_s1_7(lang_runs: list[S1Run]) -> None:
     ok = 0
     for run in lang_runs:
         rep = run.s1_report
+        assert rep is not None, f"нет S1-отчёта: {run.name}"
         good = (
             run.error is None
-            and rep is not None
             and run.quality["s1"]["enabled"] is True
             and run.job.status.value == "LEARNING"
         )
