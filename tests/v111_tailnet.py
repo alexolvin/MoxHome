@@ -15,16 +15,23 @@ Mock LLM привязан к 0.0.0.0 (класс по умолчанию — 127
 зовёт его по тому же tailnet-адресу (``http://<ts-ip>:<port>/v1``) —
 LLM-канал тоже идёт по частной сети.
 
-Доступ: ``SERVER_AUTH_SECRET`` пуст — предмет проверки канал доступа,
-а не аутентификация (секрет покрыт U1-7). Книга — tiny 2×8 (английская),
-режим bilingual; при NEEDS_CONFIRMATION внешняя машина подтверждает язык
-через тот же API.
+Доступ: ``SERVER_AUTH_SECRET`` задан (код U3, D91: при пустом секрете все
+мутирующие маршруты отвечают 403, 4/4 без секрета недостижимо), все
+запросы — с Basic (пароль = секрет), мутирующие (загрузка книги, задание,
+подтверждение) — с CSRF-токеном, извлечённым из meta ``u3-csrf`` открытой
+страницы (тот же путь, что у браузерного пользователя). Предмет проверки —
+канал доступа, а не аутентификация (секрет покрыт U1-7). Книга — tiny 2×8
+(английская), режим bilingual; при NEEDS_CONFIRMATION внешняя машина
+подтверждает язык через тот же API.
 
-Захват: docs/CONTROL/evidence/V1/v1-11-tailnet.txt.
+Захват: по умолчанию docs/CONTROL/evidence/V1/v1-11-tailnet.txt;
+переопределяется переменными окружения V111_EVIDENCE_DIR /
+V111_EVIDENCE_FILE (V1F-прогон пишет в evidence/V1F/).
 """
 
 from __future__ import annotations
 
+import base64
 import os
 import re
 import shutil
@@ -50,8 +57,19 @@ from v1_evidence import _make_v1_storage, _stop_worker, _worker  # noqa: E402
 from app.core.config import ALL_ENV_KEYS, load_settings  # noqa: E402
 from app.storage.jobs_repo import JobRepository  # noqa: E402
 
-EVIDENCE = ROOT / "docs" / "CONTROL" / "evidence" / "V1"
+EVIDENCE_DIR = Path(
+    os.environ.get(
+        "V111_EVIDENCE_DIR", str(ROOT / "docs" / "CONTROL" / "evidence" / "V1")
+    )
+)
+EVIDENCE_FILE = Path(os.environ.get("V111_EVIDENCE_FILE", "v1-11-tailnet.txt"))
+if not EVIDENCE_FILE.is_absolute():
+    EVIDENCE_FILE = EVIDENCE_DIR / EVIDENCE_FILE
 REMOTE_IP = "100.95.195.40"  # vzu5-claw (tailnet); MagicDNS-имена отключены
+#: U3 (D91): без секрета мутирующие маршруты отвечают 403 — 4/4 только с ним.
+#: Секрет одноразовый (временное хранилище harness'а), не боевой.
+AUTH_USER = "v111"
+AUTH_SECRET = "v1f11-tailnet-secret"
 STAMP = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 WEB_PORT = 8321  # server.port по умолчанию; экземпляр единственный
 _JSON = "python3 -c 'import json,sys; print(json.load(sys.stdin)[\"{k}\"])'"
@@ -96,11 +114,20 @@ def _port_in_use(port: int) -> bool:
         return sock.connect_ex(("127.0.0.1", port)) == 0
 
 
-def _wait_http(url: str, timeout: float) -> bool:
+def _wait_http(
+    url: str, timeout: float, basic: tuple[str, str] | None = None
+) -> bool:
+    """GET с ожиданием HTTP 200; U3: при заданном секрете — с Basic-заголовком."""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         try:
-            with urllib.request.urlopen(url, timeout=5) as resp:
+            req = urllib.request.Request(url)
+            if basic is not None:
+                token = base64.b64encode(
+                    f"{basic[0]}:{basic[1]}".encode()
+                ).decode()
+                req.add_header("Authorization", f"Basic {token}")
+            with urllib.request.urlopen(req, timeout=5) as resp:
                 if resp.status == 200:
                     return True
         except OSError:
@@ -114,23 +141,32 @@ def _remote_script(ts_ip: str) -> str:
     script = [
         "set -u",
         f"B={base}",
+        f"U={AUTH_USER}",
+        f"P={AUTH_SECRET}",
         "echo '### OP1: открытие Web UI (внешняя машина vzu5-claw)'",
-        "curl -s -L -o /tmp/v111_ui.html -w 'UI HTTP %{http_code}\\n' $B/",
+        "curl -s -L -u \"$U:$P\" -o /tmp/v111_ui.html "
+        "-w 'UI HTTP %{http_code}\\n' $B/",
         "echo '--- первые 300 байт страницы:'",
         "head -c 300 /tmp/v111_ui.html",
         "echo",
-        "echo '### OP2: загрузка книги (POST /api/books)'",
+        "echo \"строк u3-strings на странице (вёрстка U3): "
+        "$(grep -c 'u3-strings' /tmp/v111_ui.html)\"",
+        'TOK=$(grep -o \'name="u3-csrf" content="[a-f0-9]*"\' '
+        "/tmp/v111_ui.html | grep -oE '[a-f0-9]{32}' | head -n 1)",
+        "echo \"CSRF-токен (meta страницы): ${TOK:-отсутствует}\"",
+        "echo '### OP2: загрузка книги (POST /api/books, Basic + X-U3-CSRF)'",
         "UP=$(curl -s -w '\\nUPLOAD HTTP %{http_code}' "
+        "-u \"$U:$P\" -H \"X-U3-CSRF: $TOK\" "
         "-F 'file=@/tmp/v111_book.epub' $B/api/books)",
         'echo "$UP"',
         f'NAME=$(printf \'%s\\n\' "$UP" | head -n -1 | {_JSON.format(k="name")})',
         'echo "name: $NAME"',
-        "echo '### OP3: запуск задания (POST /api/jobs)'",
+        "echo '### OP3: запуск задания (POST /api/jobs, Basic + JSON csrf)'",
         "JDATA=$(printf '{\"book\":\"%s\",\"target_language\":\"ru\","
-        "\"mode\":\"bilingual\"}' \"$NAME\")",
+        "\"mode\":\"bilingual\",\"csrf\":\"%s\"}' \"$NAME\" \"$TOK\")",
         "echo \"JDATA: $JDATA\"",
         "JOB=$(curl -s -w '\\nJOB HTTP %{http_code}' "
-        "-H 'Content-Type: application/json' "
+        "-u \"$U:$P\" -H 'Content-Type: application/json' "
         '-d "$JDATA" $B/api/jobs 2>/tmp/v111_curl_err.txt); '
         "RC3=$?",
         "echo \"curl_rc: $RC3; curl_stderr: $(cat /tmp/v111_curl_err.txt)\"",
@@ -139,12 +175,13 @@ def _remote_script(ts_ip: str) -> str:
         'echo "job: $JID"',
         "echo '### ожидание завершения (с внешней машины, опрос API)'",
         "for i in $(seq 1 120); do",
-        f'  ST=$(curl -s $B/api/jobs/$JID | {_JSON.format(k="status")})',
+        f'  ST=$(curl -s -u "$U:$P" $B/api/jobs/$JID | {_JSON.format(k="status")})',
         '  echo "poll $i: $ST"',
         "  case \"$ST\" in",
         "    NEEDS_CONFIRMATION)",
-        '      curl -s -X POST -H \'Content-Type: application/json\' '
-        "-d '{\"source_language\":\"en\"}' $B/api/jobs/$JID/confirm",
+        '      curl -s -X POST -u "$U:$P" -H \'Content-Type: application/json\' '
+        '-d \'{"source_language":"en","csrf":"\'$TOK\'"}\' '
+        "$B/api/jobs/$JID/confirm",
         "      echo",
         "      ;;",
         "    COMPLETED|COMPLETED_WITH_WARNINGS|FAILED|CANCELLED) break ;;",
@@ -152,13 +189,14 @@ def _remote_script(ts_ip: str) -> str:
         "  sleep 5",
         "done",
         "echo '### OP4: скачивание результата (GET /api/jobs/$JID/result)'",
-        "curl -s -o /tmp/v111_result.epub "
+        "curl -s -u \"$U:$P\" -o /tmp/v111_result.epub "
         "-w 'RESULT HTTP %{http_code} SIZE %{size_download}\\n' "
         "$B/api/jobs/$JID/result",
         "echo -n 'zip-магия (PK = 50 4b 03 04): '",
         "head -c 4 /tmp/v111_result.epub | od -An -tx1",
         "echo '### факты задания (с внешней машины):'",
-        "curl -s $B/api/jobs/$JID | python3 -m json.tool | head -n 25",
+        "curl -s -u \"$U:$P\" $B/api/jobs/$JID | python3 -m json.tool "
+        "| head -n 25",
         "echo REMOTE_DONE",
     ]
     return "\n".join(script) + "\n"
@@ -208,7 +246,8 @@ def _setup(base: Path, ts_ip: str) -> dict[str, Any]:
         base, "v111", f"http://{ts_ip}:{mock_port}/v1"
     )
     env_file.write_text(
-        f"SERVER_BIND_ADDRESS={ts_ip}\nLLM_API_KEY=test-key\n", encoding="utf-8"
+        f"SERVER_BIND_ADDRESS={ts_ip}\nLLM_API_KEY=test-key\n"
+        f"SERVER_AUTH_SECRET={AUTH_SECRET}\n", encoding="utf-8"
     )
     settings = load_settings(cfg, env_file)
     if _port_in_use(WEB_PORT):
@@ -275,6 +314,11 @@ def main() -> int:
         "сервер привязан к tailnet-адресу этой машины; mock LLM — к 0.0.0.0; "
         "LLM-адрес в конфиге = http://<ts-ip>:<mock-port>/v1"
     )
+    lines.append(
+        f"U3 (код стадии V1F): SERVER_AUTH_SECRET задан ({AUTH_USER}:<секрет>), "
+        "все запросы — Basic, мутирующие — с CSRF из meta страницы "
+        "(D91: без секрета мутирующие маршруты отвечают 403)"
+    )
     lines.append(f"python={sys.version.split()[0]}")
     lines.append("")
 
@@ -296,7 +340,10 @@ def main() -> int:
         cwd=ROOT, stdout=web_log, stderr=subprocess.STDOUT, env=clean,
     )
     worker = _worker(cfg, env_file, base / "worker.log", env=clean)
-    ok_ready = _wait_http(f"http://{ts_ip}:{WEB_PORT}/api/health", timeout=90)
+    ok_ready = _wait_http(
+        f"http://{ts_ip}:{WEB_PORT}/api/health", timeout=90,
+        basic=(AUTH_USER, AUTH_SECRET),
+    )
     lines.append(f"готовность сервера (опрос по {ts_ip}): {'ок' if ok_ready else 'НЕ ГОТОВ'}")
     if not ok_ready:
         lines.append("--- хвост web.log:")
@@ -314,8 +361,8 @@ def main() -> int:
     # Серверная сторона: какие запросы дошли до сервера (диагностика OP)
     _append_web_tail(base, lines)
 
-    EVIDENCE.mkdir(parents=True, exist_ok=True)
-    out = EVIDENCE / "v1-11-tailnet.txt"
+    EVIDENCE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    out = EVIDENCE_FILE
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"[v111] evidence: {out}")
     print(f"[v111] вердикт: {'PASS 4/4' if ok else 'FAIL'}")

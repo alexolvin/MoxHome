@@ -1,0 +1,61 @@
+V1F.1 — статический контроль на коде, включающем U3
+(2026-09-18, /mdisk/EpubTranslator, ветка stage/V1F; код приложения =
+main 8f76beb, правок кода за время V1F нет)
+
+Критерий (ТЗ 04 §V1.1): ruff и mypy без ошибок; pytest — все тесты
+зелёные; TODO/FIXME-остатков, неиспользуемых импортов, мёртвой/
+дублирующейся кодовой логики, хардкода секретов/URL/имён моделей нет.
+
+=== 1. ruff ===
+  $ .venv/bin/ruff check app tests
+  All checks passed!
+  (код выхода: 0)
+  # F401 (неиспользуемые импорты) и F841 (неиспользуемые переменные) —
+  # в базовом select ruff (E4/E7/E9/F), проверка покрыта.
+
+=== 2. mypy ===
+  $ .venv/bin/python -m mypy app --no-pretty
+  Success: no issues found in 78 source files
+  $ .venv/bin/python -m mypy app tests --no-pretty
+  Success: no issues found in 124 source files
+  # `mypy app tests` = 0 — новый гейт с D106 (базовая линия 105 ошибок
+  # исправлена 2026-09-18; V1.1-прогон 2026-09-14 мерил только `mypy app`
+  # по 75 файлов).
+
+=== 3. pytest (полный набор; pytest 9.1.1 при -q подавляет финальную
+строку, поэтому прогон `-o addopts=`) ===
+  $ .venv/bin/python -m pytest tests -o addopts= -q
+  ================= 305 passed, 2 warnings in 1056.73s (0:17:36) =================
+  RC=0
+  # 305 = 288 (main после V2) + 17 (T-U3-1…15).
+  # 2 warnings — DeprecationWarning сторонних пакетов (fastapi/starlette,
+  # anyio) — не проекта (те же, что V1/V2).
+
+=== 4. TODO/FIXME/XXX в app/ ===
+  $ grep -rnE "TODO|FIXME|XXX" app/
+  находок: 0
+
+=== 5. Дубликаты определений функций (AST-проверка app/) ===
+  app/llm/analysis.py:__init__ x2        (строки 85, 141)  # два разных класса
+  app/workers/pipeline.py:_normalize x4  (строки 1236, 1551, 2113, 2362)
+  # Те же осознанные паттерны, что V1.1 (вложенные однострочные замыкания
+  # `return normalize_text(text, source_pack.normalization)`, все вызваны;
+  # строки сдвинулись из-за кода V1R/V2/U3).
+
+=== 6. Хардкод секретов/URL/имён моделей (G1–G18, повтор V1.2) ===
+  Сырой выход всех 18 grep-ов: `v1f_v12_greps.log`; классификация —
+  `v1f-2-4-audits.txt` (раздел V1F.2).
+  Коротко: новых совпадений 20 (G1 +4 неймспейсы opf_repair D83, G2/G4/G6i/
+  G11/G12/G15/G16i/G17i/G18 — U3/V2-код), все классифицированы НК/конфиг/
+  документация; дефектов категории «дефект хардкода» — 0.
+  В app/: 0 абсолютных ФС-путей (G5), 0 Tailscale-адресов (G3 — только
+  WILDCARD_ADDRESS + docstring), 0 имён LLM-моделей (G2 — docstring +
+  tiktoken), 0 литералов секретов (G6i — только чтения из конфига),
+  0 `localhost` (G3).
+
+--- ИТОГ ---
+ruff: PASS (0); mypy app: PASS (78 files); mypy app tests: PASS (124 files,
+новый гейт D106); pytest: 305/305 PASS; TODO/FIXME/XXX: 0; дубликаты: только
+осознанные паттерны (описаны); хардкод: 0 дефектов.
+
+ВЕРДИКТ: V1F.1 (статика) — PASS

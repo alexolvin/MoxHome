@@ -1,0 +1,1053 @@
+=== V1F.12 шаг 4 — UI (18:35 UTC+3)
+Fri Sep 18 14:08:21 UTC 2026
+<title>EpubTranslator — Задания</title>
+1
+worker status на странице:
+ok (pid 4165726)
+=== V1F.12 шаг 5 — перевод тестовой книги через UI
+Fri Sep 18 14:09:11 UTC 2026
+{"error":"forbidden","message":"мутирующие операции требуют SERVER_AUTH_SECRET"}
+HTTP 403
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+KeyError: 'name'
+book name: 
+{"error":"forbidden","message":"мутирующие операции требуют SERVER_AUTH_SECRET"}
+JOB HTTP 403
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+KeyError: 'id'
+job: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 1: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 2: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 3: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 4: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 5: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 6: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 7: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 8: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 9: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 10: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 11: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 12: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 13: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 14: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 15: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 16: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 17: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 18: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 19: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 20: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 21: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 22: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 23: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 24: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 25: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 26: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 27: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 28: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 29: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 30: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 31: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 32: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 33: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 34: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 35: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 36: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 37: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 38: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 39: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 40: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 41: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 42: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 43: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 44: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 45: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 46: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 47: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 48: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 49: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 50: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 51: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 52: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 53: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 54: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 55: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 56: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 57: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 58: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 59: 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib64/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib64/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib64/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+poll 60: 
+=== V1F.12 шаг 5 (повтор после фикса README) — UI с SERVER_AUTH_SECRET + CSRF
+Fri Sep 18 15:20:23 UTC 2026
+{"name":"u1-ab1f5a92-probe.en.epub","title":"Probe Book","dc_language":"en","detected":"en","confidence":1.0,"probabilities":{"en":1.0},"decision":"accepted","accepted_language":"en","reasons":[],"stats":{"chapter_count":2,"segment_count":15,"word_count":79}}
+HTTP 200
+book name: u1-ab1f5a92-probe.en.epub
+{"id":"j-20260918T152023Z-fe9aac","status":"CREATED"}
+JOB HTTP 200
+job: j-20260918T152023Z-fe9aac
+poll 1: CREATED
+poll 2: TRANSLATING
+poll 3: TRANSLATING
+poll 4: TRANSLATING
+poll 5: TRANSLATING
+poll 6: TRANSLATING
+poll 7: TRANSLATING
+poll 8: TRANSLATING
+poll 9: TRANSLATING
+poll 10: TRANSLATING
+poll 11: TRANSLATING
+poll 12: TRANSLATING
+poll 13: TRANSLATING
+poll 14: TRANSLATING
+poll 15: TRANSLATING
+poll 16: TRANSLATING
+poll 17: COMPLETED_WITH_WARNINGS
+=== финальный факт задания (verbatim, head 45):
+{
+    "id": "j-20260918T152023Z-fe9aac",
+    "status": "COMPLETED_WITH_WARNINGS",
+    "status_terminal": true,
+    "source_language": "en",
+    "target_language": "ru",
+    "mode": "bilingual",
+    "learning_level": "Learning",
+    "learning_cefr": null,
+    "priority": 0,
+    "progress": 0.9999999999999999,
+    "progress_display": "\u0432\u0441\u0435 \u0444\u0430\u0437\u044b \u043f\u0435\u0440\u0435\u0432\u043e\u0434\u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u044b (\u0441\u0435\u0433\u043c\u0435\u043d\u0442\u043e\u0432 15 / 15)",
+    "phase": null,
+    "phases": {
+        "completed": 4,
+        "total": 4
+    },
+    "segments": {
+        "processed": 15,
+        "total": 15
+    },
+    "alignment": {
+        "coverage": 0.0,
+        "aligned": 0,
+        "total": 15
+    },
+    "tokens": {
+        "fill": {
+            "input": 30254,
+            "input_cache": 0,
+            "output": 8774,
+            "total": 39028
+        },
+        "translation": {
+            "input": 301,
+            "input_cache": 0,
+            "output": 1868,
+            "total": 2169
+        },
+        "total": 41197
+    },
+    "elapsed_seconds": 157.2,
+    "eta_seconds": 0.0,
+    "failed_segments": 6,
+    "retries": 20,
+=== warnings (хвост job facts):
+{
+ "warnings": [
+  "E5-2: переведено блоков 0/15 (0.0% < 99.5%): OEBPS/chapter1.xhtml /htmlbody[1]h1[1] переведённый блок не найден (h1); OEBPS/chapter1.xhtml /htmlbody[1]p[1] переведённый блок не найден (p); OEBPS/chapter1.xhtml /htmlbody[1]p[2] переведённый блок не найден (p); OEBPS/chapter1.xhtml /htmlbody[1]p[3] переведённый блок не найден (p); OEBPS/chapter1.xhtml /htmlbody[1]ul[1]li[1] переведённый блок не найден (li); OEBPS/chapter1.xhtml /htmlbody[1]ul[1]li[2] переведённый блок не найден (li); OEBPS/chapter1.xhtml /htmlbody[1]blockquote[1] переведённый блок не найден (blockquote); OEBPS/chapter1.xhtml /htmlbody[1]blockquote[1]p[1] переведённый блок не найден (p); OEBPS/chapter1.xhtml /htmlbody[1]p[4] переведённый блок не найден (p); OEBPS/chapter2.xhtml /htmlbody[1]h2[1] переведённый блок не найден (h2) … (+5)",
+  "E5 п.4: fill не удался (over_maximum_retries) в 1 группе(ах) — фрагменты не переведены, см. fill_failures и errors.log",
+  "E6: выравнивание ниже порога: 0/15 (0.0% < 99.5%): OEBPS/chapter1.xhtml /htmlbody[1]h1[1] (missing_translation); OEBPS/chapter1.xhtml /htmlbody[1]p[1] (missing_translation); OEBPS/chapter1.xhtml /htmlbody[1]p[2] (missing_translation); OEBPS/chapter1.xhtml /htmlbody[1]p[3] (missing_translation); OEBPS/chapter1.xhtml /htmlbody[1]ul[1]li[1] (missing_translation); OEBPS/chapter1.xhtml /htmlbody[1]ul[1]li[2] (missing_translation); OEBPS/chapter1.xhtml /htmlbody[1]blockquote[1] (missing_translation); OEBPS/chapter1.xhtml /htmlbody[1]blockquote[1]p[1] (missing_translation); OEBPS/chapter1.xhtml /htmlbody[1]p[4] (missing_translation); OEBPS/chapter2.xhtml /htmlbody[1]h2[1] (missing_translation)",
+  "S1: лексические кандидаты не отобраны (0) — карточек нет",
+  "S2: MWE-кандидаты не отобраны (0) — записей нет",
+  "S3: грамматические кандидаты не отобраны (0) — заметок нет",
+  "S5: 2 глав без выровненных сегментов (вне учебной книги): «Chapter One»; «Chapter Two»",
+  "S5: фактический охват 0.0% (E6) — указан в учебной книге"
+ ],
+ "result_ready": true,
+ "files": {
+  "target.epub": true,
+  "learning.epub": true,
+  "cards.csv": false,
+  "cards.anki.tsv": false,
+  "cards.json": false,
+  "quality.json": true
+ }
+}
+=== jobs.db: alignment_coverage:
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+sqlite3.OperationalError: no such table: jobs
+=== alignment_report.json:
+{
+  "submit_mode": "APPEND_BLOCK",
+  "source_text_source": "исходный файл (сегментация); в режиме REPLACE исходный текст в выходном файле отсутствует — источник учебных материалов: исходный файл (T-E6-8)",
+  "min_coverage": 0.995,
+  "coverage": 0.0,
+  "total": 15,
+  "aligned": 0,
+  "unaligned": 15,
+  "extra_blocks": 0,
+  "identity_mismatches": 0,
+  "docs": [
+    {
+      "doc": "OEBPS/chapter1.xhtml",
+      "aligned": [],
+      "unaligned": [
+        {
+          "segment_id": "a0366d01098bd49745fa34e21ab2de392dfa5a116e73c2fa809264a7f666debb",
+          "source_xpath": "/htmlbody[1]h1[1]",
+          "source_text": "Chapter One",
+          "reason": "missing_translation",
+          "detail": "переведённый блок не найден (h1)"
+        },
+        {
+          "segment_id": "23913ea6a1c824c61f53b5ba04c405879aafef61a218d3fec4c21499a56ba34e",
+          "source_xpath": "/htmlbody[1]p[1]",
+          "source_text": "The quick brown fox jumps over the lazy dog near the river.",
+          "reason": "missing_translation",
+          "detail": "переведённый блок не найден (p)"
+        },
+        {
+=== V1F.12 шаг 5 (повтор 2: enable_thinking=false, книга уже в input/)
+Fri Sep 18 15:28:39 UTC 2026
+{"detail":"файл-источник не найден: /tmp/v1f-clean/et/input/probe.en.epub"}
+JOB HTTP 400
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+KeyError: 'id'
+job: 
+poll 1: 
+poll 2: 
+poll 3: 
+poll 4: 
+poll 5: 
+poll 6: 
+poll 7: 
+poll 8: 
+poll 9: 
+poll 10: 
+poll 11: 
+poll 12: 
+poll 13: 
+poll 14: 
+poll 15: 
+poll 16: 
+poll 17: 
+poll 18: 
+poll 19: 
+poll 20: 
+poll 21: 
+poll 22: 
+poll 23: 
+poll 24: 
+poll 25: 
+poll 26: 
+poll 27: 
+poll 28: 
+poll 29: 
+poll 30: 
+poll 31: 
+poll 32: 
+poll 33: 
+poll 34: 
+poll 35: 
+poll 36: 
+poll 37: 
+poll 38: 
+poll 39: 
+poll 40: 
+poll 41: 
+poll 42: 
+poll 43: 
+poll 44: 
+poll 45: 
+=== финальный факт (verbatim):
+Expecting value: line 1 column 1 (char 0)
+{"id":"j-20260918T160359Z-98045c","status":"CREATED"}
+HTTP 200
+JOB_B_TERMINAL status=COMPLETED_WITH_WARNINGS after 190s
+=== V1F.12 шаг 6: поиск результата (job j-20260918T160359Z-98045c) ===
+--- 6.1 результат через API (GET /api/jobs/$JID/result, основной артефакт: Learning → learning.epub)
+RESULT HTTP 200 SIZE 3997
+zip-магия (PK = 50 4b 03 04):  50 4b 03 04
+размер learning.epub в каталоге задания: 3997
+--- 6.2 CLI job list
+j-20260918T160359Z-98045c  COMPLETED_WITH_WARNINGS   en→ru  bilingual, Learning  все фазы перевода завершены (сегментов 15 / 15)
+j-20260918T152023Z-fe9aac  COMPLETED_WITH_WARNINGS   en→ru  bilingual, Learning  все фазы перевода завершены (сегментов 15 / 15)
+rc=0
+--- 6.3 CLI job status
+задание: j-20260918T160359Z-98045c
+статус: COMPLETED_WITH_WARNINGS
+пара: en → ru  режим: bilingual
+learning, уровень: Learning
+прогресс: все фазы перевода завершены (сегментов 15 / 15)
+сегменты: 15 / 15
+охват выравнивания (E6): 15 / 15 (100.0%)
+токенов всего: 23651
+прошло: 194 c
+остаток (оценка): 0 c
+предупреждение: S1: 26 карточек отклонено: chapter: card_schema.json: поле <root>: Additional properties are not allowed ('article', 'auxiliary', 'conjugation_group', 'diminutive', 'gender', 'irregular_forms', 'main_forms', 'participle', 'plural', 'separable' were unexpected); fox: card_schema.json: поле <root>: Additional properties are not allowed ('article', 'auxiliary', 'conjugation_group', 'diminutive', 'gender', 'irregular_forms', 'main_forms', 'participle', 'plural', 'separable' were unexpected); virtue: card_schema.json: поле <root>: Additional properties are not allowed ('article', 'auxiliary', 'conjugation_group', 'diminutive', 'gender', 'irregular_forms', 'main_forms', 'participle', 'plural', 'separable' were unexpected); patience: card_schema.json: поле <root>: Additional properties are not allowed ('article', 'auxiliary', 'conjugation_group', 'diminutive', 'gender', 'irregular_forms', 'main_forms', 'participle', 'plural', 'separable' were unexpected); item: card_schema.json: поле <root>: Additional properties are not allowed ('article', 'auxiliary', 'conjugation_group', 'diminutive', 'gender', 'irregular_forms', 'main_forms', 'participle', 'plural', 'separable' were unexpected); list: card_schema.json: поле <root>: Additional properties are not allowed ('article', 'auxiliary', 'conjugation_group', 'diminutive', 'gender', 'irregular_forms', 'main_forms', 'participle', 'plural', 'separable' were unexpected); second: card_schema.json: поле <root>: Additional properties are not allowed ('article', 'auxiliary', 'conjugation_group', 'diminutive', 'gender', 'irregular_forms', 'main_forms', 'participle', 'plural', 'separable' were unexpected); say: card_schema.json: поле <root>: Additional properties are not allowed ('article', 'auxiliary', 'conjugation_group', 'diminutive', 'gender', 'irregular_forms', 'main_forms', 'participle', 'plural', 'separable' were unexpected); paragraph: card_schema.json: поле <root>: Additional properties are not allowed ('article', 'auxiliary', 'conjugation_group', 'diminutive', 'gender', 'irregular_forms', 'main_forms', 'participle', 'plural', 'separable' were unexpected); span: card_schema.json: поле <root>: Additional properties are not allowed ('article', 'auxiliary', 'conjugation_group', 'diminutive', 'gender', 'irregular_forms', 'main_forms', 'participle', 'plural', 'separable' were unexpected)
+предупреждение: S2: MWE-кандидаты не отобраны (0) — записей нет
+предупреждение: S3: грамматические кандидаты не отобраны (0) — заметок нет
+предупреждение: S4 вопросы: 21 отклонено: ch1: сущность отсутствует в главе (S4.4): Быстрая; ch1: сущность отсутствует в главе (S4.4): Она; ch1: сущность отсутствует в главе (S4.4): Третий; ch1: сущность отсутствует в главе (S4.4): Первый; ch1: сущность отсутствует в главе (S4.4): Конец; ch1: сущность отсутствует в главе (S4.4): у; ch1: сущность отсутствует в главе (S4.4): коричневая; ch1: сущность отсутствует в главе (S4.4): старую; ch1: сущность отсутствует в главе (S4.4): Лиса; ch1: сущность отсутствует в главе (S4.4): Второй
+результат готов: target.epub, learning.epub, cards.csv, cards.anki.tsv, cards.json
+rc=0
+--- 6.4 CLI export cards --format csv
+lemma,word_form,pos,translation,meaning,example,frequency_band,cefr_level,chapter_id,segment_id,cefr_source,past_tense,past_participle
+morning,morning,noun,утро,утро,She visited the old mill on a cold morning.,A1,A1,ch1,b5162d42fe60abe6396010926f2f257ab8ce35309ba7f9668a77aea467ccb678,derived,,
+rc=0
+--- 6.5 CLI validate target.epub (структура + EPUBCheck)
+EPUBCheck v5.3.0: 0 FATAL, 0 ERROR, WARNING 0
+rc=0
+=== V1F.12 шаг 7: возобновление прерванного задания ===
+--- 7.1 создание задания C
+{"id":"j-20260918T161332Z-5d6da2","status":"CREATED"}
+HTTP 200
+--- heartbeat (pid воркера):
+168975
+1789748011.7541707
+--- 7.2 ожидание TRANSLATING и kill -9 воркера (pid 168975)
+poll 1: TRANSLATING
+kill -9 168975: rc=0 (время: 16:13:52Z UTC)
+jobC 16:14:31Z TRANSLATING
+jobC 16:14:34Z LEARNING
+jobC 16:17:30Z COMPLETED_WITH_WARNINGS
+JOB_C_TERMINAL status=COMPLETED_WITH_WARNINGS
+--- 7.3 финальный статус задания C (API, verbatim)
+{
+    "id": "j-20260918T161332Z-5d6da2",
+    "status": "COMPLETED_WITH_WARNINGS",
+    "status_terminal": true,
+    "source_language": "en",
+    "target_language": "ru",
+    "mode": "bilingual",
+    "learning_level": "Learning",
+    "learning_cefr": null,
+    "priority": 0,
+    "progress": 0.9999999999999999,
+    "progress_display": "\u0432\u0441\u0435 \u0444\u0430\u0437\u044b \u043f\u0435\u0440\u0435\u0432\u043e\u0434\u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u044b (\u0441\u0435\u0433\u043c\u0435\u043d\u0442\u043e\u0432 15 / 15)",
+    "phase": null,
+    "phases": {
+        "completed": 4,
+        "total": 4
+    },
+    "segments": {
+        "processed": 15,
+        "total": 15
+    },
+    "alignment": {
+        "coverage": 1.0,
+        "aligned": 15,
+        "total": 15
+    },
+    "tokens": {
+        "analysis": {
+            "input": 11012,
+            "input_cache": 0,
+--- 7.4 переходы БД (верификация механизма, D78)
+CREATED|VALIDATING|2026-09-18 16:13:32Z|начало этапа|worker
+VALIDATING|PLANNING|2026-09-18 16:13:32Z|начало этапа|worker
+PLANNING|TRANSLATING|2026-09-18 16:13:32Z|начало этапа|worker
+TRANSLATING|INTERRUPTED|2026-09-18 16:14:17Z|арена истекла (worker_pid=168975); восстановление при старте воркера|recovery
+INTERRUPTED|TRANSLATING|2026-09-18 16:14:17Z|resume: перезапуск воркера, арена истекла|worker
+TRANSLATING|ANALYZING|2026-09-18 16:14:33Z|начало этапа|worker
+ANALYZING|GENERATING|2026-09-18 16:14:33Z|начало этапа|worker
+GENERATING|VALIDATING_OUTPUT|2026-09-18 16:14:33Z|начало этапа|worker
+VALIDATING_OUTPUT|GLOSSARY_FIX|2026-09-18 16:14:33Z|начало этапа|worker
+GLOSSARY_FIX|LEARNING|2026-09-18 16:14:33Z|начало этапа|worker
+LEARNING|COMPLETED_WITH_WARNINGS|2026-09-18 16:17:29Z|результат валидирован (вкл. L3, S)|worker
+=== health (GET /api/health, Basic; верификация компонентов) ===
+{
+    "app": "ok",
+    "database": "ok",
+    "storage": "ok",
+    "worker": "ok (pid 313704)",
+    "llm": {
+        "translation": "ok",
+        "fill": "ok",
+        "analysis": "ok"
+    },
+    "epubcheck": "ok",
+    "nlp": {
+        "de": "ok",
+        "en": "ok",
+        "fr": "ok",
+        "it": "ok",
+        "nl": "ok",
+        "ru": "n/a (\u0446\u0435\u043b\u0435\u0432\u043e\u0439 \u044f\u0437\u044b\u043a)"
+    }
+}
+rc=0
+=== V1F.12 шаг 5, CLI-вариант (эквивалент UI): translate --wait ===
+Fri Sep 18 16:22:31 UTC 2026
+задание: j-20260918T162232Z-1899b5
+статус: CREATED
+исход: COMPLETED_WITH_WARNINGS
+CLI_TRANSLATE_RC=0
+Fri Sep 18 16:24:24 UTC 2026
+--- факты задания D (CLI): segments/alignment/файлы
+status: COMPLETED_WITH_WARNINGS
+progress_display: все фазы перевода завершены (сегментов 15 / 15)
+segments: {'processed': 15, 'total': 15}
+alignment: {'coverage': 1.0, 'aligned': 15, 'total': 15}
+tokens: {'analysis': {'input': 11009, 'input_cache': 0, 'output': 5131, 'total': 16140}, 'fill': {'input': 2754, 'input_cache': 0, 'output': 618, 'total': 3372}, 'translation': {'input': 265, 'input_cache': 0, 'output': 166, 'total': 431}, 'total': 19943}
+result_ready: True
+files: {'target.epub': True, 'learning.epub': True, 'cards.csv': True, 'cards.anki.tsv': True, 'cards.json': True, 'quality.json': True}

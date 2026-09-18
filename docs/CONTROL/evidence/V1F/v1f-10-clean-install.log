@@ -1,0 +1,79 @@
+=== git clone (local) main @ 8f76bebe24bd3222e8b603c5d24b2adcc87e62cd
+Fri Sep 18 14:03:50 UTC 2026
+=== uv venv
+Using CPython 3.12.14
+Creating virtual environment at: .venv
+Activate with: source .venv/bin/activate
+VENV_RC=0
+=== uv sync
+ + thinc==8.3.13
+ + tiktoken==0.14.0
+ + tqdm==4.70.1
+ + typer==0.27.2
+ + types-jsonschema==4.26.0.20260518
+ + types-pyyaml==6.0.12.20260906
+ + typing-extensions==4.16.0
+ + typing-inspection==0.4.4
+ + urllib3==2.7.0
+ + uvicorn==0.52.4
+ + wasabi==1.1.3
+ + wcwidth==0.8.3
+ + weasel==1.0.0
+ + wordfreq==3.1.1
+ + wrapt==2.4.1
+SYNC_RC=0
+=== uv pip install spaCy-моделей (5, после uv sync)
+Fri Sep 18 14:04:13 UTC 2026
+Resolved 5 packages in 2.34s
+Installed 5 packages in 17ms
+ + de-core-news-sm==3.8.0 (from https://github.com/explosion/spacy-models/releases/download/de_core_news_sm-3.8.0/de_core_news_sm-3.8.0-py3-none-any.whl)
+ + en-core-web-sm==3.8.0 (from https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl)
+ + fr-core-news-sm==3.8.0 (from https://github.com/explosion/spacy-models/releases/download/fr_core_news_sm-3.8.0/fr_core_news_sm-3.8.0-py3-none-any.whl)
+ + it-core-news-sm==3.8.0 (from https://github.com/explosion/spacy-models/releases/download/it_core_news_sm-3.8.0/it_core_news_sm-3.8.0-py3-none-any.whl)
+ + nl-core-news-sm==3.8.0 (from https://github.com/explosion/spacy-models/releases/download/nl_core_news_sm-3.8.0/nl_core_news_sm-3.8.0-py3-none-any.whl)
+SPACY_RC=0
+=== EPUBCheck (локальная копия W3C 5.3.0 — зафиксированное отклонение)
+CHANGELOG.txt
+LICENSE.txt
+README.txt
+THIRD-PARTY.txt
+epubcheck.jar
+=== .venv-проверка моделей
+en_core_web_sm ok
+de_core_news_sm ok
+fr_core_news_sm ok
+it_core_news_sm ok
+nl_core_news_sm ok
+=== шаг 2: config.yaml/.env (ключ подставлен из main .env, не печатается)
+14:  root: /tmp/v1f-clean/et/data
+28:  # E4.1: base_url и model — единственный источник настроек LLM (любые
+43:      base_url: http://127.0.0.1:8004/v1
+44:      model: qwen3.8-27b
+54:      base_url: http://127.0.0.1:8004/v1
+55:      model: qwen3.8-27b
+65:      base_url: http://127.0.0.1:8004/v1
+66:      model: qwen3.8-27b
+125:  root: config/languages
+132:  jar_path: data/tools/epubcheck-5.3.0/epubcheck.jar
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+  File "/tmp/v1f-clean/et/app/core/config.py", line 536, in load_settings
+    if not env_file.is_file():
+           ^^^^^^^^^^^^^^^^
+AttributeError: 'str' object has no attribute 'is_file'
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+  File "/tmp/v1f-clean/et/app/core/config.py", line 642, in load_settings
+    raise ConfigurationError(
+app.core.errors.ConfigurationError: каталог промптов не существует: /tmp/v1f-clean/et/data/prompts (llm.prompts_root='prompts') — создайте каталог или исправьте значение
+Traceback (most recent call last):
+  File "<string>", line 9, in <module>
+AttributeError: 'str' object has no attribute 'is_file'
+port: 8321 | bind: 100.124.155.106
+storage.root: /tmp/v1f-clean/et
+llm: http://127.0.0.1:8004/v1 qwen3.8-27b
+prompts_root: prompts
+port: 8321 | bind: 127.0.0.1
+storage.root: /tmp/v1f-clean/et
+llm: http://127.0.0.1:8004/v1 qwen3.8-27b
+epubcheck.jar: data/tools/epubcheck-5.3.0/epubcheck.jar True
