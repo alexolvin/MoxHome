@@ -1,0 +1,303 @@
+### G1 (13)
+app/epub/segmenter.py:98:    epub_ns = "http://www.idpf.org/2007/ops"
+app/epub/reader.py:25:OPF_NS = "http://www.idpf.org/2007/opf"
+app/epub/reader.py:26:DC_NS = "http://purl.org/dc/elements/1.1/"
+app/epub/reader.py:27:EPUB_OPS_NS = "http://www.idpf.org/2007/ops"
+app/adapters/epub_engine/opf_repair.py:10:  ``http://www.idpf.org/2007/opf`` (атрибут без префикса в XML не попадает
+app/adapters/epub_engine/opf_repair.py:32:OPF_NS = "http://www.idpf.org/2007/opf"
+app/adapters/epub_engine/opf_repair.py:33:DC_NS = "http://purl.org/dc/elements/1.1/"
+app/adapters/epub_engine/opf_repair.py:34:XSI_NS = "http://www.w3.org/2001/XMLSchema-instance"
+app/learning/study_book.py:36:XHTML = "http://www.w3.org/1999/xhtml"
+app/learning/study_book.py:37:EPUB_NS = "http://www.idpf.org/2007/ops"
+app/learning/study_book.py:38:OPF_NS = "http://www.idpf.org/2007/opf"
+app/learning/study_book.py:39:NCX_NS = "http://www.daisy.org/z3986/2005/ncx/"
+app/learning/study_book.py:41:XML_NS = "http://www.w3.org/XML/1998/namespace"
+### G2 (3)
+app/core/config.py:73:    #: эндпоинт, расширенные параметры владения: vLLM, Ollama, ...). Пример:
+app/epub/reader.py:13:import tiktoken
+app/epub/reader.py:51:    encoding = tiktoken.get_encoding(settings.llm.profile("translation").token_encoding)
+### G3 (3)
+app/core/config.py:11:Бинд на 0.0.0.0 — только при явном ALLOW_WILDCARD_BIND=true (E0.6).
+app/core/config.py:48:WILDCARD_ADDRESS = "0.0.0.0"
+app/core/config.py:632:            "отказ: бинд на 0.0.0.0 запрещён без явного разрешения. Задайте "
+### G4 (31)
+app/core/config.py:118:    port: int = Field(default=8321, ge=1, le=65535)
+app/core/config.py:145:    busy_timeout_ms: int = Field(default=5000, ge=0)
+app/core/config.py:156:    glossary_max_user_prompt_chars: int = Field(default=8000, gt=0)
+app/core/config.py:211:    max_term_chars: int = Field(default=80, ge=1)
+app/core/config.py:218:    style_sample_chars: int = Field(default=5000, ge=100)
+app/workers/qc.py:115:    report = {
+app/workers/pipeline.py:324:        report = detect_book(
+app/workers/pipeline.py:353:        if pair is not None and pair.status is PairStatus.UNSUPPORTED:
+app/workers/pipeline.py:372:        if pair is not None and pair.status is PairStatus.UNSUPPORTED:
+app/workers/pipeline.py:877:        report = {
+app/workers/pipeline.py:1104:            job_dir, report=report, rejected=rejected
+app/workers/pipeline.py:1336:            job_dir, report=report, rejected=rejected
+app/workers/pipeline.py:1673:        final_warnings = self._s3_finalize_quality(job_dir, report=report, rejected=rejected)
+app/workers/pipeline.py:2839:        report = {
+app/services/jobs.py:107:        report = resolver.resolve_pair(dc_language, target_language)
+app/services/jobs.py:108:        if report.status is PairStatus.UNSUPPORTED:
+app/services/analyze.py:30:        report = detect_book(
+app/adapters/epub_engine/models.py:113:    glossary_limit_chars: int = 8000
+app/languages/resolver.py:43:    SUPPORTED = "supported"
+app/languages/resolver.py:45:    UNSUPPORTED = "unsupported"
+app/languages/resolver.py:72:        return self.status is not PairStatus.UNSUPPORTED
+app/languages/resolver.py:268:            status = PairStatus.UNSUPPORTED
+app/languages/resolver.py:272:            status = PairStatus.SUPPORTED
+app/web/static/app.js:773:  for (let value = base; value <= 5000; value *= 2) options.push(value);
+app/web/api.py:551:    lines: int = Query(default=200, ge=1, le=5000),
+app/web/views.py:226:    alignment_report = read_json(jdir / "alignment_report.json")
+app/web/views.py:613:    l3_report = read_json(jdir / "l3_fix_report.json")
+app/__main__.py:63:        port=settings.server.port,
+app/cli.py:114:    report = resolver.resolve_pair(args.source, args.target)
+app/cli.py:115:    if report.status is PairStatus.UNSUPPORTED:
+app/cli.py:420:    p_export = sub.add_parser("export", help="экспорт артефактов задания")
+### G5 (0)
+(0)
+### G6i (15)
+app/core/config.py:582:            api_key=env["LLM_API_KEY"],
+app/core/config.py:583:            analysis_api_key=env["LLM_ANALYSIS_API_KEY"],
+app/llm/analysis.py:168:        base_url, model, api_key = self._settings.llm.endpoint("analysis")
+app/llm/analysis.py:194:        headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+app/adapters/epub_engine/engine.py:184:        base_url, model, api_key = settings.llm.endpoint("translation")
+app/adapters/epub_engine/engine.py:185:        fill_url, fill_model, fill_api_key = settings.llm.endpoint("fill")
+app/web/auth.py:51:    """(username, password) из Basic-заголовка; None — заголовок некорректен."""
+app/web/auth.py:58:    username, _sep, password = decoded.rpartition(":")
+app/web/auth.py:59:    return username, password
+app/web/auth.py:64:    secret = settings.server.auth_secret
+app/web/auth.py:71:    username, password = parts
+app/web/auth.py:72:    return hmac.compare_digest(password.encode("utf-8"), secret.encode("utf-8")), username
+app/web/auth.py:81:    secret = settings.server.auth_secret
+app/web/health.py:58:        base_url, _model, api_key = settings.llm.endpoint(name)
+app/web/health.py:63:                headers={"Authorization": f"Bearer {api_key}"} if api_key else {},
+### G7 (4)
+app/learning/study_book.py:375:    root.set("lang", "ru")
+app/learning/study_book.py:376:    root.set(f"{{{XML_NS}}}lang", "ru")
+app/web/templates/base.html:2:<html lang="ru">
+app/web/health.py:6:     "nlp":{"en":"ok",...}}
+### G8 (1)
+app/web/templates/base.html:2:<html lang="ru">
+### G9 (1)
+app/languages/cefr.py:29:CEFR_ORDER: tuple[str, ...] = ("A1", "A2", "B1", "B2", "C1", "C2")
+### G10 (34)
+app/core/config.py:222:    consistency_min_share: float = Field(default=0.95, gt=0.0, le=1.0)
+app/core/config.py:251:    min_coverage: float = Field(default=0.995, gt=0.0, le=1.0)
+app/workers/qc.py:53:COVERAGE_THRESHOLD = 0.995
+app/web/static/style.css:42:  gap: 0.25rem 1rem;
+app/web/static/style.css:61:  gap: 0.25rem;
+app/web/static/style.css:70:  padding: 0.25rem 0.6rem;
+app/web/static/style.css:89:  padding: 0.75rem 1rem;
+app/web/static/style.css:91:  font-size: 0.85rem;
+app/web/static/style.css:95:.u3-footer p { margin: 0.25rem 0; overflow-wrap: anywhere; }
+app/web/static/style.css:105:  padding: 0.75rem;
+app/web/static/style.css:106:  margin: 0.75rem 0;
+app/web/static/style.css:112:  gap: 0.75rem;
+app/web/static/style.css:120:  padding: 0.5rem 0.75rem;
+app/web/static/style.css:123:  gap: 0.25rem;
+app/web/static/style.css:127:.u3-filter fieldset legend { padding: 0 0.25rem; font-weight: 600; }
+app/web/static/style.css:133:  gap: 0.35rem;
+app/web/static/style.css:139:  gap: 0.35rem;
+app/web/static/style.css:141:  padding: 0 0.25rem;
+app/web/static/style.css:170:  padding: 0.35rem 0.75rem;
+app/web/static/style.css:210:details { margin: 0.75rem 0; }
+app/web/static/style.css:234:  padding: 0.45rem 0.6rem;
+app/web/static/style.css:260:  padding: 0.45rem 0.6rem;
+app/web/static/style.css:274:  gap: 0.75rem;
+app/web/static/style.css:281:  padding: 0.5rem 0.75rem 0.75rem;
+app/web/static/style.css:287:  gap: 0.35rem 0.75rem;
+app/web/static/style.css:308:  margin-top: 0.75rem;
+app/web/static/style.css:316:  gap: 0.35rem;
+app/web/static/style.css:317:  margin-top: 0.35rem;
+app/web/static/style.css:322:.hint { color: var(--u3-muted); font-size: 0.85rem; }
+app/web/static/style.css:355:  margin: 0.75rem 0;
+app/web/static/style.css:364:  margin: 0.75rem 0;
+app/web/views.py:110:    """Веса фаз движка (epub-translator): TOC 0.05, metadata 0.05,
+app/web/views.py:115:    toc = 0.05 if any(label == "TOC" for label, _doc in phases) else 0.0
+app/web/views.py:116:    meta = 0.05 if any(label == "metadata" for label, _doc in phases) else 0.0
+### G11 (78)
+app/core/logging.py:84:QUALITY_LOGGER = "app.quality"
+app/core/worker_signal.py:22:HEARTBEAT_FILE = ".worker-heartbeat"
+app/core/config.py:36:ALL_ENV_KEYS: tuple[str, ...] = (
+app/core/config.py:44:REQUIRED_ENV_KEYS: tuple[str, ...] = ("SERVER_BIND_ADDRESS",)
+app/core/config.py:46:PROFILE_NAMES: tuple[str, ...] = ("translation", "fill", "analysis")
+app/core/config.py:48:WILDCARD_ADDRESS = "0.0.0.0"
+app/domain/glossary.py:27:PARADIGM_VERIFIED = "verified"
+app/domain/glossary.py:28:PARADIGM_UNVERIFIED = "unverified"
+app/domain/glossary.py:29:PARADIGM_NOT_APPLICABLE = "not_applicable"
+app/domain/glossary.py:31:PARADIGM_STATUSES: frozenset[str] = frozenset(
+app/domain/glossary.py:36:GLOSSARY_POS: tuple[str, ...] = ("noun", "verb", "adjective", "proper_noun", "other")
+app/domain/glossary.py:123:STYLE_KINDS: frozenset[str] = frozenset(
+app/domain/job.py:47:WORKING_STATES: frozenset[JobStatus] = frozenset(
+app/domain/job.py:60:TERMINAL_STATES: frozenset[JobStatus] = frozenset(
+app/domain/job.py:69:CLAIMABLE_STATES: frozenset[JobStatus] = frozenset(
+app/domain/job.py:74:NEXT_STAGE: Mapping[JobStatus, JobStatus] = {
+app/domain/job.py:95:TRANSITIONS: Mapping[JobStatus, frozenset[JobStatus]] = {
+app/domain/job.py:130:LEARNING_LEVELS: tuple[str, ...] = ("Minimal", "Balanced", "Learning", "Intensive")
+app/epub/aligner.py:58:TRANSLATED_MARKER = "__translated"
+app/epub/aligner.py:60:REASON_MISSING_TRANSLATION = "missing_translation"
+app/epub/aligner.py:61:REASON_XPATH_MISMATCH = "xpath_mismatch"
+app/epub/aligner.py:62:REASON_EMPTY = "empty"
+app/epub/aligner.py:63:REASON_IDENTICAL = "identical"
+app/epub/aligner.py:64:REASON_EXTRA_BLOCK = "extra_block"
+app/epub/aligner.py:67:REASONS: frozenset[str] = frozenset(
+app/epub/reader.py:21:MIMETYPE_VALUE = "application/epub+zip"
+app/epub/reader.py:22:ENCRYPTION_PATH = "META-INF/encryption.xml"
+app/epub/reader.py:23:CONTAINER_PATH = "META-INF/container.xml"
+app/epub/reader.py:24:PACKAGE_MEDIA_TYPE = "application/oebps-package+xml"
+app/epub/reader.py:25:OPF_NS = "http://www.idpf.org/2007/opf"
+app/epub/reader.py:26:DC_NS = "http://purl.org/dc/elements/1.1/"
+app/epub/reader.py:27:EPUB_OPS_NS = "http://www.idpf.org/2007/ops"
+app/epub/reader.py:28:NCX_MEDIA_TYPE = "application/x-dtbncx+xml"
+app/epub/reader.py:29:CHAPTER_MEDIA_TYPES = ("application/xhtml+xml", "text/html")
+app/storage/database.py:23:SCHEMA = """
+app/workers/qc.py:53:COVERAGE_THRESHOLD = 0.995
+app/workers/pipeline.py:144:CHAPTER_LABEL_PREFIX = "глава "
+app/services/jobs.py:33:PROMPT_VERSION = "v0"
+app/services/jobs.py:36:JOB_MODES: tuple[str, ...] = ("bilingual", "translation")
+app/llm/analysis.py:32:ANALYSIS_SYSTEM_MARKER = "You are an analysis engine"
+app/llm/prompts.py:25:VERSION_FILE_RE = re.compile(r"^v(\d+)\.yaml$")
+app/llm/prompts.py:27:LEVEL_PAIR = "pair"
+app/llm/prompts.py:28:LEVEL_SOURCE = "source"
+app/llm/prompts.py:29:LEVEL_GENERIC = "generic"
+app/adapters/epub_engine/epubcheck.py:18:D85: EPUBCheck выбирает режим по расширению имени файла — имя, не
+app/adapters/epub_engine/opf_repair.py:32:OPF_NS = "http://www.idpf.org/2007/opf"
+app/adapters/epub_engine/opf_repair.py:33:DC_NS = "http://purl.org/dc/elements/1.1/"
+app/adapters/epub_engine/opf_repair.py:34:XSI_NS = "http://www.w3.org/2001/XMLSchema-instance"
+app/languages/nlp.py:32:DISABLED_COMPONENTS: tuple[str, ...] = ("parser",)
+app/languages/phenomena.py:37:STAGES: frozenset[str] = frozenset({"s2", "s3"})
+app/languages/cefr.py:29:CEFR_ORDER: tuple[str, ...] = ("A1", "A2", "B1", "B2", "C1", "C2")
+app/languages/cefr.py:31:CEFR_LEVELS: frozenset[str] = frozenset(CEFR_ORDER)
+app/glossary/candidates.py:35:RULE_PRIORITY: tuple[str, ...] = ("ner", "multiword", "abbreviation", "unit", "capitalized")
+app/glossary/store.py:38:VERSION_CURRENT = "current"
+app/glossary/store.py:39:VERSION_SUPERSEDED = "superseded"
+app/learning/study.py:24:BLANK = "____"
+app/learning/__init__.py:20:SUBSTAGE_LEVELS: Mapping[str, frozenset[str]] = {
+app/learning/card_export.py:24:COMMON_COLUMNS: tuple[str, ...] = (
+app/learning/card_export.py:40:CARDS_FILES: dict[str, str] = {
+app/learning/study_book.py:36:XHTML = "http://www.w3.org/1999/xhtml"
+app/learning/study_book.py:37:EPUB_NS = "http://www.idpf.org/2007/ops"
+app/learning/study_book.py:38:OPF_NS = "http://www.idpf.org/2007/opf"
+app/learning/study_book.py:39:NCX_NS = "http://www.daisy.org/z3986/2005/ncx/"
+app/learning/study_book.py:40:CONTAINER_NS = "urn:oasis:names:tc:opendocument:xmlns:container"
+app/learning/study_book.py:41:XML_NS = "http://www.w3.org/XML/1998/namespace"
+app/learning/study_book.py:44:ANSWERS_HREF = "study-answers.xhtml"
+app/learning/study_book.py:45:ANSWERS_ID = "s5-answers"
+app/learning/study_book.py:46:ANSWERS_TITLE = "Ответы и охват"
+app/learning/study_book.py:49:ANSWER_MARKER = "Ответ:"
+app/learning/study_book.py:52:SECTION_ORDER: tuple[str, ...] = (
+app/learning/study_book.py:60:SECTION_TITLES: dict[str, str] = {
+app/web/app.py:28:TEMPLATES_DIR = _DIR / "templates"
+app/web/app.py:29:STATIC_DIR = _DIR / "static"
+app/web/auth.py:41:MUTATING_METHODS: frozenset[str] = frozenset({"POST", "PUT", "DELETE", "PATCH"})
+app/web/auth.py:43:CSRF_HEADER = "X-U3-CSRF"
+app/web/auth.py:45:CSRF_FORM_FIELD = "u3_csrf"
+app/web/auth.py:47:CSRF_JSON_FIELD = "csrf"
+app/web/strings.py:22:UI_STRINGS: dict[str, str] = {
+### G12 (31)
+app/core/ids.py:10:    """Формат: j-<YYYYmmddTHHMMSSZ>-<6 hex>. Пример: j-20260912T063000Z-a1b2c3."""
+app/core/worker_signal.py:50:    if len(lines) < 2:
+app/core/config.py:239:        if self.ngram_max > 8:
+app/core/config.py:407:        if self.server.lease_seconds > 2 * self.server.heartbeat_seconds:
+app/storage/jobs_repo.py:582:        if delta <= 0:
+app/storage/jobs_repo.py:614:        if input_delta <= 0 and input_cache_delta <= 0 and output_delta <= 0:
+app/workers/qc.py:143:            + (f" … (+{len(shortfall) - 10})" if len(shortfall) > 10 else "")
+app/workers/pipeline.py:341:            "toc_present": book.toc_entries > 0,
+app/workers/pipeline.py:496:                    "truncated": result.glossary_dropped_terms > 0,
+app/workers/pipeline.py:2582:        if coverage < 1.0 - 1e-9:
+app/workers/pipeline.py:2631:        if abs(alignment.coverage - coverage) > 1e-9:
+app/languages/detect.py:73:    if total <= 0:
+app/languages/registry.py:185:        if len(value) < 2:
+app/languages/registry.py:188:        if len(nulls) > 1:
+app/languages/phenomena.py:171:    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+app/languages/phenomena.py:341:    if not isinstance(pos, list) or not (2 <= len(pos) <= 3) or not all(
+app/glossary/annotation.py:81:        name for name, form in zip(form_names, forms, strict=True) if forms.count(form) > 1
+app/glossary/fix.py:210:        and occurrences > 0
+app/glossary/candidates.py:97:    if not surface.strip() or count <= 0:
+app/learning/mwe.py:551:            if candidate.unit_lemma is not None and len(candidate.parts) < 2:
+app/learning/study.py:78:    if len(options) < 2:
+app/learning/study_book.py:747:    elif abs(float(match.group(1)) - coverage) > 1e-9:
+app/web/static/app.js:773:  for (let value = base; value <= 5000; value *= 2) options.push(value);
+app/web/health.py:69:            if response.status_code < 500:
+app/web/pages.py:202:            "/jobs?" + urlencode([*query_pairs, ("page", str(page - 1))]) if page > 1 else None
+app/web/views.py:59:    if not path.is_file() or lines <= 0:
+app/web/views.py:203:    оценка в UI): ``elapsed * (1 - p) / p`` при 0 < p < 1, иначе None."""
+app/web/views.py:211:    if 0.0 < job.progress < 1.0 and elapsed > 0:
+app/cli.py:190:            f"{job.id}  {job.status.value:<24}  {source}→{job.target_language}"
+app/cli.py:294:        if len(fatal_errors) > 20:
+app/cli.py:311:            f"  {lang['code']:<4} {lang['name']:<12} spacy: {spacy:<28} "
+### G14 (3)
+app/adapters/epub_engine/epubcheck.py:135:        version_proc = subprocess.run(
+app/adapters/epub_engine/epubcheck.py:145:        proc = subprocess.run(
+app/learning/study_book.py:805:        completed = subprocess.run(
+### G15 (13)
+app/core/config.py:369:    #: Верхняя граница экспоненциального backoff при ошибке API, с (U3 3.11.49).
+app/workers/worker.py:69:                time.sleep(poll_seconds)
+app/adapters/epub_engine/epubcheck.py:139:            timeout=120,
+app/learning/study_book.py:809:            timeout=60,
+app/web/static/app.js:14: *   exponential backoff up to ui.refresh_max_seconds on API error with a
+app/web/static/app.js:611:  let backoffMs = baseDelayMs();
+app/web/static/app.js:636:      backoffMs = baseDelayMs();
+app/web/static/app.js:658:      /* visible error + exponential backoff up to ui.refresh_max_seconds */
+app/web/static/app.js:659:      backoffMs = Math.min(backoffMs * 2, ui.refresh_max_seconds * 1000);
+app/web/static/app.js:663:          wait: Math.round(backoffMs / 1000),
+app/web/static/app.js:669:    schedule(backoffMs);
+app/web/health.py:64:                timeout=5.0,
+app/cli.py:150:            time.sleep(0.5)
+### G16i (5)
+app/web/__init__.py:3:Доступ только внутри Tailscale (bind из конфигурации); при заданном
+app/web/app.py:3:Доступ (ТЗ U1.10): bind-адрес — Tailscale-адрес из конфигурации
+app/web/auth.py:3:Правила (ТЗ U1.10): привязка к Tailscale-адресу — через ``server.bind_address``
+app/web/strings.py:40:    "footer_auth_on": "доступ: привязка к Tailscale + общий секрет (HTTP Basic)",
+app/web/strings.py:42:        "доступ: привязка к Tailscale, общий секрет не задан "
+### G17i (1)
+app/core/config.py:73:    #: эндпоинт, расширенные параметры владения: vLLM, Ollama, ...). Пример:
+### G18 (13)
+app/storage/jobs_repo.py:80:    """Фактически применённый промпт задачи (E4-2: файл + версия, 100% задач)."""
+app/llm/prompts.py:5:его версия записываются в задание (100% задач, E4-2) — делает клиент анализа.
+app/languages/cefr.py:106:    читает только её — «100% мест отображения» обеспечено единством точки."""
+app/glossary/candidates.py:16:запуска по той же книге дают ОДИНАКОВЫЙ список (L2-1: 100%). Пороги
+app/glossary/candidates.py:225:    """Список кандидатов книги (ТЗ L2.1). Детерминированно (L2-1: 100%)."""
+app/web/static/style.css:169:  max-width: 100%;
+app/web/static/style.css:201:  width: 100%;
+app/web/static/style.css:224:  width: 100%;
+app/web/static/style.css:243:.u3-facts { border-collapse: collapse; margin: 0.5rem 0; width: 100%; }
+app/web/static/style.css:252:  width: 100%;
+app/web/static/style.css:340:  max-width: 100%;
+app/web/static/style.css:373:  width: 100%;
+app/web/views.py:371:    ``Estimated CEFR level`` (критерий U1-5: 100% мест отображения).
+### G13 (learning/ languages/ glossary/ epub/ llm/):
+G13 (34)
+app/learning/selection.py:46:    occurrences: int = 1
+app/learning/selection.py:80:            acc.occurrences += 1
+app/learning/mwe.py:431:    occurrences: int = 1
+app/learning/mwe.py:472:            acc.occurrences += 1
+app/learning/mwe.py:480:            (p.min_occurrences for p in phenomenon.patterns), default=0
+app/learning/mwe.py:618:    checked = 0
+app/learning/mwe.py:619:    correct = 0
+app/learning/mwe.py:632:                checked += 1
+app/learning/mwe.py:634:                    correct += 1
+app/learning/study_book.py:550:        s5_nav_index += 1
+app/languages/phenomena.py:102:    min_occurrences: int = 0
+app/glossary/fix.py:84:        signature[(localname(el), attrs)] += 1
+app/glossary/candidates.py:113:        entry.surfaces[surface] = 0
+app/glossary/consistency.py:76:    terms_checked = 0
+app/glossary/consistency.py:77:    occurrences_checked = 0
+app/glossary/consistency.py:78:    consistent_occurrences = 0
+app/glossary/consistency.py:86:        terms_checked += 1
+app/glossary/consistency.py:90:        occurrences = 0
+app/glossary/consistency.py:91:        consistent = 0
+app/glossary/consistency.py:95:            occurrences += 1
+app/glossary/consistency.py:96:            occurrences_checked += 1
+app/glossary/consistency.py:99:                consistent += 1
+app/glossary/consistency.py:100:                consistent_occurrences += 1
+app/epub/segmenter.py:36:            index = 1
+app/epub/segmenter.py:41:                    index += 1
+app/epub/aligner.py:368:        count = 0
+app/epub/aligner.py:371:                count += 1
+app/epub/reader.py:147:    image_count = 0
+app/epub/reader.py:148:    table_count = 0
+app/epub/reader.py:149:    footnote_count = 0
+app/epub/reader.py:150:    global_index = 0
+app/llm/analysis.py:89:        self._in = 0
+app/llm/analysis.py:90:        self._cache = 0
+app/llm/analysis.py:91:        self._out = 0
