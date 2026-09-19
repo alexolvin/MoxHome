@@ -29,6 +29,11 @@ body {
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   font-size: 16px;
   line-height: 1.4;
+  /* M1: единая механика переноса длинных токенов (E3/E4) — свойство
+     наследуется всеми потомками, включая динамические карточки;
+     pre защищён white-space: pre (M9 — единственный горизонтальный
+     скролл) */
+  overflow-wrap: anywhere;
   background: var(--u3-bg);
   color: var(--u3-text);
 }
@@ -92,7 +97,7 @@ body {
   color: var(--u3-muted);
 }
 
-.u3-footer p { margin: 0.25rem 0; overflow-wrap: anywhere; }
+.u3-footer p { margin: 0.25rem 0; }
 
 h1 { font-size: 1.4rem; margin: 0.5rem 0; }
 h2 { font-size: 1.15rem; margin: 1rem 0 0.5rem; }
@@ -188,7 +193,7 @@ a.btn {
   color: var(--u3-text);
 }
 
-a { color: var(--u3-accent); overflow-wrap: anywhere; }
+a { color: var(--u3-accent); }
 
 textarea {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -235,7 +240,6 @@ summary {
   text-align: left;
   vertical-align: top;
   font-size: 0.9rem;
-  overflow-wrap: anywhere;
 }
 
 .u3-table thead th { background: var(--u3-head-bg); }
@@ -245,6 +249,25 @@ summary {
   background: var(--u3-head-bg);
   min-width: 120px;
   white-space: nowrap;
+}
+
+/* E5/M3: ниже 641 px факты — вертикальный стек «метка / значение»;
+   nowrap и min-width метки не применяются, ячейка значения во всю
+   ширину (352 px на 384) */
+@media (max-width: 640px) {
+  .u3-facts {
+    display: block;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid var(--u3-border);
+    border-radius: var(--u3-radius);
+    overflow: hidden;
+  }
+  .u3-facts tbody, .u3-facts tr { display: block; }
+  .u3-facts tr { border-bottom: 1px solid var(--u3-border); }
+  .u3-facts tr:last-child { border-bottom: 0; }
+  .u3-facts th, .u3-facts td { display: block; width: 100%; border: 0; }
+  .u3-facts th[scope="row"] { min-width: 0; white-space: normal; }
 }
 
 /* компактные таблицы без карточного дубля (health, правки L3) */
@@ -261,7 +284,6 @@ summary {
   text-align: left;
   vertical-align: top;
   font-size: 0.9rem;
-  overflow-wrap: anywhere;
 }
 
 .u3-static thead th { background: var(--u3-head-bg); }
@@ -292,14 +314,10 @@ summary {
 
 .u3-card-fields dt {
   color: var(--u3-muted);
-  overflow-wrap: anywhere;
   align-self: start;
 }
 
-.u3-card-fields dd {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
+.u3-card-fields dd { margin: 0; }
 
 .u3-card-actions {
   display: flex;
@@ -364,7 +382,6 @@ pre, .u3-pre {
   margin: 0.75rem 0;
 }
 
-.u3-workline { overflow-wrap: anywhere; }
 
 #u3-prompt-view {
   border: 1px solid var(--u3-border);
