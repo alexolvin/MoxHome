@@ -56,6 +56,7 @@ UI_STRINGS: dict[str, str] = {
     "common_creating": "Создание…",
     "common_sending": "Отправка…",
     "common_poll_stopped": "Опрос остановлен: {msg}",
+    "common_retry": "Повторить",
     "common_yes": "да",
     "common_no": "нет",
     "common_not_set": "—",
@@ -71,7 +72,7 @@ UI_STRINGS: dict[str, str] = {
         "Определение языка при загрузке — тот же механизм L0, что и стадия "
         "validating (детектор + dc:language); уверенность показана явно."
     ),
-    "books_empty": "В input/ книг нет.",
+    "books_empty": "Книг нет. Загрузите EPUB — это первый шаг к переводу.",
     "books_col_file": "файл",
     "books_col_title": "название",
     "books_col_dc_lang": "dc:language",
@@ -131,6 +132,11 @@ UI_STRINGS: dict[str, str] = {
     "jobs_col_updated": "обновлено",
     "jobs_empty": "Заданий нет. Загрузите книгу в разделе «Книги» и создайте задание.",
     "jobs_empty_filtered": "Заданий, соответствующих фильтру, нет.",
+    "onb_title": "Как начать",
+    "onb_step1": "Загрузите EPUB-книгу (раздел «Книги»)",
+    "onb_step2": "Выберите пару языков и режим в форме «Создать задание»",
+    "onb_step3": "Создайте задание — перевод запустится автоматически",
+    "onb_go_books": "Перейти к книгам",
     "jobs_deleted": "Задание удалено.",
     "jobs_logs_cleared": "Логи очищены.",
     "jobs_purge_title": "Массовая очистка (purge)",
@@ -146,6 +152,11 @@ UI_STRINGS: dict[str, str] = {
     "jobs_purge_dry_btn": "Показать перечень (dry-run)",
     "jobs_purge_confirm_btn": "Удалить перечисленные",
     "jobs_purge_result": "Перечень: {count} заданий, объём {bytes}.",
+    "jobs_purge_irreversible": (
+        "Действие необратимо: при подтверждении будут удалены перечисленные "
+        "задания вместе с файлами и строками БД."
+    ),
+    "jobs_purge_ids": "Задания ({n}) — будут удалены при подтверждении",
     "jobs_purge_removed": "Удалено: {count} заданий, объём {bytes}.",
     "jobs_purge_none": "Заданий, удовлетворяющих фильтру, нет.",
     # ------------------------------------------------------------- Job (страница)
@@ -164,6 +175,9 @@ UI_STRINGS: dict[str, str] = {
     "job_tokens_total": "всего",
     "job_time_elapsed": "прошло: {n} с",
     "job_time_eta": "осталось (оценка): {n} с",
+    "job_paused_since": "на паузе с {t}",
+    "job_pause_requested": "пауза запрошена — применится по завершении текущего шага",
+    "job_cancel_requested": "отмена запрошена — применится по завершении текущего шага",
     "job_errors_segments": "сегментов с ошибками: {n}",
     "job_errors_retries": "повторов: {n}",
     "job_stages": "история переходов ({n})",
@@ -329,6 +343,16 @@ UI_STRINGS: dict[str, str] = {
     "progress_phase": "фаза: {label} (сегментов {processed} / {total})",
     # ------------------------------------------------------------- ошибки API (verbatim-причины)
     "auth_required_message": "требуется общий секрет (SERVER_AUTH_SECRET)",
+    "auth_title": "Требуется доступ",
+    "auth_body": (
+        "Интерфейс защищён общим секретом. Введите его, чтобы продолжить — "
+        "секрет задаётся переменной SERVER_AUTH_SECRET."
+    ),
+    "auth_label": "Общий секрет",
+    "auth_btn": "Войти",
+    "auth_wrong": "Секрет неверен. Попробуйте ещё раз.",
+    "forbidden_title": "Доступ запрещён",
+    "forbidden_back": "Вернуться к заданиям",
     "err_job_not_found": "задание не найдено: {id}",
     "err_book_not_found": "книга не найдена: {filename}",
     "err_expected_epub": "ожидается файл .epub",

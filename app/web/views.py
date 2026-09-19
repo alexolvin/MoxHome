@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any
 
 from app.core.config import PROFILE_NAMES, Settings
-from app.domain.job import TERMINAL_STATES, Job, JobStatus
+from app.domain.job import TERMINAL_STATES, WORKING_STATES, Job, JobStatus
 from app.languages.cefr import language_cefr_label
 from app.languages.registry import load_registry
 from app.llm.prompts import (
@@ -199,16 +199,35 @@ def progress_facts(
 
 
 def elapsed_and_eta(job: Job, transitions: list[Any]) -> tuple[float, float | None]:
-    """Прошедшее время (из БД) и оценка остатка (модельная, помечена как
-    оценка в UI): ``elapsed * (1 - p) / p`` при 0 < p < 1, иначе None."""
-    started = job.created_at
-    if job.status in TERMINAL_STATES and transitions:
-        finished = max(record.at for record in transitions)
+    """Время работы (E7/M7) и оценка остатка (модельная, помечена в UI).
+
+    «Прошло» — сумма интервалов в рабочих статусах (``WORKING_STATES``),
+    восстановленных по таблице transitions: с момента создания задание
+    считается в CREATED, далее — в статусе последнего перехода. Паузы и
+    ожидания не засчитываются. Задание без переходов (ещё не запущено) —
+    wall-clock с момента создания: текущий расчёт для него корректен (M7).
+    В статусе PAUSED ETA не выводится (UI показывает «на паузе с …»).
+    """
+    if not transitions:
+        elapsed = max(0.0, time.time() - job.created_at)
     else:
-        finished = time.time()
-    elapsed = max(0.0, finished - started)
+        elapsed = 0.0
+        status = JobStatus.CREATED
+        t_start = job.created_at
+        for record in transitions:
+            t_end = record.at
+            if status in WORKING_STATES:
+                elapsed += max(0.0, t_end - t_start)
+            status = record.to_status
+            t_start = t_end
+        if status in WORKING_STATES:
+            elapsed += max(0.0, time.time() - t_start)
     eta: float | None = None
-    if 0.0 < job.progress < 1.0 and elapsed > 0:
+    if (
+        job.status is not JobStatus.PAUSED
+        and 0.0 < job.progress < 1.0
+        and elapsed > 0
+    ):
         eta = elapsed * (1.0 - job.progress) / job.progress
     return elapsed, eta
 
@@ -262,6 +281,10 @@ def job_facts(
         JobStatus.COMPLETED,
         JobStatus.COMPLETED_WITH_WARNINGS,
     )
+    paused_at = next(
+        (r.at for r in reversed(transitions) if r.to_status is JobStatus.PAUSED),
+        None,
+    )
     return {
         "id": job.id,
         "status": job.status.value,
@@ -288,6 +311,9 @@ def job_facts(
         "tokens": tokens,
         "elapsed_seconds": round(elapsed, 1),
         "eta_seconds": round(eta, 1) if eta is not None else None,
+        "pause_requested": bool(job.pause_requested),
+        "cancel_requested": bool(job.cancel_requested),
+        "paused_at_human": human_ts(paused_at) if paused_at is not None else None,
         "failed_segments": failed,
         "retries": retries,
         "warnings": warnings,

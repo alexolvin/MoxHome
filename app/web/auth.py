@@ -9,6 +9,12 @@
 access-лог (критерии U1-7/U1-8). Имя пользователя любое (проверка —
 только пароль), сравнение — константное время (hmac.compare_digest).
 
+TЗ UI §7.1 (публичный доступ): 401 отдаётся страницей входа, а не
+системным диалогом браузера. Для этого форма /login ставит cookie
+``u3-token`` = HMAC(secret, «u3-ui-login») — бессостоянный токен,
+пересчитываемый сервером; сам секрет в cookie не попадает. HTTP Basic
+остаётся в силе для API-клиентов (curl -u, аудит).
+
 U3 (3.9, Rule 6 fail closed):
 - при пустом ``SERVER_AUTH_SECRET`` чтение остаётся открытым (как в U1),
   а ВСЕ мутирующие запросы (POST/PUT/DELETE/PATCH) — ``403`` «мутирующие
@@ -36,7 +42,7 @@ from starlette.responses import JSONResponse
 from app.core.config import Settings
 from app.web.strings import UI_STRINGS
 
-_WWW_AUTHENTICATE = 'Basic realm="epubtranslator"'
+WWW_AUTHENTICATE = 'Basic realm="epubtranslator"'
 #: Методы, изменяющие состояние (U3 3.9.40).
 MUTATING_METHODS: frozenset[str] = frozenset({"POST", "PUT", "DELETE", "PATCH"})
 #: Заголовок CSRF для fetch-запросов (app.js).
@@ -59,17 +65,45 @@ def _basic_parts(header: str | None) -> tuple[str, str] | None:
     return username, password
 
 
-def _authorized(settings: Settings, header: str | None) -> tuple[bool, str]:
-    """(разрешён ли запрос, имя пользователя). Секрет — пароль (U1)."""
+def login_token(settings: Settings) -> str:
+    """Токен cookie-логина: HMAC(secret, «u3-ui-login») — бессостоянный
+    (TЗ UI §7.1: 401 отдаётся страницей входа, а не системным диалогом
+    браузера; секрет в cookie не попадает — токен пересчитывается на
+    сервере). Однопользовательская модель: токен не зависит от пароля,
+    потому что пароль один для всех."""
+    secret = settings.server.auth_secret
+    if not secret:
+        return ""
+    return hmac.new(secret.encode("utf-8"), b"u3-ui-login", hashlib.sha256).hexdigest()[:32]
+
+
+#: Имя cookie сессионного логина (TЗ UI §7.1).
+LOGIN_COOKIE = "u3-token"
+
+
+def _authorized(
+    settings: Settings, header: str | None, cookie_value: str
+) -> tuple[bool, str, str]:
+    """(разрешён ли запрос, имя пользователя, причина отказа).
+
+    Причины: "ok" — разрешён; "wrong" — креденшелы были, но неверны;
+    "none" — креденшелов нет вовсе (первый визит). Секрет — пароль
+    Basic (U1) либо токен cookie после формы /login (TЗ UI §7.1).
+    """
     secret = settings.server.auth_secret
     parts = _basic_parts(header)
     if not secret:
         # Без секрета аутентификация не требуется (чтение открыто, U1).
-        return True, parts[0] if parts is not None else ""
-    if parts is None:
-        return False, ""
-    username, password = parts
-    return hmac.compare_digest(password.encode("utf-8"), secret.encode("utf-8")), username
+        return True, parts[0] if parts is not None else "", "ok"
+    if parts is not None:
+        username, password = parts
+        if hmac.compare_digest(password.encode("utf-8"), secret.encode("utf-8")):
+            return True, username, "ok"
+        return False, "", "wrong"
+    token = login_token(settings)
+    if token and hmac.compare_digest(cookie_value or "", token):
+        return True, "admin", "ok"
+    return False, "", "none"
 
 
 def csrf_token(settings: Settings, username: str) -> str:
@@ -104,37 +138,73 @@ async def _request_csrf(request: Request) -> str:
     return ""
 
 
-def _denied(message: str, status_code: int, *, www_authenticate: bool = False) -> JSONResponse:
-    headers = {"WWW-Authenticate": _WWW_AUTHENTICATE} if www_authenticate else {}
-    return JSONResponse(
-        {
-            "error": "unauthorized" if status_code == 401 else "forbidden",
-            "message": message,
-        },
-        status_code=status_code,
-        headers=headers,
-    )
+class Denial:
+    """Отказ middleware (TЗ UI §7.1: 401/403 отдаются либо JSON — для
+    API/fetch, либо страницей в общем оформлении — для навигации браузера;
+    выбор делает middleware по заголовкам запроса)."""
+
+    __slots__ = ("status_code", "message", "www_authenticate", "reason")
+
+    def __init__(
+        self,
+        status_code: int,
+        message: str,
+        *,
+        www_authenticate: bool = False,
+        reason: str = "none",
+    ) -> None:
+        self.status_code = status_code
+        self.message = message
+        self.www_authenticate = www_authenticate
+        self.reason = reason  # 401: "none" (нет креденшелов) | "wrong" (неверны)
+
+    @property
+    def is_unauthorized(self) -> bool:
+        return self.status_code == 401
+
+    def as_json(self) -> JSONResponse:
+        """Ответ для API/fetch-клиентов — формат как в U3 (без изменений)."""
+        headers = (
+            {"WWW-Authenticate": WWW_AUTHENTICATE} if self.www_authenticate else {}
+        )
+        return JSONResponse(
+            {
+                "error": "unauthorized" if self.is_unauthorized else "forbidden",
+                "message": self.message,
+            },
+            status_code=self.status_code,
+            headers=headers,
+        )
 
 
-async def auth_check(settings: Settings, request: Request) -> JSONResponse | None:
-    """Middleware-проверка: None — пропустить, JSONResponse — отклонить.
+async def auth_check(settings: Settings, request: Request) -> Denial | None:
+    """Middleware-проверка: None — пропустить, Denial — отклонить.
 
-    Порядок (fail closed): 401 (секрет задан, но нет/неверен Basic) →
-    403 (мутация при пустом секрете) → 403 (мутация без действительного
-    CSRF-токена при заданном секрете). Чтение (GET/HEAD/OPTIONS/…) —
-    как в U1.
+    Порядок (fail closed): 401 (секрет задан, но нет/неверны Basic или
+    cookie-логин) → 403 (мутация при пустом секрете) → 403 (мутация без
+    действительного CSRF-токена при заданном секрете). Чтение
+    (GET/HEAD/OPTIONS/…) — как в U1.
     """
-    authorized, username = _authorized(settings, request.headers.get("Authorization"))
+    authorized, username, reason = _authorized(
+        settings,
+        request.headers.get("Authorization"),
+        request.cookies.get(LOGIN_COOKIE, ""),
+    )
     if not authorized:
-        return _denied(UI_STRINGS["auth_required_message"], 401, www_authenticate=True)
+        return Denial(
+            401,
+            UI_STRINGS["auth_required_message"],
+            www_authenticate=True,
+            reason=reason,
+        )
     mutating = request.method in MUTATING_METHODS
     if mutating and not settings.server.auth_secret:
-        return _denied(UI_STRINGS["err_mutation_requires_secret"], 403)
+        return Denial(403, UI_STRINGS["err_mutation_requires_secret"])
     if mutating:
         expected = csrf_token(settings, username)
         provided = await _request_csrf(request)
         if not expected or not hmac.compare_digest(provided, expected):
-            return _denied(UI_STRINGS["err_csrf"], 403)
+            return Denial(403, UI_STRINGS["err_csrf"])
     # Для страниц: имя пользователя и токен сессии (скрытое поле форм u3_csrf,
     # meta u3-csrf, заголовок X-U3-CSRF в app.js).
     request.state.username = username

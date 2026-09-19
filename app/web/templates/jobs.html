@@ -114,7 +114,7 @@
   </form>
 </div>
 
-<div id="u1-jobs" data-u1-fetch="/api/jobs" data-u1-render="jobs">
+<div id="u1-jobs" data-u1-fetch="/api/jobs" data-u1-render="jobs"{% if total == 0 and not has_filters %} data-u1-onboarding="1"{% endif %}>
   {% if rows %}
   <table class="u3-table">
     <thead>
@@ -166,7 +166,18 @@
     {% endfor %}
   </div>
   {% else %}
-  <p class="u3-empty">{{ s["jobs_empty_filtered"] if has_filters else s["jobs_empty"] }}</p>
+  {% if total == 0 and not has_filters %}
+  <div class="u3-panel">
+    <h2>{{ s["onb_title"] }}</h2>
+    <ol>
+      <li>{{ s["onb_step1"] }} — <a class="btn" href="/books">{{ s["onb_go_books"] }}</a></li>
+      <li>{{ s["onb_step2"] }}</li>
+      <li>{{ s["onb_step3"] }}</li>
+    </ol>
+  </div>
+  {% else %}
+  <p class="u3-empty">{{ s["jobs_empty_filtered"] if has_filters else s["jobs_empty"] }}{% if has_filters %} <a class="btn" href="/jobs">{{ s["jobs_filter_reset"] }}</a>{% endif %}</p>
+  {% endif %}
   {% endif %}
 </div>
 
@@ -211,8 +222,8 @@
     <span class="u3-filter-actions">
       <button type="button" id="u3-purge-dry">{{ s["jobs_purge_dry_btn"] }}</button>
       <button type="button" id="u3-purge-confirm" disabled>{{ s["jobs_purge_confirm_btn"] }}</button>
-      <span id="u3-purge-msg" role="status"></span>
     </span>
   </form>
+  <p id="u3-purge-msg" role="status"></p>
 </details>
 {% endblock %}
