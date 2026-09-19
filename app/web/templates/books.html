@@ -68,7 +68,9 @@
     {% endfor %}
   </div>
   {% else %}
-  <p class="u3-empty">{{ s["books_empty"] }}</p>
+  <p class="u3-empty">{{ s["books_empty"] }}
+    <button type="button" class="btn" data-book-upload>{{ s["books_upload_btn"] }}</button>
+  </p>
   {% endif %}
 </div>
 {% endblock %}

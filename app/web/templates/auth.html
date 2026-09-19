@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ s["auth_title"] }}</h1>
+{% if error %}
+<p class="err" role="alert">{{ s["auth_wrong"] }}</p>
+{% endif %}
+<p>{{ s["auth_body"] }}</p>
+<form method="post" action="/login" class="u3-panel">
+  <input type="hidden" name="next" value="{{ next_path }}">
+  <label>{{ s["auth_label"] }}:
+    <input type="password" name="password" autocomplete="current-password" required autofocus>
+  </label>
+  <button type="submit">{{ s["auth_btn"] }}</button>
+</form>
+{% endblock %}

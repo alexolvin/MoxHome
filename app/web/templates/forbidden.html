@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ s["forbidden_title"] }}</h1>
+<p class="err" role="alert">{{ message }}</p>
+<p><a class="btn" href="/jobs">{{ s["forbidden_back"] }}</a></p>
+{% endblock %}

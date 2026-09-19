@@ -5,6 +5,11 @@
 </h1>
 
 <div id="u1-progress" data-u1-poll="{{ facts.id }}" data-u1-status="{{ facts.status }}">
+  {% if facts.cancel_requested %}
+  <p id="u3-job-requested" role="status" class="u3-warn">{{ s["job_cancel_requested"] }}</p>
+  {% elif facts.pause_requested %}
+  <p id="u3-job-requested" role="status" class="u3-warn">{{ s["job_pause_requested"] }}</p>
+  {% endif %}
   <table class="u3-facts">
     <tr><th scope="row">{{ s["job_row_status"] }}</th><td class="status-{{ facts.status | lower }}">{{ facts.status }}{% if facts.error %} — <span class="err">{{ facts.error }}</span>{% endif %}</td></tr>
     <tr><th scope="row">{{ s["job_row_pair"] }}</th><td>{{ facts.source_language or s["common_not_set"] }} → {{ facts.target_language }}</td></tr>
@@ -17,7 +22,7 @@
       {% for name, t in facts.tokens.items() %}{% if name != 'total' %}{{ name }}: {{ t.total }}{% if not loop.last %} · {% endif %}{% endif %}{% endfor %}
       · {{ s["job_tokens_total"] }}: {{ facts.tokens.total }}
     </td></tr>
-    <tr><th scope="row">{{ s["job_row_time"] }}</th><td>{{ s["job_time_elapsed"].format(n=facts.elapsed_seconds) }}{% if facts.eta_seconds is not none %} · {{ s["job_time_eta"].format(n=facts.eta_seconds) }}{% endif %}</td></tr>
+    <tr><th scope="row">{{ s["job_row_time"] }}</th><td>{{ s["job_time_elapsed"].format(n=facts.elapsed_seconds) }}{% if facts.status == 'PAUSED' and facts.paused_at_human %} · {{ s["job_paused_since"].format(t=facts.paused_at_human) }}{% elif facts.eta_seconds is not none %} · {{ s["job_time_eta"].format(n=facts.eta_seconds) }}{% endif %}</td></tr>
     <tr><th scope="row">{{ s["job_row_errors"] }}</th><td>{{ s["job_errors_segments"].format(n=facts.failed_segments) }} · {{ s["job_errors_retries"].format(n=facts.retries) }}</td></tr>
     <tr><th scope="row">{{ s["job_row_created"] }}</th><td>{{ facts.created_at_human }}</td></tr>
     <tr><th scope="row">{{ s["job_row_updated"] }}</th><td>{{ facts.updated_at_human }}</td></tr>

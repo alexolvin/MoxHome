@@ -577,8 +577,10 @@ def test_u1_6_every_endpoint_has_consumer(u1_env: U1Env) -> None:
 
 def test_u1_7_auth_denies_without_secret(u1_env: U1Env) -> None:
     """U1-7: при заданном SERVER_AUTH_SECRET ВСЕ запросы (100% маршрутов,
-    страницы + API + статика, GET и POST) без секрета — 401; с секретом —
-    работают. Неправильный секрет — 401."""
+    страницы + API, GET и POST) без секрета — 401; с секретом — работают.
+    Неправильный секрет — 401. TЗ UI §7.1: статика /static публична
+    (не несёт данных и секретов) — 401/403-страницы в общем оформлении,
+    гостю нужен style.css."""
     client = u1_env.profiles["auth"].client
     routes = (
         "/",
@@ -596,13 +598,17 @@ def test_u1_7_auth_denies_without_secret(u1_env: U1Env) -> None:
         "/api/config",
         "/jobs/no-such-job",
         "/api/jobs/no-such-job",
-        "/static/app.js",
-        "/static/style.css",
     )
     for path in routes:
         response = client.get(path)
         assert response.status_code == 401, (
             f"GET {path} без секрета: {response.status_code} (ожидался 401)"
+        )
+    # TЗ UI §7.1: статика публична — оформление страницы входа для гостя.
+    for path in ("/static/app.js", "/static/style.css", "/static/favicon.ico"):
+        response = client.get(path)
+        assert response.status_code == 200, (
+            f"GET {path} без секрета: {response.status_code} (статика публична)"
         )
     for path in routes:
         response = client.get(path, headers=_auth_header())
