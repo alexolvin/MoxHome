@@ -799,16 +799,16 @@ def ev_u3_11(main: U1Profile, tiny: Path) -> str:
             line.split(":", 1) for line in root_body.splitlines() if ":" in line
         )
     }
+    # D1: --u3-cancelled/--u3-head-bg/--u3-pre-bg объединены в
+    # --u3-muted/--u3-surface (единый механизм, ТЗ UI §3.4/§8.1.1)
     pairs = (
         ("--u3-text", "--u3-bg"),
+        ("--u3-text", "--u3-surface"),
         ("--u3-muted", "--u3-bg"),
         ("--u3-accent", "--u3-bg"),
         ("--u3-ok", "--u3-bg"),
         ("--u3-err", "--u3-bg"),
         ("--u3-warn", "--u3-bg"),
-        ("--u3-cancelled", "--u3-bg"),
-        ("--u3-text", "--u3-head-bg"),
-        ("--u3-text", "--u3-pre-bg"),
     )
     lines.append("")
     lines.append("| пара | контраст | ≥ 4.5:1 |")
