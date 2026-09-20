@@ -1,9 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>{{ s["title_settings"] }}</h1>
-<p class="hint">{{ s["settings_hint"] }}</p>
+{# Серия R §5: корень настроек — маршрутные строки + обслуживание.
+   «Внешний вид» и «О системе» — R8. #}
+<ul class="u3-list">
+  <li><a class="u3-list-row" href="/settings/llm">{{ s["settings_row_llm"] }}</a></li>
+  <li><a class="u3-list-row" href="/settings/languages">{{ s["settings_row_languages"] }}</a></li>
+  <li><a class="u3-list-row" href="/settings/prompts">{{ s["settings_row_prompts"] }}</a></li>
+  <li><a class="u3-list-row" href="#u1-health">{{ s["settings_row_maintenance"] }}</a></li>
+</ul>
 <h2>{{ s["settings_h2_health"] }}</h2>
 <div id="u1-health" data-u1-fetch="/api/health" data-u1-render="health">{{ s["common_loading"] }}</div>
 <h2>{{ s["settings_h2_config"] }}</h2>
+<p class="hint">{{ s["settings_hint"] }}</p>
 <div id="u1-settings" data-u1-fetch="/api/config" data-u1-render="config">{{ s["common_loading"] }}</div>
 {% endblock %}

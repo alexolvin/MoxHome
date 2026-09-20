@@ -1,0 +1,18 @@
+{# Таб-бар (серия R §14): 56 px + safe-area, фиксирован снизу;
+   3 раздела: Библиотека / Задания / Настройки; текущий — aria-current.
+   На >= 641 px превращается в левую панель 220 px (тот же HTML). #}
+<nav class="u3-tabbar" aria-label="{{ s["tabbar_label"] }}">
+  <a class="u3-tab{% if current == 'books' %} is-current{% endif %}" href="/books"{% if current == 'books' %} aria-current="page"{% endif %}>
+    <span class="u3-tab-ico" aria-hidden="true">&#9636;</span>
+    <span class="u3-tab-label">{{ s["tab_library"] }}</span>
+  </a>
+  <a class="u3-tab{% if current == 'jobs' %} is-current{% endif %}" href="/jobs"{% if current == 'jobs' %} aria-current="page"{% endif %}>
+    <span class="u3-tab-ico" aria-hidden="true">&#9635;</span>
+    <span class="u3-tab-label">{{ s["tab_jobs"] }}</span>
+  </a>
+  <a class="u3-tab{% if current == 'settings' %} is-current{% endif %}" href="/settings"{% if current == 'settings' %} aria-current="page"{% endif %}>
+    {# U+FE0E — текстовая презентация (иначе Noto Color Emoji) #}
+    <span class="u3-tab-ico" aria-hidden="true">&#9881;&#65038;</span>
+    <span class="u3-tab-label">{{ s["tab_settings"] }}</span>
+  </a>
+</nav>

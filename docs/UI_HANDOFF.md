@@ -1,13 +1,48 @@
-# UI_HANDOFF — ТЗ_EpubTranslator_UI_2026-09-19
+# UI_HANDOFF — ТЗ_EpubTranslator_UI_2026-09-19 + серия R (ТЗ-UI-R, 2026-09-20)
 
 Самодостаточный документ для продолжения работ в свежей сессии.
 Обновляется **перед** началом каждого этапа и **сразу после** каждого
-измерения. ТЗ: `.a/tasks/TZ_EpubTranslator_UI_2026-09-19.md`.
+измерения. ТЗ: `.a/tasks/TZ_EpubTranslator_UI_2026-09-19.md` (серия D) и
+`.a/tasks/TZ-UI-R-EpubTranslator-2026-09-20.md` (серия R, полный редизайн
+mobile-first 384×715; этапы R0–R9, ветки `stage/ui-R<n>`, по одному
+merge --no-ff в main на этап).
 
 ---
 
-## Состояние (2026-09-19)
+## Состояние (2026-09-20)
 
+- **В работе с 2026-09-20: серия R.** Основание — карта состояния
+  проекта 2026-09-19. Серия R поглощает незакрытые D3/D4/D6: их
+  контрольные позиции (M2, M4, M5, M8, M9, тёмная тема, focus, T1–T14)
+  перенесены в разделы ТЗ-R и в §16 (T1–T20). Порядок: R0 каркас →
+  R1 дизайн-система (статусы/поверхности/тёмная тема/фокус) →
+  R2 «Задания» → R3 управление заданиями → R4 создание задания →
+  R5 «Библиотека»+карточка книги → R6 импорт (12 форматов, Calibre) →
+  R7 экспорт (8 форматов) → R8 «Настройки» (LLM-профили) → R9 приёмка.
+  **R0: завершён 2026-09-20 (измерения — секция R0)** — каркас
+  (appbar 48 px, таб-бар 56 px + safe-area, FAB 56 px, роутинг и
+  301-редиректы, 9 компонентов §14), новые ключи `settings.ui`
+  (tap_target_px, tap_gap_px, row_height_px, tabbar_height_px,
+  input_font_px, export_ttl_hours; page_size 50→20,
+  refresh_max_seconds→refresh_seconds_max 30→15,
+  mobile_breakpoint_px 640→641). **CONTROL R0: T1 PASS (131/56 px
+  ≤ 160), T2 PASS (320/375/384/414/768), T3 PASS (0/0); pytest
+  305/305, аудит A/B/C 31 checks 0 ошибок.** Дальше R1 (токены
+  статусов/поверхности, тёмная тема, фокус: T13/T14/T18).
+- **Стенд 2026-09-20:** сервер + воркер запущены заново (были
+  остановлены); health: app/database/storage ok, worker ok, llm
+  translation/fill/analysis ok, epubcheck ok. Java 17 для EPUBCheck
+  на месте. **Calibre для R6: НЕДОСТУПЕН — все каналы исчерпаны
+  (2026-09-20):** официальный хост download.calibre-ebook.com в этом
+  окружении отдаёт HTML-индекс (2362 Б) на ЛЮБЫЕ пути (проверено
+  с двух нод: 3p14-aaa и vzu5-claw); dnf/EPEL-9: «No match for
+  argument: calibre» (RC=1); GitHub org calibre-ebook: 404; PyPI
+  «calibre» — чужой ML-пакет (не тот); Fedora 41 RPM: цепочка
+  зависимостей не собирается на Alma 9 (py3.13-расширения); на
+  диске установки нет. Решение: R6 реализует деградированный режим
+  TZ §8 (импорт EPUB без конвертации + явная строка «Конвертация
+  недоступна: не установлен calibre»); T7/T8-конвертация BLOCKED,
+  поднять владельцу до merge R6.
 - **Завершён 2026-09-19: D1** (дизайн-система: выбор GitHub/Primer по
   5 критериям §3.2; docs/design-system.md; 29 токенов в :root,
   0 литералов цвета/кегля/отступа/радиуса вне :root; контраст —
@@ -40,7 +75,8 @@
   линия, run 3), **D2** (P0-скролл E3/E4/E5, CONTROL 3/3,
   05:46–05:51 МСК), **D5** (CONTROL D5, прогоны 4+5b,
   10:38–10:48 МСК), **D1** (дизайн-система, 11:40–16:30 МСК).
-- **Осталось:** D3, D4, D6.
+- **Осталось (серия D):** D3, D4, D6 — **поглощены серией R**
+  (ТЗ-UI-R 2026-09-20 §1); отдельно больше не закрываются.
 
 ### D0 — базовая линия (финал: run 3, 2026-09-19 05:21–05:26 МСК)
 
@@ -347,6 +383,102 @@ errors_expected; 2 записи tag C = намеренный негатив C8
 (http.400 /api/prompts + console.error /prompts) — исключены
 D5.6 по URL (`_is_c8`).
 
+### R0 — каркас (серия R, 2026-09-20, в работе)
+
+**Объём (TZ R §17, этап R0):** таб-бар, appbar, FAB, safe-area,
+роутинг и 301-редиректы, девять компонентов §14; CONTROL T1/T2/T3.
+Ветка `stage/ui-R0`.
+
+**Что сделано:**
+- `app/core/config.py` UiSection: `refresh_max_seconds →
+  refresh_seconds_max` (30→15), `page_size` 50→20,
+  `mobile_breakpoint_px` 640→641; новые `tap_target_px: 44`,
+  `tap_gap_px: 8`, `row_height_px: 64`, `tabbar_height_px: 56`,
+  `input_font_px: 16`, `export_ttl_hours: 48`. `config/config.yaml`
+  + `config/config.example.yaml` — ui: секция из 12 ключей.
+- Shell (base.html + style.css): appbar 48 px sticky (h1-заголовок
+  fs-4/600, «назад» 44×44 на вложенных, меню «Ещё»
+  details/summary — рендерится только при appbar_menu, появится
+  в R2/R5/R8); таб-бар 56 px + safe-area fixed (3 пункта
+  Библиотека/Задания/Настройки, иконка 24 px + подпись 11 px,
+  активный — цветом И жирным); FAB 56 px fixed (bottom 72 px +
+  safe-area, right 16 px) — в R0 якорь на форму ниже списка
+  (R4/R6 заменят на bottom-sheet); ≥641 px: таб-бар → левая
+  панель 220 px, FAB → кнопка в шапке (двухколонник — R2).
+  `viewport-fit=cover`; layout-токены генерируются в base.html из
+  settings.ui (Rule 1); каркасные константы (48/56/72) —
+  декларативные токены :root (--u3-appbar-h, --u3-fab-size,
+  --u3-fab-bottom) + доп. кегли --u3-fs-050/--u3-fs-800,
+  --u3-shadow-2, --u3-radius-circle.
+- Роутинг (pages.py): корень /settings — 4 маршрутные строки
+  (LLM и модели / Языки / Промпты / Обслуживание→#u1-health);
+  /settings/llm|languages|prompts — подстраницы (бывшие
+  models/languages/prompts.html → settings_*.html, старые
+  шаблоны удалены); /languages, /models, /prompts — **301**.
+  h1 со страниц убран (несёт appbar); книги/задания — список
+  сверху, формы ниже (T1); все ID, на которые смотрят app.js и
+  аудиты (#u1-upload, #u1-create, #u1-jobs, #u1-books,
+  #u1-pause/cancel/resume, #u3-delete-job, #u3-clear-logs,
+  #u3-job-requested, .u3-facts), сохранены.
+- 9 компонентов §14 (app/web/templates/_*.html): _appbar, _tabbar,
+  _fab, _row — рабочие (используются shell); _sheet, _chip,
+  _progress, _toast, _field — скелеты с документацией (CSS — в
+  этапах, где подключаются: R2–R8).
+- app.js: `ui.refresh_max_seconds → ui.refresh_seconds_max`
+  (backoff-потолок; pause-while-hidden сохранён — u3-15).
+- Тесты: _CONSUMERS/_CONSUMER_CHECKS (settings_*.html),
+  UiSection в u3-15 харнессе, bases tap-проверки u3-11
+  (.u3-nav-link → .u3-tab + .u3-appbar-back).
+- Чинены pre-existing дефекты (T19=0): ruff RUF023 (auth.py
+  __slots__ sort), mypy app.py login_post (form = {}).
+
+**Решения:**
+- ⋯-меню не рендерится без appbar_menu (нет мёртвой кнопки в R0;
+  TZ §11: сортировка/очистка/воркер — R2).
+- T3: checkbox/radio исключены из прямого замера — тап-цель =
+  обёртывающий label (min-height 44 px, .u3-check); <label> —
+  часть управления, не отдельная цель (документировано в
+  audit_mobile_recheck.py T3_JS). Д5-базовая линия имела 20–29
+  tapSmall (13×13 checkbox'и) — в T3-смысле закрыто.
+- Иконка «Настройки» — U+2699 + U+FE0E (текстовая презентация):
+  на стенде стоит Noto Color Emoji, без VS15 шестерёнка
+  рендерилась бы цветным эмодзи.
+- Пустая строка-объявление поллинга .u3-announce:empty скрыта
+  (T1: первый ряд /jobs ≤ 160 px).
+
+**Измерения (2026-09-20, mobile_realdevice 384×715 DPR 2.25):**
+- **T1 PASS:** первый ряд /jobs top = **131 px**, /books top =
+  **56 px** (лимит ≤ 160).
+- **T2 (384):** scrollWidth = 384, overflow = False, wide = 0 —
+  на всех 7 страницах (jobs, books, languages→settings/languages,
+  models→settings/llm, prompts→settings/prompts, settings,
+  job_detail); 320/375/414/768 — фаза B полного аудита.
+- **T3 PASS:** 0 элементов < 44×44, 0 пар с зазором < 8 px —
+  все 7 страниц (0 console-ошибок).
+- Геометрия (probe_r0_geom.py): mobile — appbar 0–48 sticky,
+  FAB 56×56 fixed (right 16, bottom 72), таб-бар 659–715 (56 px),
+  зазор между табами 16 px, иконка 24 px/подпись 11 px/активный
+  fw 700; desktop 1024 — панель 220 px, appbar/main left 220,
+  FAB 44×44 в шапке (position static), табы 44 px.
+- Web-трио (u1+u3+v2): **32/32 PASS** (env -u 3 ключей).
+- Полный pytest: **305/305 PASS, RC=0**; ruff 0, mypy strict 0
+  (попутно чинены pre-existing RUF023/mypy — см. «Что сделано»).
+- Полный аудит `audit_ui.py --phase all` (18:08–18:13 МСК,
+  `audit_r0.log`): **31 checks, 0 ошибок, 49 скриншотов, RC=0**.
+  А: 7 страниц 200 (h1 — appbar), 404/401/403/favicon ok,
+  301-редиректы /languages|/models|/prompts → /settings/*. B:
+  **T2 PASS на 320/375/414/768** (scrollWidth = viewport, все
+  страницы; 384 — recheck выше). C: upload→create→pause (526 мс
+  до строки «пауза запрошена», role=status)→**COMPLETED_WITH_
+  WARNINGS живым qwen3.8-27b** (15/15 сегментов)→download→
+  cancel→delete job/book→purge dry-run (10 заданий, token)→
+  prompt round-trip; D5.1–D5.6 ok; **0 console-ошибок в цикле**.
+- CSS **17 720 Б** (бюджет TZ-R 24 576), JS **32 332 Б** (бюджет
+  TZ-R 65 536). Скриншоты 384×715: shots/R0/.
+
+**CONTROL R0 (TZ §16): T1 PASS (131/56 px ≤ 160), T2 PASS
+(320/375/384/414/768 = viewport), T3 PASS (0/0). Этап завершён.**
+
 ### Стенд
 
 - Машина: 3p14-aaa = tailnet 100.124.155.106 (эталонный браузер
@@ -505,14 +637,14 @@ D5.6 по URL (`_is_c8`).
 | E8 console.error 404 | **closed 09-19 (D5)** — quiesce перед DELETE; T8: 0 в цикле (деф. 09-18) | D5 |
 | E9 favicon 404 | **closed 09-19 (D5)** — 200, 2 360 Б, link | D5 |
 | M1 overflow-wrap | **closed 09-19 (D2)** — единая декларация | D2 |
-| M2 hash в details | open | D3 |
+| M2 hash в details | open → серия R | R (поглощено) |
 | M3 facts стек | **closed 09-19 (D2)** (часть E5) | D2 |
-| M4 textarea 16 px | open | D3 |
-| M5 фильтр в details | open | D3 |
+| M4 textarea 16 px | open → серия R | R (поглощено) |
+| M5 фильтр в details | open → серия R | R (поглощено) |
 | M6 индикация паузы | **closed 09-19 (D5)** (часть E6) | D5 |
 | M7 время без пауз | **closed 09-19 (D5)** (часть E7) | D5 |
-| M8 safe-area | open | D3 |
-| M9 log 0.85rem | open | D3 |
+| M8 safe-area | open → серия R | R0 (R, поглощено) |
+| M9 log 0.85rem | open → серия R | R (поглощено) |
 
 ### Контрольные пункты по этапам (из ТЗ §9)
 
@@ -533,10 +665,21 @@ D5.6 по URL (`_is_c8`).
 
 ### Бюджеты и инварианты (напоминалка)
 
-- CSS ≤ 16 КБ, JS ≤ 32 КБ; внешних сетевых запросов 0.
-- Литералы цвета/кегля/отступа/радиуса — только в `:root`.
-- `--u3-tap: 44px` и брейкпоинт 641 px — не менять.
-- Пользовательские данные не трогать: 9 заданий, книга пользователя;
-  purge — только dry-run.
-- Один PR на этап: ветка `stage/ui-D<n>`, merge в main (remote нет).
-- Регресс после каждого этапа — матрица §4.1 (фаза C аудита).
+- CSS ≤ 24 576 Б, JS ≤ 65 536 Б (TZ-R §2, T12; поднято с 16/32 КБ
+  серией D — причина в TZ-R); внешних сетевых запросов 0. На R0:
+  CSS 17 720 Б, JS 32 332 Б.
+- Литералы цвета/кегля/отступа/радиуса — только в `:root`
+  (T18; исключения — толщины линий 1/2 px, layout-ширины,
+  значения @media; зафиксированы в шапке style.css).
+- `--u3-tap: 44px` и брейкпоинт 641 px — не менять (фикс. TZ §3).
+- Строки UI — только `app/web/strings.py` (T17); числовые параметры
+  — только `settings.ui` (Rule 1).
+- Пользовательские данные не трогать: книга пользователя;
+  purge — только dry-run (фаза C аудита создаёт своё задание и
+  удаляет его).
+- Один PR на этап: ветка `stage/ui-R<n>`, merge --no-ff в main
+  (remote нет); commit `R<n>: <что> — <числа>; CONTROL T<x> PASS`.
+- Регресс после каждого этапа — аудит A/B/C (фаза C = сквозной
+  цикл с живым LLM) + mobile recheck 384×715 + полный pytest
+  (env -u SERVER_AUTH_SECRET -u SERVER_BIND_ADDRESS -u LLM_API_KEY)
+  + ruff + mypy strict.

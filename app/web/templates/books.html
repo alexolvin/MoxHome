@@ -1,17 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>{{ s["title_books"] }}</h1>
-
-<form id="u1-upload" class="u3-panel">
-  <label>{{ s["books_upload_label"] }}:
-    <input type="file" id="u1-upload-file" accept=".epub">
-  </label>
-  <input type="hidden" name="u3_csrf" value="{{ csrf }}">
-  <button type="submit">{{ s["books_upload_btn"] }}</button>
-  <span id="u1-upload-msg" role="status"></span>
-</form>
-<p class="hint">{{ s["books_upload_hint"] }}</p>
-
+{# Серия R §10: сначала список, форма загрузки — ниже (FAB ведёт на #u1-upload);
+   R6 заменит форму на bottom-sheet импорта. #}
 <div id="u1-books" data-u1-fetch="/api/books" data-u1-render="books">
   {% if books %}
   <table class="u3-table">
@@ -73,4 +63,14 @@
   </p>
   {% endif %}
 </div>
+
+<form id="u1-upload" class="u3-panel">
+  <label>{{ s["books_upload_label"] }}:
+    <input type="file" id="u1-upload-file" accept=".epub">
+  </label>
+  <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+  <button type="submit">{{ s["books_upload_btn"] }}</button>
+  <span id="u1-upload-msg" role="status"></span>
+</form>
+<p class="hint">{{ s["books_upload_hint"] }}</p>
 {% endblock %}

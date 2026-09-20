@@ -179,11 +179,12 @@ def create_app(settings: Settings, db: Database | None = None) -> FastAPI:
     async def login_post(request: Request) -> Response:
         if not settings.server.auth_secret:
             return RedirectResponse("/jobs", status_code=303)
+        password = ""
         try:
             form = await request.form()
+            password = str(form.get("password", ""))
         except (ValueError, UnicodeDecodeError):
-            form = {}
-        password = str(form.get("password", ""))
+            pass
         if not password or not hmac.compare_digest(
             password.encode("utf-8"), settings.server.auth_secret.encode("utf-8")
         ):

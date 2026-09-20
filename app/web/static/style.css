@@ -8,11 +8,12 @@
  * (max-width/min-width/vw/line-height), значения @media (CSS-переменные в
  * медиазапросах неприменимы; 641 px генерируется в base.html из
  * settings.ui, Rule 1).
- * Числовые значения интерфейса — в settings.ui (Rule 1); тап-цель 44 px и
- * брейкпоинт 641 px — фиксированы (§3.4), здесь — декларативные токены.
+ * Числовые значения интерфейса — в settings.ui (Rule 1); тап-цель 44 px,
+ * брейкпоинт 641 px (D1 §3.4) и каркасные константы серии R (appbar 48,
+ * FAB 56/72, TZ §3) — фиксированы, здесь — декларативные токены.
  * Базовое состояние — карточки (.u3-cards видно, .u3-table скрыт);
  * переключение на таблицу делает медиазапрос в base.html
- * (ui.mobile_breakpoint_px+1).
+ * (ui.mobile_breakpoint_px).
  */
 
 :root {
@@ -53,6 +54,16 @@
   /* фиксированные (§3.4): тап-цель и брейкпоинт карточки/таблица */
   --u3-tap: 44px;
   --u3-bp-cards: 641px;
+  /* серия R §3: каркасные константы (TZ: appbar 48, FAB 56, bottom 72) */
+  --u3-appbar-h: 48px;
+  --u3-fab-size: 56px;
+  --u3-fab-bottom: 72px;
+  /* серия R §5: кегли таб-бара (подпись 11, иконка 24) и тень уровня 2 */
+  --u3-fs-050: 0.6875rem;
+  --u3-fs-800: 1.5rem;
+  --u3-shadow-2: 0 1px 3px rgba(31, 35, 40, 0.3);
+  /* круглая форма (FAB) */
+  --u3-radius-circle: 50%;
 }
 
 * { box-sizing: border-box; }
@@ -72,66 +83,189 @@ body {
   color: var(--u3-text);
 }
 
-/* ---------------------------------------------------------------- каркас */
+/* ---------------------------------------------------------------- каркас (серия R §5)
+ * Мобильный shell: sticky appbar сверху, fixed tabbar снизу
+ * (--u3-tabbar-h + safe-area), FAB. >= 641 px (медиазапрос в base.html
+ * из settings.ui): tabbar -> левая панель 220 px, FAB -> кнопка в
+ * appbar (конец файла). */
 
-.u3-header {
+.u3-appbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: var(--u3-space-1) var(--u3-space-4);
-  padding: var(--u3-space-2) var(--u3-space-4);
-  background: var(--u3-surface);
+  gap: var(--u3-space-1);
+  height: calc(var(--u3-appbar-h) + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) var(--u3-space-2) 0;
+  background: var(--u3-bg);
   border-bottom: 1px solid var(--u3-border);
 }
 
-.u3-brand {
-  font-weight: 700;
-  font-size: var(--u3-fs-400);
-  text-decoration: none;
-  color: var(--u3-text);
+.u3-appbar-back {
   display: inline-flex;
   align-items: center;
-  min-height: var(--u3-tap);
-}
-
-.u3-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--u3-space-1);
-  /* навигация переносится внутри СВОЕГО блока, без влияния на layout */
-}
-
-.u3-nav-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--u3-tap);
+  justify-content: center;
+  flex: 0 0 auto;
   min-width: var(--u3-tap);
-  padding: var(--u3-space-1) var(--u3-space-2);
-  text-decoration: none;
+  min-height: var(--u3-tap);
+  font-size: var(--u3-fs-600);
+  line-height: 1;
   color: var(--u3-accent);
+  text-decoration: none;
   border-radius: var(--u3-radius-sm);
 }
 
-.u3-nav-link.is-current {
-  background: var(--u3-bg);
-  border-bottom: 2px solid var(--u3-accent);
+.u3-appbar-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--u3-fs-400);
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
+.u3-appbar-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--u3-tap-gap);
+}
+
+.u3-appbar-menu {
+  margin: 0;
+  position: relative;
+}
+
+.u3-appbar-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--u3-tap);
+  min-height: var(--u3-tap);
+  font-size: var(--u3-fs-600);
+  list-style: none;
+  cursor: pointer;
+  border-radius: var(--u3-radius-sm);
+}
+
+.u3-appbar-more::-webkit-details-marker { display: none; }
+.u3-appbar-menu[open] > .u3-appbar-more { background: var(--u3-surface); }
+.u3-appbar-menu menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin: var(--u3-space-1) 0 0;
+  padding: var(--u3-space-1);
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  background: var(--u3-surface);
+  border: 1px solid var(--u3-border);
+  border-radius: var(--u3-radius-md);
+  box-shadow: var(--u3-shadow-2);
+}
+
+.u3-appbar-menu-item {
+  display: flex;
+  align-items: center;
+  min-height: var(--u3-tap);
+  padding: 0 var(--u3-space-2);
+  color: var(--u3-text);
+  text-decoration: none;
+  border-radius: var(--u3-radius-sm);
+}
+
+.u3-appbar-menu-item:hover { background: var(--u3-bg); }
+
+.u3-fab {
+  position: fixed;
+  z-index: 30;
+  right: var(--u3-space-4);
+  bottom: calc(var(--u3-fab-bottom) + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--u3-fab-size);
+  height: var(--u3-fab-size);
+  border-radius: var(--u3-radius-circle);
+  font-size: var(--u3-fs-700);
+  line-height: 1;
+  color: var(--u3-bg);
+  background: var(--u3-accent);
+  box-shadow: var(--u3-shadow-2);
+  text-decoration: none;
+}
+
+.u3-tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  height: calc(var(--u3-tabbar-h) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--u3-surface);
+  border-top: 1px solid var(--u3-border);
+}
+
+.u3-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--u3-space-1);
+  /* T3: зазор между тап-целями >= 8 px (--u3-tap-gap из settings.ui) */
+  margin: 0 var(--u3-tap-gap);
+  min-height: var(--u3-tap);
+  text-decoration: none;
+  color: var(--u3-muted);
+  border-radius: var(--u3-radius-sm);
+}
+
+/* активный пункт — цветом И жирным (TZ §5: не только цветом) */
+.u3-tab.is-current { color: var(--u3-accent); font-weight: 700; }
+.u3-tab-ico { font-size: var(--u3-fs-800); line-height: 1; }
+.u3-tab-label { font-size: var(--u3-fs-050); line-height: 1; }
+
 .u3-main {
-  padding: var(--u3-space-4);
+  padding: 0 var(--u3-space-3);
+  padding-bottom: calc(var(--u3-tabbar-h) + env(safe-area-inset-bottom) + var(--u3-space-4));
   max-width: 70rem;
   margin: 0 auto;
 }
 
-.u3-footer {
-  padding: var(--u3-space-3) var(--u3-space-4);
-  border-top: 1px solid var(--u3-border);
-  font-size: var(--u3-fs-200);
-  color: var(--u3-muted);
+/* маршрутный список «Настроек» (серия R §5) */
+.u3-list {
+  list-style: none;
+  margin: var(--u3-space-2) 0 var(--u3-space-4);
+  padding: 0;
+  display: grid;
+  gap: var(--u3-tap-gap);
 }
 
-.u3-footer p { margin: var(--u3-space-1) 0; }
+.u3-list-row {
+  display: flex;
+  align-items: center;
+  min-height: var(--u3-tap);
+  padding: 0 var(--u3-space-3);
+  color: var(--u3-text);
+  text-decoration: none;
+  border: 1px solid var(--u3-border);
+  border-radius: var(--u3-radius-md);
+}
+
+.u3-list-row:hover { background: var(--u3-surface); }
+
+/* строка состояния воркера: без default-полей <p> (T1: первый ряд <= 160 px) */
+.u3-workline { margin: var(--u3-space-2) 0; }
+
+/* строка-объявление поллинга не занимает места, пока пуста */
+.u3-announce:empty { display: none; }
 
 h1 { font-size: var(--u3-fs-600); margin: var(--u3-space-2) 0; }
 h2 { font-size: var(--u3-fs-500); margin: var(--u3-space-4) 0 var(--u3-space-2); }
@@ -437,3 +571,48 @@ pre, .u3-pre {
 .status-needs_confirmation { color: var(--u3-warn); font-weight: 600; }
 .status-validating, .status-planning, .status-translating, .status-analyzing,
 .status-generating, .status-validating_output { color: var(--u3-accent); }
+
+/* ---------------------------------------------------------------- >= 641 px (серия R §5)
+   Тот же HTML: таб-бар -> левая панель 220 px, FAB -> кнопка в шапке.
+   Двухколонная «список + деталь» (360px 1fr) — R2.
+   220 px — layout-ширина панели (категория исключений, как max-width). */
+@media (min-width: 641px) {
+  .u3-appbar { margin-left: 220px; }
+
+  .u3-main {
+    margin: 0 0 0 220px;
+    max-width: none;
+    padding: var(--u3-space-4);
+  }
+
+  .u3-tabbar {
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: auto;
+    width: 220px;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--u3-tap-gap);
+    padding: calc(var(--u3-appbar-h) + env(safe-area-inset-top)) var(--u3-space-2) var(--u3-space-2);
+    border-top: 0;
+    border-right: 1px solid var(--u3-border);
+  }
+
+  .u3-tab {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: var(--u3-space-3);
+    margin: 0;
+    padding: 0 var(--u3-space-3);
+  }
+
+  .u3-fab {
+    position: static;
+    width: var(--u3-tap);
+    height: var(--u3-tap);
+    font-size: var(--u3-fs-500);
+    box-shadow: none;
+  }
+}

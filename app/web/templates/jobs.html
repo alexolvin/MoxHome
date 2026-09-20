@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>{{ s["title_jobs"] }}</h1>
-
+{# Серия R §10: список сверху (T1: первый ряд ≤ 160 px), фильтры и
+   создание — ниже по странице (FAB ведёт на #u1-create); R4 заменит
+   панель создания на bottom-sheet. #}
 <p class="u3-workline">
   {{ s["jobs_worker"] }}
   <span class="{{ 'ok' if worker_status.startswith('ok') else 'err' }}">{{ worker_status }}</span>
@@ -9,7 +10,82 @@
   · {{ s["jobs_autorefresh"] }}
   · <span id="u3-jobs-refresh" class="hint"></span>
 </p>
-<p class="hint" id="u3-jobs-announce" aria-live="polite"></p>
+<p class="hint u3-announce" id="u3-jobs-announce" aria-live="polite"></p>
+
+<div id="u1-jobs" data-u1-fetch="/api/jobs" data-u1-render="jobs"{% if total == 0 and not has_filters %} data-u1-onboarding="1"{% endif %}>
+  {% if rows %}
+  <table class="u3-table">
+    <thead>
+      <tr>
+        <th scope="col">{{ s["jobs_col_id"] }}</th>
+        <th scope="col">{{ s["jobs_col_book"] }}</th>
+        <th scope="col">{{ s["jobs_col_pair"] }}</th>
+        <th scope="col">{{ s["jobs_col_mode"] }}</th>
+        <th scope="col">{{ s["jobs_col_status"] }}</th>
+        <th scope="col">{{ s["jobs_col_progress"] }}</th>
+        <th scope="col">{{ s["jobs_col_alignment"] }}</th>
+        <th scope="col">{{ s["jobs_col_created"] }}</th>
+        <th scope="col">{{ s["jobs_col_updated"] }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      {% set j = row.job %}
+      <tr>
+        <td><a href="/jobs/{{ j.id }}">{{ j.id }}</a></td>
+        <td>{{ row.book_name }}</td>
+        <td>{{ j.source_language or '—' }} → {{ j.target_language }}</td>
+        <td>{{ j.mode }}{% if j.learning_level %} / {{ j.learning_level }}{% if j.learning_cefr %} ({{ j.learning_cefr }}){% endif %}{% endif %}</td>
+        <td class="status-{{ j.status.value | lower }}">{{ j.status.value }}</td>
+        <td>{{ row.progress_display }}</td>
+        <td>{% if j.alignment_coverage is not none %}{{ '%.1f' | format(j.alignment_coverage * 100) }}%{% else %}{{ s["common_not_set"] }}{% endif %}</td>
+        <td>{{ row.created_at_human }}</td>
+        <td>{{ row.updated_at_human }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="u3-cards">
+    {% for row in rows %}
+    {% set j = row.job %}
+    <article class="u3-card">
+      <dl class="u3-card-fields">
+        <div class="u3-field"><dt>{{ s["jobs_col_id"] }}</dt><dd><a href="/jobs/{{ j.id }}">{{ j.id }}</a></dd></div>
+        <div class="u3-field"><dt>{{ s["jobs_col_book"] }}</dt><dd>{{ row.book_name }}</dd></div>
+        <div class="u3-field"><dt>{{ s["jobs_col_pair"] }}</dt><dd>{{ j.source_language or '—' }} → {{ j.target_language }}</dd></div>
+        <div class="u3-field"><dt>{{ s["jobs_col_mode"] }}</dt><dd>{{ j.mode }}{% if j.learning_level %} / {{ j.learning_level }}{% if j.learning_cefr %} ({{ j.learning_cefr }}){% endif %}{% endif %}</dd></div>
+        <div class="u3-field"><dt>{{ s["jobs_col_status"] }}</dt><dd class="status-{{ j.status.value | lower }}">{{ j.status.value }}</dd></div>
+        <div class="u3-field"><dt>{{ s["jobs_col_progress"] }}</dt><dd>{{ row.progress_display }}</dd></div>
+        <div class="u3-field"><dt>{{ s["jobs_col_alignment"] }}</dt><dd>{% if j.alignment_coverage is not none %}{{ '%.1f' | format(j.alignment_coverage * 100) }}%{% else %}{{ s["common_not_set"] }}{% endif %}</dd></div>
+        <div class="u3-field"><dt>{{ s["jobs_col_created"] }}</dt><dd>{{ row.created_at_human }}</dd></div>
+        <div class="u3-field"><dt>{{ s["jobs_col_updated"] }}</dt><dd>{{ row.updated_at_human }}</dd></div>
+      </dl>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  {% if total == 0 and not has_filters %}
+  <div class="u3-panel">
+    <h2>{{ s["onb_title"] }}</h2>
+    <ol>
+      <li>{{ s["onb_step1"] }} — <a class="btn" href="/books">{{ s["onb_go_books"] }}</a></li>
+      <li>{{ s["onb_step2"] }}</li>
+      <li>{{ s["onb_step3"] }}</li>
+    </ol>
+  </div>
+  {% else %}
+  <p class="u3-empty">{{ s["jobs_empty_filtered"] if has_filters else s["jobs_empty"] }}{% if has_filters %} <a class="btn" href="/jobs">{{ s["jobs_filter_reset"] }}</a>{% endif %}</p>
+  {% endif %}
+  {% endif %}
+</div>
+
+{% if prev_href or next_href %}
+<nav class="u3-pager" aria-label="{{ s["jobs_pager_label"] }}">
+  {% if prev_href %}<a class="btn" href="{{ prev_href }}">{{ s["jobs_prev"] }}</a>{% endif %}
+  <span class="hint">{{ s["jobs_page"].format(page=page, pages=total_pages) }} · {{ s["jobs_page_total"].format(n=total) }}</span>
+  {% if next_href %}<a class="btn" href="{{ next_href }}">{{ s["jobs_next"] }}</a>{% endif %}
+</nav>
+{% endif %}
 
 <div class="u3-panel">
   <h2>{{ s["jobs_filter_title"] }}</h2>
@@ -113,81 +189,6 @@
     </span>
   </form>
 </div>
-
-<div id="u1-jobs" data-u1-fetch="/api/jobs" data-u1-render="jobs"{% if total == 0 and not has_filters %} data-u1-onboarding="1"{% endif %}>
-  {% if rows %}
-  <table class="u3-table">
-    <thead>
-      <tr>
-        <th scope="col">{{ s["jobs_col_id"] }}</th>
-        <th scope="col">{{ s["jobs_col_book"] }}</th>
-        <th scope="col">{{ s["jobs_col_pair"] }}</th>
-        <th scope="col">{{ s["jobs_col_mode"] }}</th>
-        <th scope="col">{{ s["jobs_col_status"] }}</th>
-        <th scope="col">{{ s["jobs_col_progress"] }}</th>
-        <th scope="col">{{ s["jobs_col_alignment"] }}</th>
-        <th scope="col">{{ s["jobs_col_created"] }}</th>
-        <th scope="col">{{ s["jobs_col_updated"] }}</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in rows %}
-      {% set j = row.job %}
-      <tr>
-        <td><a href="/jobs/{{ j.id }}">{{ j.id }}</a></td>
-        <td>{{ row.book_name }}</td>
-        <td>{{ j.source_language or '—' }} → {{ j.target_language }}</td>
-        <td>{{ j.mode }}{% if j.learning_level %} / {{ j.learning_level }}{% if j.learning_cefr %} ({{ j.learning_cefr }}){% endif %}{% endif %}</td>
-        <td class="status-{{ j.status.value | lower }}">{{ j.status.value }}</td>
-        <td>{{ row.progress_display }}</td>
-        <td>{% if j.alignment_coverage is not none %}{{ '%.1f' | format(j.alignment_coverage * 100) }}%{% else %}{{ s["common_not_set"] }}{% endif %}</td>
-        <td>{{ row.created_at_human }}</td>
-        <td>{{ row.updated_at_human }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  <div class="u3-cards">
-    {% for row in rows %}
-    {% set j = row.job %}
-    <article class="u3-card">
-      <dl class="u3-card-fields">
-        <div class="u3-field"><dt>{{ s["jobs_col_id"] }}</dt><dd><a href="/jobs/{{ j.id }}">{{ j.id }}</a></dd></div>
-        <div class="u3-field"><dt>{{ s["jobs_col_book"] }}</dt><dd>{{ row.book_name }}</dd></div>
-        <div class="u3-field"><dt>{{ s["jobs_col_pair"] }}</dt><dd>{{ j.source_language or '—' }} → {{ j.target_language }}</dd></div>
-        <div class="u3-field"><dt>{{ s["jobs_col_mode"] }}</dt><dd>{{ j.mode }}{% if j.learning_level %} / {{ j.learning_level }}{% if j.learning_cefr %} ({{ j.learning_cefr }}){% endif %}{% endif %}</dd></div>
-        <div class="u3-field"><dt>{{ s["jobs_col_status"] }}</dt><dd class="status-{{ j.status.value | lower }}">{{ j.status.value }}</dd></div>
-        <div class="u3-field"><dt>{{ s["jobs_col_progress"] }}</dt><dd>{{ row.progress_display }}</dd></div>
-        <div class="u3-field"><dt>{{ s["jobs_col_alignment"] }}</dt><dd>{% if j.alignment_coverage is not none %}{{ '%.1f' | format(j.alignment_coverage * 100) }}%{% else %}{{ s["common_not_set"] }}{% endif %}</dd></div>
-        <div class="u3-field"><dt>{{ s["jobs_col_created"] }}</dt><dd>{{ row.created_at_human }}</dd></div>
-        <div class="u3-field"><dt>{{ s["jobs_col_updated"] }}</dt><dd>{{ row.updated_at_human }}</dd></div>
-      </dl>
-    </article>
-    {% endfor %}
-  </div>
-  {% else %}
-  {% if total == 0 and not has_filters %}
-  <div class="u3-panel">
-    <h2>{{ s["onb_title"] }}</h2>
-    <ol>
-      <li>{{ s["onb_step1"] }} — <a class="btn" href="/books">{{ s["onb_go_books"] }}</a></li>
-      <li>{{ s["onb_step2"] }}</li>
-      <li>{{ s["onb_step3"] }}</li>
-    </ol>
-  </div>
-  {% else %}
-  <p class="u3-empty">{{ s["jobs_empty_filtered"] if has_filters else s["jobs_empty"] }}{% if has_filters %} <a class="btn" href="/jobs">{{ s["jobs_filter_reset"] }}</a>{% endif %}</p>
-  {% endif %}
-  {% endif %}
-</div>
-
-{% if prev_href or next_href %}
-<nav class="u3-pager" aria-label="{{ s["jobs_pager_label"] }}">
-  {% if prev_href %}<a class="btn" href="{{ prev_href }}">{{ s["jobs_prev"] }}</a>{% endif %}
-  <span class="hint">{{ s["jobs_page"].format(page=page, pages=total_pages) }} · {{ s["jobs_page_total"].format(n=total) }}</span>
-  {% if next_href %}<a class="btn" href="{{ next_href }}">{{ s["jobs_next"] }}</a>{% endif %}
-</nav>
-{% endif %}
 
 <details class="u3-panel">
   <summary>{{ s["jobs_purge_title"] }}</summary>

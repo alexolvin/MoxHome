@@ -21,12 +21,22 @@ from __future__ import annotations
 
 UI_STRINGS: dict[str, str] = {
     # ------------------------------------------------------------- навигация
+    # (D2: шапка с горизонтальной навигацией; серия R: таб-бар + appbar)
     "nav_books": "Книги",
     "nav_jobs": "Задания",
     "nav_languages": "Языки",
     "nav_models": "Модели",
     "nav_prompts": "Промпты",
     "nav_settings": "Настройки",
+    # ------------------------------------------------------------- каркас серии R
+    "tabbar_label": "Разделы",
+    "tab_library": "Библиотека",
+    "tab_jobs": "Задания",
+    "tab_settings": "Настройки",
+    "appbar_back": "Назад",
+    "appbar_more": "Ещё",
+    "fab_add_book": "Добавить книгу",
+    "fab_new_job": "Новое задание",
     # ------------------------------------------------------------- каркас
     "brand": "EpubTranslator",
     "title_jobs": "Задания",
@@ -318,6 +328,11 @@ UI_STRINGS: dict[str, str] = {
     "prompts_deleted": "Версия удалена: {file}.",
     "prompts_content_title": "Содержимое {file} (YAML, побайтово)",
     # ------------------------------------------------------------- Settings
+    # серия R §5: корень /settings — маршрутные строки-список
+    "settings_row_llm": "LLM и модели",
+    "settings_row_languages": "Языки",
+    "settings_row_prompts": "Промпты",
+    "settings_row_maintenance": "Обслуживание",
     "settings_h2_health": "Компоненты (health)",
     "settings_h2_config": "Конфигурация",
     "settings_hint": (

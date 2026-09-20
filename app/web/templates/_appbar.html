@@ -1,0 +1,22 @@
+{# Appbar (серия R §14): 48 px + safe-area, sticky; назад (вложенные
+   страницы), заголовок h1, справа — FAB и меню "Ещё" (details/summary,
+   без JS работает; появляется, когда страница передаёт appbar_menu). #}
+<header class="u3-appbar">
+  {% if back_href is defined and back_href %}
+  <a class="u3-appbar-back" href="{{ back_href }}" aria-label="{{ s["appbar_back"] }}">&larr;</a>
+  {% endif %}
+  <h1 class="u3-appbar-title">{{ title }}</h1>
+  <div class="u3-appbar-actions">
+    {% include "_fab.html" %}
+    {% if appbar_menu is defined and appbar_menu %}
+    <details class="u3-appbar-menu">
+      <summary class="u3-appbar-more" aria-label="{{ s["appbar_more"] }}">&#8943;</summary>
+      <menu>
+        {% for item in appbar_menu %}
+        <a class="u3-appbar-menu-item" href="{{ item.href }}">{{ item.label }}</a>
+        {% endfor %}
+      </menu>
+    </details>
+    {% endif %}
+  </div>
+</header>

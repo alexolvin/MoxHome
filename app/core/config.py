@@ -356,31 +356,46 @@ class TranslationSection(BaseModel):
 
 
 class UiSection(BaseModel):
-    """Параметры Web-интерфейса (U3). Значения — только конфигурация (Rule 1):
-    веб-код, шаблоны и app.js числовых дефолтов не содержат — все читают
-    ``settings.ui.*``. Дефолты живут в этой YAML-схеме (единое место)."""
+    """Параметры Web-интерфейса (U3, серия R). Значения — только
+    конфигурация (Rule 1): веб-код, шаблоны и app.js числовых дефолтов не
+    содержат — все читают ``settings.ui.*``. Дефолты живут в этой
+    YAML-схеме (единое место); секция ui: в config.yaml задана явно
+    (зеркало — config.example.yaml)."""
 
     model_config = ConfigDict(frozen=True)
 
-    #: Размер страницы списка заданий (пагинация, U3 3.4.16).
-    page_size: int = Field(default=50, ge=1)
-    #: Интервал автообновления, с (U3 3.11.47).
+    #: Размер страницы списка, записей (ТЗ-R §3: 20).
+    page_size: int = Field(default=20, ge=1)
+    #: Интервал автообновления, с, активная вкладка (ТЗ-R §3: 3).
     refresh_seconds: float = Field(default=3.0, gt=0.0)
-    #: Верхняя граница экспоненциального backoff при ошибке API, с (U3 3.11.49).
-    refresh_max_seconds: float = Field(default=30.0, gt=0.0)
+    #: Интервал автообновления, с, вкладка в фоне (ТЗ-R §3: 15;
+    #: переключение по visibilitychange).
+    refresh_seconds_max: float = Field(default=15.0, gt=0.0)
     #: Число строк tail логов по умолчанию (U3 3.8).
     log_tail_lines: int = Field(default=200, ge=1)
     #: Минимальный возраст задания (дни) для массовой очистки purge (U3 3.5.24).
     purge_min_age_days: float = Field(default=1.0, ge=0.0)
-    #: Точка перелома «таблица → карточки», px (U3 3.2.5); используется
-    #: генератором CSS-переменной в base.html.
-    mobile_breakpoint_px: int = Field(default=640, ge=1)
+    #: Брейкпоинт «телефон/шире», px (ТЗ-R §3): десктоп — от этой ширины
+    #: (≥ 641); телефон — уже.
+    mobile_breakpoint_px: int = Field(default=641, ge=1)
+    #: Минимальная тап-цель, px (ТЗ-R §3, §14).
+    tap_target_px: int = Field(default=44, ge=1)
+    #: Минимальный зазор между тап-целями, px (ТЗ-R §3).
+    tap_gap_px: int = Field(default=8, ge=0)
+    #: Высота строки списка, px (ТЗ-R §3).
+    row_height_px: int = Field(default=64, ge=1)
+    #: Высота таб-бара, px, плюс env(safe-area-inset-bottom) (ТЗ-R §3).
+    tabbar_height_px: int = Field(default=56, ge=1)
+    #: Кегль полей ввода, px (ТЗ-R §3: 16 — запрет зума iOS/Android).
+    input_font_px: int = Field(default=16, ge=1)
+    #: Время жизни экспорт-артефактов, ч (ТЗ-R §9; плановая очистка).
+    export_ttl_hours: float = Field(default=48.0, gt=0.0)
 
     @model_validator(mode="after")
     def _check_refresh_bounds(self) -> UiSection:
-        if self.refresh_max_seconds < self.refresh_seconds:
+        if self.refresh_seconds_max < self.refresh_seconds:
             raise ValueError(
-                "ui.refresh_max_seconds должен быть ≥ ui.refresh_seconds"
+                "ui.refresh_seconds_max должен быть ≥ ui.refresh_seconds"
             )
         return self
 
