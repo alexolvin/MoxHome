@@ -132,7 +132,8 @@ def test_u3_1_no_ui_literals_outside_strings() -> None:
 
 def test_u3_2_table_card_parity(u1_env: U1Env) -> None:
     """U3-2: для каждой таблицы — поля карточки == столбцы (число и порядок),
-    ``<th scope="col">``; минимум 6 таблиц."""
+    ``<th scope="col">``; минимум 5 таблиц. R2: /jobs и /books — строки
+    (§6/§10), дубль таблица/карточки на них снят (осталось 5)."""
     profile = u1_env.profiles["main"]
     client, repo = profile.client, profile.repo
     book = _upload_book(client, u1_env.books["tiny"])
@@ -165,7 +166,7 @@ def test_u3_2_table_card_parity(u1_env: U1Env) -> None:
                 ]
                 assert dts == columns, f"{url}: поля карточки {dts} != столбцы {columns}"
             checked += 1
-    assert checked >= 6, f"проверено таблиц: {checked} < 6"
+    assert checked >= 5, f"проверено таблиц: {checked} < 5"
 
 
 # ------------------------------------------------------------------ T-U3-3
@@ -630,6 +631,45 @@ def test_u3_13_pagination_and_filters(u1_env: U1Env) -> None:
 # ------------------------------------------------------------------ T-U3-14
 
 
+_U3_14_FORBIDDEN = ("completed", "success", "100%", "healthy", "verified", "ready", "done")
+
+
+def _u3_14_check_a11y(url: str, text: str) -> None:
+    """T-U3-14: доступность — label/aria-label у контролов, th scope."""
+    doc = lhtml.fromstring(text)
+    for el in doc.xpath("//input | //select | //textarea"):
+        if el.get("type") == "hidden":
+            continue
+        labelled = (
+            el.get("aria-label")
+            or (el.get("id") and doc.xpath(f"//label[@for='{el.get('id')}']"))
+            or el.xpath("./ancestor::label")
+        )
+        assert labelled, (url, "контрол без label/aria-label", el.attrib)
+    for el in doc.xpath("//button"):
+        assert el.text_content().strip() or el.get("aria-label"), (
+            url,
+            "кнопка без подписи",
+            el.attrib,
+        )
+    for th in doc.xpath("//th"):
+        assert th.get("scope") in ("col", "row"), (url, "th без scope", th.attrib)
+
+
+def _u3_14_check_honesty(url: str, text: str, allowed: set[str]) -> None:
+    """T-U3-14: честность — запрещённые слова только как verbatim-значения
+    из БД. R2: сканируем только видимый текст (не сырой HTML): ключи групп
+    в URL (group=done), классы, data-*, JSON в <script> (ключи вида
+    jobs_seg_done) — не статусные заявления."""
+    doc = lhtml.fromstring(text)
+    for node in doc.xpath("//script | //style"):
+        node.getparent().remove(node)
+    lowered = doc.text_content().lower()
+    for word in _U3_14_FORBIDDEN:
+        if word.lower() in lowered:
+            assert any(word.lower() in value.lower() for value in allowed), (url, word)
+
+
 def test_u3_14_a11y_and_honesty(u1_env: U1Env) -> None:
     """TZ T-U3-14: доступность (label/aria-label, th scope) и честность
     (слова п. 46 — только verbatim-значения из БД) по HTML всех страниц."""
@@ -652,41 +692,21 @@ def test_u3_14_a11y_and_honesty(u1_env: U1Env) -> None:
         assert text.lstrip().lower().startswith("<!doctype html"), url
     # доступность
     for url, text in pages.items():
-        doc = lhtml.fromstring(text)
-        for el in doc.xpath("//input | //select | //textarea"):
-            if el.get("type") == "hidden":
-                continue
-            labelled = (
-                el.get("aria-label")
-                or (el.get("id") and doc.xpath(f"//label[@for='{el.get('id')}']"))
-                or el.xpath("./ancestor::label")
-            )
-            assert labelled, (url, "контрол без label/aria-label", el.attrib)
-        for el in doc.xpath("//button"):
-            assert el.text_content().strip() or el.get("aria-label"), (
-                url,
-                "кнопка без подписи",
-                el.attrib,
-            )
-        for th in doc.xpath("//th"):
-            assert th.get("scope") in ("col", "row"), (url, "th без scope", th.attrib)
-    # честность: запрещённые слова — только как verbatim-значения из БД.
-    # Допустимый словарь: ВСЕ значения статусов (фильтр/пачка-чистки рисуют
-    # полный набор, а не только статусы существующих заданий), тексты ошибок,
-    # причины переходов.
-    forbidden = ("completed", "success", "100%", "healthy", "verified", "ready", "done")
+        _u3_14_check_a11y(url, text)
+    # честность: допустимый словарь — ВСЕ значения статусов (фильтр/
+    # пачка-чистки рисуют полный набор, а не только статусы существующих
+    # заданий), тексты ошибок, причины переходов. R2: процент — реальный
+    # прогресс из БД (строка задания).
     allowed: set[str] = {status.value for status in JobStatus}
     for job in repo.list_jobs():
         if job.error_message:
             allowed.add(job.error_message)
+        # R2: строка задания показывает процент прогресса — фактическое значение
+        allowed.add(f"{round((job.progress or 0.0) * 100)}%")
     for row in profile.db.conn.execute("SELECT reason FROM transitions"):
         allowed.add(str(row[0]))
     for url, text in pages.items():
-        lowered = text.lower()
-        for word in forbidden:
-            if word.lower() not in lowered:
-                continue
-            assert any(word.lower() in value.lower() for value in allowed), (url, word)
+        _u3_14_check_honesty(url, text, allowed)
 
 
 # ------------------------------------------------------------------ T-U3-15
@@ -702,31 +722,73 @@ const t0 = Date.now();
 const calls = [];
 
 function makeEl(id) {
-  return {
-    id,
-    textContent: "",
-    innerHTML: "",
+  const el = {
+    id: id || "",
     value: "",
     disabled: false,
+    open: false,
     dataset: {},
     files: null,
+    style: {},
+    children: [],
+    parentNode: null,
+    _attrs: {},
     _listeners: {},
-    getAttribute() {
+    _text: "",
+    classList: {
+      _set: new Set(),
+      add(c) { this._set.add(c); },
+      remove(c) { this._set.delete(c); },
+      toggle(c, force) {
+        const want = force === undefined ? !this._set.has(c) : Boolean(force);
+        if (want) this._set.add(c); else this._set.delete(c);
+        return want;
+      },
+      contains(c) { return this._set.has(c); },
+    },
+    getAttribute(n) { return n in el._attrs ? el._attrs[n] : null; },
+    setAttribute(n, v) { el._attrs[n] = String(v); },
+    removeAttribute(n) { delete el._attrs[n]; },
+    hasAttribute(n) { return n in el._attrs; },
+    addEventListener(type, fn) { (el._listeners[type] = el._listeners[type] || []).push(fn); },
+    querySelector(sel) {
+      if (sel && sel.indexOf(".u3-list-body") !== -1) return el._listBody || null;
       return null;
     },
-    addEventListener(type, fn) {
-      (this._listeners[type] = this._listeners[type] || []).push(fn);
+    querySelectorAll() { return []; },
+    appendChild(c) {
+      if (c && typeof c === "object") { c.parentNode = el; el.children.push(c); }
+      return c;
     },
-    querySelector() {
-      return null;
+    append() { for (let i = 0; i < arguments.length; i++) el.appendChild(arguments[i]); },
+    prepend(c) {
+      if (c && typeof c === "object") { c.parentNode = el; el.children.unshift(c); }
+      return c;
     },
-    querySelectorAll() {
-      return [];
+    remove() {
+      if (el.parentNode) {
+        const i = el.parentNode.children.indexOf(el);
+        if (i >= 0) el.parentNode.children.splice(i, 1);
+        el.parentNode = null;
+      }
     },
     reset() {},
-    showModal() {},
-    close() {},
+    showModal() { el.open = true; },
+    close() { el.open = false; },
+    focus() {},
+    blur() {},
   };
+  Object.defineProperty(el, "textContent", {
+    configurable: true,
+    get() { return el._text; },
+    set(v) { el._text = String(v); },
+  });
+  Object.defineProperty(el, "innerHTML", {
+    configurable: true,
+    get() { return el._text; },
+    set(v) { el._text = String(v); el.children.length = 0; },
+  });
+  return el;
 }
 
 const els = {};
@@ -736,6 +798,18 @@ const documentStub = {
   getElementById(id) {
     if (!els[id]) els[id] = makeEl(id);
     return els[id];
+  },
+  createElement(tag) {
+    if (tag === "template") {
+      const t = makeEl("template");
+      t.content = { firstElementChild: null };
+      Object.defineProperty(t, "innerHTML", {
+        get() { return t._text; },
+        set(v) { t._text = String(v); t.content.firstElementChild = makeEl("row"); },
+      });
+      return t;
+    }
+    return makeEl(tag);
   },
   querySelector(sel) {
     if (sel.startsWith("meta")) {
@@ -756,27 +830,39 @@ const documentStub = {
 };
 
 globalThis.document = documentStub;
-globalThis.window = { location: { search: "", href: "http://stub/jobs", reload() {} } };
+globalThis.window = {
+  location: { search: "", href: "http://stub/jobs", reload() {} },
+  addEventListener() {},
+};
+globalThis.history = { pushState() {}, back() {}, replaceState() {} };
 globalThis.alert = () => {};
 globalThis.confirm = () => true;
 
 function scenarioMode(n) {
-  const job = (status) => ({
-    id: "job-1",
-    status,
-    source_language: "en",
-    target_language: "ru",
-    mode: "bilingual",
-    progress: 0.5,
-    progress_display: "x",
-    alignment_coverage: null,
-    error: null,
-    book_name: "b.epub",
-    created_at: 0,
-    updated_at: 0,
-    created_at_human: "t",
-    updated_at_human: "t",
-  });
+  const job = (status) => {
+    const ok = status === "COMPLETED";
+    return {
+      id: "job-1",
+      status,
+      status_group: ok ? "ok" : "run",
+      status_glyph: ok ? "✓" : "◐",
+      group: "now",
+      source_language: "en",
+      target_language: "ru",
+      mode: "bilingual",
+      progress: 0.5,
+      progress_pct: ok ? 100 : 50,
+      progress_display: "x",
+      alignment_coverage: null,
+      error: null,
+      book_name: "b.epub",
+      elapsed_seconds: 600,
+      created_at: 0,
+      updated_at: 0,
+      created_at_human: "t",
+      updated_at_human: "t",
+    };
+  };
   if (scenario === "visible") return [job("TRANSLATING")];
   if (scenario === "terminal") return [job("COMPLETED")];
   if (scenario === "errors") return n <= 2 ? [job("TRANSLATING")] : "error";
@@ -796,7 +882,9 @@ globalThis.fetch = async (url) => {
 
 documentStub.getElementById("u3-strings").textContent = readFileSync(stringsFile, "utf8");
 documentStub.getElementById("u3-ui").textContent = readFileSync(uiFile, "utf8");
-documentStub.getElementById("u1-jobs").dataset = { u1Fetch: "/api/jobs", u1Render: "jobs" };
+const u1jobs = documentStub.getElementById("u1-jobs");
+u1jobs.dataset = { u1Fetch: "/api/jobs", u1Render: "jobs", u1Group: "all" };
+u1jobs._listBody = makeEl("u3-list-body");
 
 (0, eval)(readFileSync(appJsPath, "utf8"));
 documentStub.dispatch("DOMContentLoaded");

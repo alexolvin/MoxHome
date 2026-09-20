@@ -1,0 +1,22 @@
+{# Строка списка книг (серия R §6): --u3-row-h (64 px), плиточка обложки
+   40×56 (первая буква; настоящая обложка — R5), две строки текста,
+   справа точка --status-run-fg (есть задание в run-группе) и «⋯»
+   (no-JS-вариант свайпа; R2: «Удалить книгу», остальные действия — R5).
+   Тап по строке → карточка — R5 (в R2 строка не ссылка).
+   Построитель #1 (no-JS); построитель #2 — bookRowHtml в app.js
+   (идентичная разметка). Переменная: b (views.list_books). #}
+{% set btitle = b.title or b.name %}
+<article class="u3-row u3-row-book" data-name="{{ b.name }}">
+  <span class="u3-row-cover" aria-hidden="true">{{ btitle[:1] | upper }}</span>
+  <span class="u3-row-body">
+    <span class="u3-row-line1" title="{{ btitle }}">{{ btitle }}</span>
+    <span class="u3-row-line2">{{ b.detected or b.dc_language or s["common_not_set"] }}→? · {{ b.size_human }}</span>
+  </span>
+  {% if b.has_active_job %}<span class="u3-row-dot" aria-hidden="true"></span>{% endif %}
+  <details class="u3-row-menu">
+    <summary class="u3-row-more" aria-label="{{ s["row_actions_label"] }}">&#8943;</summary>
+    <menu>
+      <button type="button" class="u3-row-menu-item u3-danger" data-book-delete="{{ b.name }}">{{ s["books_delete_btn"] }}</button>
+    </menu>
+  </details>
+</article>

@@ -89,6 +89,40 @@ def status_glyph(status: str) -> str:
     return STATUS_GLYPH[STATUS_GROUP[status]]
 
 
+# Серия R §10: группы строк списка заданий. Единственная точка расчёта —
+# здесь: сервер кладёт готовое значение в поле ``group`` API-строки и в
+# no-JS разметку; JS раскладывания по группам читает поле, не пересчитывает.
+#: run/wait-статусы всегда «сейчас»; остальные — по времени последнего
+#: обновления: сегодня (с локальной полуночи) / раньше.
+RUN_WAIT_GROUPS = ("run", "wait")
+
+
+def today_start_epoch() -> float:
+    """Локальная полуночь сегодня, epoch — для группировки строк (§10)."""
+    now = datetime.now()
+    return datetime(now.year, now.month, now.day).timestamp()
+
+
+def job_list_group(
+    status: str, updated_at: float, today_start: float | None = None
+) -> str:
+    """Группа строки списка: ``now`` / ``today`` / ``earlier`` (§10)."""
+    if status_group(status) in RUN_WAIT_GROUPS:
+        return "now"
+    if today_start is None:
+        today_start = today_start_epoch()
+    return "today" if updated_at >= today_start else "earlier"
+
+
+def human_duration(total_seconds: float) -> str:
+    """§10: «12 мин», после часа — «1 ч 20 мин» (единая точка формата)."""
+    minutes = int(max(0.0, total_seconds) // 60)
+    if minutes < 60:
+        return _S["time_min"].format(n=minutes)
+    hours, minutes = divmod(minutes, 60)
+    return _S["time_hm"].format(h=hours, m=minutes)
+
+
 def read_json(path: Path) -> dict[str, Any] | None:
     if not path.is_file():
         return None
@@ -395,13 +429,22 @@ def job_facts(
 # ---------------------------------------------------------------- книги (Books)
 
 
-def list_books(settings: Settings) -> list[dict[str, Any]]:
+def list_books(
+    settings: Settings,
+    repo: JobRepository | None = None,
+    q: str | None = None,
+) -> list[dict[str, Any]]:
     """EPUB в ``input/`` + результат определения языка (sidecar-JSON).
 
     Определение — тот же механизм L0, что и стадия validating:
     ``detect_book`` (детектор + dc:language, L0.5) — не дублируется.
     Числа глав/сегментов — из ``services.analyze.scan_book`` (D70),
     повторной реализации сканирования нет (U3 3.6.29).
+
+    Серия R §6/§17 R2: ``q`` — серверный подстроковый фильтр
+    (имя файла + название, без учёта регистра); ``repo`` — при заданном
+    у каждой книги ``has_active_job`` (есть ли задание в run-группе:
+    точка на строке).
     """
     books: list[dict[str, Any]] = []
     input_dir = settings.input_dir
@@ -432,6 +475,21 @@ def list_books(settings: Settings) -> list[dict[str, Any]]:
                 "words": stats.get("word_count"),
             }
         )
+    if q:
+        needle = q.strip().lower()
+        if needle:
+            books = [
+                b
+                for b in books
+                if needle in b["name"].lower()
+                or needle in str(b.get("title") or "").lower()
+            ]
+    if repo is not None:
+        run_statuses = tuple(st for st in JobStatus if status_group(st.value) == "run")
+        for b in books:
+            b["has_active_job"] = bool(
+                repo.list_jobs(1, 0, statuses=run_statuses, book=b["name"])
+            )
     return books
 
 

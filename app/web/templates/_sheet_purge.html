@@ -1,0 +1,36 @@
+{# Тело листа «Очистить старые» (mass-purge U3): терминальные статусы +
+   книга; шаг 1 — dry-run (перечень job_id, число, объём), шаг 2 —
+   подтверждение, удаляются ровно перечисленные. Пары языков в листе
+   нет (API-параметр сохранён).
+   Рендерится в <dialog id=u3-sheet-purge> (JS) ИЛИ в no-JS-секции
+   (?sheet=purge) — не одновременно (id не дублируются).
+   id у контролов — контракт bindPurge в app.js (D5: E2 — полный
+   перечень job_id + «необратимо»).
+   Переменные: terminal_statuses, books, ui, csrf. #}
+<p class="hint">{{ s["jobs_purge_hint"].format(days=ui.purge_min_age_days) }}</p>
+<form id="u3-purge-form" class="u3-sheet-form">
+  <fieldset class="u3-filter">
+    <legend>{{ s["jobs_purge_statuses"] }}</legend>
+    {% for st in terminal_statuses %}
+    <label class="u3-check">
+      <input type="checkbox" name="status" value="{{ st }}" checked>
+      {{ st }}
+    </label>
+    {% endfor %}
+  </fieldset>
+  <label class="u3-filter">
+    {{ s["jobs_purge_book"] }}:
+    <select name="book">
+      <option value="">{{ s["jobs_opt_none"] }}</option>
+      {% for b in books %}
+      <option value="{{ b.name }}">{{ b.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+  <span class="u3-filter-actions">
+    <button type="button" id="u3-purge-dry" class="u3-btn u3-sheet-action">{{ s["jobs_purge_dry_btn"] }}</button>
+    <button type="button" id="u3-purge-confirm" disabled class="u3-btn u3-primary u3-sheet-action">{{ s["jobs_purge_confirm_btn"] }}</button>
+  </span>
+</form>
+<p id="u3-purge-msg" role="status"></p>

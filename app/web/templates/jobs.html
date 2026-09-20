@@ -1,231 +1,92 @@
 {% extends "base.html" %}
 {% block content %}
-{# Серия R §10: список сверху (T1: первый ряд ≤ 160 px), фильтры и
-   создание — ниже по странице (FAB ведёт на #u1-create); R4 заменит
-   панель создания на bottom-sheet. #}
-<p class="u3-workline">
-  {{ s["jobs_worker"] }}
-  <span class="{{ 'ok' if worker_status.startswith('ok') else 'err' }}">{{ worker_status }}</span>
-  {% if worker_detail %}<span class="hint"> — {{ worker_detail }}</span>{% endif %}
-  · {{ s["jobs_autorefresh"] }}
-  · <span id="u3-jobs-refresh" class="hint"></span>
-</p>
-<p class="hint u3-announce" id="u3-jobs-announce" aria-live="polite"></p>
-
-<div id="u1-jobs" data-u1-fetch="/api/jobs" data-u1-render="jobs"{% if total == 0 and not has_filters %} data-u1-onboarding="1"{% endif %}>
-  {% if rows %}
-  <table class="u3-table">
-    <thead>
-      <tr>
-        <th scope="col">{{ s["jobs_col_id"] }}</th>
-        <th scope="col">{{ s["jobs_col_book"] }}</th>
-        <th scope="col">{{ s["jobs_col_pair"] }}</th>
-        <th scope="col">{{ s["jobs_col_mode"] }}</th>
-        <th scope="col">{{ s["jobs_col_status"] }}</th>
-        <th scope="col">{{ s["jobs_col_progress"] }}</th>
-        <th scope="col">{{ s["jobs_col_alignment"] }}</th>
-        <th scope="col">{{ s["jobs_col_created"] }}</th>
-        <th scope="col">{{ s["jobs_col_updated"] }}</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in rows %}
-      {% set j = row.job %}
-      <tr>
-        <td><a class="u3-mono" href="/jobs/{{ j.id }}">{{ j.id }}</a></td>
-        <td>{{ row.book_name }}</td>
-        <td>{{ j.source_language or '—' }} → {{ j.target_language }}</td>
-        <td>{{ j.mode }}{% if j.learning_level %} / {{ j.learning_level }}{% if j.learning_cefr %} ({{ j.learning_cefr }}){% endif %}{% endif %}</td>
-        {# Серия R §4: группа+глиф — из единой таблицы views.STATUS_GROUP #}
-        <td class="u3-status status-{{ j.status.value | status_group }}"><span class="u3-status-ico" aria-hidden="true">{{ status_glyph(j.status.value) }}</span>{{ j.status.value }}</td>
-        <td>{{ row.progress_display }}</td>
-        <td>{% if j.alignment_coverage is not none %}{{ '%.1f' | format(j.alignment_coverage * 100) }}%{% else %}{{ s["common_not_set"] }}{% endif %}</td>
-        <td>{{ row.created_at_human }}</td>
-        <td>{{ row.updated_at_human }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  <div class="u3-cards">
-    {% for row in rows %}
-    {% set j = row.job %}
-    <article class="u3-card">
-      <dl class="u3-card-fields">
-        <div class="u3-field"><dt>{{ s["jobs_col_id"] }}</dt><dd><a class="u3-mono" href="/jobs/{{ j.id }}">{{ j.id }}</a></dd></div>
-        <div class="u3-field"><dt>{{ s["jobs_col_book"] }}</dt><dd>{{ row.book_name }}</dd></div>
-        <div class="u3-field"><dt>{{ s["jobs_col_pair"] }}</dt><dd>{{ j.source_language or '—' }} → {{ j.target_language }}</dd></div>
-        <div class="u3-field"><dt>{{ s["jobs_col_mode"] }}</dt><dd>{{ j.mode }}{% if j.learning_level %} / {{ j.learning_level }}{% if j.learning_cefr %} ({{ j.learning_cefr }}){% endif %}{% endif %}</dd></div>
-        <div class="u3-field"><dt>{{ s["jobs_col_status"] }}</dt><dd class="u3-status status-{{ j.status.value | status_group }}"><span class="u3-status-ico" aria-hidden="true">{{ status_glyph(j.status.value) }}</span>{{ j.status.value }}</dd></div>
-        <div class="u3-field"><dt>{{ s["jobs_col_progress"] }}</dt><dd>{{ row.progress_display }}</dd></div>
-        <div class="u3-field"><dt>{{ s["jobs_col_alignment"] }}</dt><dd>{% if j.alignment_coverage is not none %}{{ '%.1f' | format(j.alignment_coverage * 100) }}%{% else %}{{ s["common_not_set"] }}{% endif %}</dd></div>
-        <div class="u3-field"><dt>{{ s["jobs_col_created"] }}</dt><dd>{{ row.created_at_human }}</dd></div>
-        <div class="u3-field"><dt>{{ s["jobs_col_updated"] }}</dt><dd>{{ row.updated_at_human }}</dd></div>
-      </dl>
-    </article>
-    {% endfor %}
-  </div>
-  {% else %}
-  {% if total == 0 and not has_filters %}
-  <div class="u3-panel">
-    <h2>{{ s["onb_title"] }}</h2>
-    <ol>
-      <li>{{ s["onb_step1"] }} — <a class="btn" href="/books">{{ s["onb_go_books"] }}</a></li>
-      <li>{{ s["onb_step2"] }}</li>
-      <li>{{ s["onb_step3"] }}</li>
-    </ol>
-  </div>
-  {% else %}
-  <p class="u3-empty">{{ s["jobs_empty_filtered"] if has_filters else s["jobs_empty"] }}{% if has_filters %} <a class="btn" href="/jobs">{{ s["jobs_filter_reset"] }}</a>{% endif %}</p>
-  {% endif %}
-  {% endif %}
-</div>
-
-{% if prev_href or next_href %}
-<nav class="u3-pager" aria-label="{{ s["jobs_pager_label"] }}">
-  {% if prev_href %}<a class="btn" href="{{ prev_href }}">{{ s["jobs_prev"] }}</a>{% endif %}
-  <span class="hint">{{ s["jobs_page"].format(page=page, pages=total_pages) }} · {{ s["jobs_page_total"].format(n=total) }}</span>
-  {% if next_href %}<a class="btn" href="{{ next_href }}">{{ s["jobs_next"] }}</a>{% endif %}
-</nav>
+{# Серия R §10: вертикальный порядок — (1) строка состояния воркера
+   (только если воркер молчит), (2) сегментный фильтр, (3) список строк
+   с группировкой. Точный фильтр и очистка — в листах (§14): JS —
+   <dialog> (триггер data-sheet-open в меню «Ещё»), без JS — та же форма
+   серверной страницей (?sheet=filter|purge, id не дублируются: <dialog>
+   рендерится, только когда sheet не тот).
+   Список: JS — скелет → fetch /api/jobs → строки, далее дельта
+   ?since=<rev> (частичное обновление: статус/процент/время/группа);
+   no-JS — полный список в <noscript> + meta refresh 15.
+   5 состояний §14 — data-state на .u3-list-body. #}
+{% if worker_down %}
+<p class="u3-worker-band" role="status">{{ s["jobs_worker_band"] }}{% if worker_detail %} · {{ worker_detail }}{% endif %}</p>
 {% endif %}
+<nav class="u3-seg" aria-label="{{ s["jobs_seg_label"] }}">
+  {% for gkey, glabel in pills %}
+  <a class="u3-seg-pill{% if group == gkey %} is-current{% endif %}" href="{{ pill_href(gkey) }}"{% if group == gkey %} aria-current="true"{% endif %}><span class="u3-seg-vis">{{ glabel }}</span></a>
+  {% endfor %}
+</nav>
 
-<div class="u3-panel">
-  <h2>{{ s["jobs_filter_title"] }}</h2>
-  <form method="get" action="/jobs" class="u3-filter">
-    <fieldset>
-      <legend>{{ s["jobs_f_status"] }}</legend>
-      {% for st in all_statuses %}
-      <label class="u3-check">
-        <input type="checkbox" name="status" value="{{ st }}" {% if st in f_status %}checked{% endif %}>
-        {{ st }}
-      </label>
+<div id="u1-jobs" data-u1-fetch="/api/jobs" data-u1-render="jobs" data-u1-group="{{ group }}" data-u1-status="{{ f_status | join(',') }}" data-u1-sort="{{ sort_field }}" data-u1-direction="{{ sort_direction }}">
+  {# состояние «Загрузка» §14: три скелетные строки (не спиннер);
+     для no-JS скелет скрыт (html:not(.js)) — виден только список ниже #}
+  <div class="u3-list-body u3-skel-wrap" data-state="loading" aria-busy="true">
+    <div class="u3-skel-row" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div class="u3-skel-row" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div class="u3-skel-row" aria-hidden="true"><span></span><span></span><span></span></div>
+  </div>
+  <noscript>
+    <meta http-equiv="refresh" content="15">
+    <div class="u3-list-body" data-state="{{ 'ok' if total else ('empty-filter' if (group != 'all' or f_status) else 'empty') }}">
+      {% for gname in ("now", "today", "earlier") %}
+      {% if group_rows[gname] %}
+      <section class="u3-group" data-group="{{ gname }}">
+        <h2 class="u3-group-head">{{ s["jobs_group_" ~ gname] }}</h2>
+        <div class="u3-group-rows">
+          {% for row in group_rows[gname] %}
+          {% include "_job_row.html" %}
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
       {% endfor %}
-    </fieldset>
-    <label>{{ s["jobs_f_book_filter"] }}:
-      <select name="book">
-        <option value="">{{ s["jobs_opt_none"] }}</option>
-        {% for b in books %}
-        <option value="{{ b.name }}" {% if b.name == f_book %}selected{% endif %}>{{ b.name }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>{{ s["jobs_f_pair"] }}:
-      <select name="pair">
-        <option value="">{{ s["jobs_opt_none"] }}</option>
-        {% for p in matrix_pairs %}
-        <option value="{{ p.value }}" {% if p.value == f_pair %}selected{% endif %}>{{ p.source }} → {{ p.target }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>{{ s["jobs_f_created_from"] }}:
-      <input type="date" name="created_from" value="{{ f_created_from }}">
-    </label>
-    <label>{{ s["jobs_f_created_to"] }}:
-      <input type="date" name="created_to" value="{{ f_created_to }}">
-    </label>
-    <label>{{ s["jobs_sort_label"] }}:
-      <select name="sort">
-        <option value="created_at" {% if sort_field == 'created_at' %}selected{% endif %}>{{ s["jobs_sort_created"] }}</option>
-        <option value="updated_at" {% if sort_field == 'updated_at' %}selected{% endif %}>{{ s["jobs_sort_updated"] }}</option>
-      </select>
-    </label>
-    <label>{{ s["jobs_sort_direction"] }}:
-      <select name="direction">
-        <option value="desc" {% if sort_direction == 'desc' %}selected{% endif %}>{{ s["jobs_sort_desc"] }}</option>
-        <option value="asc" {% if sort_direction == 'asc' %}selected{% endif %}>{{ s["jobs_sort_asc"] }}</option>
-      </select>
-    </label>
-    <input type="hidden" name="u3_csrf" value="{{ csrf }}">
-    <span class="u3-filter-actions">
-      <button type="submit">{{ s["jobs_filter_apply"] }}</button>
-      <a class="btn" href="/jobs">{{ s["jobs_filter_reset"] }}</a>
-    </span>
-  </form>
-  <p class="hint">{{ s["jobs_sort_current"].format(field=sort_label, dir=direction_label) }}</p>
+      {% if not total %}
+      {% if group != 'all' or f_status %}
+      <div class="u3-state" data-state="empty-filter">
+        <span class="u3-state-ico" aria-hidden="true">&#9675;</span>
+        <p class="u3-state-line">{{ s["state_not_found"] }}</p>
+        <a class="u3-btn u3-primary" href="/jobs">{{ s["state_reset_filter"] }}</a>
+      </div>
+      {% else %}
+      <div class="u3-state" data-state="empty">
+        <span class="u3-state-ico" aria-hidden="true">&#9675;</span>
+        <p class="u3-state-line">{{ s["jobs_empty_line"] }}</p>
+        <a class="u3-btn u3-primary" href="/books">{{ s["jobs_empty_btn"] }}</a>
+      </div>
+      {% endif %}
+      {% endif %}
+    </div>
+  </noscript>
 </div>
+<p class="u3-announce" id="u3-jobs-announce" aria-live="polite"></p>
+{# строка промежуточных ошибок (HTTP-ошибка дельты: причина + «Повторить»,
+   data-u3-jobs-retry); пуста — не видна (.u3-announce:empty) #}
+<p class="hint u3-announce" id="u3-jobs-refresh" aria-live="polite"></p>
 
-<div class="u3-panel">
-  <h2>{{ s["jobs_create_btn"] }}</h2>
-  <form id="u1-create" class="u3-filter">
-    <label>{{ s["jobs_f_book"] }}:
-      <select name="book" required>
-        {% for b in books %}
-        <option value="{{ b.name }}">{{ b.name }}{% if b.title %} — {{ b.title }}{% endif %}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>{{ s["jobs_f_target"] }}:
-      <select name="target_language" required>
-        {% for code in registry_codes %}
-        <option value="{{ code }}">{{ code }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>{{ s["jobs_f_mode"] }}:
-      <select name="mode">
-        <option value="bilingual" selected>bilingual</option>
-        <option value="translation">translation</option>
-      </select>
-    </label>
-    <label>{{ s["jobs_f_level"] }}:
-      <select name="learning_level">
-        <option value="" selected>{{ s["jobs_opt_none"] }}</option>
-        <option value="Minimal">Minimal</option>
-        <option value="Balanced">Balanced</option>
-        <option value="Learning">Learning</option>
-        <option value="Intensive">Intensive</option>
-      </select>
-    </label>
-    <label>{{ s["jobs_f_cefr"] }}:
-      <select name="learning_cefr">
-        <option value="" selected>{{ s["jobs_opt_none"] }}</option>
-        {% for l in cefr_levels %}
-        <option value="{{ l }}">{{ l }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <input type="hidden" name="u3_csrf" value="{{ csrf }}">
-    <span class="u3-filter-actions">
-      <button type="submit">{{ s["jobs_create_btn"] }}</button>
-      <span id="u1-create-msg" role="status"></span>
-    </span>
-  </form>
-</div>
-
-<details class="u3-panel">
-  <summary>{{ s["jobs_purge_title"] }}</summary>
-  <p class="hint">{{ s["jobs_purge_hint"].format(days=ui.purge_min_age_days) }}</p>
-  <form id="u3-purge-form" class="u3-filter">
-    <fieldset>
-      <legend>{{ s["jobs_purge_statuses"] }}</legend>
-      {% for st in terminal_statuses %}
-      <label class="u3-check">
-        <input type="checkbox" name="status" value="{{ st }}" checked>
-        {{ st }}
-      </label>
-      {% endfor %}
-    </fieldset>
-    <label>{{ s["jobs_purge_book"] }}:
-      <select name="book">
-        <option value="">{{ s["jobs_opt_none"] }}</option>
-        {% for b in books %}
-        <option value="{{ b.name }}">{{ b.name }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>{{ s["jobs_purge_pair"] }}:
-      <select name="pair">
-        <option value="">{{ s["jobs_opt_none"] }}</option>
-        {% for p in matrix_pairs %}
-        <option value="{{ p.value }}">{{ p.source }} → {{ p.target }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <input type="hidden" name="u3_csrf" value="{{ csrf }}">
-    <span class="u3-filter-actions">
-      <button type="button" id="u3-purge-dry">{{ s["jobs_purge_dry_btn"] }}</button>
-      <button type="button" id="u3-purge-confirm" disabled>{{ s["jobs_purge_confirm_btn"] }}</button>
-    </span>
-  </form>
-  <p id="u3-purge-msg" role="status"></p>
-</details>
+{% if sheet != 'filter' %}
+<dialog class="u3-sheet" id="u3-sheet-filter" aria-label="{{ s["jobs_sheet_filter_title"] }}">
+  <h2 class="u3-sheet-title">{{ s["jobs_sheet_filter_title"] }}</h2>
+  {% include "_sheet_filter.html" %}
+</dialog>
+{% endif %}
+{% if sheet != 'purge' %}
+<dialog class="u3-sheet" id="u3-sheet-purge" aria-label="{{ s["jobs_sheet_purge_title"] }}">
+  <h2 class="u3-sheet-title">{{ s["jobs_sheet_purge_title"] }}</h2>
+  {% include "_sheet_purge.html" %}
+</dialog>
+{% endif %}
+{% if sheet == 'filter' %}
+<section class="u3-sheet-page">
+  <h2>{{ s["jobs_sheet_filter_title"] }}</h2>
+  {% include "_sheet_filter.html" %}
+</section>
+{% endif %}
+{% if sheet == 'purge' %}
+<section class="u3-sheet-page">
+  <h2>{{ s["jobs_sheet_purge_title"] }}</h2>
+  {% include "_sheet_purge.html" %}
+</section>
+{% endif %}
 {% endblock %}

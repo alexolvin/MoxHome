@@ -1,0 +1,23 @@
+{# Строка списка заданий (серия R §10): --u3-job-row-h (72 px), три
+   текстовые строки слева + зона действий 44 px справа (кнопки — R3),
+   полоса прогресса 3 px по нижнему краю (цвет — группа статуса;
+   PLANNING/VALIDATING_OUTPUT — индетерминированная анимация,
+   prefers-reduced-motion — статика). id не выводится; сетка
+   «метка:значение» запрещена.
+   Построитель #1 (no-JS); построитель #2 — jobRowHtml в app.js
+   (идентичная разметка). Ссылка — только на текстовую колонку,
+   зона действий вне <a> (без вложенных интерактивных).
+   Переменные: row (job, book_name, progress_display, progress_pct,
+   elapsed_human, status_group, status_glyph), gname (now|today|earlier). #}
+{% set j = row.job %}
+{% set src = j.source_language or s["common_not_set"] %}
+{% set tgt = j.target_language or s["common_not_set"] %}
+<article class="u3-row u3-row-job status-{{ row.status_group }}" data-id="{{ j.id }}" data-group="{{ gname }}" data-status="{{ j.status.value }}" data-status-group="{{ row.status_group }}" data-rev="{{ j.updated_at }}">
+  <a class="u3-row-body" href="/jobs/{{ j.id }}">
+    <span class="u3-row-line1" title="{{ row.book_name }}">{{ row.book_name }}</span>
+    <span class="u3-row-line2">{{ src }}→{{ tgt }} · {{ j.mode }}{% if j.learning_cefr %} · {{ j.learning_cefr }}{% endif %}</span>
+    <span class="u3-row-line3"><span class="u3-status status-{{ row.status_group }}"><span class="u3-status-ico" aria-hidden="true">{{ row.status_glyph }}</span>{{ j.status.value }}</span>{% if row.progress_pct is not none %}<span class="u3-row-sep"> · </span>{{ row.progress_pct }}%{% endif %}<span class="u3-row-sep"> · </span>{{ row.elapsed_human }}</span>
+  </a>
+  <span class="u3-row-action" aria-hidden="true"></span>
+  <span class="u3-row-strip{% if row.progress_pct is none %} is-ind{% endif %}"{% if row.progress_pct is not none and row.progress_pct > 0 %} style="width: {{ row.progress_pct }}%"{% endif %} aria-hidden="true"></span>
+</article>

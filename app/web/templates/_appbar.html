@@ -1,6 +1,9 @@
 {# Appbar (серия R §14): 48 px + safe-area, sticky; назад (вложенные
    страницы), заголовок h1, справа — FAB и меню "Ещё" (details/summary,
-   без JS работает; появляется, когда страница передаёт appbar_menu). #}
+   без JS работает; появляется, когда страница передаёт appbar_menu).
+   Элемент меню (R2): {label, href[, current]} — ссылка; {text} — строка;
+   {label, href, sheet} — триггер листа: JS открывает <dialog id=sheet>
+   (data-sheet-open), без JS — переход на no-JS-форму (href ?sheet=). #}
 <header class="u3-appbar">
   {% if back_href is defined and back_href %}
   <a class="u3-appbar-back" href="{{ back_href }}" aria-label="{{ s["appbar_back"] }}">&larr;</a>
@@ -13,7 +16,11 @@
       <summary class="u3-appbar-more" aria-label="{{ s["appbar_more"] }}">&#8943;</summary>
       <menu>
         {% for item in appbar_menu %}
-        <a class="u3-appbar-menu-item" href="{{ item.href }}">{{ item.label }}</a>
+        {% if item.href is defined %}
+        <a class="u3-appbar-menu-item{% if item.current %} is-current{% endif %}" href="{{ item.href }}"{% if item.sheet is defined %} data-sheet-open="{{ item.sheet }}"{% endif %}>{{ item.label }}</a>
+        {% else %}
+        <span class="u3-appbar-menu-text">{{ item.text }}</span>
+        {% endif %}
         {% endfor %}
       </menu>
     </details>

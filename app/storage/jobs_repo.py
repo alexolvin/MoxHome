@@ -142,6 +142,7 @@ class JobRepository:
         created_from: float | None = None,
         created_to: float | None = None,
         updated_before: float | None = None,
+        updated_after: float | None = None,
         sort: str = "created_at",
         direction: str = "desc",
     ) -> list[Job]:
@@ -152,7 +153,8 @@ class JobRepository:
         Фильтрация — в SQL (не в шаблоне). Только чтение — API/UI не пишут
         рабочие состояния (E3.1). ``updated_before`` — для mass-purge U3:
         «в терминальном статусе не младше N дней» (updated_at терминального
-        перехода)."""
+        перехода). ``updated_after`` — серия R §10: дельта списка
+        (``GET /api/jobs?since=<rev>``)."""
         where, params = self._jobs_filter_clause(
             statuses=statuses,
             book=book,
@@ -161,6 +163,7 @@ class JobRepository:
             created_from=created_from,
             created_to=created_to,
             updated_before=updated_before,
+            updated_after=updated_after,
         )
         sort_col, direction_norm = self._jobs_sort_clause(sort, direction)
         limit_sql = " LIMIT ? OFFSET ?" if limit is not None else ""
@@ -184,6 +187,7 @@ class JobRepository:
         created_from: float | None = None,
         created_to: float | None = None,
         updated_before: float | None = None,
+        updated_after: float | None = None,
     ) -> int:
         """Число заданий по тем же фильтрам, что ``list_jobs`` (для пагинации)."""
         where, params = self._jobs_filter_clause(
@@ -194,6 +198,7 @@ class JobRepository:
             created_from=created_from,
             created_to=created_to,
             updated_before=updated_before,
+            updated_after=updated_after,
         )
         row = self._db.conn.execute(
             f"SELECT COUNT(*) AS n FROM jobs{where}", params
@@ -239,6 +244,7 @@ class JobRepository:
         created_from: float | None,
         created_to: float | None,
         updated_before: float | None = None,
+        updated_after: float | None = None,
     ) -> tuple[str, list[object]]:
         where: list[str] = []
         params: list[object] = []
@@ -263,6 +269,9 @@ class JobRepository:
         if updated_before is not None:
             where.append("updated_at < ?")
             params.append(updated_before)
+        if updated_after is not None:
+            where.append("updated_at > ?")
+            params.append(updated_after)
         where_sql = (" WHERE " + " AND ".join(where)) if where else ""
         return where_sql, params
 
@@ -297,6 +306,32 @@ class JobRepository:
             )
             for row in rows
         ]
+
+    def list_transitions_bulk(self, job_ids: list[str]) -> dict[str, list[TransitionRecord]]:
+        """Переходы нескольких заданий одним запросом (серия R §10: время
+        работы строк списка — без N+1). Порядок внутри — id (как в
+        ``list_transitions``)."""
+        ids = list(dict.fromkeys(job_ids))
+        if not ids:
+            return {}
+        marks = ", ".join("?" for _ in ids)
+        rows = self._db.conn.execute(
+            f"SELECT * FROM transitions WHERE job_id IN ({marks}) ORDER BY id",
+            tuple(ids),
+        ).fetchall()
+        grouped: dict[str, list[TransitionRecord]] = {}
+        for row in rows:
+            grouped.setdefault(str(row["job_id"]), []).append(
+                TransitionRecord(
+                    job_id=row["job_id"],
+                    from_status=JobStatus(row["from_status"]),
+                    to_status=JobStatus(row["to_status"]),
+                    at=row["at"],
+                    reason=row["reason"],
+                    actor=row["actor"],
+                )
+            )
+        return grouped
 
     # ------------------------------------------------------------------- переходы
 
