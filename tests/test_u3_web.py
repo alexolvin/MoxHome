@@ -171,13 +171,35 @@ def test_u3_2_table_card_parity(u1_env: U1Env) -> None:
 # ------------------------------------------------------------------ T-U3-3
 
 
+def _strip_root_blocks(css: str) -> str:
+    """R1: вырезать ВСЕ токеновые блоки — базовый :root, :root внутри
+    @media (prefers-color-scheme: dark) и :root[data-theme="light|dark"]
+    (4 блока; литералы цвета разрешены только в них — T18)."""
+    spans: list[tuple[int, int]] = []
+    for m in re.finditer(r":root(?:\[data-theme=\"(?:light|dark)\"\])?\s*\{", css):
+        start = m.end() - 1
+        depth, i = 1, start + 1
+        while i < len(css) and depth:
+            if css[i] == "{":
+                depth += 1
+            elif css[i] == "}":
+                depth -= 1
+            i += 1
+        spans.append((m.start(), i))
+    assert spans, "токеновые блоки :root не найдены"
+    for start, end in reversed(spans):
+        css = css[:start] + css[end:]
+    return css
+
+
 def test_u3_3_css_invariants() -> None:
-    """U3-3: числовые цвета вне :root — 0; width/min-width > 360 px — 0."""
+    """U3-3: числовые цвета вне токеновых блоков — 0; width/min-width >
+    360 px — 0. R1: блоков :root стало 4 (светлая + тёмная темы, T18)."""
     css = (ROOT / "app" / "web" / "static" / "style.css").read_text(encoding="utf-8")
     assert re.search(r":root\s*\{", css), "нет блока :root"
-    outside = re.sub(r":root\s*\{[^}]*\}", "", css, flags=re.DOTALL)
+    outside = _strip_root_blocks(css)
     for match in re.finditer(r"#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(", outside):
-        pytest.fail(f"числовой цвет вне :root: {match.group(0)!r}")
+        pytest.fail(f"числовой цвет вне токеновых блоков: {match.group(0)!r}")
     for match in re.finditer(r"(?:^|[\s,{;])(?:min-)?width\s*:\s*(\d+(?:\.\d+)?)px", outside):
         value = float(match.group(1))
         assert value <= 360, f"ширина {value} px > 360 px: {match.group(0)!r}"

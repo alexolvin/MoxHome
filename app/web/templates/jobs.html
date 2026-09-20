@@ -32,11 +32,12 @@
       {% for row in rows %}
       {% set j = row.job %}
       <tr>
-        <td><a href="/jobs/{{ j.id }}">{{ j.id }}</a></td>
+        <td><a class="u3-mono" href="/jobs/{{ j.id }}">{{ j.id }}</a></td>
         <td>{{ row.book_name }}</td>
         <td>{{ j.source_language or '—' }} → {{ j.target_language }}</td>
         <td>{{ j.mode }}{% if j.learning_level %} / {{ j.learning_level }}{% if j.learning_cefr %} ({{ j.learning_cefr }}){% endif %}{% endif %}</td>
-        <td class="status-{{ j.status.value | lower }}">{{ j.status.value }}</td>
+        {# Серия R §4: группа+глиф — из единой таблицы views.STATUS_GROUP #}
+        <td class="u3-status status-{{ j.status.value | status_group }}"><span class="u3-status-ico" aria-hidden="true">{{ status_glyph(j.status.value) }}</span>{{ j.status.value }}</td>
         <td>{{ row.progress_display }}</td>
         <td>{% if j.alignment_coverage is not none %}{{ '%.1f' | format(j.alignment_coverage * 100) }}%{% else %}{{ s["common_not_set"] }}{% endif %}</td>
         <td>{{ row.created_at_human }}</td>
@@ -50,11 +51,11 @@
     {% set j = row.job %}
     <article class="u3-card">
       <dl class="u3-card-fields">
-        <div class="u3-field"><dt>{{ s["jobs_col_id"] }}</dt><dd><a href="/jobs/{{ j.id }}">{{ j.id }}</a></dd></div>
+        <div class="u3-field"><dt>{{ s["jobs_col_id"] }}</dt><dd><a class="u3-mono" href="/jobs/{{ j.id }}">{{ j.id }}</a></dd></div>
         <div class="u3-field"><dt>{{ s["jobs_col_book"] }}</dt><dd>{{ row.book_name }}</dd></div>
         <div class="u3-field"><dt>{{ s["jobs_col_pair"] }}</dt><dd>{{ j.source_language or '—' }} → {{ j.target_language }}</dd></div>
         <div class="u3-field"><dt>{{ s["jobs_col_mode"] }}</dt><dd>{{ j.mode }}{% if j.learning_level %} / {{ j.learning_level }}{% if j.learning_cefr %} ({{ j.learning_cefr }}){% endif %}{% endif %}</dd></div>
-        <div class="u3-field"><dt>{{ s["jobs_col_status"] }}</dt><dd class="status-{{ j.status.value | lower }}">{{ j.status.value }}</dd></div>
+        <div class="u3-field"><dt>{{ s["jobs_col_status"] }}</dt><dd class="u3-status status-{{ j.status.value | status_group }}"><span class="u3-status-ico" aria-hidden="true">{{ status_glyph(j.status.value) }}</span>{{ j.status.value }}</dd></div>
         <div class="u3-field"><dt>{{ s["jobs_col_progress"] }}</dt><dd>{{ row.progress_display }}</dd></div>
         <div class="u3-field"><dt>{{ s["jobs_col_alignment"] }}</dt><dd>{% if j.alignment_coverage is not none %}{{ '%.1f' | format(j.alignment_coverage * 100) }}%{% else %}{{ s["common_not_set"] }}{% endif %}</dd></div>
         <div class="u3-field"><dt>{{ s["jobs_col_created"] }}</dt><dd>{{ row.created_at_human }}</dd></div>

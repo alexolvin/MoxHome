@@ -40,6 +40,7 @@ from starlette.responses import JSONResponse, Response
 from app.core.config import Settings
 from app.storage.database import Database
 from app.storage.jobs_repo import JobRepository
+from app.web import views
 from app.web.api import router as api_router
 from app.web.auth import (
     LOGIN_COOKIE,
@@ -130,6 +131,10 @@ def create_app(settings: Settings, db: Database | None = None) -> FastAPI:
     app.state.repo = repo
 
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+    # Серия R §4: статус→группа и глиф — единая таблица views.STATUS_GROUP;
+    # в шаблонах условий по статусу нет, только эти два вызова.
+    templates.env.filters["status_group"] = views.status_group
+    templates.env.globals["status_glyph"] = views.status_glyph
 
     @app.middleware("http")
     async def _auth(

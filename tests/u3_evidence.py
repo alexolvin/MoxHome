@@ -788,37 +788,66 @@ def ev_u3_11(main: U1Profile, tiny: Path) -> str:
         lines.append(detail)
     lines.append(f"контролов без label/aria-label: {no_label}")
     lines.append(f"<th> без scope: {no_scope}")
-    # контраст токенов (пары «первый план» на «втором плане» из :root)
+    # контраст токенов (T13: расчёт по §6.1 в светлой и тёмной теме:
+    # текст >= 7, статусные >= 5, границы >= 3, 0 нарушений)
     css = (ROOT / "app" / "web" / "static" / "style.css").read_text(encoding="utf-8")
+
+    def _tokens_of(block: str) -> dict[str, str]:
+        return {
+            k.strip(): v.strip().rstrip(";")
+            for k, v in (
+                line.split(":", 1) for line in block.splitlines() if ":" in line
+            )
+        }
+
     root_match = re.search(r":root\s*\{([^}]*)\}", css, flags=re.DOTALL)
     assert root_match is not None, "нет блока :root в style.css"
-    root_body = root_match.group(1)
-    tokens = {
-        k.strip(): v.strip().rstrip(";")
-        for k, v in (
-            line.split(":", 1) for line in root_body.splitlines() if ":" in line
-        )
-    }
-    # D1: --u3-cancelled/--u3-head-bg/--u3-pre-bg объединены в
-    # --u3-muted/--u3-surface (единый механизм, ТЗ UI §3.4/§8.1.1)
-    pairs = (
-        ("--u3-text", "--u3-bg"),
-        ("--u3-text", "--u3-surface"),
-        ("--u3-muted", "--u3-bg"),
-        ("--u3-accent", "--u3-bg"),
-        ("--u3-ok", "--u3-bg"),
-        ("--u3-err", "--u3-bg"),
-        ("--u3-warn", "--u3-bg"),
+    light = _tokens_of(root_match.group(1))
+    dark_match = re.search(
+        r"@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*:root\s*\{([^}]*)\}",
+        css,
+        flags=re.DOTALL,
     )
-    lines.append("")
-    lines.append("| пара | контраст | ≥ 4.5:1 |")
-    lines.append("|---|---|---|")
+    assert dark_match is not None, "нет тёмной темы (:root внутри @media)"
+    dark = _tokens_of(dark_match.group(1))
+    # R1 §4: пять статусных групп, поверхности 0-3; имена токенов — TZ-R
+    # (D1: --u3-cancelled/--u3-head-bg/--u3-pre-bg объединены в --fg-muted/
+    # --surface-1, единый механизм ТЗ UI §3.4/§8.1.1)
+    pairs = (
+        ("--u3-text", "--surface-0", 7.0),
+        ("--u3-text", "--surface-1", 7.0),
+        ("--fg-muted", "--surface-0", 4.5),
+        ("--fg-muted", "--surface-1", 4.5),
+        ("--accent-fg", "--surface-0", 4.5),
+        ("--accent-fg", "--surface-1", 4.5),
+        ("--status-wait-fg", "--surface-0", 5.0),
+        ("--status-wait-fg", "--surface-1", 5.0),
+        ("--status-run-fg", "--surface-0", 5.0),
+        ("--status-run-fg", "--surface-1", 5.0),
+        ("--status-ok-fg", "--surface-0", 5.0),
+        ("--status-ok-fg", "--surface-1", 5.0),
+        ("--status-warn-fg", "--surface-0", 5.0),
+        ("--status-warn-fg", "--surface-1", 5.0),
+        ("--status-err-fg", "--surface-0", 5.0),
+        ("--status-err-fg", "--surface-1", 5.0),
+        ("--u3-border", "--surface-0", 3.0),
+        ("--u3-border", "--surface-1", 3.0),
+        ("--focus-ring", "--surface-0", 3.0),
+        ("--focus-ring", "--surface-1", 3.0),
+    )
     low_contrast = 0
-    for fg, bg in pairs:
-        ratio = _wcag_contrast(tokens[fg], tokens[bg])
-        if ratio < 4.5:
-            low_contrast += 1
-        lines.append(f"| {fg} / {bg} | {ratio:.2f} | {'да' if ratio >= 4.5 else 'НЕТ'} |")
+    for theme_name, tokens in (("светлая", light), ("тёмная", dark)):
+        lines.append("")
+        lines.append(f"| пара | контраст | порог | {theme_name} |")
+        lines.append("|---|---|---|---|")
+        for fg, bg, threshold in pairs:
+            ratio = _wcag_contrast(tokens[fg], tokens[bg])
+            if ratio < threshold:
+                low_contrast += 1
+            lines.append(
+                f"| {fg} / {bg} | {ratio:.2f} | >= {threshold:g} "
+                f"| {'да' if ratio >= threshold else 'НЕТ'} |"
+            )
     # тап-цели: для каждого интерактивного базового селектора существует
     # правило, применимое к нему, с min-height: var(--u3-tap); правила,
     # не объявляющие размер (cursor/font/opacity), нарушением не являются.
@@ -853,7 +882,7 @@ def ev_u3_11(main: U1Profile, tiny: Path) -> str:
         if float(m.group(1)) < 44
         and any(any(_applies(p.strip(), b) for b in bases) for p in sel.split(","))
     ]
-    tap = tokens.get("--u3-tap", "")
+    tap = light.get("--u3-tap", "")
     lines.append("")
     lines.append(
         f"тап-цель: --u3-tap = {tap}; "

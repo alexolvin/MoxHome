@@ -9,7 +9,8 @@
   <p id="u3-job-requested" role="status" class="u3-warn">{{ s["job_pause_requested"] }}</p>
   {% endif %}
   <table class="u3-facts">
-    <tr><th scope="row">{{ s["job_row_status"] }}</th><td class="status-{{ facts.status | lower }}">{{ facts.status }}{% if facts.error %} — <span class="err">{{ facts.error }}</span>{% endif %}</td></tr>
+    {# Серия R §4: группа+глиф — из единой таблицы views.STATUS_GROUP #}
+    <tr><th scope="row">{{ s["job_row_status"] }}</th><td class="u3-status status-{{ facts.status | status_group }}"><span class="u3-status-ico" aria-hidden="true">{{ status_glyph(facts.status) }}</span>{{ facts.status }}{% if facts.error %} — <span class="err">{{ facts.error }}</span>{% endif %}</td></tr>
     <tr><th scope="row">{{ s["job_row_pair"] }}</th><td>{{ facts.source_language or s["common_not_set"] }} → {{ facts.target_language }}</td></tr>
     <tr><th scope="row">{{ s["job_row_mode"] }}</th><td>{{ facts.mode }}{% if facts.learning_level %} / {{ facts.learning_level }}{% if facts.learning_cefr %} ({{ facts.learning_cefr }}){% endif %}{% endif %}</td></tr>
     <tr><th scope="row">{{ s["job_row_progress"] }}</th><td>{{ facts.progress_display }}</td></tr>

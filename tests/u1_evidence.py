@@ -635,11 +635,12 @@ def ev_t_u1_10(main: U1Profile, server: MockLLMServer, base: Path, book: Path) -
     lines.append("")
     lines.append("страница /jobs/{id}: причина ошибки в HTML — "
                  f"{'да' if html.escape(final['error']) in page else 'НЕТ'}")
-    lines.append("страница /jobs/{id}: статус-класс status-failed — "
-                 f"{'да' if 'status-failed' in page else 'НЕТ'}")
-    snippet = [line for line in page.splitlines() if "status-failed" in line][:1]
+    # Серия R §4: класс по группе (views.STATUS_GROUP): FAILED -> err
+    lines.append("страница /jobs/{id}: статус-класс status-err — "
+                 f"{'да' if 'status-err' in page else 'НЕТ'}")
+    snippet = [line for line in page.splitlines() if "status-err" in line][:1]
     lines.append("строка verbatim: " + (snippet[0].strip() if snippet else "—"))
-    ok = final["status"] == "FAILED" and final["error"] and "status-failed" in page
+    ok = final["status"] == "FAILED" and final["error"] and "status-err" in page
     lines.append(
         f"\nВЕРДИКТ: FAILED + причина в UI/API, прогресс не «в работе» — "
         f"{'PASS' if ok else 'FAIL'}"

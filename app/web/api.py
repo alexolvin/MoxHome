@@ -118,6 +118,11 @@ def _job_row(settings: Settings, job: Job) -> dict[str, Any]:
     return {
         "id": job.id,
         "status": job.status.value,
+        # Серия R §4: группа и глиф — из единой таблицы views.STATUS_GROUP;
+        # клиент (app.js) рендерит статус по этим полям без собственного
+        # соответствия статус→группа.
+        "status_group": views.status_group(job.status.value),
+        "status_glyph": views.status_glyph(job.status.value),
         "source_language": job.source_language,
         "target_language": job.target_language,
         "mode": job.mode,
