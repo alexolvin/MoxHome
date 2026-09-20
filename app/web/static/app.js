@@ -65,20 +65,26 @@ function filteredApiUrl(url) {
  const query = params.toString();
  return query ? url + "?" + query : url;
 }
-/* server-side pagination (3.4.16) */
-function jobsFetchUrl(baseUrl) {
- const params = new URLSearchParams(window.location.search || "");
- const pageRaw = params.get("page");
- params.delete("page");
- const page = Math.max(1, parseInt(pageRaw, 10) || 1);
- params.set("limit", ui.page_size);
- params.set("offset", (page - 1) * ui.page_size);
- return baseUrl + "?" + params.toString();
+/* R2: build a DOM node from an html string (list row builders) */
+function fromHtml(html) {
+ const t = document.createElement("template");
+ t.innerHTML = html.trim();
+ return t.content.firstElementChild;
 }
-/* "filtered" empty message when filtering */
-function jobsFiltered() {
- const params = new URLSearchParams(window.location.search || "");
- return ["status", "book", "pair", "created_from", "created_to"].some((k) => params.has(k));
+/* R2 §14: state 5 (no network) = fetch rejection; state 4 (HTTP error)
+   = Error thrown by fetchJSON on !ok */
+function isNetErr(e) {
+ return e instanceof TypeError || /failed to fetch|networkerror/i.test(String(e.message));
+}
+/* R2 §14: sticky "no connection" bar above the list; data is kept */
+function netbar(el) {
+ const old = el.querySelector(":scope > .u3-netbar");
+ if (old && old.remove) old.remove();
+ const bar = $ce("div");
+ bar.className = "u3-netbar";
+ bar.setAttribute("role", "status");
+ bar.textContent = S.state_netbar;
+ if (el.prepend) el.prepend(bar);
 }
 /* dual rendering */
 function cardHtml(fields, actionsHtml) {
@@ -126,96 +132,70 @@ function jobPair(j) {
 function alignmentValue(coverage) {
  return coverage != null ? (coverage * 100).toFixed(1) + "%" : NS;
 }
-const JOBS_COLS = [
- S.jobs_col_id,
- S.jobs_col_book,
- S.jobs_col_pair,
- S.jobs_col_mode,
- S.jobs_col_status,
- S.jobs_col_progress,
- S.jobs_col_alignment,
- S.jobs_col_created,
- S.jobs_col_updated,
-];
-function jobCells(j) {
- return [
-  ["<a class='u3-mono' href='/jobs/" + esc(j.id) + "'>" + esc(j.id) + "</a>"],
-  [esc(j.book_name)],
-  [jobPair(j)],
-  [jobMode(j)],
-  /* R1 §4: group+glyph from API (single table views.STATUS_GROUP) */
-  ["<span class='u3-status-ico' aria-hidden='true'>" + esc(j.status_glyph) + "</span>" + esc(j.status), "u3-status status-" + esc(j.status_group)],
-  [esc(j.progress_display)],
-  [esc(alignmentValue(j.alignment_coverage))],
-  [esc(j.created_at_human)],
-  [esc(j.updated_at_human)],
- ];
+/* R2 §10: job list row (builder #2; #1 — _job_row.html, same markup).
+   Three text lines + 44px action zone (buttons — R3); strip at the
+   bottom edge; id not printed. */
+const GROUP_KEYS = ["now", "today", "earlier"];
+const GROUP_LABELS = { now: "jobs_group_now", today: "jobs_group_today", earlier: "jobs_group_earlier" };
+function jobLine2(j) {
+ return (
+  (j.source_language || NS) + "→" + j.target_language + " · " + j.mode +
+  (j.learning_cefr ? " · " + j.learning_cefr : "")
+ );
 }
-const BOOKS_COLS = [
- S.books_col_file,
- S.books_col_title,
- S.books_col_dc_lang,
- S.books_col_detected,
- S.books_col_confidence,
- S.books_col_size,
- S.books_col_chapters,
- S.books_col_segments,
- S.books_col_uploaded,
-];
-function bookCells(b) {
- return [
-  "<span class='u3-mono'>" + esc(b.name) + "</span>",
-  esc(b.title || NS),
-  esc(b.dc_language || NS),
-  esc(b.detected || NS),
-  esc(b.confidence == null ? NS : b.confidence),
-  esc(b.size_human || NS),
-  esc(b.chapters == null ? NS : b.chapters),
-  esc(b.segments == null ? NS : b.segments),
-  esc(b.uploaded_at_human || NS),
- ];
+/* R2 §10: "12 min", after an hour "1 h 20 min" (single format point,
+   same rules as views.human_duration) */
+function fmtDuration(totalSeconds) {
+ const m = Math.max(0, Math.floor((totalSeconds || 0) / 60));
+ if (m < 60) return fmt(S.time_min, { n: m });
+ return fmt(S.time_hm, { h: Math.floor(m / 60), m: m % 60 });
 }
-const bookDeleteButton = (b) =>
- "<button type='button' class='btn u3-danger u3-row-action' data-book-delete='" + esc(b.name) + "'>" + esc(S.books_delete_btn) + "</button>";
-/* renderers */
+function jobLine3(j) {
+ const pct = j.progress_pct == null ? "" : "<span class='u3-row-sep'> · </span>" + j.progress_pct + "%";
+ return (
+  "<span class='u3-status status-" + esc(j.status_group) + "'><span class='u3-status-ico' aria-hidden='true'>" + esc(j.status_glyph) + "</span>" +
+  esc(j.status) + "</span>" + pct +
+  "<span class='u3-row-sep'> · </span>" + fmtDuration(j.elapsed_seconds)
+ );
+}
+function jobRowHtml(j, group) {
+ const strip =
+  j.progress_pct == null
+   ? "<span class='u3-row-strip is-ind' aria-hidden='true'></span>"
+   : "<span class='u3-row-strip' aria-hidden='true'" + (j.progress_pct > 0 ? " style='width: " + j.progress_pct + "%'" : "") + "></span>";
+ return (
+  "<article class='u3-row u3-row-job status-" + esc(j.status_group) + "' data-id='" + esc(j.id) + "' data-group='" + esc(group) + "' data-status='" + esc(j.status) + "' data-status-group='" + esc(j.status_group) + "' data-rev='" + esc(j.updated_at) + "'>" +
+  "<a class='u3-row-body' href='/jobs/" + esc(j.id) + "'>" +
+  "<span class='u3-row-line1' title='" + esc(j.book_name) + "'>" + esc(j.book_name) + "</span>" +
+  "<span class='u3-row-line2'>" + esc(jobLine2(j)) + "</span>" +
+  "<span class='u3-row-line3'>" + jobLine3(j) + "</span>" +
+  "</a>" +
+  "<span class='u3-row-action' aria-hidden='true'></span>" +
+  strip +
+  "</article>"
+ );
+}
+/* R2 §6: book list row (builder #2; #1 — _book_row.html) */
+function bookRowHtml(b) {
+ const title = b.title || b.name;
+ const dot = b.has_active_job ? "<span class='u3-row-dot' aria-hidden='true'></span>" : "";
+ return (
+  "<article class='u3-row u3-row-book' data-name='" + esc(b.name) + "'>" +
+  "<span class='u3-row-cover' aria-hidden='true'>" + esc(title.charAt(0).toUpperCase()) + "</span>" +
+  "<span class='u3-row-body'>" +
+  "<span class='u3-row-line1' title='" + esc(title) + "'>" + esc(title) + "</span>" +
+  "<span class='u3-row-line2'>" + esc(b.detected || b.dc_language || NS) + "→? · " + esc(b.size_human || NS) + "</span>" +
+  "</span>" +
+  dot +
+  "<details class='u3-row-menu'><summary class='u3-row-more' aria-label='" + esc(S.row_actions_label) + "'>&#8943;</summary><menu>" +
+  "<button type='button' class='u3-row-menu-item u3-danger' data-book-delete='" + esc(b.name) + "'>" + esc(S.books_delete_btn) + "</button>" +
+  "</menu></details>" +
+  "</article>"
+ );
+}
+/* renderers (R2: u1-jobs/u1-books lists are owned by their engines —
+   startJobsList/startBooksList; table+cards renderers left for settings) */
 const RENDERERS = {
- jobs(el, rows) {
-  if (!rows.length) {
-   if (!jobsFiltered() && el.dataset.u1Onboarding) {
-    /* 7.4: onboarding on first run */
-    el.innerHTML =
-     "<div class='u3-panel'><h2>" + esc(S.onb_title) + "</h2><ol>" + "<li>" + esc(S.onb_step1) + " — <a class='btn' href='/books'>" + esc(S.onb_go_books) + "</a></li>" + "<li>" + esc(S.onb_step2) + "</li>" + "<li>" + esc(S.onb_step3) + "</li></ol></div>";
-   } else {
-    el.innerHTML =
-     "<p class='u3-empty'>" + esc(jobsFiltered() ? S.jobs_empty_filtered : S.jobs_empty) + (jobsFiltered()
-      ? " <a class='btn' href='/jobs'>" + esc(S.jobs_filter_reset) + "</a>"
-      : "") + "</p>";
-   }
-   return;
-  }
-  const cells = rows.map(jobCells);
-  el.innerHTML =
-   tableHtml(JOBS_COLS, fieldsRows(cells)) + cardsHtml(cells.map((c) => cardHtml(c.map((x, i) => [JOBS_COLS[i], x[0], x[1]]))));
- },
- books(el, books) {
-  if (!books.length) {
-   /* 7.1: empty state with upload action */
-   el.innerHTML =
-    "<p class='u3-empty'>" + esc(S.books_empty) + " <button type='button' class='btn' data-book-upload>" + esc(S.books_upload_btn) + "</button></p>";
-   return;
-  }
-  const rows = books
-   .map((b, i) => {
-    const cells = bookCells(b).slice();
-    cells[0] = cells[0] + bookDeleteButton(b);
-    return "<tr>" + cells.map((html) => "<td>" + html + "</td>").join("") + "</tr>";
-   })
-   .join("");
-  const cards = books.map((b) =>
-   cardHtml(bookCells(b).map((html, i) => [BOOKS_COLS[i], html]), bookDeleteButton(b))
-  );
-  el.innerHTML = tableHtml(BOOKS_COLS, rows) + cardsHtml(cards);
- },
  languages(el, data) {
   const M = "u3-mono";
   const L = [S.languages_col_code, S.languages_col_name, S.languages_col_spacy, S.languages_col_cefr];
@@ -452,16 +432,178 @@ const INACTIVE_JOB_STATUSES = new Set([
  "PAUSED",
 ]);
 let jobsListRetry = null;
-function startJobsAutoRefresh() {
+let jobsRefresh = null;
+function startJobsList() {
+ /* R2 §10: boot fetch (full) + delta ?since=<rev>; partial updates —
+    status/percent/time/group per row, no full re-render; pill + exact
+    status filter client-side (delta must be unfiltered: a row leaving
+    the filter has to be visible in the delta to be removed); stop when
+    all jobs inactive; visible — refresh_seconds, hidden —
+    refresh_seconds_max (TZ §10); states per §14 on .u3-list-body. */
  const el = $("u1-jobs");
  if (!el || !el.dataset.u1Fetch) return;
- const refreshEl = $("u3-jobs-refresh");
+ const body = el.querySelector(":scope > .u3-list-body");
+ if (!body) return;
  const announceEl = $("u3-jobs-announce");
+ const refreshEl = $("u3-jobs-refresh");
+ const group = el.dataset.u1Group || "all";
+ const statusSet = (el.dataset.u1Status || "").split(",").filter(Boolean);
+ const sortKey = el.dataset.u1Sort === "created_at" ? "created_at" : "updated_at";
+ const sortDir = el.dataset.u1Direction === "asc" ? "asc" : "desc";
+ const GROUP_OF_PILL = { active: ["run"], waiting: ["wait"], done: ["ok", "warn"], errors: ["err"] };
+ const allowGroups = GROUP_OF_PILL[group] || null;
+ const rowsById = new Map();
+ const rowsEls = {};
+ const secEls = {};
+ let lastRev = 0;
  let timer = null;
  let stopped = false;
  let inFlight = false;
  let backoffMs = RFR();
- const prevAnn = new Map();
+ let hasData = false;
+ const prevStatus = new Map();
+ /* ids of non-terminal jobs; a delta batch may be empty, so stopping is
+    judged on this set (full fetch seeds it, deltas maintain it) */
+ const activeIds = new Set();
+ const isInactive = (s) => INACTIVE_JOB_STATUSES.has(s);
+
+ const matches = (j) => {
+  if (allowGroups && allowGroups.indexOf(j.status_group) === -1) return false;
+  if (statusSet.length && statusSet.indexOf(j.status) === -1) return false;
+  return true;
+ };
+ const filtered = () => statusSet.length > 0 || group !== "all";
+ const sorted = (list) =>
+  list.slice().sort((a, b) => (sortDir === "asc" ? a[sortKey] - b[sortKey] : b[sortKey] - a[sortKey]));
+ const touchSection = (gname) => {
+  if (secEls[gname]) secEls[gname].classList.toggle("is-empty", !rowsEls[gname].children.length);
+ };
+ const ensureSections = () => {
+  body.innerHTML = "";
+  body.setAttribute("data-state", "ok");
+  for (const gname of GROUP_KEYS) {
+   const sec = $ce("section");
+   sec.className = "u3-group";
+   sec.dataset.group = gname;
+   const h = $ce("h2");
+   h.className = "u3-group-head";
+   h.textContent = S[GROUP_LABELS[gname]];
+   const rows = $ce("div");
+   rows.className = "u3-group-rows";
+   rows.dataset.group = gname;
+   sec.append(h, rows);
+   body.appendChild(sec);
+   secEls[gname] = sec;
+   rowsEls[gname] = rows;
+  }
+ };
+ const stateHtml = (state, line, actionHtml) =>
+  "<div class='u3-state' data-state='" + state + "'>" +
+  "<span class='u3-state-ico' aria-hidden='true'>&#9675;</span>" +
+  "<p class='u3-state-line'>" + esc(line) + "</p>" + actionHtml + "</div>";
+ const showEmpty = () => {
+  const f = filtered();
+  body.setAttribute("data-state", f ? "empty-filter" : "empty");
+  body.innerHTML = f
+   ? stateHtml("empty-filter", S.state_not_found, "<a class='u3-btn u3-primary' href='/jobs'>" + esc(S.state_reset_filter) + "</a>")
+   : stateHtml("empty", S.jobs_empty_line, "<a class='u3-btn u3-primary' href='/books'>" + esc(S.jobs_empty_btn) + "</a>");
+  rowsById.clear();
+ };
+ const showError = (e) => {
+  body.setAttribute("data-state", "error");
+  body.innerHTML = stateHtml("error", fmt(S.common_err, { msg: e.message }), "<button type='button' class='u3-btn u3-primary' data-u3-jobs-retry>" + esc(S.common_retry) + "</button>");
+  rowsById.clear();
+ };
+ const announceChange = (j) => {
+  if (announceEl)
+   announceEl.textContent = fmt(S.jobs_announce_status, { id: j.id, status: j.status, time: nowTime() });
+ };
+ const resortSection = (gname) => {
+  const list = [...rowsEls[gname].children]
+   .map((n) => rowsById.get(n.dataset.id))
+   .filter(Boolean);
+  for (const j of sorted(list)) rowsEls[gname].appendChild(j);
+ };
+ const applyFull = (rows) => {
+  hasData = true;
+  if (refreshEl) refreshEl.textContent = "";
+  activeIds.clear();
+  for (const j of rows) {
+   if (!isInactive(j.status)) activeIds.add(j.id);
+   if (j.updated_at > lastRev) lastRev = j.updated_at;
+  }
+  if (!rows.filter(matches).length) {
+   showEmpty();
+   return;
+  }
+  ensureSections();
+  for (const j of sorted(rows.filter(matches))) {
+   const node = fromHtml(jobRowHtml(j, j.group));
+   rowsEls[j.group].appendChild(node);
+   rowsById.set(j.id, j);
+  }
+  for (const gname of GROUP_KEYS) touchSection(gname);
+ };
+ const updateRow = (node, j) => {
+  node.className = "u3-row u3-row-job status-" + j.status_group;
+  node.dataset.status = j.status;
+  node.dataset.statusGroup = j.status_group;
+  node.dataset.rev = String(j.updated_at);
+  const l1 = node.querySelector(".u3-row-line1");
+  if (l1) {
+   l1.textContent = j.book_name;
+   l1.title = j.book_name;
+  }
+  const l2 = node.querySelector(".u3-row-line2");
+  if (l2) l2.textContent = jobLine2(j);
+  const l3 = node.querySelector(".u3-row-line3");
+  if (l3) l3.innerHTML = jobLine3(j);
+  const strip = node.querySelector(".u3-row-strip");
+  if (strip) {
+   strip.classList.toggle("is-ind", j.progress_pct == null);
+   strip.style.width = j.progress_pct == null || j.progress_pct <= 0 ? "" : j.progress_pct + "%";
+  }
+ };
+ const applyDelta = (rows) => {
+  for (const j of rows) {
+   if (j.updated_at > lastRev) lastRev = j.updated_at;
+   if (isInactive(j.status)) activeIds.delete(j.id);
+   else activeIds.add(j.id);
+   const node = rowsById.get(j.id);
+   const was = prevStatus.get(j.id);
+   const changed = was !== undefined && was !== j.status;
+   if (!node) {
+    if (matches(j)) {
+     if (body.getAttribute("data-state") !== "ok") ensureSections();
+     rowsEls[j.group].appendChild(fromHtml(jobRowHtml(j, j.group)));
+     rowsById.set(j.id, j);
+     touchSection(j.group);
+    }
+   } else if (!matches(j)) {
+    const from = node.dataset.group;
+    node.remove();
+    rowsById.delete(j.id);
+    touchSection(from);
+    if (!rowsById.size) showEmpty();
+    if (changed) announceChange(j);
+   } else {
+    let from = null;
+    if (node.dataset.group !== j.group) {
+     from = node.dataset.group;
+     rowsEls[j.group].appendChild(node);
+     touchSection(from);
+    }
+    updateRow(node, j);
+    if (from) {
+     node.dataset.group = j.group;
+     touchSection(j.group);
+    }
+    rowsById.set(j.id, j);
+    if (from || sortKey === "updated_at") resortSection(j.group);
+    if (changed) announceChange(j);
+   }
+  }
+ };
  const stop = () => {
   stopped = true;
   if (timer) {
@@ -474,49 +616,113 @@ function startJobsAutoRefresh() {
   if (timer) clearTimeout(timer);
   timer = setTimeout(tick, ms);
  };
+ const tickInterval = () => (document.hidden ? ui.refresh_seconds_max * 1000 : RFR());
  const tick = async () => {
   if (stopped || inFlight) return;
-  if (document.hidden) {
-   /* paused while hidden (3.11.48) */
-   schedule(RFR());
-   return;
-  }
   inFlight = true;
   try {
-   const rows = await fetchJSON(jobsFetchUrl(el.dataset.u1Fetch));
+   const rows = await fetchJSON(el.dataset.u1Fetch + (lastRev ? "?since=" + lastRev : ""));
    backoffMs = RFR();
-   RENDERERS.jobs(el, rows);
-   refreshEl.textContent = fmt(S.jobs_refresh_last, { time: nowTime() });
-   for (const j of rows) {
-    const prev = prevAnn.get(j.id);
-    if (prev !== undefined && prev !== j.status) {
-     announceEl.textContent = fmt(S.jobs_announce_status, {
-      id: j.id,
-      status: j.status,
-      time: nowTime(),
-     });
-    }
-    prevAnn.set(j.id, j.status);
-   }
-   if (!rows.some((j) => !INACTIVE_JOB_STATUSES.has(j.status))) {
-    stop();
-   }
+   if (lastRev === 0) applyFull(rows);
+   else applyDelta(rows);
+   for (const j of rows) prevStatus.set(j.id, j.status);
+   if (activeIds.size === 0) stop();
   } catch (e) {
-   /* error + retry + backoff to ui.refresh_seconds_max */
-   backoffMs = Math.min(backoffMs * 2, ui.refresh_seconds_max * 1000);
-   const msg = esc(fmt(S.jobs_refresh_error, { msg: e.message, wait: Math.round(backoffMs / 1000) }));
-   refreshEl.textContent = msg;
-   refreshEl.innerHTML = msg + RETRY("u3-jobs-retry");
+   let nextMs = backoffMs;
+   if (isNetErr(e)) {
+    /* state 5: sticky bar, data preserved, auto-retry 5s */
+    netbar(el);
+    nextMs = 5000;
+   } else {
+    backoffMs = Math.min(backoffMs * 2, ui.refresh_seconds_max * 1000);
+    nextMs = backoffMs;
+    if (hasData && refreshEl) {
+     /* data on screen: reason + retry on the status line */
+     refreshEl.innerHTML = esc(fmt(S.jobs_refresh_error, { msg: e.message, wait: Math.round(backoffMs / 1000) })) + RETRY("u3-jobs-retry");
+    } else if (!hasData) {
+     /* state 4: initial load failed — reason line + "Retry" */
+     showError(e);
+    }
+   }
+   schedule(nextMs);
+   return;
   } finally {
    inFlight = false;
   }
-  schedule(backoffMs);
+  schedule(tickInterval());
  };
  jobsListRetry = () => {
   backoffMs = RFR();
+  if (refreshEl) refreshEl.textContent = "";
   tick();
  };
- onVis(() => !stopped, tick);
+ /* full refetch (after purge / after a sheet that mutates the list) */
+ jobsRefresh = () => {
+  lastRev = 0;
+  backoffMs = RFR();
+  tick();
+ };
+ document.addEventListener("visibilitychange", () => {
+  if (stopped) return;
+  if (document.visibilityState === "visible") tick();
+  else schedule(tickInterval());
+ });
+ tick();
+}
+/* R2 §6: book list — single fetch (no worker-side changes), same five
+   states; re-fetch exposed for upload/delete flows */
+let booksRefresh = null;
+function startBooksList() {
+ const el = $("u1-books");
+ if (!el || !el.dataset.u1Fetch) return;
+ const body = el.querySelector(":scope > .u3-list-body");
+ if (!body) return;
+ const q = el.dataset.u1Q || "";
+ const url = el.dataset.u1Fetch + (q ? "?q=" + enc(q) : "");
+ let timer = null;
+ let inFlight = false;
+ let hasData = false;
+ const stateHtml = (state, line, actionHtml) =>
+  "<div class='u3-state' data-state='" + state + "'>" +
+  "<span class='u3-state-ico' aria-hidden='true'>&#9675;</span>" +
+  "<p class='u3-state-line'>" + esc(line) + "</p>" + actionHtml + "</div>";
+ const showEmpty = () => {
+  body.setAttribute("data-state", q ? "empty-filter" : "empty");
+  body.innerHTML = q
+   ? stateHtml("empty-filter", S.books_empty_filtered, "<a class='u3-btn u3-primary' href='/books'>" + esc(S.state_reset_filter) + "</a>")
+   : stateHtml("empty", S.books_empty_line, "<button type='button' class='u3-btn u3-primary' data-book-upload>" + esc(S.fab_add_book) + "</button>");
+ };
+ const showError = (e) => {
+  body.setAttribute("data-state", "error");
+  body.innerHTML = stateHtml("error", fmt(S.common_err, { msg: e.message }), "<button type='button' class='u3-btn u3-primary' data-u3-books-retry>" + esc(S.common_retry) + "</button>");
+ };
+ const tick = async () => {
+  if (inFlight) return;
+  inFlight = true;
+  try {
+   const books = await fetchJSON(url);
+   const old = el.querySelector(":scope > .u3-netbar");
+   if (old && old.remove) old.remove();
+   hasData = true;
+   if (!books.length) showEmpty();
+   else {
+    body.setAttribute("data-state", "ok");
+    body.innerHTML = books.map(bookRowHtml).join("");
+   }
+  } catch (e) {
+   if (isNetErr(e)) {
+    /* state 5: sticky bar, data preserved, auto-retry 5s */
+    netbar(el);
+    timer = setTimeout(tick, 5000);
+   } else if (!hasData) {
+    /* state 4: initial load failed — reason line + "Retry" */
+    showError(e);
+   }
+  } finally {
+   inFlight = false;
+  }
+ };
+ booksRefresh = tick;
  tick();
 }
 let jobPolling = null;
@@ -601,7 +807,8 @@ function refreshContainer(id) {
 }
 function initFetchContainers() {
  for (const el of document.querySelectorAll("[data-u1-fetch]")) {
-  if (el.id === "u1-jobs") continue; /* owned by auto-refresh */
+  /* u1-jobs/u1-books — owned by startJobsList/startBooksList (R2) */
+  if (el.id === "u1-jobs" || el.id === "u1-books") continue;
   loadContainer(el);
  }
 }
@@ -664,34 +871,8 @@ function bindUpload() {
   try {
    await fetchJSON("/api/books", { method: "POST", body: fd });
    msg.textContent = S.common_uploaded;
-   refreshContainer("u1-books");
+   if (booksRefresh) booksRefresh();
    fi.value = "";
-  } catch (e) {
-   failWithRetry(msg, apiErr(e), run);
-  }
- };
- form.addEventListener("submit", (e) => {
-  e.preventDefault();
-  run();
- });
-}
-function bindCreate() {
- const form = $("u1-create");
- if (!form) return;
- const msg = $("u1-create-msg");
- const run = async () => {
-  const data = Object.fromEntries(new FormData(form));
-  if (!data.learning_level) delete data.learning_level;
-  if (!data.learning_cefr) delete data.learning_cefr;
-  delete data.u3_csrf;
-  msg.textContent = S.common_creating;
-  try {
-   const result = await fetchJSON("/api/jobs", {
-    method: "POST",
-    headers: JH,
-    body: JSON.stringify(data),
-   });
-   window.location.href = "/jobs/" + result.id;
   } catch (e) {
    failWithRetry(msg, apiErr(e), run);
   }
@@ -807,7 +988,7 @@ function bindBookDeletes() {
    if (!confirm(fmt(S.books_delete_confirm, { name }))) return;
    try {
     await fetchJSON("/api/books/" + encodeURIComponent(name), { method: "DELETE" });
-    refreshContainer("u1-books");
+    if (booksRefresh) booksRefresh();
    } catch (e) {
     const old = container.querySelector("p.err");
     if (old) old.remove();
@@ -832,11 +1013,15 @@ function bindPurge() {
  const msg = $("u3-purge-msg");
  if (!form || !dry || !conf || !msg) return;
  let token = null;
- const collect = () => ({
-  statuses: [...form.querySelectorAll("input[name='status']:checked")].map((i) => i.value),
-  book: form.querySelector("select[name='book']").value || null,
-  pair: form.querySelector("select[name='pair']").value || null,
- });
+ const collect = () => {
+  const pairSel = form.querySelector("select[name='pair']");
+  return {
+   statuses: [...form.querySelectorAll("input[name='status']:checked")].map((i) => i.value),
+   book: form.querySelector("select[name='book']").value || null,
+   /* R2: the pair select is no longer on the sheet (API param kept) */
+   pair: pairSel ? pairSel.value || null : null,
+  };
+ };
  const runDry = async () => {
   token = null;
   conf.disabled = true;
@@ -878,7 +1063,8 @@ function bindPurge() {
     bytes: humanSize(result.total_bytes),
    });
    token = null;
-   refreshContainer("u1-jobs");
+   /* R2: the jobs list is owned by startJobsList — full refetch */
+   if (jobsRefresh) jobsRefresh();
   } catch (e) {
    token = null;
    failWithRetry(msg, apiErr(e), runConfirm);
@@ -987,6 +1173,44 @@ function bindPrompts() {
   runDelete();
  });
 }
+/* R2 §14: bottom sheets (<dialog>) — open 180 ms, close on backdrop/
+   Esc/back-button; pushState keeps the back button in contract.
+   No-JS: the same form is a server page (?sheet=), not a dialog. */
+let openSheetEl = null;
+function initSheets() {
+ document.addEventListener("click", (e) => {
+  const target = e.target;
+  if (!target || !target.closest) return;
+  const a = target.closest("[data-sheet-open]");
+  if (!a) return;
+  e.preventDefault();
+  const d = $(a.dataset.sheetOpen);
+  if (!d || !d.showModal || d.open) return;
+  d.showModal();
+  openSheetEl = d;
+  const det = a.closest("details");
+  if (det) det.removeAttribute("open");
+  history.pushState({ u3sheet: d.id }, "");
+ });
+ for (const d of document.querySelectorAll(".u3-sheet")) {
+  d.addEventListener("click", (e) => {
+   /* backdrop click: the native close event rolls the state back */
+   if (e.target === d && d.open) d.close();
+  });
+  d.addEventListener("close", () => {
+   if (openSheetEl === d) {
+    openSheetEl = null;
+    history.back();
+   }
+  });
+ }
+ window.addEventListener("popstate", () => {
+  if (!openSheetEl) return;
+  const d = openSheetEl;
+  openSheetEl = null;
+  if (d.open) d.close();
+ });
+}
 /* bootstrap */
 /* 7.1: retry buttons restart the source */
 document.addEventListener("click", (e) => {
@@ -996,6 +1220,8 @@ document.addEventListener("click", (e) => {
   jobPolling.retry();
  } else if (target.hasAttribute("data-u3-jobs-retry") && jobsListRetry) {
   jobsListRetry();
+ } else if (target.hasAttribute("data-u3-books-retry") && booksRefresh) {
+  booksRefresh();
  } else if (target.hasAttribute("data-u3-retry")) {
   const container = target.closest("[data-u1-fetch]");
   if (container) loadContainer(container);
@@ -1005,9 +1231,10 @@ document.addEventListener("DOMContentLoaded", () => {
  initLogsControls();
  initFetchContainers();
  startJobPolling();
- startJobsAutoRefresh();
+ startJobsList();
+ startBooksList();
+ initSheets();
  bindUpload();
- bindCreate();
  bindJobActions();
  bindBookDeletes();
  bindPurge();

@@ -1,67 +1,39 @@
 {% extends "base.html" %}
 {% block content %}
-{# Серия R §10: сначала список, форма загрузки — ниже (FAB ведёт на #u1-upload);
-   R6 заменит форму на bottom-sheet импорта. #}
-<div id="u1-books" data-u1-fetch="/api/books" data-u1-render="books">
-  {% if books %}
-  <table class="u3-table">
-    <thead>
-      <tr>
-        <th scope="col">{{ s["books_col_file"] }}</th>
-        <th scope="col">{{ s["books_col_title"] }}</th>
-        <th scope="col">{{ s["books_col_dc_lang"] }}</th>
-        <th scope="col">{{ s["books_col_detected"] }}</th>
-        <th scope="col">{{ s["books_col_confidence"] }}</th>
-        <th scope="col">{{ s["books_col_size"] }}</th>
-        <th scope="col">{{ s["books_col_chapters"] }}</th>
-        <th scope="col">{{ s["books_col_segments"] }}</th>
-        <th scope="col">{{ s["books_col_uploaded"] }}</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for b in books %}
-      <tr>
-        <td>
-          <span class="u3-mono">{{ b.name }}</span>
-          <button type="button" class="btn u3-danger u3-row-action" data-book-delete="{{ b.name }}">{{ s["books_delete_btn"] }}</button>
-        </td>
-        <td>{{ b.title or s["common_not_set"] }}</td>
-        <td>{{ b.dc_language or s["common_not_set"] }}</td>
-        <td>{{ b.detected or s["common_not_set"] }}</td>
-        <td>{{ b.confidence if b.confidence is not none else s["common_not_set"] }}</td>
-        <td>{{ b.size_human }}</td>
-        <td>{{ b.chapters if b.chapters is not none else s["common_not_set"] }}</td>
-        <td>{{ b.segments if b.segments is not none else s["common_not_set"] }}</td>
-        <td>{{ b.uploaded_at_human }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  <div class="u3-cards">
-    {% for b in books %}
-    <article class="u3-card">
-      <dl class="u3-card-fields">
-        <div class="u3-field"><dt>{{ s["books_col_file"] }}</dt><dd><span class="u3-mono">{{ b.name }}</span></dd></div>
-        <div class="u3-field"><dt>{{ s["books_col_title"] }}</dt><dd>{{ b.title or s["common_not_set"] }}</dd></div>
-        <div class="u3-field"><dt>{{ s["books_col_dc_lang"] }}</dt><dd>{{ b.dc_language or s["common_not_set"] }}</dd></div>
-        <div class="u3-field"><dt>{{ s["books_col_detected"] }}</dt><dd>{{ b.detected or s["common_not_set"] }}</dd></div>
-        <div class="u3-field"><dt>{{ s["books_col_confidence"] }}</dt><dd>{{ b.confidence if b.confidence is not none else s["common_not_set"] }}</dd></div>
-        <div class="u3-field"><dt>{{ s["books_col_size"] }}</dt><dd>{{ b.size_human }}</dd></div>
-        <div class="u3-field"><dt>{{ s["books_col_chapters"] }}</dt><dd>{{ b.chapters if b.chapters is not none else s["common_not_set"] }}</dd></div>
-        <div class="u3-field"><dt>{{ s["books_col_segments"] }}</dt><dd>{{ b.segments if b.segments is not none else s["common_not_set"] }}</dd></div>
-        <div class="u3-field"><dt>{{ s["books_col_uploaded"] }}</dt><dd>{{ b.uploaded_at_human }}</dd></div>
-      </dl>
-      <div class="u3-card-actions">
-        <button type="button" class="btn u3-danger u3-row-action" data-book-delete="{{ b.name }}">{{ s["books_delete_btn"] }}</button>
-      </div>
-    </article>
-    {% endfor %}
+{# Серия R §6: строки книг (64 px: обложка 40×56, две строки текста,
+   точка run-задания + «⋯»). Список рендерится JS (fetch
+   /api/books?q=…); no-JS — полный список. Форма загрузки остаётся
+   (FAB — якорь #u1-upload; bottom-sheet импорта — R6).
+   5 состояний §14 — data-state на .u3-list-body (поиск-строка UI — R5,
+   серверный q уже включён, состояние «пусто после фильтра» меряется). #}
+<div id="u1-books" data-u1-fetch="/api/books" data-u1-render="books" data-u1-q="{{ q }}">
+  <div class="u3-list-body u3-skel-wrap" data-state="loading" aria-busy="true">
+    <div class="u3-skel-row" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div class="u3-skel-row" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div class="u3-skel-row" aria-hidden="true"><span></span><span></span><span></span></div>
   </div>
-  {% else %}
-  <p class="u3-empty">{{ s["books_empty"] }}
-    <button type="button" class="btn" data-book-upload>{{ s["books_upload_btn"] }}</button>
-  </p>
-  {% endif %}
+  <noscript>
+    <div class="u3-list-body" data-state="{{ 'ok' if books else ('empty-filter' if q else 'empty') }}">
+      {% for b in books %}
+      {% include "_book_row.html" %}
+      {% endfor %}
+      {% if not books %}
+      {% if q %}
+      <div class="u3-state" data-state="empty-filter">
+        <span class="u3-state-ico" aria-hidden="true">&#9675;</span>
+        <p class="u3-state-line">{{ s["books_empty_filtered"] }}</p>
+        <a class="u3-btn u3-primary" href="/books">{{ s["state_reset_filter"] }}</a>
+      </div>
+      {% else %}
+      <div class="u3-state" data-state="empty">
+        <span class="u3-state-ico" aria-hidden="true">&#9675;</span>
+        <p class="u3-state-line">{{ s["books_empty_line"] }}</p>
+        <button type="button" class="u3-btn u3-primary" data-book-upload>{{ s["fab_add_book"] }}</button>
+      </div>
+      {% endif %}
+      {% endif %}
+    </div>
+  </noscript>
 </div>
 
 <form id="u1-upload" class="u3-panel">

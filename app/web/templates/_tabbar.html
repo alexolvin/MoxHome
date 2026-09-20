@@ -7,7 +7,8 @@
     <span class="u3-tab-label">{{ s["tab_library"] }}</span>
   </a>
   <a class="u3-tab{% if current == 'jobs' %} is-current{% endif %}" href="/jobs"{% if current == 'jobs' %} aria-current="page"{% endif %}>
-    <span class="u3-tab-ico" aria-hidden="true">&#9635;</span>
+    {# Серия R §5: точка, пока есть задание в run-группе (ctx: has_active_job) #}
+    <span class="u3-tab-ico" aria-hidden="true">&#9635;{% if has_active_job %}<span class="u3-tab-dot"></span>{% endif %}</span>
     <span class="u3-tab-label">{{ s["tab_jobs"] }}</span>
   </a>
   <a class="u3-tab{% if current == 'settings' %} is-current{% endif %}" href="/settings"{% if current == 'settings' %} aria-current="page"{% endif %}>

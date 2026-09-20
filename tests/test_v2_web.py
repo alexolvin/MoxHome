@@ -319,7 +319,8 @@ def _fresh_created_job(env: V2Env) -> str:
 
 
 def test_v2_3_human_timestamps_no_raw_epoch(v2_env: V2Env) -> None:
-    """Создано/обновлено — человекочитаемо в facts, API и HTML; epoch не виден."""
+    """Создано/обновлено — человекочитаемо в facts, API и HTML экрана задания;
+    epoch не виден. R2: список — строки §10, без колонки «создано»."""
     client = v2_env.client
     job_id = v2_env.job_id
     job = v2_env.repo.get(job_id)
@@ -341,10 +342,12 @@ def test_v2_3_human_timestamps_no_raw_epoch(v2_env: V2Env) -> None:
     assert facts["created_at_human"] in page
     assert facts["updated_at_human"] in page
 
-    # Страница Jobs: колонка «создано» с той же меткой (U3: th scope="col").
+    # R2: список — строки §10, без колонки «создано» (время создания —
+    # на экране задания). data-rev строки несёт epoch updated_at для дельты
+    # (атрибут, не видимый текст) — сырая проверка по всему HTML списка
+    # неприменима; проверяем, что строка задания отрендерена.
     jobs_page = client.get("/jobs").text
-    assert row["created_at_human"] in jobs_page
-    assert "<th scope=\"col\">создано</th>" in jobs_page
+    assert f'data-id="{job_id}"' in jobs_page
 
 
 # ------------------------------------------------------------------ T-V2-4

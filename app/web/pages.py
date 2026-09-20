@@ -33,49 +33,89 @@ from starlette.responses import Response
 from app.core.config import Settings
 from app.core.worker_signal import worker_alive
 from app.domain.job import TERMINAL_STATES, Job, JobStatus
-from app.languages.cefr import CEFR_LEVELS
 from app.languages.registry import load_registry
-from app.services.languages import matrix_report
-from app.storage.jobs_repo import JobRepository
+from app.storage.jobs_repo import JobRepository, TransitionRecord
 from app.web import views
 from app.web.strings import UI_STRINGS
 
 _S = UI_STRINGS
 
 _SORT_FIELDS = ("created_at", "updated_at")
+_ALL_JOB_STATUS_VALUES = tuple(st.value for st in JobStatus)
+
+# Серия R §5/§6: run-группа — единым источником (views.STATUS_GROUP):
+# точка таб-бара («Задания») и точка строки книги.
+_RUN_STATUS_VALUES = tuple(
+    st.value for st in JobStatus if views.status_group(st.value) == "run"
+)
 
 
 def _page_title(key: str, **kwargs: object) -> str:
     return _S[key].format(**kwargs) if kwargs else _S[key]
 
 
-def _jobs_query_pairs(
-    status: list[str] | None,
-    *,
-    book: str | None,
-    pair: str | None,
-    created_from: str | None,
-    created_to: str | None,
-    sort_field: str,
-    direction_norm: str,
-) -> list[tuple[str, str]]:
-    """Текущий фильтр списка заданий как пары query-параметров (пагинация)."""
-    pairs: list[tuple[str, str]] = []
-    for value in status or []:
-        pairs.append(("status", value))
-    if book:
-        pairs.append(("book", book))
-    if pair:
-        pairs.append(("pair", pair))
-    if created_from:
-        pairs.append(("created_from", created_from))
-    if created_to:
-        pairs.append(("created_to", created_to))
-    if sort_field != "created_at":
-        pairs.append(("sort", sort_field))
-    if direction_norm != "desc":
-        pairs.append(("direction", direction_norm))
-    return pairs
+# Серия R §10: сегментный фильтр — 5 пилюль на 5 статусных групп (§4).
+# «Готовы» — ok+warn (окончательные успехи, включая предупреждения).
+_GROUP_STATUS_GROUPS: dict[str, tuple[str, ...]] = {
+    "all": ("wait", "run", "ok", "warn", "err"),
+    "active": ("run",),
+    "waiting": ("wait",),
+    "done": ("ok", "warn"),
+    "errors": ("err",),
+}
+
+
+def _group_statuses(group: str, exact: frozenset[str]) -> tuple[str, ...] | None:
+    """Множество статусов для пилюли «группа» + точных статусов (лист).
+
+    ``None`` — фильтр не нужен (всё); пустой кортеж — по построению
+    заданий нет (пересечение пусто) — запрос не выполняется.
+    """
+    if group not in _GROUP_STATUS_GROUPS:
+        group = "all"
+    pool = {
+        st.value for st in JobStatus if views.status_group(st.value) in _GROUP_STATUS_GROUPS[group]
+    }
+    if exact:
+        pool &= exact
+        return tuple(sorted(pool))
+    return None if group == "all" else tuple(sorted(pool))
+
+
+def _build_job_rows(
+    jobs: list[Job],
+    settings: Settings,
+    transitions: dict[str, list[TransitionRecord]],
+    today_start: float,
+) -> dict[str, list[dict[str, object]]]:
+    """Серия R §10: строки списка с группировкой (единый источник
+    views.job_list_group); время работы — E7/M7 (bulk-переходы, без N+1)."""
+    group_rows: dict[str, list[dict[str, object]]] = {
+        "now": [],
+        "today": [],
+        "earlier": [],
+    }
+    for job in jobs:
+        elapsed, _eta = views.elapsed_and_eta(job, transitions.get(job.id, []))
+        indeterminate = job.status in (JobStatus.PLANNING, JobStatus.VALIDATING_OUTPUT)
+        group_rows[
+            views.job_list_group(job.status.value, job.updated_at, today_start)
+        ].append(
+            {
+                "job": job,
+                "book_name": Path(job.source_path).name,
+                "progress_display": views.progress_facts(
+                    job, views.read_json(settings.job_dir(job.id) / "validation.json")
+                )["display"],
+                "progress_pct": None
+                if indeterminate
+                else round((job.progress or 0.0) * 100),
+                "elapsed_human": views.human_duration(elapsed),
+                "status_group": views.status_group(job.status.value),
+                "status_glyph": views.status_glyph(job.status.value),
+            }
+        )
+    return group_rows
 
 
 def build_router(
@@ -94,23 +134,12 @@ def build_router(
             # model_dump: Jinja tojson сериализует plain-dict (установка
             # из YAML — Rule 1; шаблоны числовых дефолтов не имеют).
             "ui": settings.ui.model_dump(),
+            # Серия R §5: точка на вкладке «Задания», пока есть run-задание.
+            "has_active_job": bool(repo.list_jobs(1, 0, statuses=_RUN_STATUS_VALUES)),
         }
 
     def registry_codes() -> list[str]:
         return sorted(load_registry(settings.languages_root))
-
-    def matrix_pairs() -> list[dict[str, str]]:
-        return [
-            {
-                "source": report.source,
-                "target": report.target,
-                "value": f"{report.source}|{report.target}",
-            }
-            for report in matrix_report(settings)
-        ]
-
-    def books_list() -> list[dict[str, object]]:
-        return views.list_books(settings)
 
     @router.get("/", include_in_schema=False)
     def index(request: Request) -> Response:
@@ -118,13 +147,19 @@ def build_router(
 
     # ------------------------------------------------------------- Books
     @router.get("/books")
-    def books_page(request: Request) -> Response:
+    def books_page(
+        request: Request,
+        q: str | None = Query(default=None),
+    ) -> Response:
+        # Серия R §6: строки книги; `q` — серверный подстроковый фильтр
+        # (имя файла + название); поиск в строке UI — R5.
         return templates.TemplateResponse(
             request,
             "books.html",
             ctx(request, _page_title("title_books"), "books")
             | {
-                "books": books_list(),
+                "books": views.list_books(settings, repo, q=q),
+                "q": q or "",
                 "fab_href": "#u1-upload",
                 "fab_label": "fab_add_book",
             },
@@ -134,116 +169,122 @@ def build_router(
     @router.get("/jobs")
     def jobs_page(  # noqa: PLR0917 — query-параметры FastAPI в сигнатуре
         request: Request,
+        group: str = Query(default="all"),
         status: Annotated[list[str] | None, Query()] = None,
-        book: str | None = Query(default=None),
-        pair: str | None = Query(default=None),
-        created_from: str | None = Query(default=None),
-        created_to: str | None = Query(default=None),
-        sort: str = Query(default="created_at"),
+        sort: str = Query(default="updated_at"),
         direction: str = Query(default="desc"),
-        page: int = Query(default=1, ge=1),
+        sheet: str = Query(default=""),
     ) -> Response:
-        page_size = settings.ui.page_size
-        statuses = tuple(status) if status else None
-        source_lang = target_lang = None
-        if pair and "|" in pair:
-            source_lang, _sep, target_lang = pair.partition("|")
-            source_lang, target_lang = source_lang or None, target_lang or None
-        created_from_ts = views.day_to_epoch(created_from)
-        created_to_ts = views.day_to_epoch(created_to, end_of_day=True)
-        sort_field = sort if sort in _SORT_FIELDS else "created_at"
+        """Серия R §10: строки списка, сегментный фильтр (группы §4),
+        группировка «Сейчас/Сегодня/Раньше», точный фильтр и очистка —
+        в листах (``?sheet=`` — no-JS-вариант той же формы).
+
+        Пагинации нет: группировка пересекает страницы, всё, что
+        подходит фильтру, в списке (``ui.page_size`` остаётся для API)."""
+        group_norm = group if group in _GROUP_STATUS_GROUPS else "all"
+        exact = frozenset(v for v in (status or []) if v in _ALL_JOB_STATUS_VALUES)
+        statuses = _group_statuses(group_norm, exact)
+        sort_field = sort if sort in _SORT_FIELDS else "updated_at"
         direction_norm = "asc" if direction == "asc" else "desc"
 
-        total = repo.count_jobs(
-            statuses=statuses,
-            book=book,
-            source_language=source_lang,
-            target_language=target_lang,
-            created_from=created_from_ts,
-            created_to=created_to_ts,
-        )
-        offset = (page - 1) * page_size
-        jobs = repo.list_jobs(
-            page_size,
-            offset,
-            statuses=statuses,
-            book=book,
-            source_language=source_lang,
-            target_language=target_lang,
-            created_from=created_from_ts,
-            created_to=created_to_ts,
-            sort=sort_field,
-            direction=direction_norm,
-        )
-        rows: list[dict[str, object]] = []
-        for job in jobs:
-            validation = views.read_json(settings.job_dir(job.id) / "validation.json")
-            rows.append(
-                {
-                    "job": job,
-                    "book_name": Path(job.source_path).name,
-                    "progress_display": views.progress_facts(job, validation)["display"],
-                    "created_at_human": views.human_ts(job.created_at),
-                    "updated_at_human": views.human_ts(job.updated_at),
-                }
+        if statuses == ():
+            jobs: list[Job] = []
+        else:
+            jobs = repo.list_jobs(
+                None, 0, statuses=statuses, sort=sort_field, direction=direction_norm
             )
-        total_pages = max(1, -(-total // page_size)) if total else 1
+
+        # Группировка — сервером, единый источник views.job_list_group;
+        # время работы — E7/M7 (bulk-переходы, без N+1).
+        today_start = views.today_start_epoch()
+        transitions = repo.list_transitions_bulk([job.id for job in jobs])
+        group_rows = _build_job_rows(jobs, settings, transitions, today_start)
+
+        def jobs_href(
+            g: str,
+            s_field: str,
+            d: str,
+            st: list[str] | None = None,
+            sheet_name: str | None = None,
+        ) -> str:
+            """Href /jobs с текущими группой/сортировкой/точными статусами."""
+            pairs: list[tuple[str, str]] = []
+            if g and g != "all":
+                pairs.append(("group", g))
+            for value in st or []:
+                pairs.append(("status", value))
+            if s_field != "updated_at":
+                pairs.append(("sort", s_field))
+            if d != "desc":
+                pairs.append(("direction", d))
+            if sheet_name:
+                pairs.append(("sheet", sheet_name))
+            return "/jobs?" + urlencode(pairs) if pairs else "/jobs"
+
+        status_list = [v for v in (status or []) if v in _ALL_JOB_STATUS_VALUES]
         worker_status, worker_detail = worker_alive(settings)
-        sort_label = (
-            _S["jobs_sort_created"] if sort_field == "created_at" else _S["jobs_sort_updated"]
-        )
-        direction_label = (
-            _S["jobs_sort_asc"] if direction_norm == "asc" else _S["jobs_sort_desc"]
-        )
-        query_pairs = _jobs_query_pairs(
-            status,
-            book=book,
-            pair=pair,
-            created_from=created_from,
-            created_to=created_to,
-            sort_field=sort_field,
-            direction_norm=direction_norm,
-        )
-        prev_href = (
-            "/jobs?" + urlencode([*query_pairs, ("page", str(page - 1))]) if page > 1 else None
-        )
-        next_href = (
-            "/jobs?" + urlencode([*query_pairs, ("page", str(page + 1))])
-            if page < total_pages
-            else None
-        )
+        appbar_menu: list[dict[str, object]] = [
+            {"text": _S["jobs_worker_line"].format(status=worker_status)},
+            {"text": _S["jobs_menu_sort"]},
+            {
+                "label": _S["jobs_sort_updated"] + " ↓",
+                "href": jobs_href(group_norm, "updated_at", "desc", status_list),
+                "current": sort_field == "updated_at" and direction_norm == "desc",
+            },
+            {
+                "label": _S["jobs_sort_created"] + " ↓",
+                "href": jobs_href(group_norm, "created_at", "desc", status_list),
+                "current": sort_field == "created_at" and direction_norm == "desc",
+            },
+            {
+                "label": _S["jobs_sort_created"] + " ↑",
+                "href": jobs_href(group_norm, "created_at", "asc", status_list),
+                "current": sort_field == "created_at" and direction_norm == "asc",
+            },
+            {
+                "label": _S["jobs_menu_filter"],
+                "href": jobs_href(group_norm, sort_field, direction_norm, status_list, "filter"),
+                "sheet": "u3-sheet-filter",
+            },
+            {
+                "label": _S["jobs_menu_purge"],
+                "href": jobs_href(group_norm, sort_field, direction_norm, status_list, "purge"),
+                "sheet": "u3-sheet-purge",
+            },
+        ]
+        pills = [
+            ("all", _S["jobs_seg_all"]),
+            ("active", _S["jobs_seg_active"]),
+            ("waiting", _S["jobs_seg_waiting"]),
+            ("done", _S["jobs_seg_done"]),
+            ("errors", _S["jobs_seg_errors"]),
+        ]
         return templates.TemplateResponse(
             request,
             "jobs.html",
             ctx(request, _page_title("title_jobs"), "jobs")
             | {
-                "rows": rows,
-                "fab_href": "#u1-create",
-                "fab_label": "fab_new_job",
-                "books": books_list(),
-                "registry_codes": registry_codes(),
-                "cefr_levels": sorted(CEFR_LEVELS),
-                "worker_status": worker_status,
-                "worker_detail": worker_detail,
-                "all_statuses": [st.value for st in JobStatus],
+                "group_rows": group_rows,
+                "total": sum(len(rows) for rows in group_rows.values()),
+                "group": group_norm,
+                "pills": pills,
+                "pill_href": lambda g: jobs_href(g, sort_field, direction_norm, status_list),
+                "all_statuses": list(_ALL_JOB_STATUS_VALUES),
                 "terminal_statuses": [st.value for st in TERMINAL_STATES],
-                "matrix_pairs": matrix_pairs(),
-                "f_status": list(status or []),
-                "f_book": book or "",
-                "f_pair": pair or "",
-                "f_created_from": created_from or "",
-                "f_created_to": created_to or "",
+                "f_status": status_list,
+                # «Сбросить фильтр» в листе: точные статусы снимаются,
+                # группа и сортировка сохраняются.
+                "reset_href": jobs_href(group_norm, sort_field, direction_norm),
                 "sort_field": sort_field,
                 "sort_direction": direction_norm,
-                "sort_label": sort_label,
-                "direction_label": direction_label,
-                "page": page,
-                "total_pages": total_pages,
-                "total": total,
-                "page_size": page_size,
-                "has_filters": bool(statuses or book or pair or created_from or created_to),
-                "prev_href": prev_href,
-                "next_href": next_href,
+                "worker_status": worker_status,
+                "worker_detail": worker_detail,
+                "worker_down": not worker_status.startswith("ok"),
+                "appbar_menu": appbar_menu,
+                "sheet": sheet if sheet in ("filter", "purge") else "",
+                "books": views.list_books(settings, repo),
+                "fab_href": "/books",
+                "fab_label": "fab_new_job",
             },
         )
 

@@ -10,6 +10,9 @@
      до первой отрисовки; серверного состояния нет, переключатель — R8 #}
   <script>
     (function () {
+      /* R2: list skeleton is visible only with JS (html.js); no-JS
+         browsers see the full list in <noscript> instead */
+      document.documentElement.className += " js";
       try {
         var t = localStorage.getItem("u3-theme");
         if (t === "dark" || t === "light") {

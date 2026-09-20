@@ -369,9 +369,10 @@ def test_u1_1_progress_matches_db_over_slices(u1_env: U1Env) -> None:
 
 
 def test_u1_2_no_fake_percentages(u1_env: U1Env) -> None:
-    """U1-2: процент появляется ТОЛЬКО как измеренный охват выравнивания.
-    Проверяется в HTML страниц (список заданий + страница задания)
-    завершённого прогона и в JSON API."""
+    """U1-2: проценты — реальные метрики, не фикция.
+    Экран задания — измеренный охват выравнивания; список заданий —
+    прогресс сегментов (TZ §10: строка 3 и полоса). Проверяется в HTML
+    страниц завершённого прогона и в JSON API."""
     profile = u1_env.profiles["main"]
     client, repo = profile.client, profile.repo
     book_name = _upload_book(client, u1_env.books["tiny"])
@@ -389,19 +390,28 @@ def test_u1_2_no_fake_percentages(u1_env: U1Env) -> None:
     job = repo.get(job_id)
     assert job is not None
 
-    allowed: set[str] = set()
+    # Экран задания: проценты = измеренный охват выравнивания (U1-2).
+    allowed_coverage: set[str] = set()
     for other in repo.list_jobs():
         if other.alignment_coverage is not None:
-            allowed.add(f"{other.alignment_coverage * 100:.1f}")
+            allowed_coverage.add(f"{other.alignment_coverage * 100:.1f}")
+    # Список: проценты = прогресс сегментов (TZ §10: line3 и полоса width) —
+    # реальный показатель выполнения, а не охват. Значения — progress_pct API.
+    rows = client.get("/api/jobs").json()
+    allowed_progress = {
+        str(r["progress_pct"]) for r in rows if r.get("progress_pct") is not None
+    }
 
     job_page = client.get(f"/jobs/{job_id}").text
     list_page = client.get("/jobs").text
-    for page_name, text in (("job page", job_page), ("jobs list", list_page)):
-        found = re.findall(r"(\d+(?:\.\d+)?)%", text)
-        bad = [value for value in found if value not in allowed]
-        assert not bad, f"{page_name}: проценты вне охвата выравнивания: {bad}"
+    found = re.findall(r"(\d+(?:\.\d+)?)%", job_page)
+    bad = [value for value in found if value not in allowed_coverage]
+    assert not bad, f"job page: проценты вне охвата выравнивания: {bad}"
     if job.alignment_coverage is not None:
         assert re.search(r"(\d+(?:\.\d+)?)%", job_page), "измеренный охват не показан"
+    found = re.findall(r"(\d+(?:\.\d+)?)%", list_page)
+    bad = [value for value in found if value not in allowed_progress]
+    assert not bad, f"jobs list: проценты вне прогресса сегментов: {bad}"
 
     facts = client.get(f"/api/jobs/{job_id}").json()
     assert "%" not in str(facts["progress_display"]), facts["progress_display"]
@@ -505,7 +515,7 @@ _CONSUMERS: dict[str, tuple[tuple[str, str], ...]] = {
     ),
     "/api/jobs": (
         ("app/web/templates/jobs.html", 'data-u1-fetch="/api/jobs"'),  # GET
-        ("app/web/static/app.js", 'fetchJSON("/api/jobs", {'),  # POST
+        # POST (создание) — потребитель появится в R4 (лист-мастер); R2 — только GET.
     ),
     "/api/jobs/{job_id}": (
         ("app/web/static/app.js", '"/api/jobs/" + encodeURIComponent(jobId)'),  # GET

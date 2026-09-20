@@ -1,0 +1,29 @@
+{# Тело листа «Точный фильтр» (серия R §10/§14): 16 статусов точным
+   подмножеством, GET /jobs (группа пилюли и сортировка — скрытыми
+   полями). Кнопка действия — последняя, на всю ширину (§14).
+   Рендерится в <dialog id=u3-sheet-filter> (JS) ИЛИ в no-JS-секции
+   (?sheet=filter) — не одновременно (id не дублируются).
+   Переменные: group, sort_field, sort_direction, all_statuses,
+   f_status, reset_href. #}
+<form class="u3-sheet-form" method="get" action="/jobs">
+  {% if group and group != 'all' %}
+  <input type="hidden" name="group" value="{{ group }}">
+  {% endif %}
+  {% if sort_field != 'updated_at' %}
+  <input type="hidden" name="sort" value="{{ sort_field }}">
+  {% endif %}
+  {% if sort_direction != 'desc' %}
+  <input type="hidden" name="direction" value="{{ sort_direction }}">
+  {% endif %}
+  <fieldset class="u3-filter">
+    <legend>{{ s["jobs_f_status"] }}</legend>
+    {% for st in all_statuses %}
+    <label class="u3-check">
+      <input type="checkbox" name="status" value="{{ st }}"{% if st in f_status %} checked{% endif %}>
+      {{ st }}
+    </label>
+    {% endfor %}
+  </fieldset>
+  <a class="u3-btn u3-sheet-action" href="{{ reset_href }}">{{ s["state_reset_filter"] }}</a>
+  <button type="submit" class="u3-btn u3-primary u3-sheet-action">{{ s["jobs_filter_apply"] }}</button>
+</form>

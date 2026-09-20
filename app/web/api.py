@@ -113,16 +113,28 @@ def _job_or_404(repo: JobRepository, job_id: str) -> Job:
     return job
 
 
-def _job_row(settings: Settings, job: Job) -> dict[str, Any]:
+def _job_row(
+    settings: Settings,
+    job: Job,
+    elapsed_seconds: float = 0.0,
+) -> dict[str, Any]:
     validation = views.read_json(settings.job_dir(job.id) / "validation.json")
+    # Серия R §10: строка списка — группа (единый источник
+    # views.job_list_group, клиент не пересчитывает), процент прогресса
+    # (None — индетерминированные стадии без единиц: PLANNING/
+    # VALIDATING_OUTPUT) и время работы (механизм E7/M7, без дубля).
+    status = job.status.value
+    indeterminate = job.status in (JobStatus.PLANNING, JobStatus.VALIDATING_OUTPUT)
+    progress_pct = None if indeterminate else round((job.progress or 0.0) * 100)
     return {
         "id": job.id,
-        "status": job.status.value,
+        "status": status,
         # Серия R §4: группа и глиф — из единой таблицы views.STATUS_GROUP;
         # клиент (app.js) рендерит статус по этим полям без собственного
         # соответствия статус→группа.
-        "status_group": views.status_group(job.status.value),
-        "status_glyph": views.status_glyph(job.status.value),
+        "status_group": views.status_group(status),
+        "status_glyph": views.status_glyph(status),
+        "group": views.job_list_group(status, job.updated_at),
         "source_language": job.source_language,
         "target_language": job.target_language,
         "mode": job.mode,
@@ -130,6 +142,8 @@ def _job_row(settings: Settings, job: Job) -> dict[str, Any]:
         "learning_cefr": job.learning_cefr,
         "progress": job.progress,
         "progress_display": views.progress_facts(job, validation)["display"],
+        "progress_pct": progress_pct,
+        "elapsed_seconds": elapsed_seconds,
         "alignment_coverage": job.alignment_coverage,
         "tokens_total": job.tokens_total,
         "error": job.error_message,
@@ -139,6 +153,17 @@ def _job_row(settings: Settings, job: Job) -> dict[str, Any]:
         "created_at_human": views.human_ts(job.created_at),
         "updated_at_human": views.human_ts(job.updated_at),
     }
+
+
+def _job_rows(settings: Settings, repo: JobRepository, jobs: list[Job]) -> list[dict[str, Any]]:
+    """Строки списка заданий: переходы — одним запросом (без N+1),
+    время работы — views.elapsed_and_eta (E7/M7, единый механизм)."""
+    transitions = repo.list_transitions_bulk([job.id for job in jobs])
+    rows: list[dict[str, Any]] = []
+    for job in jobs:
+        elapsed, _eta = views.elapsed_and_eta(job, transitions.get(job.id, []))
+        rows.append(_job_row(settings, job, elapsed_seconds=elapsed))
+    return rows
 
 
 def _split_pair(pair: str | None) -> tuple[str | None, str | None]:
@@ -181,9 +206,14 @@ def languages(deps: tuple[Settings, JobRepository] = Depends(get_deps)) -> dict[
 
 
 @router.get("/books")
-def books(deps: tuple[Settings, JobRepository] = Depends(get_deps)) -> list[dict[str, Any]]:
-    settings, _repo = deps
-    return views.list_books(settings)
+def books(
+    deps: tuple[Settings, JobRepository] = Depends(get_deps),
+    q: str | None = Query(default=None),
+) -> list[dict[str, Any]]:
+    """EPUB из ``input/``. Серия R §6: ``q`` — серверный подстроковый
+    фильтр (имя файла + название)."""
+    settings, repo = deps
+    return views.list_books(settings, repo, q=q)
 
 
 @router.post("/books")
@@ -255,6 +285,7 @@ def list_jobs(  # noqa: PLR0917 — query-параметры FastAPI обяза�
     pair: str | None = Query(default=None),
     created_from: str | None = Query(default=None),
     created_to: str | None = Query(default=None),
+    since: float | None = Query(default=None, ge=0),
     sort: str = Query(default="created_at"),
     direction: str = Query(default="desc"),
 ) -> list[dict[str, Any]]:
@@ -262,7 +293,10 @@ def list_jobs(  # noqa: PLR0917 — query-параметры FastAPI обяза�
 
     U3 3.4.16-18: пагинация ``limit``/``offset``, фильтры (статусы, книга,
     пара, диапазон created_at) и сортировка — в SQL через
-    ``JobRepository`` (единственный источник, 3.4.16)."""
+    ``JobRepository`` (единственный источник, 3.4.16).
+
+    Серия R §15: ``since=<rev>`` — дельта (``updated_at > rev``);
+    ``limit``/``offset`` и фильтры-диапазоны при ней игнорируются."""
     settings, repo = deps
     statuses: tuple[str, ...] | None = None
     if status:
@@ -272,6 +306,19 @@ def list_jobs(  # noqa: PLR0917 — query-параметры FastAPI обяза�
                     status_code=400, detail=_S["err_status_unknown"].format(status=value)
                 )
         statuses = tuple(status)
+    if since is not None:
+        try:
+            jobs = repo.list_jobs(
+                None,
+                0,
+                statuses=statuses,
+                updated_after=since,
+                sort=sort,
+                direction=direction,
+            )
+        except ValueError:
+            raise HTTPException(status_code=400, detail=_S["err_sort_field"]) from None
+        return _job_rows(settings, repo, jobs)
     source_lang, target_lang = _split_pair(pair)
     try:
         jobs = repo.list_jobs(
@@ -288,7 +335,7 @@ def list_jobs(  # noqa: PLR0917 — query-параметры FastAPI обяза�
         )
     except ValueError:
         raise HTTPException(status_code=400, detail=_S["err_sort_field"]) from None
-    return [_job_row(settings, job) for job in jobs]
+    return _job_rows(settings, repo, jobs)
 
 
 @router.post("/jobs")
