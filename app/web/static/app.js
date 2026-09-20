@@ -103,16 +103,16 @@ function tableHtml(columns, rowsHtml) {
 function cardsHtml(cards) {
  return "<div class='u3-cards'>" + cards.join("") + "</div>";
 }
-/* [[label, html, cls?]] per row: one source for table + cards */
+/* [html, cls?] per column: one source for table + cards (cardHtml gets
+   [label=COLS[i], html, cls] with the same layout) */
 function fieldsRows(fieldsList) {
  return fieldsList
   .map(
    (f) =>
-    "<tr>" + f.map((c) => "<td" + (c[2] ? " class='" + c[2] + "'" : "") + ">" + c[1] + "</td>").join("") + "</tr>"
+    "<tr>" + f.map((c) => "<td" + (c[1] ? " class='" + c[1] + "'" : "") + ">" + c[0] + "</td>").join("") + "</tr>"
   )
   .join("");
 }
-const statusClass = (status) => "status-" + String(status).toLowerCase();
 function jobMode(j) {
  return (
   esc(j.mode) + (j.learning_level
@@ -139,11 +139,12 @@ const JOBS_COLS = [
 ];
 function jobCells(j) {
  return [
-  ["<a href='/jobs/" + esc(j.id) + "'>" + esc(j.id) + "</a>"],
+  ["<a class='u3-mono' href='/jobs/" + esc(j.id) + "'>" + esc(j.id) + "</a>"],
   [esc(j.book_name)],
   [jobPair(j)],
   [jobMode(j)],
-  [esc(j.status), statusClass(j.status)],
+  /* R1 §4: group+glyph from API (single table views.STATUS_GROUP) */
+  ["<span class='u3-status-ico' aria-hidden='true'>" + esc(j.status_glyph) + "</span>" + esc(j.status), "u3-status status-" + esc(j.status_group)],
   [esc(j.progress_display)],
   [esc(alignmentValue(j.alignment_coverage))],
   [esc(j.created_at_human)],
@@ -379,7 +380,8 @@ function renderProgress(f) {
  const rows = [
   [
    S.job_row_status,
-   "<span class='" + statusClass(f.status) + "'>" + esc(f.status) + (f.error ? " — <span class='err'>" + esc(f.error) + "</span>" : "") + "</span>",
+   /* R1 §4: group+glyph from API (single table views.STATUS_GROUP) */
+   "<span class='u3-status status-" + esc(f.status_group) + "'><span class='u3-status-ico' aria-hidden='true'>" + esc(f.status_glyph) + "</span>" + esc(f.status) + (f.error ? " — <span class='err'>" + esc(f.error) + "</span>" : "") + "</span>",
   ],
   [S.job_row_pair, jobPair(f)],
   [S.job_row_mode, jobMode(f)],

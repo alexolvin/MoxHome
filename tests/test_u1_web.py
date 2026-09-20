@@ -807,4 +807,6 @@ def test_u1_10_llm_off_mid_job_shows_error(u1_env: U1Env) -> None:
     assert html.escape(final["error"]) in page.text, "причина ошибки не показана в UI"
     assert "FAILED" in page.text
     # Прогресс не выдаётся за «в работе»: статус в UI — терминальный.
-    assert "status-failed" in page.text
+    # Серия R §4: класс по группе (единая таблица views.STATUS_GROUP):
+    # FAILED -> err.
+    assert "status-err" in page.text

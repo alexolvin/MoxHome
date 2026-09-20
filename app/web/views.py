@@ -44,6 +44,50 @@ from app.workers.pipeline import CHAPTER_LABEL_PREFIX, translation_phases
 
 _S = UI_STRINGS
 
+# Серия R §4: 16 статусов сводятся к пяти семантическим группам, по одному
+# токену окраски на группу (--status-<group>-fg, style.css :root).
+# Единственная таблица соответствия — здесь; в шаблонах и в JS условий
+# по статусу нет (шаблоны и клиент используют статус_group/статус_glyph).
+# Цвет — вторичный признак: первичные — текст (имя статуса verbatim)
+# и глиф группы.
+STATUS_GROUP: dict[str, str] = {
+    "CREATED": "wait",
+    "NEEDS_CONFIRMATION": "wait",
+    "VALIDATING": "run",
+    "PLANNING": "run",
+    "TRANSLATING": "run",
+    "ANALYZING": "run",
+    "GENERATING": "run",
+    "VALIDATING_OUTPUT": "run",
+    "GLOSSARY_FIX": "run",
+    "LEARNING": "run",
+    "COMPLETED": "ok",
+    "COMPLETED_WITH_WARNINGS": "warn",
+    "PAUSED": "warn",
+    "INTERRUPTED": "warn",
+    "FAILED": "err",
+    "CANCELLED": "err",
+}
+
+#: Глиф группы (серия R §4): до статуса — текст полного имени verbatim.
+STATUS_GLYPH: dict[str, str] = {
+    "wait": "○",
+    "run": "◐",
+    "ok": "✓",
+    "warn": "!",
+    "err": "✕",
+}
+
+
+def status_group(status: str) -> str:
+    """Статус задания → семантическая группа (единая таблица STATUS_GROUP)."""
+    return STATUS_GROUP[status]
+
+
+def status_glyph(status: str) -> str:
+    """Глиф группы статуса (серия R §4)."""
+    return STATUS_GLYPH[STATUS_GROUP[status]]
+
 
 def read_json(path: Path) -> dict[str, Any] | None:
     if not path.is_file():
@@ -288,6 +332,10 @@ def job_facts(
     return {
         "id": job.id,
         "status": job.status.value,
+        # Серия R §4: группа и глиф — из единой таблицы (выше); клиент
+        # не содержит собственного соответствия статус→группа.
+        "status_group": status_group(job.status.value),
+        "status_glyph": status_glyph(job.status.value),
         "status_terminal": job.status in TERMINAL_STATES,
         "source_language": job.source_language,
         "target_language": job.target_language,

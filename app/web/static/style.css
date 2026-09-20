@@ -1,6 +1,10 @@
 /* U3: mobile-first. Дизайн-система D1 (docs/design-system.md): источник
- * GitHub/Primer, светлая тема активна; тёмная тема — тот же набор токенов,
- * активация в D4 (@media prefers-color-scheme, §6.2).
+ * GitHub/Primer; светлая тема — базовое, тёмная — активирована в R1
+ * (серия R §4): @media (prefers-color-scheme: dark) + ручное
+ * :root[data-theme="dark"|"light"] (localStorage, переключатель — R8).
+ * Именование токенов — TZ-R: --surface-0..3, --fg-muted, --accent-fg,
+ * --focus-ring, --status-<group>-bg/fg, --shadow-2/3; токены без имени в
+ * TZ-R сохраняют префикс D1 (--u3-*).
  * Единственный механизм (§8.1.1): литералы цвета, кегля, отступа и радиуса —
  * только в :root; в правилах — только var(). Исключения (зафиксированы):
  * толщины линий 1px/2px и outline-offset 2px (категории вне токенов ТЗ;
@@ -10,24 +14,42 @@
  * settings.ui, Rule 1).
  * Числовые значения интерфейса — в settings.ui (Rule 1); тап-цель 44 px,
  * брейкпоинт 641 px (D1 §3.4) и каркасные константы серии R (appbar 48,
- * FAB 56/72, TZ §3) — фиксированы, здесь — декларативные токены.
+ * FAB 56/72, TZ §3; панель 220, TZ §5 — --u3-side-w) — фиксированы,
+ * здесь — декларативные токены.
  * Базовое состояние — карточки (.u3-cards видно, .u3-table скрыт);
  * переключение на таблицу делает медиазапрос в base.html
  * (ui.mobile_breakpoint_px).
  */
 
+/* светлая тема (D1, контраст измерен — docs/design-system.md §4/§7) */
 :root {
-  /* палитра (контраст измерен, docs/design-system.md §4) */
-  --u3-bg: #ffffff;
-  --u3-surface: #f6f8fa;
+  /* поверхности (серия R §4): 0 — страница, 1 — строки/панели,
+     2 — sheet/меню (+--shadow-2), 3 — тост/диалог (+--shadow-3) */
+  --surface-0: #ffffff;
+  --surface-1: #f6f8fa;
+  --surface-2: #ffffff;
+  --surface-3: #ffffff;
   --u3-text: #1f2328;
-  --u3-muted: #656d76;
+  --fg-muted: #656d76;
   --u3-border: #767e89;
-  --u3-accent: #0969da;
-  --u3-ok: #176f33;
-  --u3-warn: #755100;
-  --u3-err: #b9202b;
-  --u3-focus: #0969da;
+  --accent-fg: #0969da;
+  --focus-ring: #0969da;
+  /* статусы: пять групп, по токену окраски и фону на группу (R1 §4).
+     fg — на обоих фонах темы >= 5.0:1 (wait #57606a 6.39/6.00,
+     run #0757ba 6.82/6.40; ok/warn/err — D1); bg — подложка
+     (полоса/чип), текст --u3-text на ней >= 13.7:1 */
+  --status-wait-fg: #57606a;
+  --status-wait-bg: #eff1f3;
+  --status-run-fg: #0757ba;
+  --status-run-bg: #ddf4ff;
+  --status-ok-fg: #176f33;
+  --status-ok-bg: #dafbe1;
+  --status-warn-fg: #755100;
+  --status-warn-bg: #fff8c5;
+  --status-err-fg: #b9202b;
+  --status-err-bg: #ffebe9;
+  --shadow-2: 0 1px 3px rgba(31, 35, 40, 0.3);
+  --shadow-3: 0 8px 24px rgba(31, 35, 40, 0.35);
   /* шрифты: системный стек (§3.3 — ноль внешних запросов) */
   --u3-font-sans: system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
@@ -58,12 +80,96 @@
   --u3-appbar-h: 48px;
   --u3-fab-size: 56px;
   --u3-fab-bottom: 72px;
-  /* серия R §5: кегли таб-бара (подпись 11, иконка 24) и тень уровня 2 */
+  /* серия R §5: ширина панели навигации на >= 641 px (layout-константа) */
+  --u3-side-w: 220px;
+  /* серия R §5: кегли таб-бара (подпись 11, иконка 24) */
   --u3-fs-050: 0.6875rem;
   --u3-fs-800: 1.5rem;
-  --u3-shadow-2: 0 1px 3px rgba(31, 35, 40, 0.3);
   /* круглая форма (FAB) */
   --u3-radius-circle: 50%;
+}
+
+/* тёмная тема (серия R §4): набор D1 (docs/design-system.md §4 «Тёмная»)
+ * + токены R1 (поверхности 2/3, статусные группы, тень уровня 3).
+ * Активация — системная (prefers-color-scheme) ИЛИ ручная
+ * data-theme="dark"/"light" из localStorage (base.html; attribute-селектор
+ * бо́льшей специфичности всегда побеждает — переключатель в R8).
+ * Контраст обеих тем — расчёт WCAG (T13, .a/tasks/ui-audit/r1_contrast.py). */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface-0: #0d1117;
+    --surface-1: #161b22;
+    --surface-2: #1c2128;
+    --surface-3: #21262d;
+    --u3-text: #e6edf3;
+    --fg-muted: #8b949e;
+    --u3-border: #6e7681;
+    --accent-fg: #58a6ff;
+    --focus-ring: #58a6ff;
+    /* fg на обоих фонах темы >= 5.0:1 (wait 6.15/5.62, run 7.49/6.85,
+       ok 7.45/6.81, warn 7.50/6.85, err 5.65/5.16) */
+    --status-wait-fg: #8b949e;
+    --status-wait-bg: #21262d;
+    --status-run-fg: #58a6ff;
+    --status-run-bg: #122d5c;
+    --status-ok-fg: #3fb950;
+    --status-ok-bg: #033a1d;
+    --status-warn-fg: #d29922;
+    --status-warn-bg: #3a2d04;
+    --status-err-fg: #f85149;
+    --status-err-bg: #4a1010;
+    --shadow-2: 0 1px 3px rgba(1, 4, 9, 0.6);
+    --shadow-3: 0 8px 24px rgba(1, 4, 9, 0.7);
+  }
+}
+
+/* ручное переключение темы: R1 — механика (data-theme из localStorage),
+ * R8 — сам переключатель в «Настройках» */
+:root[data-theme="light"] {
+  --surface-0: #ffffff;
+  --surface-1: #f6f8fa;
+  --surface-2: #ffffff;
+  --surface-3: #ffffff;
+  --u3-text: #1f2328;
+  --fg-muted: #656d76;
+  --u3-border: #767e89;
+  --accent-fg: #0969da;
+  --focus-ring: #0969da;
+  --status-wait-fg: #57606a;
+  --status-wait-bg: #eff1f3;
+  --status-run-fg: #0757ba;
+  --status-run-bg: #ddf4ff;
+  --status-ok-fg: #176f33;
+  --status-ok-bg: #dafbe1;
+  --status-warn-fg: #755100;
+  --status-warn-bg: #fff8c5;
+  --status-err-fg: #b9202b;
+  --status-err-bg: #ffebe9;
+  --shadow-2: 0 1px 3px rgba(31, 35, 40, 0.3);
+  --shadow-3: 0 8px 24px rgba(31, 35, 40, 0.35);
+}
+:root[data-theme="dark"] {
+  --surface-0: #0d1117;
+  --surface-1: #161b22;
+  --surface-2: #1c2128;
+  --surface-3: #21262d;
+  --u3-text: #e6edf3;
+  --fg-muted: #8b949e;
+  --u3-border: #6e7681;
+  --accent-fg: #58a6ff;
+  --focus-ring: #58a6ff;
+  --status-wait-fg: #8b949e;
+  --status-wait-bg: #21262d;
+  --status-run-fg: #58a6ff;
+  --status-run-bg: #122d5c;
+  --status-ok-fg: #3fb950;
+  --status-ok-bg: #033a1d;
+  --status-warn-fg: #d29922;
+  --status-warn-bg: #3a2d04;
+  --status-err-fg: #f85149;
+  --status-err-bg: #4a1010;
+  --shadow-2: 0 1px 3px rgba(1, 4, 9, 0.6);
+  --shadow-3: 0 8px 24px rgba(1, 4, 9, 0.7);
 }
 
 * { box-sizing: border-box; }
@@ -79,7 +185,7 @@ body {
      pre защищён white-space: pre (M9 — единственный горизонтальный
      скролл) */
   overflow-wrap: anywhere;
-  background: var(--u3-bg);
+  background: var(--surface-0);
   color: var(--u3-text);
 }
 
@@ -98,7 +204,7 @@ body {
   gap: var(--u3-space-1);
   height: calc(var(--u3-appbar-h) + env(safe-area-inset-top));
   padding: env(safe-area-inset-top) var(--u3-space-2) 0;
-  background: var(--u3-bg);
+  background: var(--surface-0);
   border-bottom: 1px solid var(--u3-border);
 }
 
@@ -111,7 +217,7 @@ body {
   min-height: var(--u3-tap);
   font-size: var(--u3-fs-600);
   line-height: 1;
-  color: var(--u3-accent);
+  color: var(--accent-fg);
   text-decoration: none;
   border-radius: var(--u3-radius-sm);
 }
@@ -152,7 +258,7 @@ body {
 }
 
 .u3-appbar-more::-webkit-details-marker { display: none; }
-.u3-appbar-menu[open] > .u3-appbar-more { background: var(--u3-surface); }
+.u3-appbar-menu[open] > .u3-appbar-more { background: var(--surface-1); }
 .u3-appbar-menu menu {
   position: absolute;
   top: 100%;
@@ -162,10 +268,11 @@ body {
   min-width: 200px;
   display: flex;
   flex-direction: column;
-  background: var(--u3-surface);
+  /* всплывающее меню — слой 2 (серия R §4): --surface-2 + --shadow-2 */
+  background: var(--surface-2);
   border: 1px solid var(--u3-border);
   border-radius: var(--u3-radius-md);
-  box-shadow: var(--u3-shadow-2);
+  box-shadow: var(--shadow-2);
 }
 
 .u3-appbar-menu-item {
@@ -178,7 +285,7 @@ body {
   border-radius: var(--u3-radius-sm);
 }
 
-.u3-appbar-menu-item:hover { background: var(--u3-bg); }
+.u3-appbar-menu-item:hover { background: var(--surface-1); }
 
 .u3-fab {
   position: fixed;
@@ -193,9 +300,9 @@ body {
   border-radius: var(--u3-radius-circle);
   font-size: var(--u3-fs-700);
   line-height: 1;
-  color: var(--u3-bg);
-  background: var(--u3-accent);
-  box-shadow: var(--u3-shadow-2);
+  color: var(--surface-0);
+  background: var(--accent-fg);
+  box-shadow: var(--shadow-2);
   text-decoration: none;
 }
 
@@ -209,7 +316,7 @@ body {
   grid-template-columns: repeat(3, 1fr);
   height: calc(var(--u3-tabbar-h) + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
-  background: var(--u3-surface);
+  background: var(--surface-1);
   border-top: 1px solid var(--u3-border);
 }
 
@@ -223,12 +330,12 @@ body {
   margin: 0 var(--u3-tap-gap);
   min-height: var(--u3-tap);
   text-decoration: none;
-  color: var(--u3-muted);
+  color: var(--fg-muted);
   border-radius: var(--u3-radius-sm);
 }
 
 /* активный пункт — цветом И жирным (TZ §5: не только цветом) */
-.u3-tab.is-current { color: var(--u3-accent); font-weight: 700; }
+.u3-tab.is-current { color: var(--accent-fg); font-weight: 700; }
 .u3-tab-ico { font-size: var(--u3-fs-800); line-height: 1; }
 .u3-tab-label { font-size: var(--u3-fs-050); line-height: 1; }
 
@@ -253,13 +360,15 @@ body {
   align-items: center;
   min-height: var(--u3-tap);
   padding: 0 var(--u3-space-3);
+  /* R1 §4: заголовок строки списка — один кегль выше базового */
+  font-size: var(--u3-fs-500);
   color: var(--u3-text);
   text-decoration: none;
   border: 1px solid var(--u3-border);
   border-radius: var(--u3-radius-md);
 }
 
-.u3-list-row:hover { background: var(--u3-surface); }
+.u3-list-row:hover { background: var(--surface-1); }
 
 /* строка состояния воркера: без default-полей <p> (T1: первый ряд <= 160 px) */
 .u3-workline { margin: var(--u3-space-2) 0; }
@@ -331,7 +440,7 @@ input[type="date"],
 input[type="file"] {
   font: inherit;
   color: var(--u3-text);
-  background: var(--u3-bg);
+  background: var(--surface-0);
   border: 1px solid var(--u3-border);
   border-radius: var(--u3-radius-md);
   min-height: var(--u3-tap);
@@ -361,13 +470,13 @@ a.btn {
   color: var(--u3-text);
 }
 
-a { color: var(--u3-accent); }
+a { color: var(--accent-fg); }
 
 textarea {
   font-family: var(--u3-font-mono);
   font-size: var(--u3-fs-300);
   color: var(--u3-text);
-  background: var(--u3-bg);
+  background: var(--surface-0);
   border: 1px solid var(--u3-border);
   border-radius: var(--u3-radius-md);
   padding: var(--u3-space-2);
@@ -375,8 +484,21 @@ textarea {
   min-height: var(--u3-tap);
 }
 
+/* T14: видимый фокус на 100% интерактивных элементов — один глобальный
+   механизм (обводка 2 px токеном --focus-ring, TZ §14); порядок
+   табуляции = порядок DOM = визуальный (tabindex>0 нет) */
 :focus-visible {
-  outline: 2px solid var(--u3-focus);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* T14 (доп. к механизму выше): Chromium отдаёт date input на 4 шага Tab
+   (внутренние сегменты день/месяц/год); на 4-м шаге :focus-visible
+   ложится в false и обводка гаснет — подстраховка :focus, чтобы контур
+   был на каждом шаге (текстоподобные контролы получают кольцо и по
+   клику — практика Primer). */
+input[type="date"]:focus {
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -410,11 +532,11 @@ summary {
   font-size: var(--u3-fs-300);
 }
 
-.u3-table thead th { background: var(--u3-surface); }
+.u3-table thead th { background: var(--surface-1); }
 
 .u3-facts { border-collapse: collapse; margin: var(--u3-space-2) 0; width: 100%; }
 .u3-facts th[scope="row"] {
-  background: var(--u3-surface);
+  background: var(--surface-1);
   min-width: 120px;
   white-space: nowrap;
 }
@@ -454,7 +576,7 @@ summary {
   font-size: var(--u3-fs-300);
 }
 
-.u3-static thead th { background: var(--u3-surface); }
+.u3-static thead th { background: var(--surface-1); }
 
 /* ---------------------------------------------------------------- карточки (mobile) */
 
@@ -481,7 +603,7 @@ summary {
 .u3-field { display: contents; }
 
 .u3-card-fields dt {
-  color: var(--u3-muted);
+  color: var(--fg-muted);
   align-self: start;
 }
 
@@ -505,11 +627,11 @@ summary {
 
 /* ---------------------------------------------------------------- служебное */
 
-.hint { color: var(--u3-muted); font-size: var(--u3-fs-200); }
-.err { color: var(--u3-err); font-weight: 600; }
-.ok { color: var(--u3-ok); font-weight: 600; }
-.u3-warn { color: var(--u3-warn); font-weight: 600; }
-.u3-danger { color: var(--u3-err); font-weight: 600; }
+.hint { color: var(--fg-muted); font-size: var(--u3-fs-200); }
+.err { color: var(--status-err-fg); font-weight: 600; }
+.ok { color: var(--status-ok-fg); font-weight: 600; }
+.u3-warn { color: var(--status-warn-fg); font-weight: 600; }
+.u3-danger { color: var(--status-err-fg); font-weight: 600; }
 .u3-empty { padding: var(--u3-space-4) 0; }
 .u3-mono {
   font-family: var(--u3-font-mono);
@@ -517,7 +639,7 @@ summary {
 }
 
 pre, .u3-pre {
-  background: var(--u3-surface);
+  background: var(--surface-1);
   border: 1px solid var(--u3-border);
   border-radius: var(--u3-radius-md);
   padding: var(--u3-space-2);
@@ -559,28 +681,31 @@ pre, .u3-pre {
   max-width: 90vw;
 }
 
-#u3-prompt-view::backdrop { background: var(--u3-surface); }
+#u3-prompt-view::backdrop { background: var(--surface-1); }
 
-/* ---------------------------------------------------------------- статусы */
+/* ---------------------------------------------------------------- статусы
+ * Серия R §4: пять семантических групп, по одному токену на группу.
+ * Соответствие статус→группа — единая таблица app/web/views.py
+ * (STATUS_GROUP); в шаблонах/JS классов по отдельному статусу нет.
+ * Цвет — вторичный признак: первичные — глиф группы и имя статуса. */
 
-.status-completed { color: var(--u3-ok); font-weight: 600; }
-.status-completed_with_warnings { color: var(--u3-warn); font-weight: 600; }
-.status-failed { color: var(--u3-err); font-weight: 600; }
-.status-cancelled, .status-interrupted, .status-paused { color: var(--u3-muted); }
-.status-created { color: var(--u3-muted); }
-.status-needs_confirmation { color: var(--u3-warn); font-weight: 600; }
-.status-validating, .status-planning, .status-translating, .status-analyzing,
-.status-generating, .status-validating_output { color: var(--u3-accent); }
+.u3-status { white-space: nowrap; }
+.u3-status-ico { margin-right: var(--u3-space-1); }
+.status-wait { color: var(--status-wait-fg); }
+.status-run { color: var(--status-run-fg); }
+.status-ok { color: var(--status-ok-fg); }
+.status-warn { color: var(--status-warn-fg); }
+.status-err { color: var(--status-err-fg); }
 
 /* ---------------------------------------------------------------- >= 641 px (серия R §5)
    Тот же HTML: таб-бар -> левая панель 220 px, FAB -> кнопка в шапке.
    Двухколонная «список + деталь» (360px 1fr) — R2.
-   220 px — layout-ширина панели (категория исключений, как max-width). */
+   220 px — декларативный layout-токен --u3-side-w (:root). */
 @media (min-width: 641px) {
-  .u3-appbar { margin-left: 220px; }
+  .u3-appbar { margin-left: var(--u3-side-w); }
 
   .u3-main {
-    margin: 0 0 0 220px;
+    margin: 0 0 0 var(--u3-side-w);
     max-width: none;
     padding: var(--u3-space-4);
   }
@@ -590,7 +715,7 @@ pre, .u3-pre {
     bottom: 0;
     left: 0;
     right: auto;
-    width: 220px;
+    width: var(--u3-side-w);
     height: auto;
     display: flex;
     flex-direction: column;

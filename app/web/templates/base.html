@@ -6,6 +6,20 @@
   <title>{{ s["brand"] }} — {{ title }}</title>
   <link rel="icon" href="/static/favicon.ico">
   <link rel="stylesheet" href="/static/style.css">
+  {# R1 §4: ручная тема — localStorage('u3-theme') -> html[data-theme],
+     до первой отрисовки; серверного состояния нет, переключатель — R8 #}
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("u3-theme");
+        if (t === "dark" || t === "light") {
+          document.documentElement.setAttribute("data-theme", t);
+        }
+      } catch (e) {
+        /* private mode: system theme */
+      }
+    })();
+  </script>
   <script id="u3-strings" type="application/json">{{ s | tojson }}</script>
   <script id="u3-ui" type="application/json">{{ ui | tojson }}</script>
   <meta name="u3-csrf" content="{{ csrf }}">
