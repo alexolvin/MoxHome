@@ -143,7 +143,7 @@ class Denial:
     API/fetch, либо страницей в общем оформлении — для навигации браузера;
     выбор делает middleware по заголовкам запроса)."""
 
-    __slots__ = ("status_code", "message", "www_authenticate", "reason")
+    __slots__ = ("message", "reason", "status_code", "www_authenticate")
 
     def __init__(
         self,

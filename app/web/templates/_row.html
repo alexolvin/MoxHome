@@ -1,0 +1,12 @@
+{# Строка-карточка (серия R §14): название + статус/метка + одно число;
+   высота --u3-row-h (64 px), цель тапа на всю строку.
+   R0 — базовая разметка; подключение: R2 (список заданий), R5 (библиотека).
+   Переменные: href, title, meta (опц.), value (опц.), status_class (опц.). #}
+<a class="u3-row" href="{{ href if href is defined and href else '#' }}">
+  <span class="u3-row-main">
+    <span class="u3-row-title">{{ title }}</span>
+    {% if meta is defined and meta %}<span class="u3-row-meta">{{ meta }}</span>{% endif %}
+  </span>
+  {% if status_class is defined and status_class %}<span class="u3-row-status {{ status_class }}">{{ status }}</span>{% endif %}
+  {% if value is defined and value %}<span class="u3-row-value">{{ value }}</span>{% endif %}
+</a>

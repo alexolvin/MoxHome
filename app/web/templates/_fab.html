@@ -1,0 +1,7 @@
+{# FAB (серия R §14): 56 px, фиксирован снизу справа (72 px + safe-area),
+   в DOM — внутри appbar (на >= 641 px становится кнопкой в шапке).
+   Рендерится, только если страница передаёт fab_href/fab_label.
+   R0 — якорь на форму ниже списка; R4/R6 — bottom-sheet. #}
+{% if fab_href is defined and fab_href %}
+<a class="u3-fab" href="{{ fab_href }}" aria-label="{{ s[fab_label] }}">+</a>
+{% endif %}

@@ -493,7 +493,9 @@ def test_u1_5_estimated_cefr_labels_everywhere(u1_env: U1Env) -> None:
 #: DELETE — кнопка удаления U3).
 _CONSUMERS: dict[str, tuple[tuple[str, str], ...]] = {
     "/api/health": (("app/web/templates/settings.html", 'data-u1-fetch="/api/health"'),),
-    "/api/languages": (("app/web/templates/languages.html", 'data-u1-fetch="/api/languages"'),),
+    "/api/languages": (
+        ("app/web/templates/settings_languages.html", 'data-u1-fetch="/api/languages"'),
+    ),
     "/api/books": (
         ("app/web/templates/books.html", 'data-u1-fetch="/api/books"'),  # GET
         ("app/web/static/app.js", 'fetchJSON("/api/books", { method: "POST"'),  # POST
@@ -531,7 +533,7 @@ _CONSUMERS: dict[str, tuple[tuple[str, str], ...]] = {
     "/api/jobs/{job_id}/result": (
         ("app/web/templates/job.html", "/api/jobs/{{ facts.id }}/result"),
     ),
-    "/api/models": (("app/web/templates/models.html", 'data-u1-fetch="/api/models"'),),
+    "/api/models": (("app/web/templates/settings_llm.html", 'data-u1-fetch="/api/models"'),),
     "/api/config": (("app/web/templates/settings.html", 'data-u1-fetch="/api/config"'),),
     "/api/prompts": (
         ("app/web/static/app.js", 'fetchJSON("/api/prompts", {'),  # POST

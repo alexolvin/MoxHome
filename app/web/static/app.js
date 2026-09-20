@@ -500,8 +500,8 @@ function startJobsAutoRefresh() {
     stop();
    }
   } catch (e) {
-   /* error + retry + backoff to ui.refresh_max_seconds */
-   backoffMs = Math.min(backoffMs * 2, ui.refresh_max_seconds * 1000);
+   /* error + retry + backoff to ui.refresh_seconds_max */
+   backoffMs = Math.min(backoffMs * 2, ui.refresh_seconds_max * 1000);
    const msg = esc(fmt(S.jobs_refresh_error, { msg: e.message, wait: Math.round(backoffMs / 1000) }));
    refreshEl.textContent = msg;
    refreshEl.innerHTML = msg + RETRY("u3-jobs-retry");

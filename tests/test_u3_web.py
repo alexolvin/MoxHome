@@ -815,7 +815,7 @@ def _run_harness(
     # интервалы ускорены (0.2 с) для детерминированного таймлайна сценария
     ui_file.write_text(
         json.dumps(
-            UiSection(refresh_seconds=0.2, refresh_max_seconds=0.8).model_dump()
+            UiSection(refresh_seconds=0.2, refresh_seconds_max=0.8).model_dump()
         ),
         encoding="utf-8",
     )
@@ -841,7 +841,7 @@ _NODE = shutil.which("node")
 @pytest.mark.parametrize("scenario", ["visible", "errors", "terminal"])
 def test_u3_15_autorefresh_harness(tmp_path: Path, scenario: str) -> None:
     """T-U3-15: автообновление — пауза при document.hidden (один немедленный
-    опрос при возврате), экспоненциальный backoff до ui.refresh_max_seconds
+    опрос при возврате), экспоненциальный backoff до ui.refresh_seconds_max
     при ошибке API (сообщение verbatim), остановка на терминальном статусе.
     Проверка — по последовательности запросов к API (3.11.47-50)."""
     assert _NODE is not None, "node не установлен"
@@ -856,7 +856,7 @@ def test_u3_15_autorefresh_harness(tmp_path: Path, scenario: str) -> None:
         assert not any(500 <= t <= 1350 for t in times), f"запросы при hidden: {times}"
         assert any(1350 <= t <= 1650 for t in times), f"нет немедленного опроса: {times}"
     elif scenario == "errors":
-        # 200/200 (OK), затем backoff 400/800/800 (потолок ui.refresh_max_seconds)
+        # 200/200 (OK), затем backoff 400/800/800 (потолок ui.refresh_seconds_max)
         assert len(times) >= 5, f"слишком мало запросов: {times}"
         gaps = [b - a for a, b in pairwise(times)]
         assert abs(gaps[0] - 200) <= 150, gaps

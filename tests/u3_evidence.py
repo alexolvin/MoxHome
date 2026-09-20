@@ -825,7 +825,7 @@ def ev_u3_11(main: U1Profile, tiny: Path) -> str:
     rules = _css_rules(css)
     bases = (
         "button", ".btn", "select", "input", "textarea", "summary",
-        ".u3-nav-link", ".u3-check",
+        ".u3-check", ".u3-tab", ".u3-appbar-back",
     )
 
     def _applies(part: str, base: str) -> bool:
@@ -857,7 +857,7 @@ def ev_u3_11(main: U1Profile, tiny: Path) -> str:
     lines.append("")
     lines.append(
         f"тап-цель: --u3-tap = {tap}; "
-        f"область: {', '.join(bases)} (ссылка-логотип <a> вне области)"
+        f"область: {', '.join(bases)} (ссылки <a> — проверка аудита T3)"
     )
     lines.append(f"базовых селекторов без min-height: var(--u3-tap): "
                  f"{no_tap if no_tap else '0'}")

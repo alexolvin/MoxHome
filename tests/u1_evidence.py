@@ -176,7 +176,9 @@ def _api_paths(app: Any) -> list[tuple[str, str]]:
 #: test_u1_web.py.
 _CONSUMER_CHECKS: dict[str, list[tuple[str, str]]] = {
     "/api/health": [("app/web/templates/settings.html", 'data-u1-fetch="/api/health"')],
-    "/api/languages": [("app/web/templates/languages.html", 'data-u1-fetch="/api/languages"')],
+    "/api/languages": [
+        ("app/web/templates/settings_languages.html", 'data-u1-fetch="/api/languages"'),
+    ],
     "/api/books": [
         ("app/web/templates/books.html", 'data-u1-fetch="/api/books"'),
         ("app/web/static/app.js", 'fetchJSON("/api/books", { method: "POST"'),
@@ -211,7 +213,7 @@ _CONSUMER_CHECKS: dict[str, list[tuple[str, str]]] = {
     "/api/jobs/{job_id}/result": [
         ("app/web/templates/job.html", "/api/jobs/{{ facts.id }}/result"),
     ],
-    "/api/models": [("app/web/templates/models.html", 'data-u1-fetch="/api/models"')],
+    "/api/models": [("app/web/templates/settings_llm.html", 'data-u1-fetch="/api/models"')],
     "/api/config": [("app/web/templates/settings.html", 'data-u1-fetch="/api/config"')],
     "/api/prompts": [
         ("app/web/static/app.js", 'fetchJSON("/api/prompts", {'),

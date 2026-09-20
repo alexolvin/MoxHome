@@ -2,41 +2,37 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{{ s["brand"] }} — {{ title }}</title>
   <link rel="icon" href="/static/favicon.ico">
   <link rel="stylesheet" href="/static/style.css">
   <script id="u3-strings" type="application/json">{{ s | tojson }}</script>
   <script id="u3-ui" type="application/json">{{ ui | tojson }}</script>
   <meta name="u3-csrf" content="{{ csrf }}">
-  {# U3-2.5: mobile-first: base state = cards; table switches on from
-     ui.mobile_breakpoint_px+1 (value from YAML, Rule 1). #}
+  {# Серия R §3: layout-числа из settings.ui (Rule 1) — генерируются
+     здесь; 44 px и 641 px — фиксированные декларативные токены в
+     :root style.css (D1 §3.4). Карточки → таблица: >= ui.mobile_breakpoint_px. #}
   <style>
-    @media (min-width: {{ ui.mobile_breakpoint_px + 1 }}px) {
+    :root {
+      --u3-tap-gap: {{ ui.tap_gap_px }}px;
+      --u3-row-h: {{ ui.row_height_px }}px;
+      --u3-tabbar-h: {{ ui.tabbar_height_px }}px;
+      --u3-input-fs: {{ ui.input_font_px }}px;
+    }
+    @media (min-width: {{ ui.mobile_breakpoint_px }}px) {
       .u3-cards { display: none; }
       .u3-table { display: table; }
     }
   </style>
 </head>
 <body>
-<header class="u3-header">
-  <a class="u3-brand" href="/jobs">{{ s["brand"] }}</a>
-  <nav class="u3-nav" aria-label="{{ s["brand"] }}">
-    <a class="u3-nav-link{% if current == 'books' %} is-current{% endif %}" href="/books" {% if current == 'books' %}aria-current="page"{% endif %}>{{ s["nav_books"] }}</a>
-    <a class="u3-nav-link{% if current == 'jobs' %} is-current{% endif %}" href="/jobs" {% if current == 'jobs' %}aria-current="page"{% endif %}>{{ s["nav_jobs"] }}</a>
-    <a class="u3-nav-link{% if current == 'languages' %} is-current{% endif %}" href="/languages" {% if current == 'languages' %}aria-current="page"{% endif %}>{{ s["nav_languages"] }}</a>
-    <a class="u3-nav-link{% if current == 'models' %} is-current{% endif %}" href="/models" {% if current == 'models' %}aria-current="page"{% endif %}>{{ s["nav_models"] }}</a>
-    <a class="u3-nav-link{% if current == 'prompts' %} is-current{% endif %}" href="/prompts" {% if current == 'prompts' %}aria-current="page"{% endif %}>{{ s["nav_prompts"] }}</a>
-    <a class="u3-nav-link{% if current == 'settings' %} is-current{% endif %}" href="/settings" {% if current == 'settings' %}aria-current="page"{% endif %}>{{ s["nav_settings"] }}</a>
-  </nav>
-</header>
-<main class="u3-main">
+{% include "_appbar.html" %}
+<main class="u3-main" id="main">
 {% block content %}{% endblock %}
 </main>
-<footer class="u3-footer">
-  <p>{{ s["footer_auth_on"] if auth_on else s["footer_auth_off"] }}</p>
-  <p>{{ s["footer_worker_pre"] }} <code>{{ s["footer_worker_cmd"] }}</code> — {{ s["footer_worker_ui"] }}</p>
-</footer>
+{% if current in ('books', 'jobs', 'settings') %}
+{% include "_tabbar.html" %}
+{% endif %}
 <script src="/static/app.js"></script>
 </body>
 </html>

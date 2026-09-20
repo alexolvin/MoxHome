@@ -1,9 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>{{ s["title_job"].format(id=facts.id) }}
-  <span class="status-{{ facts.status | lower }}">{{ facts.status }}</span>
-</h1>
-
+{# Серия R: заголовок и «назад» — в appbar (base.html); статус —
+   в первой строке facts ниже. #}
 <div id="u1-progress" data-u1-poll="{{ facts.id }}" data-u1-status="{{ facts.status }}">
   {% if facts.cancel_requested %}
   <p id="u3-job-requested" role="status" class="u3-warn">{{ s["job_cancel_requested"] }}</p>

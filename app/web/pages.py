@@ -1,9 +1,14 @@
-"""HTML-страницы U1/U3: разделы Books/Jobs/Languages/Models/Prompts/Settings.
+"""HTML-страницы U1/U3: разделы Books/Jobs/Settings (+Languages/Models/Prompts).
 
 Каждая страница — серверный shell + данные своего API-endpoint'а
 (каждый endpoint из ТЗ имеет потребителя, U1-6). Страница задания
 дополнительно рендерит фактические данные сервером (без JS тоже
 читается) и обновляет блок прогресса поллингом ``GET /api/jobs/{id}``.
+
+Серия R §5: shell — appbar (h1, назад, меню «Ещё») + таб-бар
+(Библиотека/Задания/Настройки) + FAB; /settings — корень с
+маршрутными строками; старые пути /languages, /models, /prompts —
+301 на /settings/*.
 
 U3:
 - строки интерфейса — только из ``app.web.strings`` (критерий U3-1);
@@ -120,7 +125,8 @@ def build_router(
             ctx(request, _page_title("title_books"), "books")
             | {
                 "books": books_list(),
-                "csrf": getattr(request.state, "csrf_token", ""),
+                "fab_href": "#u1-upload",
+                "fab_label": "fab_add_book",
             },
         )
 
@@ -212,6 +218,8 @@ def build_router(
             ctx(request, _page_title("title_jobs"), "jobs")
             | {
                 "rows": rows,
+                "fab_href": "#u1-create",
+                "fab_label": "fab_new_job",
                 "books": books_list(),
                 "registry_codes": registry_codes(),
                 "cefr_levels": sorted(CEFR_LEVELS),
@@ -259,6 +267,7 @@ def build_router(
             ctx(request, _page_title("title_job", id=job.id), "jobs")
             | {
                 "job": job,
+                "back_href": "/jobs",
                 "facts": facts,
                 "job_id": job_id,
                 "registry_codes": registry_codes(),
@@ -267,45 +276,62 @@ def build_router(
             },
         )
 
-    # ------------------------------------------------------------- Languages
-    @router.get("/languages")
-    def languages_page(request: Request) -> Response:
-        data = views.languages_view(settings)
+    # ------------------------------------------------------------- Settings (серия R §5)
+    @router.get("/settings")
+    def settings_page(request: Request) -> Response:
         return templates.TemplateResponse(
-            request,
-            "languages.html",
-            ctx(request, _page_title("title_languages"), "languages") | {"data": data},
+            request, "settings.html", ctx(request, _page_title("title_settings"), "settings")
         )
 
-    # ------------------------------------------------------------- Models
-    @router.get("/models")
-    def models_page(request: Request) -> Response:
+    @router.get("/settings/llm")
+    def settings_llm_page(request: Request) -> Response:
         return templates.TemplateResponse(
             request,
-            "models.html",
-            ctx(request, _page_title("title_models"), "models")
-            | {"models": views.models_view(settings)},
-        )
-
-    # ------------------------------------------------------------- Prompts
-    @router.get("/prompts")
-    def prompts_page(request: Request) -> Response:
-        return templates.TemplateResponse(
-            request,
-            "prompts.html",
-            ctx(request, _page_title("title_prompts"), "prompts")
+            "settings_llm.html",
+            ctx(request, _page_title("title_models"), "settings")
             | {
+                "back_href": "/settings",
+                "models": views.models_view(settings),
+            },
+        )
+
+    @router.get("/settings/languages")
+    def settings_languages_page(request: Request) -> Response:
+        return templates.TemplateResponse(
+            request,
+            "settings_languages.html",
+            ctx(request, _page_title("title_languages"), "settings")
+            | {
+                "back_href": "/settings",
+                "data": views.languages_view(settings),
+            },
+        )
+
+    @router.get("/settings/prompts")
+    def settings_prompts_page(request: Request) -> Response:
+        return templates.TemplateResponse(
+            request,
+            "settings_prompts.html",
+            ctx(request, _page_title("title_prompts"), "settings")
+            | {
+                "back_href": "/settings",
                 "rows": views.prompts_view(settings),
                 "tasks": views.prompts_tasks_view(settings),
                 "registry_codes": registry_codes(),
             },
         )
 
-    # ------------------------------------------------------------- Settings
-    @router.get("/settings")
-    def settings_page(request: Request) -> Response:
-        return templates.TemplateResponse(
-            request, "settings.html", ctx(request, _page_title("title_settings"), "settings")
-        )
+    # --- старые пути: 301 (серия R §5) ------------------------------------
+    @router.get("/languages", include_in_schema=False)
+    def languages_redirect() -> Response:
+        return RedirectResponse("/settings/languages", status_code=301)
+
+    @router.get("/models", include_in_schema=False)
+    def models_redirect() -> Response:
+        return RedirectResponse("/settings/llm", status_code=301)
+
+    @router.get("/prompts", include_in_schema=False)
+    def prompts_redirect() -> Response:
+        return RedirectResponse("/settings/prompts", status_code=301)
 
     return router
