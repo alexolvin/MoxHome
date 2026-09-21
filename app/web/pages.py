@@ -173,15 +173,27 @@ def _jobs_sheet_prep(
                     "book": Path(original.source_path).name,
                     "target": original.target_language,
                     "mode": original.mode,
+                    # R4: повтор — все параметры исходного задания
+                    # (уровень/CEFR тоже, а не только target/mode).
+                    "learning_level": original.learning_level,
+                    "learning_cefr": original.learning_cefr,
                 }
     return export_data, create_data, export_missing
 
 
-def _jobs_new_location(
-    settings: Settings, repo: JobRepository, book: str, target_language: str, mode: str
+def _jobs_new_location(  # noqa: PLR0917 — форма создания: 4 параметра ТЗ + пути
+    settings: Settings,
+    repo: JobRepository,
+    book: str,
+    target_language: str,
+    mode: str,
+    learning_level: str = "",
+    learning_cefr: str = "",
 ) -> str:
     """Серия R T15: no-JS-создание — Location для 303: успех — список,
-    отказ (AppError, verbatim) — обратно на лист с причиной."""
+    отказ (AppError, verbatim) — обратно на лист с причиной.
+    R4: опциональные уровень/CEFR (пустая строка — не задан; валидация —
+    в create_job, единая точка с JSON-API)."""
     source = Path(book)
     if not source.is_absolute():
         source = settings.input_dir / book
@@ -192,6 +204,8 @@ def _jobs_new_location(
             source_path=source,
             target_language=target_language,
             mode=mode,
+            learning_level=learning_level or None,
+            learning_cefr=learning_cefr or None,
         )
     except AppError as exc:
         return "/jobs?sheet=create&create_err=" + quote(exc.message)
@@ -291,6 +305,7 @@ def build_router(
         sheet: str = Query(default=""),
         job: str | None = Query(default=None),
         retry_of: str | None = Query(default=None),
+        book: str | None = Query(default=None),
         create_err: str | None = Query(default=None),
     ) -> Response:
         """Серия R §10: строки списка, сегментный фильтр (группы §4),
@@ -339,6 +354,19 @@ def build_router(
                 ctx(request, _page_title("title_not_found"), "jobs"),
                 status_code=404,
             )
+
+        books_list = views.list_books(settings, repo)
+        # R4 (ТЗ §12): ?book=<имя> — мастер открыт с карточки книги
+        # (кнопка «Перевести» — R5): книга предвыбрана (JS — шаг 1 скрыт,
+        # no-JS — радио отмечено, список на месте — можно сменить).
+        # Незнакомое имя — игнор (шаг 1 целиком).
+        if (
+            sheet_norm == "create"
+            and book
+            and create_data is not None
+            and any(b["name"] == book for b in books_list)
+        ):
+            create_data["book"] = book
 
         status_list = [v for v in (status or []) if v in _ALL_JOB_STATUS_VALUES]
         worker_status, worker_detail = worker_alive(settings)
@@ -408,7 +436,13 @@ def build_router(
                 # лист создания: коды языков (реестр) и режимы задания
                 "lang_codes": registry_codes(),
                 "job_modes": JOB_MODES,
-                "books": views.list_books(settings, repo),
+                "books": books_list,
+                # R4 (ТЗ §12): умолчания мастера создания (единая точка
+                # базовой линии services.jobs.create_baseline — как у чипов)
+                "create_defaults": views.create_defaults(repo, settings),
+                # R4: «Ещё» — глоссарий read-only из конфига (per-job — вне
+                # границ ТЗ §1: изменение pipeline.py)
+                "glossary_enabled": settings.glossary.enabled,
                 # Серия R §12: FAB «Новое задание» → лист создания
                 # (JS — <dialog>, без JS — страница-форма ?sheet=create).
                 "fab_href": _jobs_href(
@@ -421,20 +455,32 @@ def build_router(
 
     # ------------------------------------------------------------- создание (no-JS)
     @router.post("/jobs/new")
-    def job_new(
+    def job_new(  # noqa: PLR0917 — поля формы создания (ТЗ §12)
         request: Request,
         book: str = Form(...),
         target_language: str = Form(...),
         mode: str = Form(default="bilingual"),
+        learning_level: str = Form(default=""),
+        learning_cefr: str = Form(default=""),
     ) -> Response:
         """Серия R §12/T15: no-JS-создание (лист ?sheet=create → форма).
 
         JSON-API ``POST /api/jobs`` без изменений (потребитель — app.js);
         страница-маршрут принимает форму, создаёт задание тем же
         сервисом (create_job — единый механизм) и уводит 303: успех —
-        на список, отказ — обратно на лист с причиной (verbatim)."""
+        на список, отказ — обратно на лист с причиной (verbatim).
+        R4: опциональные learning_level/learning_cefr (мастер «Ещё»/
+        «Уровень»; пустые — не заданы, валидация — create_job)."""
         return RedirectResponse(
-            _jobs_new_location(settings, repo, book, target_language, mode),
+            _jobs_new_location(
+                settings,
+                repo,
+                book,
+                target_language,
+                mode,
+                learning_level,
+                learning_cefr,
+            ),
             status_code=303,
         )
 

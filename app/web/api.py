@@ -362,8 +362,10 @@ def create(
             source_path=source,
             target_language=str(body.get("target_language", "")),
             mode=str(body.get("mode", "bilingual")),
-            learning_level=body.get("learning_level"),
-            learning_cefr=body.get("learning_cefr"),
+            # "" из селекта «Не задан» = не задан (та же нормализация,
+            # что no-JS-путь в pages._jobs_new_location)
+            learning_level=body.get("learning_level") or None,
+            learning_cefr=body.get("learning_cefr") or None,
         )
     except AppError as exc:
         raise HTTPException(status_code=400, detail=exc.message) from exc

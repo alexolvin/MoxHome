@@ -865,14 +865,20 @@ function scenarioMode(n) {
   };
   if (scenario === "visible") return [job("TRANSLATING")];
   if (scenario === "terminal") return [job("COMPLETED")];
+  if (scenario === "restart") return [job("COMPLETED")];
   if (scenario === "errors") return n <= 2 ? [job("TRANSLATING")] : "error";
   throw new Error("unknown scenario: " + scenario);
 }
 
-globalThis.fetch = async (url) => {
+globalThis.fetch = async (url, opts) => {
   const t = Date.now() - t0;
-  calls.push({ t, url });
-  console.log(JSON.stringify({ t, url }));
+  const m = (opts && opts.method) || "GET";
+  calls.push({ t, url, m });
+  console.log(JSON.stringify({ t, url, m }));
+  if (m === "POST" && url === "/api/jobs") {
+    return { ok: true, status: 200,
+      text: async () => JSON.stringify({ id: "job-9", status: "CREATED" }) };
+  }
   const mode = scenarioMode(calls.length);
   if (mode === "error") {
     return { ok: false, status: 500, text: async () => JSON.stringify({ detail: "boom" }) };
@@ -885,6 +891,23 @@ documentStub.getElementById("u3-ui").textContent = readFileSync(uiFile, "utf8");
 const u1jobs = documentStub.getElementById("u1-jobs");
 u1jobs.dataset = { u1Fetch: "/api/jobs", u1Render: "jobs", u1Group: "all" };
 u1jobs._listBody = makeEl("u3-list-body");
+
+if (scenario === "restart") {
+  /* wizard form: one checked book radio + named selects, so the real
+     submit handler runs POST /api/jobs -> jobsRefresh() */
+  const f = documentStub.getElementById("u3-create-form");
+  const radio = {
+    checked: true,
+    value: "b.epub",
+    dataset: { title: "B", detected: "en", dc: "en" },
+    addEventListener() {},
+  };
+  f.querySelectorAll = () => [radio];
+  f.target_language = { value: "ru", addEventListener() {} };
+  f.mode = { value: "bilingual" };
+  f.learning_level = { value: "", addEventListener() {} };
+  f.learning_cefr = { value: "" };
+}
 
 (0, eval)(readFileSync(appJsPath, "utf8"));
 documentStub.dispatch("DOMContentLoaded");
@@ -905,6 +928,10 @@ async function main() {
     await sleep(2800);
   } else if (scenario === "terminal") {
     await sleep(1500);
+  } else if (scenario === "restart") {
+    await sleep(500);
+    els["u3-create-form"]._listeners["submit"][0]({ preventDefault() {} });
+    await sleep(500);
   }
   const refresh = els["u3-jobs-refresh"] ? els["u3-jobs-refresh"].textContent : "";
   console.log(JSON.stringify({ final: true, calls: calls.length, refresh }));
@@ -948,12 +975,15 @@ _NODE = shutil.which("node")
 
 
 @pytest.mark.skipif(_NODE is None, reason="node не установлен — харнесс T-U3-15")
-@pytest.mark.parametrize("scenario", ["visible", "errors", "terminal"])
+@pytest.mark.parametrize("scenario", ["visible", "errors", "terminal", "restart"])
 def test_u3_15_autorefresh_harness(tmp_path: Path, scenario: str) -> None:
     """T-U3-15: автообновление — пауза при document.hidden (один немедленный
     опрос при возврате), экспоненциальный backoff до ui.refresh_seconds_max
     при ошибке API (сообщение verbatim), остановка на терминальном статусе.
-    Проверка — по последовательности запросов к API (3.11.47-50)."""
+    R4 «restart»: остановленный (все задания терминальные) список
+    пробуждает jobsRefresh после создания (мастер → POST /api/jobs) —
+    иначе новая строка не появляется без перезагрузки страницы (дефект
+    T6-замера). Проверка — по последовательности запросов к API."""
     assert _NODE is not None, "node не установлен"
     requests, final = _run_harness(_NODE, tmp_path, scenario)
     times = [int(c["t"]) for c in requests]
@@ -977,5 +1007,19 @@ def test_u3_15_autorefresh_harness(tmp_path: Path, scenario: str) -> None:
             assert abs(gaps[4] - 800) <= 300, gaps
         # видимое сообщение об ошибке verbatim
         assert "boom" in final["refresh"], final["refresh"]
-    else:  # terminal
+    elif scenario == "terminal":
         assert len(times) == 1, f"запросы после терминального статуса: {times}"
+    else:  # restart
+        posts = [c for c in requests if c.get("m") == "POST"]
+        gets = [
+            c
+            for c in requests
+            if c.get("m") != "POST" and c["url"].startswith("/api/jobs")
+        ]
+        assert len(posts) == 1, f"POST /api/jobs не отправлен: {requests}"
+        # до submit — ровно один фетч (стоп на терминальном, R2 §10)
+        assert len([c for c in gets if int(c["t"]) < 450]) == 1, (
+            f"первый фетч/стоп сломан: {[int(c['t']) for c in gets]}"
+        )
+        # после создания — полный рефетч списка (jobsRefresh пробудил)
+        assert len(gets) == 2, f"список не обновился после создания: {requests}"

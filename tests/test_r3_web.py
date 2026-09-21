@@ -444,10 +444,11 @@ def test_r3_10_sheet_pages(u1_env: U1Env) -> None:
     page = client.get(f"/jobs?sheet=create&retry_of={job_id}")
     assert page.status_code == 200, page.text
     doc = lhtml.fromstring(page.text)
-    selected = doc.xpath(
-        '//form[@id="u3-create-form"]//select[@name="book"]//option[@selected]'
+    # R4: книга — строка-радио (мастер §12), не select
+    checked = doc.xpath(
+        '//form[@id="u3-create-form"]//input[@name="book" and @checked]'
     )
-    assert len(selected) == 1 and selected[0].get("value") == book
+    assert len(checked) == 1 and checked[0].get("value") == book
 
     _set_status(profile, job_id, JobStatus.CANCELLED)
     page = client.get(f"/jobs?sheet=export&job={job_id}")

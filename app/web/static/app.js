@@ -737,6 +737,9 @@ function startJobsList() {
  };
  /* full refetch (after purge / after a sheet that mutates the list) */
  jobsRefresh = () => {
+  /* R4: wake the list if stop() halted it (all jobs terminal), else a
+     newly created row never appears without a page reload (T6) */
+  stopped = false;
   lastRev = 0;
   backoffMs = RFR();
   tick();
@@ -1596,18 +1599,102 @@ function bindBulkDelete() {
   runDry();
  };
 }
-/* R3 §12: create — form intercept (no-JS: POST /jobs/new; JS: API). */
+/* R4 12: create — wizard (progressive enhancement of ONE form: no-JS —
+   radio + selects -> POST /jobs/new 303; JS — behaviors below). After
+   launch: sheet closed, new row — scroll + 1.5 s highlight (TZ 12). */
+function highlightNewJob(id) {
+ if (!id) return;
+ const t0 = Date.now();
+ const tick = () => {
+  const node = document.querySelector("#u1-jobs article[data-id='" + enc(id) + "']");
+  if (node) {
+   const slide = node.querySelector(".u3-row-slide") || node;
+   node.scrollIntoView({ block: "center" });
+   slide.classList.add("u3-row-new");
+   setTimeout(() => slide.classList.remove("u3-row-new"), 1500);
+   return;
+  }
+  if (Date.now() - t0 < 5000) setTimeout(tick, 200);
+ };
+ tick();
+}
 function bindCreateForm() {
  const form = $("u3-create-form");
  if (!form) return;
  const msg = $("u3-create-msg");
+ const list = $("u3-wiz-book-list");
+ const pick = $("u3-wiz-book-pick");
+ const pickName = $("u3-wiz-pick-name");
+ const pickSub = $("u3-wiz-pick-sub");
+ const search = $("u3-wiz-book-q");
+ const langSrc = $("u3-lang-src");
+ const cefrLabel = $("u3-cefr-label");
+ const mats = $("u3-materials-value");
+ const volHint = $("u3-vol-hint");
+ const cefrLabels = JSON.parse(form.dataset.cefrLabels || "{}");
+ const volHints = JSON.parse(form.dataset.volHints || "{}");
+ const radios = Array.from(form.querySelectorAll('input[name="book"]'));
+ const targetSel = form.target_language;
+ const levelSel = form.learning_level;
+ const cefrSel = form.learning_cefr;
+ const selRadio = () => radios.find((r) => r.checked) || null;
+ const applyBook = (r) => {
+  if (!r) return;
+  pickName.textContent = r.dataset.title || r.value;
+  pickSub.textContent = r.dataset.detected || r.dataset.dc || NS;
+  list.hidden = true;
+  pick.hidden = false;
+  if (langSrc) langSrc.textContent = r.dataset.detected || r.dataset.dc || "—";
+ };
+ const showList = () => {
+  pick.hidden = true;
+  list.hidden = false;
+  if (search) search.focus();
+ };
+ const changeBtn = $("u3-wiz-book-change");
+ if (changeBtn)
+  changeBtn.addEventListener("click", (e) => {
+   e.preventDefault();
+   showList();
+  });
+ radios.forEach((r) => r.addEventListener("change", () => applyBook(r)));
+ if (search)
+  search.addEventListener("input", () => {
+   const q = search.value.trim().toLowerCase();
+   radios.forEach((r) => {
+    const row = r.closest(".u3-wiz-row");
+    if (!row) return;
+    const hay = (r.dataset.title + " " + r.value).toLowerCase();
+    row.hidden = q !== "" && !hay.includes(q);
+   });
+  });
+ /* live summary: CEFR label (single point cefr_labels), materials and
+    volume hint (recomputed on target/level change) */
+ const refreshSummary = () => {
+  if (cefrLabel && targetSel) cefrLabel.textContent = cefrLabels[targetSel.value] || "";
+  if (mats && levelSel)
+   mats.textContent = levelSel.value ? S.create_materials_cards : S.create_materials_translation;
+  if (volHint && levelSel)
+   volHint.textContent = volHints[levelSel.value] || volHints[""] || "";
+ };
+ if (targetSel) targetSel.addEventListener("change", refreshSummary);
+ if (levelSel) levelSel.addEventListener("change", refreshSummary);
+ refreshSummary();
+ const pre = selRadio();
+ if (pre) applyBook(pre);
  form.addEventListener("submit", (e) => {
   e.preventDefault();
-  const fd = new FormData(form);
+  const r = selRadio();
+  if (!r) {
+   msg.textContent = S.create_book_none;
+   return;
+  }
   const body = {
-   book: String(fd.get("book") || ""),
-   target_language: String(fd.get("target_language") || ""),
-   mode: String(fd.get("mode") || "bilingual"),
+   book: r.value,
+   target_language: targetSel ? targetSel.value : "",
+   mode: form.mode ? form.mode.value : "bilingual",
+   learning_level: levelSel ? levelSel.value : "",
+   learning_cefr: cefrSel ? cefrSel.value : "",
   };
   const run = () => {
    msg.textContent = S.common_sending;
@@ -1616,6 +1703,7 @@ function bindCreateForm() {
      const d = $("u3-sheet-create");
      if (d && d.open) d.close();
      if (jobsRefresh) jobsRefresh();
+     highlightNewJob(created.id);
     })
     .catch((err) => failWithRetry(msg, apiErr(err), run));
   };

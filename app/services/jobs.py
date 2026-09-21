@@ -26,6 +26,7 @@ from app.core.ids import new_job_id
 from app.domain.job import LEARNING_LEVELS, Job, JobStatus
 from app.epub.reader import read_dc_language
 from app.languages.cefr import CEFR_LEVELS
+from app.languages.registry import load_registry
 from app.languages.resolver import PairResolver, PairStatus
 from app.storage.jobs_repo import JobRepository
 
@@ -58,6 +59,75 @@ def config_hash(settings: Settings, target_language: str, mode: str) -> str:
     }
     blob = json.dumps(payload, sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+#: Серия R §12: чипы — ключи JSON-пары «f» → поля задания (базовая линия).
+CHIP_FIELDS: dict[str, str] = {
+    "target": "target_language",
+    "mode": "mode",
+    "level": "learning_level",
+    "cefr": "learning_cefr",
+}
+
+
+def create_baseline(
+    repo: JobRepository, settings: Settings
+) -> tuple[dict[str, str | None], bool]:
+    """Серия R §12: базовая линия создания (единая точка для формы и чипов).
+
+    Есть задания — самое свежее (created_at DESC): умолчания «как в прошлый
+    раз»; нет — системные (target «ru» или первый реестра, mode bilingual,
+    уровень/CEFR не заданы). Возврат — ``(параметры, от_последнего_задания)``.
+    Считается ДО вставки нового задания (иначе базой стало бы оно само)."""
+    jobs = repo.list_jobs(1, 0, sort="created_at", direction="desc")
+    if jobs:
+        last = jobs[0]
+        return (
+            {
+                "target_language": last.target_language,
+                "mode": last.mode,
+                "learning_level": last.learning_level,
+                "learning_cefr": last.learning_cefr,
+            },
+            True,
+        )
+    codes = sorted(load_registry(settings.languages_root))
+    default_target = "ru" if "ru" in codes else (codes[0] if codes else "ru")
+    return (
+        {
+            "target_language": default_target,
+            "mode": "bilingual",
+            "learning_level": None,
+            "learning_cefr": None,
+        },
+        False,
+    )
+
+
+def compute_param_chips(
+    baseline: dict[str, str | None],
+    target_language: str,
+    mode: str,
+    learning_level: str | None,
+    learning_cefr: str | None,
+) -> str:
+    """Серия R §12: чипы «параметры, отличающиеся от умолчания» (ТЗ §12).
+
+    Разница против базовой линии по четырём полям формы; '' — всё по
+    умолчаниям. None значения (уровень/CEFR сняты) — тоже разница, если
+    в базовой линии было значение (честность: видно и «убрали»)."""
+    final = {
+        "target": target_language,
+        "mode": mode,
+        "level": learning_level,
+        "cefr": learning_cefr,
+    }
+    chips = [
+        {"f": field, "v": value}
+        for field, value in final.items()
+        if value != baseline.get(CHIP_FIELDS[field])
+    ]
+    return json.dumps(chips, ensure_ascii=False) if chips else ""
 
 
 def create_job(
@@ -111,6 +181,10 @@ def create_job(
                 f"(L0.2); не хватает: {'; '.join(report.missing)}"
             )
     now = time.time()
+    # Серия R §12: базовая линия ДО вставки (последнее существующее задание
+    # или системные умолчания) — чипы фиксируются при создании и не
+    # пересчитываются (единая точка, решение R4).
+    baseline, _ = create_baseline(repo, settings)
     job = Job(
         id=new_job_id(),
         status=JobStatus.CREATED,
@@ -125,6 +199,9 @@ def create_job(
         prompt_version=PROMPT_VERSION,
         learning_level=learning_level,
         learning_cefr=learning_cefr,
+        param_chips=compute_param_chips(
+            baseline, target_language, mode, learning_level, learning_cefr
+        ),
     )
     repo.create(job)
     return job

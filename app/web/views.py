@@ -26,9 +26,10 @@ from pathlib import Path
 from typing import Any
 
 from app.core.config import PROFILE_NAMES, Settings
-from app.domain.job import TERMINAL_STATES, WORKING_STATES, Job, JobStatus
-from app.languages.cefr import language_cefr_label
+from app.domain.job import LEARNING_LEVELS, TERMINAL_STATES, WORKING_STATES, Job, JobStatus
+from app.languages.cefr import CEFR_ORDER, language_cefr_label
 from app.languages.registry import load_registry
+from app.learning import SUBSTAGE_LEVELS
 from app.llm.prompts import (
     LEVEL_GENERIC,
     LEVEL_PAIR,
@@ -37,6 +38,7 @@ from app.llm.prompts import (
     PromptResolver,
 )
 from app.llm.tasks import all_tasks
+from app.services.jobs import create_baseline
 from app.services.languages import matrix_report
 from app.storage.jobs_repo import JobRepository
 from app.web.strings import UI_STRINGS
@@ -376,6 +378,9 @@ def job_facts(
         "mode": job.mode,
         "learning_level": job.learning_level,
         "learning_cefr": job.learning_cefr,
+        # Серия R §12: чипы «параметры, отличающиеся от умолчания»
+        # (считаны в create_job против базовой линии; '' — пусто).
+        "param_chips": _param_chips(job.param_chips),
         "priority": job.priority,
         "progress": job.progress,
         "progress_display": progress["display"],
@@ -423,6 +428,57 @@ def job_facts(
             "errors": _tail(jdir / "errors.log", log_lines),
             "quality": _tail(jdir / "quality.log", log_lines),
         },
+    }
+
+
+def _param_chips(raw: str) -> list[dict[str, str | None]]:
+    """Серия R §12: чипы задания из JSON-колонки ('' — пустой список).
+
+    Формат фиксирует create_job: ``[{"f": "mode", "v": "translation"}, …]``;
+    испорченное значение не роняет экран задания (пусто, как '' — данные
+    чипов производные, не инвариант)."""
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    return data if isinstance(data, list) else []
+
+
+def create_defaults(repo: JobRepository, settings: Settings) -> dict[str, Any]:
+    """Серия R §12 (R4): умолчания формы создания — сервером, в разметку.
+
+    Базовая линия — единая точка ``services.jobs.create_baseline`` (последнее
+    задание; при отсутствии — системные умолчания): та же, что и чипы
+    (create_job). CEFR-подпись по языкам — единая точка
+    ``languages.cefr.language_cefr_label`` (ТЗ: не сокращается, не в тултип).
+    Подсказки объёма материалов — по уровням из ``learning.SUBSTAGE_LEVELS``
+    (единственный источник «уровень → подстадии»; строки — strings.py)."""
+    baseline, from_last = create_baseline(repo, settings)
+    registry = load_registry(settings.languages_root)
+    cefr_labels = {
+        code: language_cefr_label(pack) for code, pack in sorted(registry.items())
+    }
+    level_hints = {
+        level: ", ".join(
+            _S[f"substage_{stage}"]
+            for stage, levels in SUBSTAGE_LEVELS.items()
+            if level in levels
+        )
+        for level in LEARNING_LEVELS
+    }
+    level_hints[""] = _S["create_level_none_hint"]
+    return {
+        "target": baseline["target_language"],
+        "mode": baseline["mode"],
+        "learning_level": baseline["learning_level"],
+        "learning_cefr": baseline["learning_cefr"],
+        "from_last_job": from_last,
+        "cefr_labels": cefr_labels,
+        "level_hints": level_hints,
+        "cefr_levels": list(CEFR_ORDER),
+        "learning_levels": list(LEARNING_LEVELS),
     }
 
 
