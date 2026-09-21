@@ -36,9 +36,12 @@
   </noscript>
 </div>
 
-<form id="u1-upload" class="u3-panel">
+{# Серия R T15: no-JS-загрузка — POST multipart в /api/books (CSRF —
+   поле u3_csrf, middleware читает и из multipart); JS — перехват
+   submit (bindUpload, fetch). #}
+<form id="u1-upload" class="u3-panel" method="post" action="/api/books" enctype="multipart/form-data">
   <label>{{ s["books_upload_label"] }}:
-    <input type="file" id="u1-upload-file" accept=".epub">
+    <input type="file" id="u1-upload-file" name="file" accept=".epub" required>
   </label>
   <input type="hidden" name="u3_csrf" value="{{ csrf }}">
   <button type="submit">{{ s["books_upload_btn"] }}</button>

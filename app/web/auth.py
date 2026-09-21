@@ -35,8 +35,11 @@ import base64
 import hashlib
 import hmac
 import json
+import urllib.parse
+from collections.abc import AsyncGenerator
 
 from fastapi import Request
+from starlette.formparsers import MultiPartException, MultiPartParser
 from starlette.responses import JSONResponse
 
 from app.core.config import Settings
@@ -119,22 +122,47 @@ def csrf_token(settings: Settings, username: str) -> str:
     return hmac.new(secret.encode("utf-8"), message, hashlib.sha256).hexdigest()[:32]
 
 
+def _csrf_urlencoded(body: bytes) -> str:
+    """Токен из urlencoded-тела (no-JS-формы страниц: /jobs/new, confirm,
+    строки-формы, форма удаления задания (POST-алиас DELETE))."""
+    fields = urllib.parse.parse_qsl(body.decode("utf-8"), keep_blank_values=True)
+    return next((value for key, value in fields if key == CSRF_FORM_FIELD), "")
+
+
+async def _csrf_multipart(request: Request) -> str:
+    """Токен из multipart-тела (no-JS-форма загрузки книги)."""
+    body = await request.body()
+
+    async def _chunks() -> AsyncGenerator[bytes, None]:
+        yield body
+
+    form = await MultiPartParser(request.headers, _chunks()).parse()
+    return str(form.get(CSRF_FORM_FIELD, ""))
+
+
 async def _request_csrf(request: Request) -> str:
-    """Токен из запроса: заголовок → поле формы → JSON-поле."""
+    """Токен из запроса: заголовок → поле формы (urlencoded И multipart —
+    серия R T15: no-JS-формы) → JSON-поле.
+
+    Тело читается через ``request.body()`` (а НЕ ``request.form()``):
+    BaseHTTPMiddleware реплеит вниз только кэш ``_body``; ``form()``
+    потребляет stream, и эндпоинт получает пустое тело (422 на
+    Form/UploadFile-параметрах)."""
     token = request.headers.get(CSRF_HEADER, "")
     if token:
         return token
     content_type = request.headers.get("content-type", "")
     try:
         if "application/x-www-form-urlencoded" in content_type:
-            form = await request.form()
-            return str(form.get(CSRF_FORM_FIELD, ""))
+            return _csrf_urlencoded(await request.body())
+        if "multipart/form-data" in content_type:
+            return await _csrf_multipart(request)
         if "application/json" in content_type:
             data = await request.json()
             if isinstance(data, dict):
                 return str(data.get(CSRF_JSON_FIELD, ""))
-    except (UnicodeDecodeError, json.JSONDecodeError, ValueError):
-        return ""
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError, MultiPartException):
+        pass
     return ""
 
 

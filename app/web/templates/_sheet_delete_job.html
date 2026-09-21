@@ -1,0 +1,22 @@
+{# Тело листа «Удалить задание» (одно; серия R §11): имя книги и кнопка
+   «Удалить» (без JS — POST-форма с u3_csrf: браузер не умеет шлать DELETE
+   из формы — formmethod=DELETE невалиден и уходит GET'ом; API принимает
+   POST как алиас DELETE; с JS — кнопка, fetch DELETE, id — контракт app.js).
+   Рендерится в <dialog id=u3-sheet-delete-job> (JS) ИЛИ в no-JS-секции
+   (?sheet=delete) — не одновременно (id не дублируются).
+   Переменные: job_id, book_name, sheet ("delete" — no-JS-вариант), csrf, s. #}
+<p class="u3-sheet-del-line">{{ s["job_delete_sheet_line"].format(book=book_name) }}</p>
+<p class="hint">{{ s["job_delete_sheet_irreversible"] }}</p>
+{% if sheet == "delete" %}
+<form method="post" action="/api/jobs/{{ job_id }}">
+  <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+  <button type="submit" class="u3-btn u3-danger u3-sheet-action">{{ s["job_delete_sheet_btn"] }}</button>
+  <a class="u3-btn u3-sheet-action" href="/jobs/{{ job_id }}">{{ s["job_delete_sheet_cancel"] }}</a>
+</form>
+{% else %}
+<form class="u3-sheet-form" id="u3-del-job-form" data-job="{{ job_id }}">
+  <button type="button" id="u3-del-job-confirm" class="u3-btn u3-danger u3-sheet-action">{{ s["job_delete_sheet_btn"] }}</button>
+  <button type="button" id="u3-del-job-cancel" class="u3-btn u3-sheet-action">{{ s["job_delete_sheet_cancel"] }}</button>
+  <span id="u3-del-job-msg" role="status"></span>
+</form>
+{% endif %}

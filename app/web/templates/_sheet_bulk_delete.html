@@ -1,0 +1,11 @@
+{# Тело листа «Удаление заданий» (массовое; серия R §11, JS-режим
+   выделения): шаг 1 — dry-run (POST /api/jobs/bulk без токена: перечень
+   job_id, число, объём, confirm_token), шаг 2 — подтверждение с токеном
+   (удаляются ровно перечисленные). То же, что purge (E2: полный перечень
+   + «необратимо»). No-JS-варианта нет: режим выделения — JS.
+   id — контракт app.js (bindBulkDelete). #}
+<p id="u3-bulk-del-msg" role="status"></p>
+<form class="u3-sheet-form" id="u3-bulk-del-form">
+  <button type="button" id="u3-bulk-del-confirm" disabled class="u3-btn u3-danger u3-sheet-action">{{ s["jobs_del_confirm_btn"] }}</button>
+  <button type="button" id="u3-bulk-del-cancel" class="u3-btn u3-sheet-action">{{ s["jobs_del_cancel_btn"] }}</button>
+</form>

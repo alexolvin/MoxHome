@@ -141,6 +141,9 @@ class Job:
     #: Режим задания (E5.2): "bilingual" (APPEND_BLOCK по умолчанию) | "translation" (REPLACE).
     mode: str = "bilingual"
     priority: int = 0
+    #: Серия R §11/§15: ручное место в очереди («Вперёд очереди»);
+    #: воркер сортирует кандидатов по queue_rank DESC, created_at ASC.
+    queue_rank: int = 0
     progress: float = 0.0
     created_at: float = 0.0
     updated_at: float = 0.0

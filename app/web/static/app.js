@@ -129,12 +129,59 @@ function jobMode(j) {
 function jobPair(j) {
  return esc(j.source_language || NS) + " → " + esc(j.target_language);
 }
-function alignmentValue(coverage) {
- return coverage != null ? (coverage * 100).toFixed(1) + "%" : NS;
+/* R3 §11: terminal statuses — the swipe button set
+   (TRANSITIONS: no control for terminal jobs, delete — yes). */
+const TERMINAL_JOB_STATUSES = new Set([
+ "COMPLETED",
+ "COMPLETED_WITH_WARNINGS",
+ "FAILED",
+ "CANCELLED",
+]);
+/* R3 §11: row action zone — the primary action per status (§11 table).
+   <form> with hidden u3_csrf: no-JS — direct submit (confirm — page
+   route), JS — intercepted. Markup identical to _job_row.html. */
+function rowActionHtml(j) {
+ const st = j.status;
+ const id = esc(j.id);
+ const csrf = "<input type='hidden' name='u3_csrf' value='" + esc(csrfToken()) + "'>";
+ const F = (action, url, label, glyph) =>
+  "<form class='u3-row-form' method='post' action='" + url + "'>" + csrf +
+  "<button type='submit' class='u3-row-btn' data-row-action='" + action + "' aria-label='" + esc(label) +
+  "'><span aria-hidden='true'>" + glyph + "</span></button></form>";
+ if (st === "NEEDS_CONFIRMATION") return F("confirm", "/jobs/" + id + "/confirm", S.job_row_confirm, "&#9654;");
+ if (st === "CREATED" || j.status_group === "run")
+  return F("pause", "/api/jobs/" + id + "/pause", st === "CREATED" ? S.job_row_postpone : S.job_row_pause, "&#9208;");
+ if (st === "PAUSED" || st === "INTERRUPTED") return F("resume", "/api/jobs/" + id + "/resume", S.job_row_resume, "&#9654;");
+ if (st === "COMPLETED" || st === "COMPLETED_WITH_WARNINGS")
+  return (
+   "<a class='u3-row-btn' href='/jobs?sheet=export&job=" + id + "' data-sheet-open='u3-sheet-export' data-job='" + id +
+   "' data-book-name='" + esc(j.book_name) + "' aria-label='" + esc(S.job_row_export) +
+   "'><span aria-hidden='true'>&#8681;</span></a>"
+  );
+ return (
+  "<a class='u3-row-btn' data-row-retry='" + id + "' href='/jobs?sheet=create&retry_of=" + id +
+  "' aria-label='" + esc(S.job_row_retry) + "'><span aria-hidden='true'>&#8635;</span></a>"
+ );
 }
-/* R2 §10: job list row (builder #2; #1 — _job_row.html, same markup).
-   Three text lines + 44px action zone (buttons — R3); strip at the
-   bottom edge; id not printed. */
+/* R3 §11: swipe panel (JS only, ≤4 × 56 px) — set per TRANSITIONS:
+   a disallowed action is not rendered. */
+function rowSwipeHtml(j) {
+ const st = j.status;
+ const id = esc(j.id);
+ const B = (swap, cls, extra, label) =>
+  "<button type='button' class='u3-swipe-btn" + (cls ? " " + cls : "") + "' data-swap='" + swap +
+  "' data-job='" + id + "'" + (extra || "") + ">" + esc(label) + "</button>";
+ let h = "<span class='u3-row-swipe' aria-hidden='true'>";
+ if (st === "CREATED" || st === "NEEDS_CONFIRMATION" || j.status_group === "run") h += B("pause", "", "", S.job_swipe_pause);
+ if (!TERMINAL_JOB_STATUSES.has(st)) h += B("cancel", "u3-danger", "", S.job_swipe_cancel);
+ h += "<a class='u3-swipe-btn' href='/jobs/" + id + "#logs'>" + esc(S.job_swipe_logs) + "</a>";
+ if (TERMINAL_JOB_STATUSES.has(st)) h += B("delete", "u3-danger", " data-book-name='" + esc(j.book_name) + "'", S.job_swipe_delete);
+ if (st === "CREATED") h += B("queue", "", "", S.job_swipe_queue);
+ return h + "</span>";
+}
+/* R3 §10/§11: job list row (builder #2; #1 — _job_row.html, same
+   markup). Three text lines + 44px action zone + swipe panel; strip at
+   the bottom edge; id not printed. */
 const GROUP_KEYS = ["now", "today", "earlier"];
 const GROUP_LABELS = { now: "jobs_group_now", today: "jobs_group_today", earlier: "jobs_group_earlier" };
 function jobLine2(j) {
@@ -164,13 +211,16 @@ function jobRowHtml(j, group) {
    ? "<span class='u3-row-strip is-ind' aria-hidden='true'></span>"
    : "<span class='u3-row-strip' aria-hidden='true'" + (j.progress_pct > 0 ? " style='width: " + j.progress_pct + "%'" : "") + "></span>";
  return (
-  "<article class='u3-row u3-row-job status-" + esc(j.status_group) + "' data-id='" + esc(j.id) + "' data-group='" + esc(group) + "' data-status='" + esc(j.status) + "' data-status-group='" + esc(j.status_group) + "' data-rev='" + esc(j.updated_at) + "'>" +
+  "<article class='u3-row u3-row-job status-" + esc(j.status_group) + "' data-id='" + esc(j.id) + "' data-group='" + esc(group) + "' data-status='" + esc(j.status) + "' data-status-group='" + esc(j.status_group) + "' data-rev='" + esc(j.updated_at) + "' data-book='" + esc(j.book_name) + "' data-queue-rank='" + esc(j.queue_rank) + "'>" +
+  "<div class='u3-row-slide'>" +
   "<a class='u3-row-body' href='/jobs/" + esc(j.id) + "'>" +
   "<span class='u3-row-line1' title='" + esc(j.book_name) + "'>" + esc(j.book_name) + "</span>" +
   "<span class='u3-row-line2'>" + esc(jobLine2(j)) + "</span>" +
   "<span class='u3-row-line3'>" + jobLine3(j) + "</span>" +
   "</a>" +
-  "<span class='u3-row-action' aria-hidden='true'></span>" +
+  "<span class='u3-row-action'>" + rowActionHtml(j) + "</span>" +
+  "</div>" +
+  rowSwipeHtml(j) +
   strip +
   "</article>"
  );
@@ -433,6 +483,7 @@ const INACTIVE_JOB_STATUSES = new Set([
 ]);
 let jobsListRetry = null;
 let jobsRefresh = null;
+let jobsGetRow = null;
 function startJobsList() {
  /* R2 §10: boot fetch (full) + delta ?since=<rev>; partial updates —
     status/percent/time/group per row, no full re-render; pill + exact
@@ -453,6 +504,8 @@ function startJobsList() {
  const GROUP_OF_PILL = { active: ["run"], waiting: ["wait"], done: ["ok", "warn"], errors: ["err"] };
  const allowGroups = GROUP_OF_PILL[group] || null;
  const rowsById = new Map();
+ const nodesById = new Map();
+ jobsGetRow = (id) => rowsById.get(id);
  const rowsEls = {};
  const secEls = {};
  let lastRev = 0;
@@ -473,8 +526,16 @@ function startJobsList() {
   return true;
  };
  const filtered = () => statusSet.length > 0 || group !== "all";
- const sorted = (list) =>
-  list.slice().sort((a, b) => (sortDir === "asc" ? a[sortKey] - b[sortKey] : b[sortKey] - a[sortKey]));
+ const sorted = (list) => {
+  /* R3 §11: "waiting" — queue order (queue_rank DESC, created_at ASC,
+     id ASC — as the worker); other groups — the page sort. */
+  if (group === "waiting") {
+   return list
+    .slice()
+    .sort((a, b) => (b.queue_rank || 0) - (a.queue_rank || 0) || a.created_at - b.created_at || (a.id < b.id ? -1 : 1));
+  }
+  return list.slice().sort((a, b) => (sortDir === "asc" ? a[sortKey] - b[sortKey] : b[sortKey] - a[sortKey]));
+ };
  const touchSection = (gname) => {
   if (secEls[gname]) secEls[gname].classList.toggle("is-empty", !rowsEls[gname].children.length);
  };
@@ -508,11 +569,15 @@ function startJobsList() {
    ? stateHtml("empty-filter", S.state_not_found, "<a class='u3-btn u3-primary' href='/jobs'>" + esc(S.state_reset_filter) + "</a>")
    : stateHtml("empty", S.jobs_empty_line, "<a class='u3-btn u3-primary' href='/books'>" + esc(S.jobs_empty_btn) + "</a>");
   rowsById.clear();
+  nodesById.clear();
+  if (swipeClose) swipeClose();
  };
  const showError = (e) => {
   body.setAttribute("data-state", "error");
   body.innerHTML = stateHtml("error", fmt(S.common_err, { msg: e.message }), "<button type='button' class='u3-btn u3-primary' data-u3-jobs-retry>" + esc(S.common_retry) + "</button>");
   rowsById.clear();
+  nodesById.clear();
+  if (swipeClose) swipeClose();
  };
  const announceChange = (j) => {
   if (announceEl)
@@ -522,7 +587,7 @@ function startJobsList() {
   const list = [...rowsEls[gname].children]
    .map((n) => rowsById.get(n.dataset.id))
    .filter(Boolean);
-  for (const j of sorted(list)) rowsEls[gname].appendChild(j);
+  for (const j of sorted(list)) rowsEls[gname].appendChild(nodesById.get(j.id));
  };
  const applyFull = (rows) => {
   hasData = true;
@@ -541,6 +606,7 @@ function startJobsList() {
    const node = fromHtml(jobRowHtml(j, j.group));
    rowsEls[j.group].appendChild(node);
    rowsById.set(j.id, j);
+   nodesById.set(j.id, node);
   }
   for (const gname of GROUP_KEYS) touchSection(gname);
  };
@@ -549,6 +615,8 @@ function startJobsList() {
   node.dataset.status = j.status;
   node.dataset.statusGroup = j.status_group;
   node.dataset.rev = String(j.updated_at);
+  node.dataset.book = j.book_name;
+  node.dataset.queueRank = String(j.queue_rank);
   const l1 = node.querySelector(".u3-row-line1");
   if (l1) {
    l1.textContent = j.book_name;
@@ -558,31 +626,42 @@ function startJobsList() {
   if (l2) l2.textContent = jobLine2(j);
   const l3 = node.querySelector(".u3-row-line3");
   if (l3) l3.innerHTML = jobLine3(j);
+  /* R3: action zone and swipe — from status; the open panel is closed
+     (buttons may have changed) */
+  const action = node.querySelector(".u3-row-action");
+  if (action) action.innerHTML = rowActionHtml(j);
+  const oldSwipe = node.querySelector(".u3-row-swipe");
+  if (oldSwipe) oldSwipe.remove();
   const strip = node.querySelector(".u3-row-strip");
   if (strip) {
+   strip.insertAdjacentHTML("beforebegin", rowSwipeHtml(j));
    strip.classList.toggle("is-ind", j.progress_pct == null);
    strip.style.width = j.progress_pct == null || j.progress_pct <= 0 ? "" : j.progress_pct + "%";
   }
+  if (swipeClose) swipeClose();
  };
  const applyDelta = (rows) => {
   for (const j of rows) {
    if (j.updated_at > lastRev) lastRev = j.updated_at;
    if (isInactive(j.status)) activeIds.delete(j.id);
    else activeIds.add(j.id);
-   const node = rowsById.get(j.id);
+   const node = nodesById.get(j.id);
    const was = prevStatus.get(j.id);
    const changed = was !== undefined && was !== j.status;
    if (!node) {
     if (matches(j)) {
      if (body.getAttribute("data-state") !== "ok") ensureSections();
-     rowsEls[j.group].appendChild(fromHtml(jobRowHtml(j, j.group)));
+     const nn = fromHtml(jobRowHtml(j, j.group));
+     rowsEls[j.group].appendChild(nn);
      rowsById.set(j.id, j);
+     nodesById.set(j.id, nn);
      touchSection(j.group);
     }
    } else if (!matches(j)) {
     const from = node.dataset.group;
     node.remove();
     rowsById.delete(j.id);
+    nodesById.delete(j.id);
     touchSection(from);
     if (!rowsById.size) showEmpty();
     if (changed) announceChange(j);
@@ -909,27 +988,28 @@ function bindJobActions() {
    run();
   });
  }
- for (const [id, action] of [
-  ["u1-pause", "pause"],
-  ["u1-resume", "resume"],
-  ["u1-cancel", "cancel"],
- ]) {
-  const btn = $(id);
+ /* R3 T15: .u3-inline-form forms (no-JS — direct, JS — intercepted);
+    cancel — a 5 s toast with "Undo", the API call after 5 s. */
+ for (const form of document.querySelectorAll(".u3-inline-form")) {
+  const action = (form.getAttribute("action") || "").split("/").pop();
+  if (action !== "pause" && action !== "resume" && action !== "cancel") continue;
+  const btn = form.querySelector("button[data-job]");
   if (!btn) continue;
-  const run = async () => {
-   btn.disabled = true;
-   try {
-    await fetchJSON(
-     "/api/jobs/" + enc(btn.dataset.job) + "/" + action,
-     { method: "POST" }
-    );
-    window.location.reload();
-   } catch (e) {
-    btn.disabled = false;
-    failWithRetry(jobMsg, cmdFail(e), run);
+  const id = btn.dataset.job;
+  form.addEventListener("submit", (e) => {
+   e.preventDefault();
+   if (action === "cancel") {
+    requestCancel(id, () => window.location.reload());
+    return;
    }
-  };
-  btn.addEventListener("click", run);
+   btn.disabled = true;
+   fetchJSON("/api/jobs/" + enc(id) + "/" + action, { method: "POST" })
+    .then(() => window.location.reload())
+    .catch((err) => {
+     btn.disabled = false;
+     failWithRetry(jobMsg, cmdFail(err), () => form.requestSubmit());
+    });
+  });
  }
  const clr = $("u3-clear-logs");
  if (clr) {
@@ -952,24 +1032,7 @@ function bindJobActions() {
   };
   clr.addEventListener("click", run);
  }
- const del = $("u3-delete-job");
- if (del) {
-  const run = async () => {
-   const job = del.dataset.job;
-   if (!confirm(fmt(S.job_delete_confirm, { id: job }))) return;
-   del.disabled = true;
-   try {
-    /* E8: DELETE with no in-flight polls */
-    if (jobPolling) await jobPolling.quiesce();
-    await fetchJSON("/api/jobs/" + encodeURIComponent(job), { method: "DELETE" });
-    window.location.href = "/jobs";
-   } catch (e) {
-    del.disabled = false;
-    failWithRetry(jobMsg, cmdFail(e), run);
-   }
-  };
-  del.addEventListener("click", run);
- }
+ /* R3 §11: delete — sheet (initSheets + bindDeleteJobSheet, E8) */
 }
 function bindBookDeletes() {
  const container = $("u1-books");
@@ -1071,6 +1134,528 @@ function bindPurge() {
   }
  };
  conf.addEventListener("click", runConfirm);
+}
+function toast(msg, opts) {
+ const zone = $("u3-toasts");
+ if (!zone) return null;
+ opts = opts || {};
+ const el = $ce("div");
+ el.className = "u3-toast";
+ const span = $ce("span");
+ span.textContent = msg;
+ el.appendChild(span);
+ let removed = false;
+ const remove = () => {
+  if (!removed) {
+   removed = true;
+   el.remove();
+  }
+ };
+ if (opts.onUndo) {
+  const b = $ce("button");
+  b.type = "button";
+  b.className = "u3-toast-undo";
+  b.textContent = S.toast_undo;
+  b.addEventListener("click", () => {
+   opts.onUndo();
+   remove();
+  });
+  el.appendChild(b);
+ }
+ zone.appendChild(el);
+ setTimeout(remove, opts.duration || 5000);
+ return { el, remove };
+}
+/* R3 §11: cancel — a 5 s toast with "Undo"; the API call after 5 s. */
+function requestCancel(jobId, onDone) {
+ let timer = null;
+ toast(S.toast_cancelled, {
+  duration: 5000,
+  onUndo: () => {
+   if (timer) clearTimeout(timer);
+  },
+ });
+ timer = setTimeout(() => {
+  fetchJSON("/api/jobs/" + enc(jobId) + "/cancel", { method: "POST" })
+   .then(() => onDone && onDone())
+   .catch((e) => toast(apiErr(e)));
+ }, 5000);
+}
+/* R3 §11: row actions — the primary one (form intercept) and "Retry"
+   (a new job, same parameters; the id is not reused). */
+function initRowActions() {
+ const list = $("u1-jobs");
+ if (!list) return;
+ list.addEventListener("submit", (e) => {
+  const form = e.target;
+  if (!form || !form.classList || !form.classList.contains("u3-row-form")) return;
+  e.preventDefault();
+  const btn = form.querySelector("[data-row-action]");
+  if (!btn) return;
+  const row = form.closest(".u3-row-job");
+  const id = row ? row.dataset.id : "";
+  const action = btn.dataset.rowAction;
+  btn.disabled = true;
+  fetchJSON("/api/jobs/" + enc(id) + "/" + action, {
+   method: "POST",
+   headers: action === "confirm" ? JH : undefined,
+   body: action === "confirm" ? "{}" : undefined,
+  })
+   .then(() => {
+    if (swipeClose) swipeClose();
+    if (jobsRefresh) jobsRefresh();
+   })
+   .catch((err) => {
+    btn.disabled = false;
+    toast(apiErr(err));
+   });
+ });
+ list.addEventListener("click", (e) => {
+  const target = e.target;
+  if (!target || !target.closest) return;
+  const a = target.closest("[data-row-retry]");
+  if (!a) return;
+  e.preventDefault();
+  const row = a.closest(".u3-row-job");
+  const id = row ? row.dataset.id : a.dataset.rowRetry;
+  const j = jobsGetRow ? jobsGetRow(id) : null;
+  if (!j) {
+   window.location.href = a.href;
+   return;
+  }
+  const body = { book: j.book_name, target_language: j.target_language, mode: j.mode };
+  if (j.learning_level) body.learning_level = j.learning_level;
+  if (j.learning_cefr) body.learning_cefr = j.learning_cefr;
+  fetchJSON("/api/jobs", { method: "POST", headers: JH, body: JSON.stringify(body) })
+   .then(() => {
+    if (jobsRefresh) jobsRefresh();
+   })
+   .catch(() => {
+    /* JS failure — the no-JS form */
+    window.location.href = a.href;
+   });
+ });
+}
+/* R3 §9: the "Export" sheet — existing artifacts (GET /api/jobs/{id}). */
+function fillExportBody(jobId, bookName) {
+ const body = $("u3-export-body");
+ if (!body) return;
+ body.textContent = S.common_loading;
+ fetchJSON("/api/jobs/" + enc(jobId))
+  .then((facts) => {
+   const files = facts.files || {};
+   const ART = [
+    ["target.epub", S.job_download_target],
+    ["learning.epub", S.job_download_learning],
+    ["cards.csv", S.job_download_cards_csv],
+    ["cards.anki.tsv", S.job_download_cards_anki],
+    ["cards.json", S.job_download_cards_json],
+    ["quality.json", S.job_download_quality],
+   ];
+   let h =
+    "<p class='hint'>" + esc(S.job_export_hint) + "</p>" +
+    "<p class='u3-export-book'>" + esc(bookName || NS) + "</p>";
+   if (facts.result_ready)
+    h +=
+     "<a class='u3-btn u3-primary u3-sheet-action' href='/api/jobs/" +
+     enc(jobId) + "/result'>" + esc(S.job_download_result) + "</a>";
+   h +=
+    "<div class='u3-export-files'>" +
+    ART.filter((f) => files[f[0]])
+     .map((f) => "<a class='u3-btn' href='/api/jobs/" + enc(jobId) + "/result?artifact=" + enc(f[0]) + "'>" + esc(f[1]) + "</a>")
+     .join("") +
+    "</div>";
+   if (!facts.result_ready && !ART.some((f) => files[f[0]]))
+    h += "<p class='hint'>" + esc(S.job_result_pending) + "</p>";
+   body.innerHTML = h;
+  })
+  .catch((e) => {
+   body.innerHTML =
+    esc(apiErr(e)) +
+    " <button type='button' data-u3-export-retry data-job='" + enc(jobId) + "' data-book='" + enc(bookName || "") + "'>" + esc(S.common_retry) + "</button>";
+  });
+}
+/* R3 §11: swipe — left opens the panel (≤4 × 56 px), right opens the
+   job; one row open at a time; a tap on the row/elsewhere closes it. */
+let swipeClose = null;
+function initSwipe() {
+ const list = $("u1-jobs");
+ if (!list) return;
+ let open = null;
+ swipeClose = () => {
+  if (!open) return;
+  open.slide.style.transform = "";
+  open.article.classList.remove("is-swiped");
+  open = null;
+ };
+ const done = () => {
+  swipeClose();
+  if (jobsRefresh) jobsRefresh();
+ };
+ const handleSwap = (b) => {
+  const id = b.dataset.job;
+  const fail = (e2) => {
+   b.disabled = false;
+   toast(apiErr(e2));
+  };
+  if (b.dataset.swap === "pause") {
+   b.disabled = true;
+   fetchJSON("/api/jobs/" + enc(id) + "/pause", { method: "POST" }).then(done).catch(fail);
+  } else if (b.dataset.swap === "cancel") {
+   swipeClose();
+   requestCancel(id, () => jobsRefresh && jobsRefresh());
+  } else if (b.dataset.swap === "delete") {
+   swipeClose();
+   openDeleteJobSheet(id, b.dataset.bookName || "");
+  } else {
+   b.disabled = true;
+   let maxRank = 0;
+   for (const n of list.querySelectorAll(".u3-row-job")) {
+    const r = parseInt(n.dataset.queueRank || "0", 10);
+    if (!Number.isNaN(r) && r > maxRank) maxRank = r;
+   }
+   fetchJSON("/api/jobs/" + enc(id), { method: "PATCH", headers: JH, body: JSON.stringify({ queue_rank: maxRank + 1 }) })
+    .then(() => {
+     swipeClose();
+     toast(S.toast_queue_front);
+     if (jobsRefresh) jobsRefresh();
+    })
+    .catch(fail);
+  }
+ };
+ let start = null;
+ const parts = (article) => [article.querySelector(".u3-row-slide"), article.querySelector(".u3-row-swipe")];
+ list.addEventListener("touchstart", (e) => {
+  const article = e.target.closest ? e.target.closest(".u3-row-job") : null;
+  if (!article || e.touches.length !== 1) {
+   start = null;
+   return;
+  }
+  const t = e.touches[0];
+  start = { article, x: t.clientX, y: t.clientY, horizontal: null };
+ }, { passive: true });
+ list.addEventListener("touchmove", (e) => {
+  if (!start) return;
+  const t = e.touches[0];
+  const dx = t.clientX - start.x;
+  const dy = t.clientY - start.y;
+  if (start.horizontal === null) {
+   if (Math.abs(dx) < 12 && Math.abs(dy) < 12) return;
+   start.horizontal = Math.abs(dx) > Math.abs(dy);
+  }
+  if (!start.horizontal) return;
+  const [slide, panel] = parts(start.article);
+  if (!slide || !panel) return;
+  if (open && open.article !== start.article) swipeClose();
+  const w = panel.offsetWidth;
+  slide.style.transform = "translateX(" + Math.min(0, Math.max(-w, dx)) + "px)";
+  e.preventDefault();
+ }, { passive: false });
+ list.addEventListener("touchend", (e) => {
+  if (!start) return;
+  const s = start;
+  start = null;
+  const article = s.article;
+  const dx = e.changedTouches[0].clientX - s.x;
+  const [slide, panel] = parts(article);
+  if (!slide || !panel) return;
+  const wasOpen = open && open.article === article;
+  if (wasOpen) {
+   if (dx > 80) swipeClose();
+   return;
+  }
+  if (dx > 80) {
+   window.location.href = "/jobs/" + enc(article.dataset.id);
+   return;
+  }
+  const w = panel.offsetWidth;
+  if (dx < -Math.min(80, w * 0.4)) {
+   slide.style.transform = "translateX(-" + w + "px)";
+   article.classList.add("is-swiped");
+   open = { article, slide, panel };
+  } else {
+   slide.style.transform = "";
+  }
+ });
+ list.addEventListener("touchcancel", () => {
+  if (!start) return;
+  const s = start;
+  start = null;
+  const [slide] = parts(s.article);
+  if (slide) slide.style.transform = "";
+ });
+ list.addEventListener("click", (e) => {
+  const target = e.target;
+  if (!target || !target.closest) return;
+  const swap = target.closest("[data-swap]");
+  if (swap) {
+   handleSwap(swap);
+   return;
+  }
+  if (!open) return;
+  if (open.article.contains(target)) {
+   if (target.closest(".u3-row-swipe")) return;
+   e.preventDefault();
+   e.stopPropagation();
+   swipeClose();
+  } else {
+   swipeClose();
+  }
+ });
+ document.addEventListener("touchstart", (e) => {
+  if (open && !open.article.contains(e.target)) swipeClose();
+ }, { passive: true });
+}
+/* R3 §11: delete one — a sheet with the book name (list: container,
+   job page: static form, same ids). */
+function openDeleteJobSheet(jobId, bookName) {
+ const body = $("u3-del-job-body");
+ if (body)
+  body.innerHTML =
+   "<p class='u3-sheet-del-line'>" + esc(fmt(S.job_delete_sheet_line, { book: bookName || NS })) + "</p><p class='hint'>" + esc(S.job_delete_sheet_irreversible) + "</p><form class='u3-sheet-form' id='u3-del-job-form' data-job='" + esc(jobId) + "'><button type='button' id='u3-del-job-confirm' class='u3-btn u3-danger u3-sheet-action'>" + esc(S.job_delete_sheet_btn) + "</button><button type='button' id='u3-del-job-cancel' class='u3-btn u3-sheet-action'>" + esc(S.job_delete_sheet_cancel) + "</button><span id='u3-del-job-msg' role='status'></span></form>";
+ const d = $("u3-sheet-delete-job");
+ if (!d || !d.showModal || d.open) return;
+ d.showModal();
+ openSheetEl = d;
+ history.pushState({ u3sheet: d.id }, "");
+}
+/* R3 §11: selection mode — long-press 500 ms, "Selected: N" + buttons;
+   a bulk operation — ONE request POST /api/jobs/bulk. */
+function initSelection() {
+ const list = $("u1-jobs");
+ if (!list) return;
+ const title = document.querySelector(".u3-appbar-title");
+ const actions = document.querySelector(".u3-appbar-actions");
+ if (!title || !actions) return;
+ const selected = new Set();
+ let selecting = false;
+ let originalTitle = title.textContent;
+ const selBar = $ce("div");
+ selBar.className = "u3-selbar";
+ const btns = {};
+ for (const [key, label, danger] of [
+  ["pause", S.jobs_sel_pause, false],
+  ["cancel", S.jobs_sel_cancel, true],
+  ["delete", S.jobs_sel_delete, true],
+  ["done", S.jobs_sel_done, false],
+ ]) {
+  const b = $ce("button");
+  b.type = "button";
+  b.className = "u3-btn" + (danger ? " u3-danger" : "");
+  b.textContent = label;
+  btns[key] = b;
+  selBar.append(b);
+ }
+ const updateHeader = () => {
+  title.textContent = selecting ? fmt(S.jobs_selected, { n: selected.size }) : originalTitle;
+ };
+ const updateRows = () => {
+  for (const node of list.querySelectorAll(".u3-row-job")) node.classList.toggle("is-selected", selected.has(node.dataset.id));
+  updateHeader();
+ };
+ const enter = (firstId) => {
+  if (selecting) return;
+  selecting = true;
+  originalTitle = title.textContent;
+  for (const child of actions.children) child.hidden = true;
+  actions.appendChild(selBar);
+  if (firstId) selected.add(firstId);
+  updateRows();
+ };
+ const exit = () => {
+  selecting = false;
+  selected.clear();
+  selBar.remove();
+  for (const child of actions.children) child.hidden = false;
+  updateRows();
+ };
+ const runBulk = (action) => {
+  const listIds = [...selected];
+  if (!listIds.length) return;
+  fetchJSON("/api/jobs/bulk", { method: "POST", headers: JH, body: JSON.stringify({ action, ids: listIds }) })
+   .then((result) => {
+    toast(fmt(S.toast_bulk_result, { applied: (result.applied || []).length, skipped: (result.skipped || []).length }));
+    exit();
+    if (jobsRefresh) jobsRefresh();
+   })
+   .catch((e) => toast(apiErr(e)));
+ };
+ btns.pause.addEventListener("click", () => runBulk("pause"));
+ btns.cancel.addEventListener("click", () => runBulk("cancel"));
+ btns.delete.addEventListener("click", () => {
+  if (bulkDeleteStart) bulkDeleteStart([...selected]);
+ });
+ btns.done.addEventListener("click", exit);
+ let pressTimer = null;
+ let pressId = null;
+ const clearPress = () => {
+  if (pressTimer) clearTimeout(pressTimer);
+  pressTimer = null;
+ };
+ list.addEventListener("touchstart", (e) => {
+  const article = e.target.closest ? e.target.closest(".u3-row-job") : null;
+  if (!article || e.touches.length !== 1) return;
+  pressId = article.dataset.id;
+  const sx = e.touches[0].clientX, sy = e.touches[0].clientY;
+  clearPress();
+  pressTimer = setTimeout(() => {
+   pressTimer = null;
+   enter(pressId);
+  }, 500);
+  const onMove = (ev) => {
+   const t = ev.touches[0];
+   if (t && (Math.abs(t.clientX - sx) > 10 || Math.abs(t.clientY - sy) > 10)) cleanup();
+  };
+  const cleanup = () => {
+   clearPress();
+   list.removeEventListener("touchmove", onMove);
+   list.removeEventListener("touchend", cleanup);
+   list.removeEventListener("touchcancel", cleanup);
+  };
+  list.addEventListener("touchmove", onMove);
+  list.addEventListener("touchend", cleanup);
+  list.addEventListener("touchcancel", cleanup);
+ }, { passive: true });
+ list.addEventListener("touchend", (e) => {
+  clearPress();
+  if (!selecting) return;
+  const article = e.target.closest ? e.target.closest(".u3-row-job") : null;
+  if (!article) return;
+  const id = article.dataset.id;
+  if (selected.has(id)) selected.delete(id);
+  else selected.add(id);
+  updateRows();
+  if (!selected.size) exit();
+ }, { passive: true });
+ list.addEventListener("click", (e) => {
+  if (selecting && e.target.closest && e.target.closest("a")) e.preventDefault();
+ });
+ list.addEventListener("contextmenu", (e) => {
+  if ((pressTimer || selecting) && e.target.closest && e.target.closest(".u3-row-job")) e.preventDefault();
+ });
+}
+/* R3 §11: bulk delete — two confirm_token steps (the purge mechanism). */
+let bulkDeleteStart = null;
+function bindBulkDelete() {
+ const form = $("u3-bulk-del-form");
+ const conf = $("u3-bulk-del-confirm");
+ const cancel = $("u3-bulk-del-cancel");
+ const msg = $("u3-bulk-del-msg");
+ if (!form || !conf || !cancel || !msg) return;
+ const d = $("u3-sheet-bulk-delete");
+ let ids = [];
+ let token = null;
+ const post = (body) => fetchJSON("/api/jobs/bulk", { method: "POST", headers: JH, body: JSON.stringify(body) });
+ const runDry = () => {
+  token = null;
+  conf.disabled = true;
+  msg.textContent = S.common_sending;
+  post({ action: "delete", ids })
+   .then((result) => {
+    token = result.confirm_token;
+    conf.disabled = false;
+    msg.innerHTML =
+     esc(fmt(S.jobs_del_question, { n: result.count })) +
+     " <span class='u3-warn'>" + esc(S.jobs_del_irreversible) + "</span>" +
+     (result.total_bytes != null ? " · " + esc(humanSize(result.total_bytes)) : "") +
+     "<details open><summary>" + esc(fmt(S.jobs_del_ids, { n: result.job_ids.length })) + "</summary>" +
+     result.job_ids.map((id) => "<code class='u3-mono'>" + esc(id) + "</code>").join("<br>") +
+     "</details>";
+   })
+   .catch((e) => failWithRetry(msg, apiErr(e), runDry));
+ };
+ const runConfirm = () => {
+  if (!token) return;
+  conf.disabled = true;
+  msg.textContent = S.common_sending;
+  post({ action: "delete", ids, confirm_token: token })
+   .then((result) => {
+    toast(fmt(S.jobs_del_done, { n: result.count }));
+    token = null;
+    if (d && d.open) d.close();
+    if (jobsRefresh) jobsRefresh();
+   })
+   .catch((e) => {
+    token = null;
+    failWithRetry(msg, apiErr(e), runDry);
+   });
+ };
+ conf.addEventListener("click", runConfirm);
+ cancel.addEventListener("click", () => {
+  token = null;
+  if (d && d.open) d.close();
+ });
+ bulkDeleteStart = (listIds) => {
+  if (!listIds.length || !d || !d.showModal || d.open) return;
+  ids = listIds;
+  msg.textContent = "";
+  conf.disabled = true;
+  d.showModal();
+  openSheetEl = d;
+  history.pushState({ u3sheet: d.id }, "");
+  runDry();
+ };
+}
+/* R3 §12: create — form intercept (no-JS: POST /jobs/new; JS: API). */
+function bindCreateForm() {
+ const form = $("u3-create-form");
+ if (!form) return;
+ const msg = $("u3-create-msg");
+ form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const fd = new FormData(form);
+  const body = {
+   book: String(fd.get("book") || ""),
+   target_language: String(fd.get("target_language") || ""),
+   mode: String(fd.get("mode") || "bilingual"),
+  };
+  const run = () => {
+   msg.textContent = S.common_sending;
+   fetchJSON("/api/jobs", { method: "POST", headers: JH, body: JSON.stringify(body) })
+    .then((created) => {
+     const d = $("u3-sheet-create");
+     if (d && d.open) d.close();
+     if (jobsRefresh) jobsRefresh();
+    })
+    .catch((err) => failWithRetry(msg, apiErr(err), run));
+  };
+  run();
+ });
+}
+/* R3 §11: delete-one sheet — confirm/cancel (both pages). */
+function bindDeleteJobSheet() {
+ document.addEventListener("click", (e) => {
+  const target = e.target;
+  if (!target || !target.closest) return;
+  if (target.closest("#u3-del-job-cancel")) {
+   const d = $("u3-sheet-delete-job");
+   if (d && d.open) d.close();
+   return;
+  }
+  const btn = target.closest("#u3-del-job-confirm");
+  if (!btn) return;
+  const formEl = btn.closest("[data-job]");
+  const id = formEl ? formEl.dataset.job : "";
+  const msg = $("u3-del-job-msg");
+  const run = () => {
+   btn.disabled = true;
+   (async () => {
+    try {
+     /* E8: DELETE without in-flight polling */
+     if (jobPolling) await jobPolling.quiesce();
+     await fetchJSON("/api/jobs/" + enc(id), { method: "DELETE" });
+     const d = $("u3-sheet-delete-job");
+     if (d && d.open) d.close();
+     if (window.location.pathname.indexOf("/jobs/") === 0) window.location.href = "/jobs";
+     else if (jobsRefresh) jobsRefresh();
+    } catch (e2) {
+     btn.disabled = false;
+     if (msg) failWithRetry(msg, cmdFail(e2), run);
+    }
+   })();
+  };
+  run();
+ });
 }
 function bindPrompts() {
  const form = $("u3-prompt-form");
@@ -1186,6 +1771,10 @@ function initSheets() {
   e.preventDefault();
   const d = $(a.dataset.sheetOpen);
   if (!d || !d.showModal || d.open) return;
+  /* R3 §9: export — existing artifacts (fetch) */
+  if (d.id === "u3-sheet-export" && a.dataset.job) {
+   fillExportBody(a.dataset.job, a.dataset.bookName || "");
+  }
   d.showModal();
   openSheetEl = d;
   const det = a.closest("details");
@@ -1222,6 +1811,8 @@ document.addEventListener("click", (e) => {
   jobsListRetry();
  } else if (target.hasAttribute("data-u3-books-retry") && booksRefresh) {
   booksRefresh();
+ } else if (target.hasAttribute("data-u3-export-retry")) {
+  fillExportBody(target.dataset.job || "", target.dataset.book || "");
  } else if (target.hasAttribute("data-u3-retry")) {
   const container = target.closest("[data-u1-fetch]");
   if (container) loadContainer(container);
@@ -1239,4 +1830,11 @@ document.addEventListener("DOMContentLoaded", () => {
  bindBookDeletes();
  bindPurge();
  bindPrompts();
+ /* R3: job control */
+ initRowActions();
+ initSwipe();
+ initSelection();
+ bindCreateForm();
+ bindBulkDelete();
+ bindDeleteJobSheet();
 });

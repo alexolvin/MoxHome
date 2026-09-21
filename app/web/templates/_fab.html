@@ -1,7 +1,8 @@
 {# FAB (серия R §14): 56 px, фиксирован снизу справа (72 px + safe-area),
    в DOM — внутри appbar (на >= 641 px становится кнопкой в шапке).
    Рендерится, только если страница передаёт fab_href/fab_label.
-   R0 — якорь на форму ниже списка; R4/R6 — bottom-sheet. #}
+   Серия R §12: fab_sheet — лист, который FAB открывает с JS
+   (data-sheet-open); без JS — переход на no-JS-форму (fab_href ?sheet=). #}
 {% if fab_href is defined and fab_href %}
-<a class="u3-fab" href="{{ fab_href }}" aria-label="{{ s[fab_label] }}">+</a>
+<a class="u3-fab" href="{{ fab_href }}" aria-label="{{ s[fab_label] }}"{% if fab_sheet is defined and fab_sheet %} data-sheet-open="{{ fab_sheet }}"{% endif %}>+</a>
 {% endif %}

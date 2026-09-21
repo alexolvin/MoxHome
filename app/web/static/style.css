@@ -661,6 +661,37 @@ pre, .u3-pre {
 .u3-row-menu menu { position: absolute; right: 0; top: 100%; margin: var(--u3-space-1) 0 0; padding: var(--u3-space-1); min-width: 180px; display: flex; flex-direction: column; background: var(--surface-2); border: 1px solid var(--u3-border); border-radius: var(--u3-radius-md); box-shadow: var(--shadow-2); z-index: 40; }
 .u3-row-menu-item { min-height: var(--u3-tap); padding: 0 var(--u3-space-2); border: 0; background: none; text-align: left; cursor: pointer; border-radius: var(--u3-radius-sm); }
 .u3-row-menu-item:hover { background: var(--surface-1); }
+/* R3 §10/§11: зона действия строки (44 px), свайп-панель (≤4 × 56 px,
+   только с JS), режим выделения, тосты 5 с (§14) */
+.u3-row-job { overflow: hidden; }
+.u3-row-slide { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--u3-space-2); position: relative; z-index: 1; background: var(--surface-0); transition: transform 180ms ease; }
+.u3-row-action { display: flex; align-items: center; justify-content: center; }
+.u3-row-form { display: flex; margin: 0; }
+.u3-row-btn { display: inline-flex; align-items: center; justify-content: center; width: var(--u3-tap); height: var(--u3-tap); padding: 0; border: 0; border-radius: var(--u3-radius-sm); background: transparent; color: var(--u3-text); font-size: var(--u3-fs-400); text-decoration: none; cursor: pointer; }
+.u3-row-btn:hover { background: var(--surface-1); }
+.u3-row-btn:disabled { opacity: 0.5; }
+.u3-row-swipe { position: absolute; top: 0; right: 0; bottom: 0; display: flex; z-index: 0; }
+.u3-swipe-btn { flex: 0 0 56px; width: 56px; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-left: 1px solid var(--u3-border); background: var(--status-run-bg); color: var(--u3-text); font-size: var(--u3-fs-200); text-decoration: none; cursor: pointer; }
+.u3-swipe-btn.u3-danger { background: var(--status-err-bg); color: var(--status-err-fg); }
+.u3-row-btn:focus-visible, .u3-swipe-btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+html:not(.js) .u3-row-swipe { display: none; }
+.u3-row-job.is-selected .u3-row-slide { background: var(--status-run-bg); }
+.u3-selbar { display: flex; align-items: center; gap: var(--u3-space-1); }
+.u3-selbar .u3-btn { min-height: var(--u3-tap); padding: 0 var(--u3-space-2); font-size: var(--u3-fs-300); }
+.u3-inline-form { display: inline-flex; margin: 0; }
+.u3-toast-zone { position: fixed; left: 0; right: 0; bottom: calc(var(--u3-space-3) + env(safe-area-inset-bottom)); z-index: 60; display: flex; flex-direction: column; align-items: center; gap: var(--u3-space-1); pointer-events: none; }
+body:has(.u3-tabbar) .u3-toast-zone { bottom: calc(var(--u3-tabbar-h) + var(--u3-space-2) + env(safe-area-inset-bottom)); }
+.u3-toast { pointer-events: auto; display: flex; align-items: center; gap: var(--u3-space-2); max-width: calc(100% - var(--u3-space-4)); padding: var(--u3-space-2) var(--u3-space-3); background: var(--surface-3); border-radius: var(--u3-radius-md); box-shadow: var(--shadow-3); font-size: var(--u3-fs-300); }
+.u3-toast-undo { min-width: var(--u3-tap); min-height: var(--u3-tap); padding: 0 var(--u3-space-1); border: 0; border-radius: var(--u3-radius-sm); background: none; color: var(--accent-fg); font-size: var(--u3-fs-300); font-weight: 600; cursor: pointer; }
+.u3-export-book { margin: 0 0 var(--u3-space-2); font-weight: 600; }
+.u3-export-files { display: flex; flex-direction: column; gap: var(--u3-space-2); margin-top: var(--u3-space-2); }
+.u3-export-files .u3-btn { width: 100%; }
+.u3-sheet-del-line { margin: 0 0 var(--u3-space-1); }
+/* TZ §16: prefers-reduced-motion — без анимаций */
+@media (prefers-reduced-motion: reduce) {
+  .u3-row-slide, .u3-sheet[open] { transition: none; animation: none; }
+  .u3-row-strip.is-ind, .u3-skel-row span { animation: none; }
+}
 .u3-seg { display: flex; gap: var(--u3-tap-gap); padding: var(--u3-space-2); overflow-x: auto; }
 .u3-seg-pill { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; min-height: var(--u3-tap); text-decoration: none; color: var(--fg-muted); }
 .u3-seg-vis { min-height: 36px; display: inline-flex; align-items: center; padding: 0 var(--u3-space-3); border-radius: var(--u3-radius-md); background: var(--surface-1); border: 1px solid var(--u3-border); font-size: var(--u3-fs-300); white-space: nowrap; }
