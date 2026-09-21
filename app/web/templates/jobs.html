@@ -18,8 +18,16 @@
   <a class="u3-seg-pill{% if group == gkey %} is-current{% endif %}" href="{{ pill_href(gkey) }}"{% if group == gkey %} aria-current="true"{% endif %}><span class="u3-seg-vis">{{ glabel }}</span></a>
   {% endfor %}
 </nav>
+{# Серия R §7 (R5): фильтр по книге (карточка: «Экспорт» и «Все (N)») —
+   строка «Книга: <имя>» + сброс (снят только фильтр книги). #}
+{% if book %}
+<p class="u3-fstrip">
+  <span class="u3-fstrip-val">{{ s["jobs_book_strip"].format(name=book) }}</span>
+  <a class="u3-fstrip-reset" href="{{ book_reset_href }}">{{ s["state_reset_filter"] }}</a>
+</p>
+{% endif %}
 
-<div id="u1-jobs" data-u1-fetch="/api/jobs" data-u1-render="jobs" data-u1-group="{{ group }}" data-u1-status="{{ f_status | join(',') }}" data-u1-sort="{{ sort_field }}" data-u1-direction="{{ sort_direction }}">
+<div id="u1-jobs" data-u1-fetch="/api/jobs" data-u1-render="jobs" data-u1-group="{{ group }}" data-u1-status="{{ f_status | join(',') }}" data-u1-sort="{{ sort_field }}" data-u1-direction="{{ sort_direction }}" data-u1-book="{{ book or '' }}">
   {# состояние «Загрузка» §14: три скелетные строки (не спиннер);
      для no-JS скелет скрыт (html:not(.js)) — виден только список ниже #}
   <div class="u3-list-body u3-skel-wrap" data-state="loading" aria-busy="true">
@@ -29,7 +37,7 @@
   </div>
   <noscript>
     <meta http-equiv="refresh" content="15">
-    <div class="u3-list-body" data-state="{{ 'ok' if total else ('empty-filter' if (group != 'all' or f_status) else 'empty') }}">
+    <div class="u3-list-body" data-state="{{ 'ok' if total else ('empty-filter' if (group != 'all' or f_status or book) else 'empty') }}">
       {% for gname in ("now", "today", "earlier") %}
       {% if group_rows[gname] %}
       <section class="u3-group" data-group="{{ gname }}">
@@ -43,7 +51,7 @@
       {% endif %}
       {% endfor %}
       {% if not total %}
-      {% if group != 'all' or f_status %}
+      {% if group != 'all' or f_status or book %}
       <div class="u3-state" data-state="empty-filter">
         <span class="u3-state-ico" aria-hidden="true">&#9675;</span>
         <p class="u3-state-line">{{ s["state_not_found"] }}</p>

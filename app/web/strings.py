@@ -98,6 +98,63 @@ UI_STRINGS: dict[str, str] = {
         "из input/. Действие необратимо."
     ),
     "books_deleted": "Книга удалена.",
+    "books_search_ph": "Поиск книги",
+    "books_search_btn": "Найти",
+    # ------------------------------------------------------------- R5: карточка книги
+    "book_translate_btn": "Перевести",
+    "book_export_btn": "Экспорт",
+    "book_author": "Автор",
+    "book_block_languages": "Языки",
+    "book_src_lang": "Язык оригинала",
+    "book_src_lang_note": "Машинная детекция: {value}",
+    "book_detection_confidence": "Уверенность детекции",
+    "book_target_default": "Цель по умолчанию",
+    "book_edit": "Изменить",
+    "book_decision_accepted": "принят",
+    "book_decision_accepted_by_detector": "принят детектором",
+    "book_decision_needs_confirmation": "требует подтверждения",
+    "book_block_jobs": "Задания по этой книге",
+    "book_jobs_all": "Все ({n})",
+    "book_jobs_none": "Заданий пока нет",
+    "book_block_tech": "Технические сведения",
+    "book_tech_file": "Файл",
+    "book_tech_path": "Путь",
+    "book_tech_size": "Размер",
+    "book_tech_sha256": "SHA-256",
+    "book_tech_added": "Добавлена",
+    "book_delete_btn": "Удалить книгу",
+    "book_delete_title": "Удаление книги",
+    "book_delete_simple_q": "Удалить файл {name}? Действие необратимо.",
+    "book_delete_yes": "Удалить",
+    "book_delete_cancel": "Отмена",
+    "book_delete_referenced": "На книгу ссылаются {n} заданий",
+    "book_delete_file_only": "Удалить только файл",
+    "book_delete_file_only_hint": (
+        "Файл книги будет удалён; {n} заданий останутся в списке со ссылкой "
+        "на отсутствующий файл."
+    ),
+    "book_delete_cascade": "Удалить книгу и {n} заданий",
+    "book_delete_cascade_hint": (
+        "Книга и {n} заданий будут удалены окончательно вместе с артефактами. "
+        "Действие необратимо."
+    ),
+    "book_delete_cascade_confirm": "Да, удалить",
+    "book_delete_nonterminal": (
+        "Среди {n} заданий есть не в терминальном статусе: {ids}. Каскад "
+        "удаляет только завершённые задания — сначала отмените эти."
+    ),
+    "book_busy_toast": "Книга занята заданием, попробуйте ещё раз",
+    "book_file_deleted": "Файл книги удалён, задания сохранены",
+    "book_meta_saved": "Метаданные сохранены",
+    "book_field_title": "Название",
+    "book_field_author": "Автор",
+    "book_field_source": "Язык оригинала",
+    "book_field_target": "Язык перевода по умолчанию",
+    "book_field_cefr": "Уровень CEFR по умолчанию",
+    "book_field_note": "Заметка",
+    "book_meta_save": "Сохранить",
+    "book_meta_title": "Метаданные книги",
+    "jobs_book_strip": "Книга: {name}",
     # ------------------------------------------------------------- Jobs (список)
     "jobs_worker": "Воркер:",
     "jobs_autorefresh": "страница обновляется сама, пока есть активные задания",
@@ -500,6 +557,21 @@ UI_STRINGS: dict[str, str] = {
     ),
     "err_csrf": "CSRF-токен отсутствует или недействителен",
     "err_book_referenced": "книгу удалять нельзя — на неё ссылаются задания: {ids}",
+    # Серия R §7: метаданные и каскад удаления книги
+    "err_book_bad_language": "неизвестный код языка: {code}",
+    "err_book_bad_cefr": "неизвестный уровень CEFR: {code}",
+    "err_book_bad_field": "неизвестное поле метаданных: {field}",
+    "err_book_meta_too_long": "поле {field} длиннее {limit} символов",
+    "err_book_meta_empty": "нет полей для правки (название, автор, языки, CEFR, заметка)",
+    "err_book_purge_empty": "на книгу не ссылаются задания",
+    "err_book_purge_nonterminal": (
+        "на книгу ссылаются задания, не в терминальном статусе: {ids} — "
+        "сначала отмените их"
+    ),
+    "err_book_purge_token": (
+        "confirm_token недействителен или состав заданий изменился — "
+        "повторите dry-run"
+    ),
     "err_purge_no_match": (
         "нет заданий, соответствующих фильтру (только терминальные, "
         "старше {days} дн.)"

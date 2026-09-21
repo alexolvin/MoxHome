@@ -52,7 +52,11 @@ async function fetchJSON(url, options) {
  } catch {}
  if (!response.ok) {
   const detail = (data && data.detail) || text || String(response.status);
-  throw new Error(detail);
+  const error = new Error(detail);
+  /* R5: HTTP status for scenario handlers (race-409 on book delete —
+     toast "book is busy", a bare 409 is never shown, T10) */
+  error.status = response.status;
+  throw error;
  }
  return data;
 }
@@ -225,20 +229,24 @@ function jobRowHtml(j, group) {
   "</article>"
  );
 }
-/* R2 §6: book list row (builder #2; #1 — _book_row.html) */
+/* R2 §6: book list row (builder #2; #1 — _book_row.html).
+   R5 §7: row tap → book card (/books/<name>); delete — link to the
+   no-JS scenario page, JS intercepts data-book-delete (usage sheet). */
 function bookRowHtml(b) {
  const title = b.title || b.name;
  const dot = b.has_active_job ? "<span class='u3-row-dot' aria-hidden='true'></span>" : "";
  return (
   "<article class='u3-row u3-row-book' data-name='" + esc(b.name) + "'>" +
+  "<a class='u3-row-link' href='/books/" + enc(b.name) + "'>" +
   "<span class='u3-row-cover' aria-hidden='true'>" + esc(title.charAt(0).toUpperCase()) + "</span>" +
   "<span class='u3-row-body'>" +
   "<span class='u3-row-line1' title='" + esc(title) + "'>" + esc(title) + "</span>" +
   "<span class='u3-row-line2'>" + esc(b.detected || b.dc_language || NS) + "→? · " + esc(b.size_human || NS) + "</span>" +
   "</span>" +
+  "</a>" +
   dot +
   "<details class='u3-row-menu'><summary class='u3-row-more' aria-label='" + esc(S.row_actions_label) + "'>&#8943;</summary><menu>" +
-  "<button type='button' class='u3-row-menu-item u3-danger' data-book-delete='" + esc(b.name) + "'>" + esc(S.books_delete_btn) + "</button>" +
+  "<a class='u3-row-menu-item u3-danger' href='/books/" + enc(b.name) + "/delete' data-book-delete='" + esc(b.name) + "'>" + esc(S.book_delete_btn) + "</a>" +
   "</menu></details>" +
   "</article>"
  );
@@ -499,6 +507,10 @@ function startJobsList() {
  const refreshEl = $("u3-jobs-refresh");
  const group = el.dataset.u1Group || "all";
  const statusSet = (el.dataset.u1Status || "").split(",").filter(Boolean);
+ /* R5 §7: book filter (card "Export" / "All (N)") — client-side, the
+    same way as group/status: the delta stays unfiltered, rows leave
+    via book_name */
+ const bookFilter = el.dataset.u1Book || "";
  const sortKey = el.dataset.u1Sort === "created_at" ? "created_at" : "updated_at";
  const sortDir = el.dataset.u1Direction === "asc" ? "asc" : "desc";
  const GROUP_OF_PILL = { active: ["run"], waiting: ["wait"], done: ["ok", "warn"], errors: ["err"] };
@@ -521,11 +533,12 @@ function startJobsList() {
  const isInactive = (s) => INACTIVE_JOB_STATUSES.has(s);
 
  const matches = (j) => {
+  if (bookFilter && j.book_name !== bookFilter) return false;
   if (allowGroups && allowGroups.indexOf(j.status_group) === -1) return false;
   if (statusSet.length && statusSet.indexOf(j.status) === -1) return false;
   return true;
  };
- const filtered = () => statusSet.length > 0 || group !== "all";
+ const filtered = () => statusSet.length > 0 || group !== "all" || bookFilter !== "";
  const sorted = (list) => {
   /* R3 §11: "waiting" — queue order (queue_rank DESC, created_at ASC,
      id ASC — as the worker); other groups — the page sort. */
@@ -759,8 +772,8 @@ function startBooksList() {
  if (!el || !el.dataset.u1Fetch) return;
  const body = el.querySelector(":scope > .u3-list-body");
  if (!body) return;
- const q = el.dataset.u1Q || "";
- const url = el.dataset.u1Fetch + (q ? "?q=" + enc(q) : "");
+ let q = el.dataset.u1Q || "";
+ let url = el.dataset.u1Fetch + (q ? "?q=" + enc(q) : "");
  let timer = null;
  let inFlight = false;
  let hasData = false;
@@ -804,6 +817,17 @@ function startBooksList() {
    inFlight = false;
   }
  };
+ /* R5 §7: search — one mechanism (GET form, same server filter):
+    JS intercepts submit and re-fetches without a page reload; no-JS —
+    the form does a plain GET /books?q= */
+ const searchForm = $("u1-books-search");
+ if (searchForm)
+  searchForm.addEventListener("submit", (e) => {
+   e.preventDefault();
+   q = (searchForm.q.value || "").trim();
+   url = el.dataset.u1Fetch + (q ? "?q=" + enc(q) : "");
+   tick();
+  });
  booksRefresh = tick;
  tick();
 }
@@ -1039,35 +1063,258 @@ function bindJobActions() {
 }
 function bindBookDeletes() {
  const container = $("u1-books");
- if (!container) return;
- container.addEventListener("click", (e) => {
+ if (container)
+  container.addEventListener("click", (e) => {
+   const target = e.target;
+   if (!target || !target.hasAttribute) return;
+   if (target.hasAttribute("data-book-upload")) {
+    const fi = $("u1-upload-file");
+    if (fi) fi.click();
+   }
+  });
+ bindBookDeleteFlow();
+}
+/* R5 §7: book delete — ONE flow for every entry point (row "⋯", card
+   red text, card appbar "⋯"): state is fetched BEFORE the delete call
+   (GET usage), so a bare 409 is never shown (T10). Scenario (a) no
+   jobs: "Delete file <name>? Irreversible." + cancel/delete. Scenario
+   (b) jobs: status list + 3 paths — file only (jobs keep their
+   source_path), cascade (two steps, confirm_token — the same
+   mechanism as POST /jobs/purge), cancel. Race-409 — toast "book is
+   busy" + re-render. */
+function bindBookDeleteFlow() {
+ const dialog = $("u3-sheet-book-delete");
+ if (!dialog || !dialog.showModal) return;
+ const body = $("u3-book-del-body");
+ const isCard = (window.location.pathname || "").indexOf("/books/") === 0;
+ const finish = (msg) => {
+  dialog.close();
+  if (msg) toast(msg);
+  if (isCard) window.location.href = "/books";
+  else if (booksRefresh) booksRefresh();
+ };
+ const conflict = () => {
+  /* 409 race: state changed between usage and delete — no bare 409,
+     toast + re-render (T10) */
+  dialog.close();
+  toast(S.book_busy_toast);
+  if (isCard) window.location.reload();
+  else if (booksRefresh) booksRefresh();
+ };
+ const btn = (name, data, cls, label) =>
+  "<button type='button' class='" + cls + "' data-name='" + esc(name) + "' " + data + ">" + esc(label) + "</button>";
+ const jobLines = (jobs) =>
+  "<ul class='u3-sheet-list'>" +
+  jobs
+   .map(
+    (j) =>
+     "<li><span class='u3-status status-" +
+     esc(j.status_group) +
+     "'>" + esc(j.status) +
+     "</span><span class='u3-mono'>" + esc(j.id) + "</span></li>"
+   )
+   .join("") +
+  "</ul>";
+ const simpleHtml = (name) =>
+  "<p class='u3-book-del-q'>" + esc(fmt(S.book_delete_simple_q, { name })) + "</p>" +
+  "<span class='u3-filter-actions'>" +
+  btn(name, "data-del-cancel", "u3-btn", S.book_delete_cancel) +
+  btn(name, "data-del-simple", "u3-btn u3-primary", S.book_delete_yes) +
+  "</span>";
+ const usageHtml = (name, usage) => {
+  const nonterminal = usage.jobs.filter((j) => !j.terminal);
+  const cascade = nonterminal.length
+   ? "<button type='button' class='u3-btn u3-primary' disabled>" +
+     esc(fmt(S.book_delete_cascade, { n: usage.count })) +
+     "</button>"
+   : btn(name, "data-del-cascade", "u3-btn u3-primary", fmt(S.book_delete_cascade, { n: usage.count }));
+  return (
+   "<p class='u3-book-del-q'>" + esc(fmt(S.book_delete_referenced, { n: usage.count })) + "</p>" +
+   jobLines(usage.jobs) +
+   (nonterminal.length
+    ? "<p class='u3-warn'>" +
+      esc(
+       fmt(S.book_delete_nonterminal, {
+        n: usage.count,
+        ids: nonterminal.map((j) => j.id).join(", ")
+       })
+      ) +
+      "</p>"
+    : "") +
+   "<span class='u3-filter-actions'>" +
+   btn(name, "data-del-file", "u3-btn", S.book_delete_file_only) +
+   cascade +
+   btn(name, "data-del-cancel", "u3-btn", S.book_delete_cancel) +
+   "</span>"
+  );
+ };
+ const openFor = async (name) => {
+  body.innerHTML = "";
+  try {
+   const usage = await fetchJSON("/api/books/" + enc(name) + "/usage");
+   body.innerHTML = usage.count ? usageHtml(name, usage) : simpleHtml(name);
+   dialog.showModal();
+  } catch (e) {
+   toast(apiErr(e));
+  }
+ };
+ document.addEventListener("click", (e) => {
   const target = e.target;
   if (!target || !target.getAttribute) return;
-  if (target.hasAttribute("data-book-upload")) {
-   const fi = $("u1-upload-file");
-   if (fi) fi.click();
+  const name = target.getAttribute("data-book-delete");
+  if (name) {
+   e.preventDefault();
+   const det = target.closest("details");
+   if (det) det.removeAttribute("open");
+   openFor(name);
    return;
   }
-  const name = target.getAttribute("data-book-delete");
-  if (!name) return;
-  const run = async () => {
-   if (!confirm(fmt(S.books_delete_confirm, { name }))) return;
-   try {
-    await fetchJSON("/api/books/" + encodeURIComponent(name), { method: "DELETE" });
-    if (booksRefresh) booksRefresh();
-   } catch (e) {
-    const old = container.querySelector("p.err");
-    if (old) old.remove();
-    const line = $ce("p");
-    line.className = "err";
-    line.textContent = cmdFail(e);
-    const b = $ce("button");
-    b.type = "button";
-    b.textContent = S.common_retry;
-    b.addEventListener("click", run);
-    line.append(" ", b);
-    container.prepend(line);
-   }
+  if (!dialog.open) return;
+  const cancel = target.closest("[data-del-cancel]");
+  if (cancel) {
+   dialog.close();
+   return;
+  }
+  const simple = target.closest("[data-del-simple]");
+  if (simple) {
+   simple.disabled = true;
+   fetchJSON("/api/books/" + enc(simple.dataset.name), { method: "DELETE" })
+    .then(() => finish(S.books_deleted))
+    .catch((err) => {
+     if (err.status === 409) conflict();
+     else {
+      simple.disabled = false;
+      toast(apiErr(err));
+     }
+    });
+   return;
+  }
+  const fileOnly = target.closest("[data-del-file]");
+  if (fileOnly) {
+   fileOnly.disabled = true;
+   fetchJSON("/api/books/" + enc(fileOnly.dataset.name) + "?file_only=1", { method: "DELETE" })
+    .then(() => finish(S.book_file_deleted))
+    .catch((err) => {
+     if (err.status === 409) conflict();
+     else {
+      fileOnly.disabled = false;
+      toast(apiErr(err));
+     }
+    });
+   return;
+  }
+  const cascade = target.closest("[data-del-cascade]");
+  if (!cascade) return;
+  const purgeUrl = "/api/books/" + enc(cascade.dataset.name) + "/purge";
+  if (!cascade.dataset.armed) {
+   /* step 1: dry-run -> token; the button arms (same mechanism as
+      /jobs/purge) */
+   cascade.disabled = true;
+   fetchJSON(purgeUrl, { method: "POST", headers: JH, body: "{}" })
+    .then((dry) => {
+     cascade.dataset.armed = "1";
+     cascade.dataset.token = dry.confirm_token;
+     cascade.textContent = S.book_delete_cascade_confirm;
+     cascade.disabled = false;
+    })
+    .catch((err) => {
+     if (err.status === 409) conflict();
+     else {
+      cascade.disabled = false;
+      toast(apiErr(err));
+     }
+    });
+  } else {
+   /* step 2: confirm — exactly the listed composition is deleted */
+   cascade.disabled = true;
+   fetchJSON(purgeUrl, {
+    method: "POST",
+    headers: JH,
+    body: JSON.stringify({ confirm_token: cascade.dataset.token }),
+   })
+    .then(() => finish(S.books_deleted))
+    .catch((err) => {
+     if (err.status === 409) conflict();
+     else {
+      cascade.disabled = false;
+      toast(apiErr(err));
+     }
+    });
+  }
+ });
+}
+/* R5 §7: metadata edit — one mechanism: tap a value -> bottom sheet
+   with ONE field + "Save" (PATCH, fail-closed 400 — the reason stays
+   in the sheet); the no-JS twin is the page form
+   /books/<name>/meta?field= (same "one field + save" pair). */
+function bindBookMeta() {
+ const dialog = $("u3-sheet-book-meta");
+ if (!dialog || !dialog.showModal) return;
+ const title = $("u3-book-meta-title");
+ const form = $("u3-book-meta-form");
+ const fieldEl = $("u3-book-meta-field");
+ const input = $("u3-book-meta-input");
+ const select = $("u3-book-meta-select");
+ const msg = $("u3-book-meta-msg");
+ const FIELD_KEYS = {
+  title: "title",
+  author: "author",
+  note: "note",
+  source_language: "source",
+  target_default: "target",
+  cefr_default: "cefr"
+ };
+ const FIELD_KIND = {
+  title: "str",
+  author: "str",
+  note: "str",
+  source_language: "lang",
+  target_default: "lang",
+  cefr_default: "cefr"
+ };
+ const bookName = (window.location.pathname || "").split("/")[2] || "";
+ document.addEventListener("click", (e) => {
+  const target = e.target;
+  if (!target || !target.getAttribute) return;
+  const field = target.getAttribute("data-book-field");
+  if (!field || !(field in FIELD_KIND)) return;
+  e.preventDefault();
+  const value = target.getAttribute("data-book-value") || "";
+  title.textContent = S["book_field_" + FIELD_KEYS[field]];
+  fieldEl.value = field;
+  if (FIELD_KIND[field] === "str") {
+   select.hidden = true;
+   input.hidden = false;
+   input.value = value;
+  } else {
+   input.hidden = true;
+   select.hidden = false;
+   const codes = JSON.parse(FIELD_KIND[field] === "lang" ? dialog.dataset.langs : dialog.dataset.cefrs);
+   select.innerHTML =
+    "<option value=''>" + esc(S.common_not_set) + "</option>" +
+    codes.map((c) => "<option value='" + esc(c) + "'" + (c === value ? " selected" : "") + ">" + esc(c) + "</option>").join("");
+  }
+  msg.textContent = "";
+  dialog.showModal();
+ });
+ form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const field = fieldEl.value;
+  const value = select.hidden ? input.value : select.value;
+  const patch = {};
+  patch[field] = value;
+  const run = () => {
+   fetchJSON("/api/books/" + enc(bookName), { method: "PATCH", headers: JH, body: JSON.stringify(patch) })
+    .then(() => {
+     const node = document.querySelector("[data-book-field='" + field + "']");
+     if (node) {
+      node.setAttribute("data-book-value", value);
+      node.textContent = value || NS;
+     }
+     dialog.close();
+     toast(S.book_meta_saved);
+    })
+    .catch((err) => failWithRetry(msg, apiErr(err), run));
   };
   run();
  });
@@ -1641,10 +1888,22 @@ function bindCreateForm() {
  const applyBook = (r) => {
   if (!r) return;
   pickName.textContent = r.dataset.title || r.value;
-  pickSub.textContent = r.dataset.detected || r.dataset.dc || NS;
+  /* R5 §7: the source line — the user-confirmed book language first
+     (meta.source_language), machine detection otherwise */
+  pickSub.textContent = r.dataset.src || r.dataset.detected || r.dataset.dc || NS;
   list.hidden = true;
   pick.hidden = false;
-  if (langSrc) langSrc.textContent = r.dataset.detected || r.dataset.dc || "—";
+  if (langSrc) langSrc.textContent = r.dataset.src || r.dataset.detected || r.dataset.dc || "—";
+  /* R5 §7: book defaults (target_default/cefr_default) — applied only
+     when the value is a valid select option (server validates the
+     same way, fail closed) */
+  const bookTarget = r.dataset.targetDefault || "";
+  if (bookTarget && targetSel && targetSel.querySelector("option[value='" + bookTarget + "']"))
+   targetSel.value = bookTarget;
+  const bookCefr = r.dataset.cefrDefault || "";
+  if (bookCefr && cefrSel && cefrSel.querySelector("option[value='" + bookCefr + "']"))
+   cefrSel.value = bookCefr;
+  refreshSummary();
  };
  const showList = () => {
   pick.hidden = true;
@@ -1916,6 +2175,7 @@ document.addEventListener("DOMContentLoaded", () => {
  bindUpload();
  bindJobActions();
  bindBookDeletes();
+ bindBookMeta();
  bindPurge();
  bindPrompts();
  /* R3: job control */

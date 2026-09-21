@@ -13,7 +13,11 @@
 {% set retry = create and create.retry_of %}
 {% set sel_book = create.book if create else none %}
 {% set pick_book = (books | selectattr("name", "equalto", sel_book) | first) if sel_book else (books[0] if books and books | length == 1 else none) %}
-{% set src_lang = (pick_book.detected or pick_book.dc_language) if pick_book else none %}
+{# R5 (ТЗ §7): источник в сводке — подтверждённый пользователем язык
+   книги (meta.source_language), иначе — машинная детекция; умолчания
+   target/cefr — из create_defaults (на сервере — книга ?book=, в JS —
+   data-* радио при смене выбора). #}
+{% set src_lang = (pick_book.source_language or pick_book.detected or pick_book.dc_language) if pick_book else none %}
 {% set sel_target = create.target if retry else create_defaults.target %}
 {% set sel_mode = create.mode if retry else create_defaults.mode %}
 {% set sel_level = (create.learning_level if retry else create_defaults.learning_level) or "" %}
@@ -46,6 +50,7 @@
     <label class="u3-row u3-row-book u3-wiz-row">
       <input type="radio" name="book" value="{{ b.name }}" class="u3-wiz-radio" required
              data-title="{{ btitle }}" data-detected="{{ b.detected or '' }}" data-dc="{{ b.dc_language or '' }}"
+             data-src="{{ b.source_language or '' }}" data-target-default="{{ b.target_default or '' }}" data-cefr-default="{{ b.cefr_default or '' }}"
              {% if pick_book and pick_book.name == b.name %}checked{% endif %}>
       <span class="u3-row-cover" aria-hidden="true">{{ btitle[:1] | upper }}</span>
       <span class="u3-row-body">

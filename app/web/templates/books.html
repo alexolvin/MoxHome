@@ -1,11 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
 {# Серия R §6: строки книг (64 px: обложка 40×56, две строки текста,
-   точка run-задания + «⋯»). Список рендерится JS (fetch
-   /api/books?q=…); no-JS — полный список. Форма загрузки остаётся
-   (FAB — якорь #u1-upload; bottom-sheet импорта — R6).
-   5 состояний §14 — data-state на .u3-list-body (поиск-строка UI — R5,
-   серверный q уже включён, состояние «пусто после фильтра» меряется). #}
+   точка run-задания + «⋯»; R5: тап по строке → карточка). Список
+   рендерится JS (fetch /api/books?q=…); no-JS — полный список.
+   Серия R §7 (R5): поиск — строка над списком (один механизм:
+   no-JS — GET /books?q=, JS — перехват submit и рефетч без
+   перезагрузки; серверный фильтр — тот же, что API). Форма загрузки
+   остаётся (FAB — якорь #u1-upload; bottom-sheet импорта — R6).
+   5 состояний §14 — data-state на .u3-list-body. #}
+<form id="u1-books-search" class="u3-search" method="get" action="/books" role="search">
+  <input type="search" name="q" value="{{ q }}" class="u3-input u3-search-input"
+         placeholder="{{ s["books_search_ph"] }}" aria-label="{{ s["books_search_ph"] }}">
+  <button type="submit" class="u3-btn u3-search-btn">{{ s["books_search_btn"] }}</button>
+</form>
 <div id="u1-books" data-u1-fetch="/api/books" data-u1-render="books" data-u1-q="{{ q }}">
   <div class="u3-list-body u3-skel-wrap" data-state="loading" aria-busy="true">
     <div class="u3-skel-row" aria-hidden="true"><span></span><span></span><span></span></div>

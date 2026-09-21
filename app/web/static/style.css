@@ -68,6 +68,11 @@
   --u3-radius-circle: 50%;
   /* R §10: высота строки задания (книги — --u3-row-h) */
   --u3-job-row-h: 72px;
+  /* R §6: высота строки книги (row_height_px = 64 px) */
+  --u3-row-h: 64px;
+  /* R §7: обложка книги (карточка) — фиксированные (D1 §3.4) */
+  --u3-book-cover-w: 96px;
+  --u3-book-cover-h: 136px;
   /* R2: затемнение под sheet (§14) */
   --u3-scrim: rgba(0, 0, 0, 0.5);
   /* R2: радиус sheet — только верхние углы (низ — у края экрана) */
@@ -402,6 +407,7 @@ button,
 .btn,
 select,
 input[type="text"],
+input[type="search"],
 input[type="date"],
 input[type="file"] {
   font: inherit;
@@ -417,7 +423,7 @@ input[type="file"] {
   cursor: pointer;
 }
 
-select, input[type="text"], input[type="date"] { cursor: default; }
+select, input[type="text"], input[type="search"], input[type="date"] { cursor: default; }
 input[type="file"] { padding: var(--u3-space-2); }
 
 .u3-filter label,
@@ -757,6 +763,58 @@ html:not(.js) .u3-wiz-search { display: none; }
 .u3-chip { display: inline-flex; align-items: center; margin: 0 var(--u3-space-1) var(--u3-space-1) 0; padding: 0 var(--u3-space-1); border: 1px solid var(--u3-border); border-radius: var(--u3-radius-sm); background: var(--surface-1); font-size: var(--u3-fs-300); white-space: nowrap; }
 @keyframes u3-row-new-kf { from { background: var(--status-run-bg); } to { background: var(--surface-0); } }
 .u3-row-slide.u3-row-new { animation: u3-row-new-kf 1500ms ease-out; }
+/* R5 §6/§7: поиск книг, строка-ссылка → карточка, карточка книги
+   (обложка --u3-book-cover-w × h; 6 полей — один механизм «тап →
+   лист с одним полем»), сценарий удаления (JS-лист / no-JS-страница),
+   строка фильтра «Книга: <имя>» на экране заданий */
+.u3-input { width: 100%; }
+.u3-search { display: flex; gap: var(--u3-space-2); margin: var(--u3-space-2) 0; }
+.u3-search-input { flex: 1 1 auto; min-width: 0; }
+.u3-search-btn { flex: 0 0 auto; }
+.u3-row-link { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--u3-space-2); min-height: var(--u3-tap); text-decoration: none; color: inherit; }
+.u3-row-link:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.u3-book-head { display: flex; gap: var(--u3-space-3); margin: var(--u3-space-2) 0; }
+.u3-book-cover { flex: 0 0 var(--u3-book-cover-w); width: var(--u3-book-cover-w); height: var(--u3-book-cover-h); display: flex; align-items: center; justify-content: center; border-radius: var(--u3-radius-sm); background: var(--surface-2); color: var(--fg-muted); font-size: var(--u3-fs-800); }
+.u3-book-id { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: var(--u3-space-1); }
+.u3-book-title { margin: 0; font-size: var(--u3-fs-600); line-height: 1.2; }
+.u3-book-author, .u3-book-note { margin: 0; font-size: var(--u3-fs-300); color: var(--fg-muted); }
+.u3-book-val { display: block; min-height: var(--u3-tap); padding: 0 var(--u3-space-1); border-radius: var(--u3-radius-sm); color: inherit; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.u3-book-val:hover { background: var(--surface-1); }
+.u3-book-val:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.u3-book-actions { display: flex; flex-direction: column; gap: var(--u3-space-2); margin: var(--u3-space-2) 0 var(--u3-space-3); }
+.u3-book-action { width: 100%; }
+.u3-book-block { border: 1px solid var(--u3-border); border-radius: var(--u3-radius-md); padding: var(--u3-space-2); margin: 0 0 var(--u3-space-3); }
+.u3-book-block-title { margin: 0 0 var(--u3-space-1); padding: 0 var(--u3-space-1); font-size: var(--u3-fs-400); font-weight: 600; color: var(--fg-muted); }
+.u3-book-row { display: flex; align-items: center; gap: var(--u3-space-2); padding: 0 var(--u3-space-1); }
+.u3-book-k { flex: 0 0 auto; font-size: var(--u3-fs-300); color: var(--fg-muted); }
+.u3-book-v { flex: 1 1 auto; min-width: 0; min-height: var(--u3-tap); padding: 0 var(--u3-space-1); border-radius: var(--u3-radius-sm); color: inherit; text-decoration: none; font-size: var(--u3-fs-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.u3-book-v:hover { background: var(--surface-1); }
+a.u3-book-v:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.u3-book-none { margin: 0; padding: var(--u3-space-2); font-size: var(--u3-fs-300); color: var(--fg-muted); }
+.u3-book-all { display: inline-flex; align-items: center; min-height: var(--u3-tap); margin: 0 var(--u3-space-2); padding: 0 var(--u3-space-2); border-radius: var(--u3-radius-sm); color: var(--accent-fg); font-size: var(--u3-fs-300); font-weight: 600; text-decoration: none; }
+.u3-book-all:hover { background: var(--surface-1); }
+.u3-book-tech { border: 1px solid var(--u3-border); border-radius: var(--u3-radius-md); }
+.u3-book-tech summary { display: flex; align-items: center; min-height: var(--u3-tap); padding: 0 var(--u3-space-2); border-radius: var(--u3-radius-md); font-size: var(--u3-fs-400); font-weight: 600; cursor: pointer; }
+.u3-book-tech-list { display: flex; flex-direction: column; gap: var(--u3-space-2); margin: 0; padding: 0 var(--u3-space-2) var(--u3-space-2); }
+.u3-book-tech-list dt { font-size: var(--u3-fs-300); color: var(--fg-muted); }
+.u3-book-tech-list dd { margin: 0; font-size: var(--u3-fs-300); }
+.u3-wrap { overflow-wrap: anywhere; }
+.u3-book-delete { display: flex; align-items: center; justify-content: center; min-height: var(--u3-tap); margin: var(--u3-space-3) 0 calc(var(--u3-space-4) + env(safe-area-inset-bottom)); color: var(--status-err-fg); font-weight: 600; text-decoration: none; }
+.u3-book-delete:hover { text-decoration: underline; }
+.u3-book-delete:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.u3-book-del-q { margin: 0 0 var(--u3-space-2); font-size: var(--u3-fs-400); font-weight: 600; }
+.u3-book-del-jobs, .u3-sheet-list { display: flex; flex-direction: column; gap: var(--u3-space-1); margin: 0 0 var(--u3-space-3); padding: 0; list-style: none; }
+.u3-sheet-list { margin-bottom: var(--u3-space-2); }
+.u3-book-del-jobs li, .u3-sheet-list li { display: flex; align-items: center; gap: var(--u3-space-2); min-width: 0; }
+.u3-book-del-jobs .u3-mono, .u3-sheet-list .u3-mono { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.u3-book-del-btn { width: 100%; }
+#u3-sheet-book-delete .u3-filter-actions { flex-direction: column; align-items: stretch; gap: var(--u3-space-2); margin-top: var(--u3-space-2); }
+#u3-sheet-book-delete .u3-filter-actions .u3-btn { width: 100%; }
+.u3-fstrip { display: flex; align-items: center; gap: var(--u3-space-2); margin: 0 0 var(--u3-space-2); padding: var(--u3-space-1) var(--u3-space-2); border: 1px solid var(--u3-border); border-radius: var(--u3-radius-md); background: var(--surface-1); }
+.u3-fstrip-val { flex: 1 1 auto; min-width: 0; font-size: var(--u3-fs-300); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.u3-fstrip-reset { flex: 0 0 auto; display: inline-flex; align-items: center; min-height: var(--u3-tap); padding: 0 var(--u3-space-2); border-radius: var(--u3-radius-sm); color: var(--accent-fg); font-size: var(--u3-fs-300); font-weight: 600; text-decoration: none; }
+.u3-fstrip-reset:hover { background: var(--surface-2); }
+.u3-fstrip-reset:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
 
 /* >= 641 px (R §5): тот же HTML; панель --u3-side-w, FAB -> кнопка */
 @media (min-width: 641px) {
