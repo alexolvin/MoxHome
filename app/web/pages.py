@@ -21,11 +21,13 @@ U3:
 
 from __future__ import annotations
 
+import hmac
+import logging
 from pathlib import Path
-from typing import Annotated, cast
+from typing import Annotated, Any, cast
 from urllib.parse import quote, urlencode
 
-from fastapi import APIRouter, Form, Query, Request
+from fastapi import APIRouter, Form, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.responses import Response
@@ -34,6 +36,7 @@ from app.core.config import Settings
 from app.core.errors import AppError
 from app.core.worker_signal import worker_alive
 from app.domain.job import TERMINAL_STATES, Job, JobStatus
+from app.languages.cefr import CEFR_ORDER
 from app.languages.registry import load_registry
 from app.services.jobs import JOB_MODES, confirm_job, create_job
 from app.storage.jobs_repo import JobRepository, TransitionRecord
@@ -41,6 +44,7 @@ from app.web import views
 from app.web.strings import UI_STRINGS
 
 _S = UI_STRINGS
+logger = logging.getLogger("app.web.pages")
 
 _SORT_FIELDS = ("created_at", "updated_at")
 _ALL_JOB_STATUS_VALUES = tuple(st.value for st in JobStatus)
@@ -224,15 +228,19 @@ def _jobs_confirm_location(
     return f"/jobs/{job_id}"
 
 
-def _jobs_href(
+def _jobs_href(  # noqa: PLR0917 — параметры href: group/sort/status/sheet + book (R5)
     group: str,
     sort_field: str,
     direction: str,
     status_list: list[str] | None = None,
     sheet_name: str | None = None,
+    book: str | None = None,
 ) -> str:
     """Href /jobs с текущими группой/сортировкой/точными статусами
-    (серия R §10/§12: меню «Ещё», пилюли, сброс, FAB, листы)."""
+    (серия R §10/§12: меню «Ещё», пилюли, сброс, FAB, листы).
+    Серия R §7 (R5): ``book`` — фильтр по книге (карточка, «Экспорт»
+    и «Все (N)»); сохраняется в каждом derived-href, сбрасывается
+    только явной «сброс»-ссылкой."""
     pairs: list[tuple[str, str]] = []
     if group and group != "all":
         pairs.append(("group", group))
@@ -242,12 +250,14 @@ def _jobs_href(
         pairs.append(("sort", sort_field))
     if direction != "desc":
         pairs.append(("direction", direction))
+    if book:
+        pairs.append(("book", book))
     if sheet_name:
         pairs.append(("sheet", sheet_name))
     return "/jobs?" + urlencode(pairs) if pairs else "/jobs"
 
 
-def build_router(
+def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршруты в одном замыкании (R1–R5)
     settings: Settings, repo: JobRepository, templates: Jinja2Templates
 ) -> APIRouter:
     router = APIRouter()
@@ -281,7 +291,8 @@ def build_router(
         q: str | None = Query(default=None),
     ) -> Response:
         # Серия R §6: строки книги; `q` — серверный подстроковый фильтр
-        # (имя файла + название); поиск в строке UI — R5.
+        # (имя файла + название). Серия R §7 (R5): поиск — строка UI,
+        # тот же серверный фильтр (JS — рефетч, no-JS — GET-редирект).
         return templates.TemplateResponse(
             request,
             "books.html",
@@ -293,6 +304,308 @@ def build_router(
                 "fab_label": "fab_add_book",
             },
         )
+
+    @router.get("/books/{filename}")
+    def book_detail_page(request: Request, filename: str) -> Response:
+        """Серия R §7 (R5): карточка книги. Шесть позиций ТЗ: шапка
+        (назад/название/⋯), обложка+название+автор+«Перевести»/«Экспорт»,
+        блок «Языки» (правка тапом), до 3 последних заданий + «Все (N)»,
+        свёрнутый «Технические сведения» (SHA-256), «Удалить книгу»."""
+        detail = views.book_detail(settings, repo, filename)
+        if detail is None:
+            return templates.TemplateResponse(
+                request,
+                "not_found.html",
+                ctx(request, _page_title("title_not_found"), "books"),
+                status_code=404,
+            )
+        meta = detail["meta"]
+        jobs: list[Job] = detail["jobs"]
+        transitions = repo.list_transitions_bulk([job.id for job in jobs])
+        today_start = views.today_start_epoch()
+        grouped = _build_job_rows(jobs, settings, transitions, today_start)
+        # до 3 последних — плоским списком (row, gname) для шаблона
+        job_rows: list[tuple[dict[str, object], str]] = []
+        for gname in ("now", "today", "earlier"):
+            for row in grouped.get(gname, []):
+                job_rows.append((row, gname))
+        title = meta.get("title") or detail["name"]
+        return templates.TemplateResponse(
+            request,
+            "book.html",
+            ctx(request, title, "books")
+            | {
+                "detail": detail,
+                "meta": meta,
+                "title": title,
+                "author": meta.get("author"),
+                "job_rows": job_rows,
+                "total_jobs": detail["total_jobs"],
+                "all_jobs_href": "/jobs?book=" + quote(filename),
+                "translate_href": "/jobs?sheet=create&book=" + quote(filename),
+                "export_href": "/jobs?book=" + quote(filename),
+                "back_href": "/books",
+                "lang_codes": registry_codes(),
+                "cefr_levels": list(CEFR_ORDER),
+                # ⋯ карточки (ТЗ §7 п.1): «Удалить книгу» — тот же поток
+                # (data-book-delete), что и красный текст внизу; no-JS —
+                # ссылка на страницу-сценарий удаления.
+                "appbar_menu": [
+                    {
+                        "label": _S["book_delete_btn"],
+                        "href": f"/books/{filename}/delete",
+                        "attrs": {"data-book-delete": filename},
+                    },
+                ],
+            },
+        )
+
+    # ------------------------------------------------------------- удаление (no-JS, R5)
+    # Тот же сценарий, что JS-лист (единый механизм ТЗ §7): состояние —
+    # ДО вызова удаления (usage), три пути (файл / каскад / отмена),
+    # каскад — два шага с тем же HMAC-токеном, что API. Голый 409
+    # пользователю не показывается — только страница с причиной и путём.
+    def _basic_user(request: Request) -> str:
+        return str(getattr(request.state, "username", "") or "anonymous")
+
+    def _book_delete_ctx(  # noqa: PLR0917 — request + 5 полей сценария удаления
+        request: Request,
+        filename: str,
+        usage: dict[str, Any],
+        step: str,
+        error: str | None = None,
+        dry_run: dict[str, Any] | None = None,
+    ) -> dict[str, object]:
+        return (
+            ctx(request, _page_title("book_delete_title"), "books")
+            | {
+                "book_name": filename,
+                "usage": usage,
+                "step": step,
+                "error": error,
+                "dry_run": dry_run,
+                "back_href": f"/books/{filename}",
+            }
+        )
+
+    @router.get("/books/{filename}/delete")
+    def book_delete_page(request: Request, filename: str) -> Response:
+        if views.book_epub_path(settings, filename) is None:
+            return templates.TemplateResponse(
+                request,
+                "not_found.html",
+                ctx(request, _page_title("title_not_found"), "books"),
+                status_code=404,
+            )
+        usage = views.book_usage(settings, repo, filename)
+        assert usage is not None  # файл проверен выше
+        return templates.TemplateResponse(
+            request, "book_delete.html", _book_delete_ctx(request, filename, usage, "usage")
+        )
+
+    @router.post("/books/{filename}/delete")
+    def book_delete_post(request: Request, filename: str) -> Response:
+        """No-JS «Удалить» (сценарий «заданий нет»): 303 /books; если
+        задания появились (гонка) — страница сценария, голый 409 — нет."""
+        dest = views.book_epub_path(settings, filename)
+        if dest is None:
+            return templates.TemplateResponse(
+                request,
+                "not_found.html",
+                ctx(request, _page_title("title_not_found"), "books"),
+                status_code=404,
+            )
+        if not repo.list_job_ids_by_book(filename):
+            size = views.delete_book_files(settings, dest)
+            logger.info(
+                "book_delete(no-js): user=%s name=%s bytes=%d",
+                _basic_user(request),
+                filename,
+                size,
+            )
+            return RedirectResponse("/books", status_code=303)
+        usage = views.book_usage(settings, repo, filename)
+        assert usage is not None
+        return templates.TemplateResponse(
+            request,
+            "book_delete.html",
+            _book_delete_ctx(request, filename, usage, "usage"),
+            status_code=409,
+        )
+
+    @router.post("/books/{filename}/delete_file_only")
+    def book_delete_file_only(request: Request, filename: str) -> Response:
+        """No-JS «Удалить только файл»: задания сохраняются со ссылкой на
+        (теперь отсутствующий) файл — как API ``?file_only=1``."""
+        dest = views.book_epub_path(settings, filename)
+        if dest is None:
+            return templates.TemplateResponse(
+                request,
+                "not_found.html",
+                ctx(request, _page_title("title_not_found"), "books"),
+                status_code=404,
+            )
+        size = views.delete_book_files(settings, dest)
+        logger.info(
+            "book_delete_file_only(no-js): user=%s name=%s bytes=%d",
+            _basic_user(request),
+            filename,
+            size,
+        )
+        return RedirectResponse("/books", status_code=303)
+
+    @router.post("/books/{filename}/purge")
+    def book_purge_page(
+        request: Request,
+        filename: str,
+        confirm_token: str = Form(default=""),
+    ) -> Response:
+        """No-JS каскад — два шага (та же логика, что ``POST /api/books/
+        {filename}/purge``): шаг 1 — страница подтверждения с токеном,
+        шаг 2 — сверка токена и удаление ровно перечисленного."""
+        dest = views.book_epub_path(settings, filename)
+        if dest is None:
+            return templates.TemplateResponse(
+                request,
+                "not_found.html",
+                ctx(request, _page_title("title_not_found"), "books"),
+                status_code=404,
+            )
+        usage = views.book_usage(settings, repo, filename)
+        assert usage is not None
+        if not confirm_token:
+            try:
+                dry = views.book_purge_dry_run(settings, repo, filename)
+            except AppError as exc:
+                return templates.TemplateResponse(
+                    request,
+                    "book_delete.html",
+                    _book_delete_ctx(request, filename, usage, "usage", error=exc.message),
+                    status_code=409,
+                )
+            return templates.TemplateResponse(
+                request,
+                "book_delete.html",
+                _book_delete_ctx(request, filename, usage, "confirm", dry_run=dry),
+            )
+        try:
+            dry = views.book_purge_dry_run(settings, repo, filename)
+        except AppError as exc:
+            return templates.TemplateResponse(
+                request,
+                "book_delete.html",
+                _book_delete_ctx(request, filename, usage, "usage", error=exc.message),
+                status_code=409,
+            )
+        expected = views.book_purge_token(settings.server.auth_secret, filename, dry["job_ids"])
+        if not hmac.compare_digest(confirm_token, expected):
+            return templates.TemplateResponse(
+                request,
+                "book_delete.html",
+                _book_delete_ctx(
+                    request, filename, usage, "usage",
+                    error=_S["err_book_purge_token"],
+                ),
+                status_code=409,
+            )
+        result = views.book_purge_execute(settings, repo, filename, dry["job_ids"])
+        logger.info(
+            "book_purge(no-js): user=%s name=%s jobs=%s rows=%d bytes=%d",
+            _basic_user(request),
+            filename,
+            dry["job_ids"],
+            result["rows"],
+            result["bytes"],
+        )
+        return RedirectResponse("/books", status_code=303)
+
+    # ------------------------------------------------------------- метаданные (no-JS, R5)
+    # Та же пара «одно поле + сохранить», что JS-лист (единый механизм
+    # ТЗ §7): страница-форма с ОДНИМ полем; отказ — страница с причиной
+    # (fail closed, как API 400), файл не тронут.
+    def _book_meta_ctx(  # noqa: PLR0917 — request + 5 полей формы метаданных
+        request: Request,
+        filename: str,
+        field: str,
+        value: str,
+        kind: str,
+        error: str | None = None,
+    ) -> dict[str, object]:
+        return (
+            ctx(request, _page_title("book_meta_title"), "books")
+            | {
+                "book_name": filename,
+                "field": field,
+                "fkey": views.BOOK_META_FIELD_KEYS[field],
+                "value": value,
+                "kind": kind,
+                "error": error,
+                "lang_codes": registry_codes(),
+                "cefr_levels": list(CEFR_ORDER),
+                "back_href": f"/books/{filename}",
+            }
+        )
+
+    @router.get("/books/{filename}/meta")
+    def book_meta_page(
+        request: Request,
+        filename: str,
+        field: str = Query(default="title"),
+    ) -> Response:
+        dest = views.book_epub_path(settings, filename)
+        if dest is None:
+            return templates.TemplateResponse(
+                request,
+                "not_found.html",
+                ctx(request, _page_title("title_not_found"), "books"),
+                status_code=404,
+            )
+        if field not in views.BOOK_META_FIELDS:
+            field = "title"
+        meta = views.read_book_meta(dest)
+        kind = views.BOOK_META_FIELDS[field][0]
+        return templates.TemplateResponse(
+            request,
+            "book_meta.html",
+            _book_meta_ctx(request, filename, field, str(meta.get(field) or ""), kind),
+        )
+
+    @router.post("/books/{filename}/meta")
+    def book_meta_post(
+        request: Request,
+        filename: str,
+        field: str = Form(default=""),
+        value: str = Form(default=""),
+    ) -> Response:
+        dest = views.book_epub_path(settings, filename)
+        if dest is None:
+            return templates.TemplateResponse(
+                request,
+                "not_found.html",
+                ctx(request, _page_title("title_not_found"), "books"),
+                status_code=404,
+            )
+        if field not in views.BOOK_META_FIELDS:
+            raise HTTPException(
+                status_code=400, detail=_S["err_book_bad_field"].format(field=field)
+            )
+        try:
+            views.update_book_meta(settings, filename, {field: value})
+        except AppError as exc:
+            kind = views.BOOK_META_FIELDS[field][0]
+            return templates.TemplateResponse(
+                request,
+                "book_meta.html",
+                _book_meta_ctx(request, filename, field, value, kind, error=exc.message),
+                status_code=400,
+            )
+        logger.info(
+            "book_meta(no-js): user=%s name=%s field=%s",
+            _basic_user(request),
+            filename,
+            field,
+        )
+        return RedirectResponse(f"/books/{filename}", status_code=303)
 
     # ------------------------------------------------------------- Jobs (список)
     @router.get("/jobs")
@@ -323,12 +636,20 @@ def build_router(
         statuses = _group_statuses(group_norm, exact)
         sort_field = sort if sort in _SORT_FIELDS else "updated_at"
         direction_norm = "asc" if direction == "asc" else "desc"
+        # Серия R §7 (R5): фильтр по книге (карточка: «Экспорт», «Все (N)»);
+        # незнакомое имя — игнор (как предвыбор мастера, R4).
+        book_norm = book if book and views.book_epub_path(settings, book) else None
 
         if statuses == ():
             jobs: list[Job] = []
         else:
             jobs = repo.list_jobs(
-                None, 0, statuses=statuses, sort=sort_field, direction=direction_norm
+                None,
+                0,
+                statuses=statuses,
+                book=book_norm,
+                sort=sort_field,
+                direction=direction_norm,
             )
 
         # Группировка — сервером, единый источник views.job_list_group;
@@ -375,27 +696,31 @@ def build_router(
             {"text": _S["jobs_menu_sort"]},
             {
                 "label": _S["jobs_sort_updated"] + " ↓",
-                "href": _jobs_href(group_norm, "updated_at", "desc", status_list),
+                "href": _jobs_href(group_norm, "updated_at", "desc", status_list, book=book_norm),
                 "current": sort_field == "updated_at" and direction_norm == "desc",
             },
             {
                 "label": _S["jobs_sort_created"] + " ↓",
-                "href": _jobs_href(group_norm, "created_at", "desc", status_list),
+                "href": _jobs_href(group_norm, "created_at", "desc", status_list, book=book_norm),
                 "current": sort_field == "created_at" and direction_norm == "desc",
             },
             {
                 "label": _S["jobs_sort_created"] + " ↑",
-                "href": _jobs_href(group_norm, "created_at", "asc", status_list),
+                "href": _jobs_href(group_norm, "created_at", "asc", status_list, book=book_norm),
                 "current": sort_field == "created_at" and direction_norm == "asc",
             },
             {
                 "label": _S["jobs_menu_filter"],
-                "href": _jobs_href(group_norm, sort_field, direction_norm, status_list, "filter"),
+                "href": _jobs_href(
+                    group_norm, sort_field, direction_norm, status_list, "filter", book_norm
+                ),
                 "sheet": "u3-sheet-filter",
             },
             {
                 "label": _S["jobs_menu_purge"],
-                "href": _jobs_href(group_norm, sort_field, direction_norm, status_list, "purge"),
+                "href": _jobs_href(
+                    group_norm, sort_field, direction_norm, status_list, "purge", book_norm
+                ),
                 "sheet": "u3-sheet-purge",
             },
         ]
@@ -415,13 +740,22 @@ def build_router(
                 "total": sum(len(rows) for rows in group_rows.values()),
                 "group": group_norm,
                 "pills": pills,
-                "pill_href": lambda g: _jobs_href(g, sort_field, direction_norm, status_list),
+                "pill_href": lambda g: _jobs_href(
+                    g, sort_field, direction_norm, status_list, book=book_norm
+                ),
                 "all_statuses": list(_ALL_JOB_STATUS_VALUES),
                 "terminal_statuses": [st.value for st in TERMINAL_STATES],
                 "f_status": status_list,
                 # «Сбросить фильтр» в листе: точные статусы снимаются,
                 # группа и сортировка сохраняются.
                 "reset_href": _jobs_href(group_norm, sort_field, direction_norm),
+                # Серия R §7 (R5): строка фильтра по книге («Книга: <имя>»
+                # + сброс — снят ТОЛЬКО фильтр книги, группа/сортировка/
+                # статусы сохраняются).
+                "book": book_norm,
+                "book_reset_href": _jobs_href(
+                    group_norm, sort_field, direction_norm, status_list
+                ),
                 "sort_field": sort_field,
                 "sort_direction": direction_norm,
                 "worker_status": worker_status,
@@ -438,15 +772,19 @@ def build_router(
                 "job_modes": JOB_MODES,
                 "books": books_list,
                 # R4 (ТЗ §12): умолчания мастера создания (единая точка
-                # базовой линии services.jobs.create_baseline — как у чипов)
-                "create_defaults": views.create_defaults(repo, settings),
+                # базовой линии services.jobs.create_baseline — как у чипов);
+                # R5 (ТЗ §7): книга карточки — её target_default/cefr_default
+                # перекрывают базовую линию (валидные значения только).
+                "create_defaults": views.create_defaults(
+                    repo, settings, book=book_norm
+                ),
                 # R4: «Ещё» — глоссарий read-only из конфига (per-job — вне
                 # границ ТЗ §1: изменение pipeline.py)
                 "glossary_enabled": settings.glossary.enabled,
                 # Серия R §12: FAB «Новое задание» → лист создания
                 # (JS — <dialog>, без JS — страница-форма ?sheet=create).
                 "fab_href": _jobs_href(
-                    group_norm, sort_field, direction_norm, status_list, "create"
+                    group_norm, sort_field, direction_norm, status_list, "create", book_norm
                 ),
                 "fab_label": "fab_new_job",
                 "fab_sheet": "u3-sheet-create",

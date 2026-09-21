@@ -17,7 +17,7 @@
       <menu>
         {% for item in appbar_menu %}
         {% if item.href is defined %}
-        <a class="u3-appbar-menu-item{% if item.current %} is-current{% endif %}" href="{{ item.href }}"{% if item.sheet is defined %} data-sheet-open="{{ item.sheet }}"{% endif %}>{{ item.label }}</a>
+        <a class="u3-appbar-menu-item{% if item.current %} is-current{% endif %}" href="{{ item.href }}"{% if item.sheet is defined %} data-sheet-open="{{ item.sheet }}"{% endif %}{% if item.attrs is defined %}{% for k, v in item.attrs.items() %} {{ k }}="{{ v }}"{% endfor %}{% endif %}>{{ item.label }}</a>
         {% else %}
         <span class="u3-appbar-menu-text">{{ item.text }}</span>
         {% endif %}

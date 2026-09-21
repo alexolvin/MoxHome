@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+{# Серия R §7 (R5): no-JS-правка метаданных — ОДНО поле + «Сохранить»
+   (та же пара, что JS-лист, единый механизм ТЗ §7). kind: str — текст,
+   lang — select языков реестра, cefr — select уровней CEFR. Отказ
+   (fail closed) — причина на странице, 400, файл не тронут. #}
+<section class="u3-panel u3-book-meta-page">
+  <h2 class="u3-sheet-title">{{ s["book_meta_title"] }}</h2>
+  {% if error %}
+  <p class="u3-warn" role="alert">{{ error }}</p>
+  {% endif %}
+  <form method="post" action="/books/{{ book_name }}/meta" class="u3-sheet-form">
+    <label class="u3-filter">
+      {{ s[fkey] }}:
+      {% if kind == "lang" %}
+      <select name="value" class="u3-input" aria-label="{{ s[fkey] }}">
+        <option value="">{{ s["common_not_set"] }}</option>
+        {% for code in lang_codes %}
+        <option value="{{ code }}"{% if value == code %} selected{% endif %}>{{ code }}</option>
+        {% endfor %}
+      </select>
+      {% elif kind == "cefr" %}
+      <select name="value" class="u3-input" aria-label="{{ s[fkey] }}">
+        <option value="">{{ s["common_not_set"] }}</option>
+        {% for lvl in cefr_levels %}
+        <option value="{{ lvl }}"{% if value == lvl %} selected{% endif %}>{{ lvl }}</option>
+        {% endfor %}
+      </select>
+      {% else %}
+      <input type="text" name="value" class="u3-input" value="{{ value }}" aria-label="{{ s[fkey] }}"
+             maxlength="2000">
+      {% endif %}
+    </label>
+    <input type="hidden" name="field" value="{{ field }}">
+    <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+    <span class="u3-filter-actions">
+      <button type="submit" class="u3-btn u3-primary u3-sheet-action">{{ s["book_meta_save"] }}</button>
+      <a class="u3-btn" href="/books/{{ book_name }}">{{ s["book_delete_cancel"] }}</a>
+    </span>
+  </form>
+</section>
+{% endblock %}

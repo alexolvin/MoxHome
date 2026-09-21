@@ -511,7 +511,33 @@ _CONSUMERS: dict[str, tuple[tuple[str, str], ...]] = {
         ("app/web/static/app.js", 'fetchJSON("/api/books", { method: "POST"'),  # POST
     ),
     "/api/books/{filename}": (
-        ("app/web/static/app.js", '"/api/books/" + encodeURIComponent(name)'),  # DELETE
+        # R5: поток удаления книги — состояние выяснено заранее
+        # (GET /usage), голый 409 не показан (T10)
+        (
+            "app/web/static/app.js",
+            'fetchJSON("/api/books/" + enc(simple.dataset.name), { method: "DELETE"',
+        ),  # DELETE (простое подтверждение)
+        (
+            "app/web/static/app.js",
+            '?file_only=1", { method: "DELETE"',
+        ),  # DELETE (только файл; задания сохраняются)
+        # R5: правка метаданных — один механизм (bottom sheet, fail-closed)
+        (
+            "app/web/static/app.js",
+            'fetchJSON("/api/books/" + enc(bookName), { method: "PATCH"',
+        ),  # PATCH
+    ),
+    "/api/books/{filename}/usage": (
+        # R5: задания, ссылающиеся на книгу — питает лист удаления
+        ("app/web/static/app.js", 'fetchJSON("/api/books/" + enc(name) + "/usage"'),  # GET
+    ),
+    "/api/books/{filename}/purge": (
+        # R5: каскад «книга + задания» в два шага (confirm_token —
+        # тот же механизм, что POST /api/jobs/purge)
+        (
+            "app/web/static/app.js",
+            '"/api/books/" + enc(cascade.dataset.name) + "/purge"',
+        ),  # POST
     ),
     "/api/jobs": (
         ("app/web/templates/jobs.html", 'data-u1-fetch="/api/jobs"'),  # GET

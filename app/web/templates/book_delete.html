@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+{# Серия R §7 (R5): no-JS-сценарий удаления книги — та же логика, что
+   JS-лист (единый механизм): состояние выяснено ДО вызова (usage),
+   три пути (только файл / каскад / отмена), голый 409 не показывается.
+   Шаги: «usage» — выбор пути (0 заданий — простое «Удалить»);
+   «confirm» — шаг 2 каскада (confirm_token из dry-run, удаляется
+   ровно перечисленное; расхождение — страница с причиной, 409). #}
+{% set nonterm = usage.jobs | selectattr("terminal", "false") | map(attribute="id") | list %}
+<section class="u3-panel u3-book-del-page">
+  <h2 class="u3-sheet-title">{{ s["book_delete_title"] }}</h2>
+  {% if error %}
+  <p class="u3-warn" role="alert">{{ error }}</p>
+  {% endif %}
+  {% if step == "confirm" and dry_run %}
+  <p class="u3-book-del-q">{{ s["book_delete_cascade"].format(n=dry_run.count) }}</p>
+  <p class="hint">{{ s["book_delete_cascade_hint"].format(n=dry_run.count) }}</p>
+  <ul class="u3-book-del-jobs">
+    {% for j in usage.jobs %}
+    <li><span class="u3-status status-{{ j.status_group }}">{{ j.status }}</span> <span class="u3-mono">{{ j.id }}</span></li>
+    {% endfor %}
+  </ul>
+  <form method="post" action="/books/{{ book_name }}/purge">
+    <input type="hidden" name="confirm_token" value="{{ dry_run.confirm_token }}">
+    <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+    <button type="submit" class="u3-btn u3-primary u3-book-del-btn">{{ s["book_delete_cascade_confirm"] }}</button>
+    <a class="u3-btn u3-book-del-btn" href="/books/{{ book_name }}">{{ s["book_delete_cancel"] }}</a>
+  </form>
+  {% elif usage.count == 0 %}
+  <p class="u3-book-del-q">{{ s["book_delete_simple_q"].format(name=book_name) }}</p>
+  <form method="post" action="/books/{{ book_name }}/delete">
+    <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+    <button type="submit" class="u3-btn u3-primary u3-book-del-btn">{{ s["book_delete_yes"] }}</button>
+    <a class="u3-btn u3-book-del-btn" href="/books/{{ book_name }}">{{ s["book_delete_cancel"] }}</a>
+  </form>
+  {% else %}
+  <p class="u3-book-del-q">{{ s["book_delete_referenced"].format(n=usage.count) }}</p>
+  <ul class="u3-book-del-jobs">
+    {% for j in usage.jobs %}
+    <li><span class="u3-status status-{{ j.status_group }}">{{ j.status }}</span> <span class="u3-mono">{{ j.id }}</span></li>
+    {% endfor %}
+  </ul>
+  {% if nonterm %}
+  <p class="u3-warn" role="alert">{{ s["book_delete_nonterminal"].format(n=usage.count, ids=nonterm | join(", ")) }}</p>
+  {% endif %}
+  <form method="post" action="/books/{{ book_name }}/delete_file_only">
+    <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+    <button type="submit" class="u3-btn u3-book-del-btn">{{ s["book_delete_file_only"] }}</button>
+    <p class="hint">{{ s["book_delete_file_only_hint"].format(n=usage.count) }}</p>
+  </form>
+  {% if not nonterm %}
+  <form method="post" action="/books/{{ book_name }}/purge">
+    <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+    <button type="submit" class="u3-btn u3-primary u3-book-del-btn">{{ s["book_delete_cascade"].format(n=usage.count) }}</button>
+    <p class="hint">{{ s["book_delete_cascade_hint"].format(n=usage.count) }}</p>
+  </form>
+  {% endif %}
+  <p><a class="u3-btn u3-book-del-btn" href="/books/{{ book_name }}">{{ s["book_delete_cancel"] }}</a></p>
+  {% endif %}
+</section>
+{% endblock %}

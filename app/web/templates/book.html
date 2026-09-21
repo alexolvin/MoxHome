@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block content %}
+{# Серия R §7 (R5): карточка книги. Шесть позиций ТЗ: (1) шапка — appbar
+   (назад/название/⋯ — «Удалить книгу», тот же поток, что текст внизу);
+   (2) шапка карточки: обложка 96×136 (буква; настоящая — R6), название,
+   автор + две кнопки во всю ширину «Перевести»/«Экспорт»; (3) блок
+   «Языки» — редактируется тапом; (4) «Задания по этой книге» — до 3
+   последних строк (§10, переиспользуется _job_row.html) + «Все (N)»;
+   (5) свёрнутый «Технические сведения» (хеши — mono, overflow-wrap
+   anywhere); (6) «Удалить книгу» — красный текст внизу.
+   Все 6 полей метаданных редактируются ОДНИМ механизмом: тап по
+   значению → bottom sheet с одним полем + «Сохранить» (no-JS — та же
+   страница-форма /books/{name}/meta?field=). Размещение полей:
+   название/автор/заметка — в шапке карточки, языки + CEFR — в блоке. #}
+{% set src_val = meta.source_language or meta.accepted_language or meta.detected or s["common_not_set"] %}
+{% set tgt_val = meta.target_default or s["common_not_set"] %}
+{% set cefr_val = meta.cefr_default or s["common_not_set"] %}
+<section class="u3-book-head">
+  <span class="u3-book-cover" aria-hidden="true">{{ title[:1] | upper }}</span>
+  <div class="u3-book-id">
+    <h2 class="u3-book-title" title="{{ title }}"><a class="u3-book-val" href="/books/{{ detail.name }}/meta?field=title" data-book-field="title" data-book-value="{{ meta.title or '' }}">{{ title }}</a></h2>
+    <p class="u3-book-author"><a class="u3-book-val" href="/books/{{ detail.name }}/meta?field=author" data-book-field="author" data-book-value="{{ meta.author or '' }}">{% if author %}{{ author }}{% else %}{{ s["common_not_set"] }}{% endif %}</a></p>
+    <p class="u3-book-note"><a class="u3-book-val" href="/books/{{ detail.name }}/meta?field=note" data-book-field="note" data-book-value="{{ meta.note or '' }}">{% if meta.note %}{{ meta.note }}{% else %}{{ s["common_not_set"] }}{% endif %}</a></p>
+  </div>
+</section>
+<div class="u3-book-actions">
+  <a class="u3-btn u3-primary u3-book-action" href="{{ translate_href }}">{{ s["book_translate_btn"] }}</a>
+  <a class="u3-btn u3-book-action" href="{{ export_href }}">{{ s["book_export_btn"] }}</a>
+</div>
+
+<section class="u3-book-block" aria-label="{{ s["book_block_languages"] }}">
+  <h3 class="u3-book-block-title">{{ s["book_block_languages"] }}</h3>
+  <div class="u3-book-rows">
+    <div class="u3-book-row">
+      <span class="u3-book-k">{{ s["book_src_lang"] }}</span>
+      <a class="u3-book-v" href="/books/{{ detail.name }}/meta?field=source_language"
+         data-book-field="source_language" data-book-value="{{ meta.source_language or '' }}">{{ src_val }}</a>
+    </div>
+    <div class="u3-book-row">
+      <span class="u3-book-k">{{ s["book_detection_confidence"] }}</span>
+      {% if meta.confidence is not none %}
+      <span class="u3-book-v">{{ meta.confidence | round(2) }}{% if meta.decision %} · {{ s["book_decision_" ~ meta.decision] }}{% endif %}</span>
+      {% else %}
+      <span class="u3-book-v">{{ s["common_not_set"] }}</span>
+      {% endif %}
+    </div>
+    <div class="u3-book-row">
+      <span class="u3-book-k">{{ s["book_target_default"] }}</span>
+      <a class="u3-book-v" href="/books/{{ detail.name }}/meta?field=target_default"
+         data-book-field="target_default" data-book-value="{{ meta.target_default or '' }}">{{ tgt_val }}</a>
+    </div>
+    <div class="u3-book-row">
+      <span class="u3-book-k">{{ s["book_field_cefr"] }}</span>
+      <a class="u3-book-v" href="/books/{{ detail.name }}/meta?field=cefr_default"
+         data-book-field="cefr_default" data-book-value="{{ meta.cefr_default or '' }}">{{ cefr_val }}</a>
+    </div>
+  </div>
+</section>
+
+<section class="u3-book-block" aria-label="{{ s["book_block_jobs"] }}">
+  <h3 class="u3-book-block-title">{{ s["book_block_jobs"] }}</h3>
+  {% for row, gname in job_rows %}
+  {% include "_job_row.html" %}
+  {% else %}
+  <p class="u3-book-none">{{ s["book_jobs_none"] }}</p>
+  {% endfor %}
+  {% if total_jobs > 0 %}
+  <a class="u3-book-all" href="{{ all_jobs_href }}">{{ s["book_jobs_all"].format(n=total_jobs) }}</a>
+  {% endif %}
+</section>
+
+<details class="u3-book-tech">
+  <summary>{{ s["book_block_tech"] }}</summary>
+  <dl class="u3-book-tech-list">
+    <div><dt>{{ s["book_tech_file"] }}</dt><dd class="u3-mono u3-wrap">{{ detail.name }}</dd></div>
+    <div><dt>{{ s["book_tech_path"] }}</dt><dd class="u3-mono u3-wrap">{{ detail.path }}</dd></div>
+    <div><dt>{{ s["book_tech_size"] }}</dt><dd>{{ detail.size_human }}</dd></div>
+    <div><dt>{{ s["book_tech_sha256"] }}</dt><dd class="u3-mono u3-wrap">{{ detail.sha256 }}</dd></div>
+    <div><dt>{{ s["books_col_dc_lang"] }}</dt><dd class="u3-mono">{{ meta.dc_language or s["common_not_set"] }}</dd></div>
+    <div><dt>{{ s["books_col_chapters"] }}</dt><dd>{{ detail.chapters if detail.chapters is not none else s["common_not_set"] }}</dd></div>
+    <div><dt>{{ s["books_col_segments"] }}</dt><dd>{{ detail.segments if detail.segments is not none else s["common_not_set"] }}</dd></div>
+    <div><dt>{{ s["book_tech_added"] }}</dt><dd>{{ detail.uploaded_at_human }}</dd></div>
+  </dl>
+</details>
+
+<a class="u3-book-delete" href="/books/{{ detail.name }}/delete"
+   data-book-delete="{{ detail.name }}">{{ s["book_delete_btn"] }}</a>
+
+{# Лист правки метаданных (JS): одно поле + «Сохранить» — единый механизм;
+   no-JS — страница-форма /books/{name}/meta?field= (та же пара
+   «одно поле + сохранить»). data-* — опции селектов (реестр языков и
+   уровни CEFR — те же точки, что мастер создания). #}
+<dialog class="u3-sheet" id="u3-sheet-book-meta" aria-label="{{ s["book_meta_title"] }}"
+        data-langs='{{ lang_codes | tojson }}' data-cefrs='{{ cefr_levels | tojson }}'>
+  <h2 class="u3-sheet-title" id="u3-book-meta-title"></h2>
+  <form id="u3-book-meta-form" class="u3-sheet-form">
+    <input type="hidden" id="u3-book-meta-field" name="field" required>
+    <input type="text" id="u3-book-meta-input" class="u3-input" aria-label="{{ s["book_meta_title"] }}" maxlength="2000">
+    <select id="u3-book-meta-select" class="u3-input" hidden aria-label="{{ s["book_meta_title"] }}"></select>
+    <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+    <button type="submit" class="u3-btn u3-primary u3-sheet-action">{{ s["book_meta_save"] }}</button>
+    <span id="u3-book-meta-msg" role="status"></span>
+  </form>
+</dialog>
+{% include "_book_delete_sheets.html" %}
+{% endblock %}

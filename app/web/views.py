@@ -18,7 +18,10 @@ U3: строки интерфейса — только из ``app.web.strings`` 
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
+import shutil
 import time
 from collections.abc import Mapping
 from datetime import datetime
@@ -26,6 +29,7 @@ from pathlib import Path
 from typing import Any
 
 from app.core.config import PROFILE_NAMES, Settings
+from app.core.errors import AppError
 from app.domain.job import LEARNING_LEVELS, TERMINAL_STATES, WORKING_STATES, Job, JobStatus
 from app.languages.cefr import CEFR_ORDER, language_cefr_label
 from app.languages.registry import load_registry
@@ -446,7 +450,9 @@ def _param_chips(raw: str) -> list[dict[str, str | None]]:
     return data if isinstance(data, list) else []
 
 
-def create_defaults(repo: JobRepository, settings: Settings) -> dict[str, Any]:
+def create_defaults(
+    repo: JobRepository, settings: Settings, book: str | None = None
+) -> dict[str, Any]:
     """Серия R §12 (R4): умолчания формы создания — сервером, в разметку.
 
     Базовая линия — единая точка ``services.jobs.create_baseline`` (последнее
@@ -454,7 +460,12 @@ def create_defaults(repo: JobRepository, settings: Settings) -> dict[str, Any]:
     (create_job). CEFR-подпись по языкам — единая точка
     ``languages.cefr.language_cefr_label`` (ТЗ: не сокращается, не в тултип).
     Подсказки объёма материалов — по уровням из ``learning.SUBSTAGE_LEVELS``
-    (единственный источник «уровень → подстадии»; строки — strings.py)."""
+    (единственный источник «уровень → подстадии»; строки — strings.py).
+
+    Серия R §7 (R5): ``book`` — книга, с которой создают (карточка,
+    «Перевести»): её ``target_default``/``cefr_default`` (если заданы и
+    валидны) перекрывают базовую линию; «язык оригинала» книги в UI —
+    метаданные (решение L0.5 по заданию не меняется, TZ §1)."""
     baseline, from_last = create_baseline(repo, settings)
     registry = load_registry(settings.languages_root)
     cefr_labels = {
@@ -469,11 +480,23 @@ def create_defaults(repo: JobRepository, settings: Settings) -> dict[str, Any]:
         for level in LEARNING_LEVELS
     }
     level_hints[""] = _S["create_level_none_hint"]
+    target = baseline["target_language"]
+    learning_cefr = baseline["learning_cefr"]
+    if book is not None:
+        dest = book_epub_path(settings, book)
+        if dest is not None:
+            meta = read_book_meta(dest)
+            book_target = meta.get("target_default")
+            book_cefr = meta.get("cefr_default")
+            if book_target in registry:
+                target = book_target
+            if book_cefr in CEFR_ORDER:
+                learning_cefr = book_cefr
     return {
-        "target": baseline["target_language"],
+        "target": target,
         "mode": baseline["mode"],
         "learning_level": baseline["learning_level"],
-        "learning_cefr": baseline["learning_cefr"],
+        "learning_cefr": learning_cefr,
         "from_last_job": from_last,
         "cefr_labels": cefr_labels,
         "level_hints": level_hints,
@@ -483,6 +506,107 @@ def create_defaults(repo: JobRepository, settings: Settings) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------- книги (Books)
+
+# Серия R §15: редактируемые поля sidecar-метаданных (.meta.json) —
+# ровно шесть полей ТЗ §7 (один механизм правки: тап по значению).
+BOOK_META_FIELDS: dict[str, tuple[str, ...]] = {
+    "title": ("str",),
+    "author": ("str",),
+    "source_language": ("lang",),
+    "target_default": ("lang",),
+    "cefr_default": ("cefr",),
+    "note": ("str",),
+}
+# Серия R §15: зарезервированные поля (заполняет R6-импорт; в R5 не
+# редактируются, но читаются и переносятся миграцией).
+BOOK_META_RESERVED: tuple[str, ...] = ("source_format", "cover_path", "imported_at")
+# Серия R §7: ключи строк UI по полям (strings.py — единый источник).
+BOOK_META_FIELD_KEYS = {
+    "title": "book_field_title",
+    "author": "book_field_author",
+    "source_language": "book_field_source",
+    "target_default": "book_field_target",
+    "cefr_default": "book_field_cefr",
+    "note": "book_field_note",
+}
+# Серия R §7: лимит длины текстовых полей (fail closed на API-границе).
+BOOK_META_MAX_LEN = {"title": 200, "author": 200, "note": 2000}
+
+
+def book_epub_path(settings: Settings, filename: str) -> Path | None:
+    """Файл книги из имени (валидация имени — здесь, единая точка):
+    без traversal, только ``*.epub`` внутри ``input/``."""
+    if not filename or Path(filename).name != filename or not filename.endswith(".epub"):
+        return None
+    dest = settings.input_dir / filename
+    return dest if dest.is_file() else None
+
+
+def book_meta_path(path: Path) -> Path:
+    """Sidecar-метаданные книги: ``<имя>.epub`` → ``<имя>.meta.json``."""
+    return path.with_suffix(path.suffix + ".meta.json")
+
+
+def read_book_meta(path: Path) -> dict[str, Any]:
+    """Серия R §15: sidecar ``.meta.json`` с ленивой миграцией.
+
+    При первом обращении читает старый ``.detect.json`` и пишет новый
+    файл (старый НЕ удаляется — ТЗ §15). Нет ни того, ни другого —
+    пустой dict (данные файла книги — единственный источник)."""
+    meta = read_json(book_meta_path(path))
+    if meta is None:
+        legacy = read_json(path.with_suffix(path.suffix + ".detect.json"))
+        if legacy is not None:
+            meta = {**book_meta_defaults(), **legacy}
+            book_meta_path(path).write_text(
+                json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8"
+            )
+        else:
+            meta = book_meta_defaults()
+    return meta
+
+
+def book_meta_defaults() -> dict[str, Any]:
+    """Новые поля sidecar с дефолтами (ТЗ §15: title, author,
+    target_default, cefr_default, note; R5-расширение — source_language)."""
+    return {
+        "title": None,
+        "author": None,
+        "source_language": None,
+        "target_default": None,
+        "cefr_default": None,
+        "note": None,
+    }
+
+
+def write_book_meta(path: Path, meta: dict[str, Any]) -> None:
+    """Запись sidecar-метаданных (атомарно: tmp + rename)."""
+    dest = book_meta_path(path)
+    tmp = dest.with_suffix(dest.suffix + ".tmp")
+    tmp.write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
+    tmp.replace(dest)
+
+
+def delete_book_files(settings: Settings, dest: Path) -> int:
+    """Удаление файла книги + обоих sidecar (единая точка: API, страницы,
+    каскад). Возврат — число удалённых байт файла (строка аудита)."""
+    size = dest.stat().st_size if dest.is_file() else 0
+    dest.unlink(missing_ok=True)
+    book_meta_path(dest).unlink(missing_ok=True)
+    dest.with_suffix(dest.suffix + ".detect.json").unlink(missing_ok=True)
+    return size
+
+
+def book_purge_token(secret: str, filename: str, job_ids: list[str]) -> str:
+    """Серия R §7: токен двухшагового каскада удаления книги — тот же
+    механизм, что ``/jobs/purge`` (HMAC от секрета, книги и состава);
+    расхождение состава между шагами — 409 (удаляется ровно перечисленное)."""
+    payload = json.dumps(
+        {"book": filename, "ids": sorted(job_ids)}, sort_keys=True, ensure_ascii=False
+    )
+    return hmac.new(
+        secret.encode("utf-8"), f"u3-bookpurge|{payload}".encode(), hashlib.sha256
+    ).hexdigest()[:32]
 
 
 def list_books(
@@ -507,7 +631,7 @@ def list_books(
     if not input_dir.is_dir():
         return books
     for path in sorted(input_dir.glob("*.epub")):
-        meta = read_json(path.with_suffix(path.suffix + ".detect.json")) or {}
+        meta = read_book_meta(path)
         stats = meta.get("stats") or {}
         st = path.stat()
         books.append(
@@ -519,6 +643,7 @@ def list_books(
                 "modified_at": st.st_mtime,
                 "uploaded_at_human": human_ts(st.st_mtime),
                 "title": meta.get("title"),
+                "author": meta.get("author"),
                 "dc_language": meta.get("dc_language"),
                 "detected": meta.get("detected"),
                 "confidence": meta.get("confidence"),
@@ -526,6 +651,11 @@ def list_books(
                 "decision": meta.get("decision"),
                 "accepted_language": meta.get("accepted_language"),
                 "reasons": meta.get("reasons") or [],
+                # Серия R §7: метаданные карточки (правка — PATCH §15)
+                "source_language": meta.get("source_language"),
+                "target_default": meta.get("target_default"),
+                "cefr_default": meta.get("cefr_default"),
+                "note": meta.get("note"),
                 "chapters": stats.get("chapter_count"),
                 "segments": stats.get("segment_count"),
                 "words": stats.get("word_count"),
@@ -547,6 +677,165 @@ def list_books(
                 repo.list_jobs(1, 0, statuses=run_statuses, book=b["name"])
             )
     return books
+
+
+def book_detail(
+    settings: Settings, repo: JobRepository | None, filename: str
+) -> dict[str, Any] | None:
+    """Серия R §7: данные карточки книги. None — книга не найдена
+    (некорректное имя или файла нет — страница 404)."""
+    dest = book_epub_path(settings, filename)
+    if dest is None:
+        return None
+    meta = read_book_meta(dest)
+    stats = meta.get("stats") or {}
+    st = dest.stat()
+    with dest.open("rb") as handle:
+        sha256 = hashlib.sha256(handle.read()).hexdigest()
+    jobs = repo.list_jobs(3, 0, book=filename, sort="updated_at", direction="desc") if repo else []
+    total_jobs = repo.count_jobs(book=filename) if repo else 0
+    return {
+        "name": filename,
+        "path": str(dest),
+        "size_bytes": st.st_size,
+        "size_human": human_size(st.st_size),
+        "sha256": sha256,
+        "uploaded_at_human": human_ts(st.st_mtime),
+        "meta": meta,
+        "chapters": stats.get("chapter_count"),
+        "segments": stats.get("segment_count"),
+        "words": stats.get("word_count"),
+        "jobs": jobs,
+        "total_jobs": total_jobs,
+    }
+
+
+def update_book_meta(
+    settings: Settings, filename: str, patch: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Серия R §15: правка метаданных (6 полей ТЗ §7). Fail closed:
+    неизвестное поле/язык/CEFR/длина — ``AppError`` (400 на API).
+
+    Пустое значение (None/пустая строка) — очистка поля. Возврат —
+    полный обновлённый sidecar."""
+    dest = book_epub_path(settings, filename)
+    if dest is None:
+        raise AppError(_S["err_book_not_found"].format(filename=filename))
+    if not patch:
+        raise AppError(_S["err_book_meta_empty"])
+    registry = load_registry(settings.languages_root)
+    for key, value in patch.items():
+        if key not in BOOK_META_FIELDS:
+            raise AppError(_S["err_book_bad_field"].format(field=key))
+        kind = BOOK_META_FIELDS[key][0]
+        if value is None or (isinstance(value, str) and not value.strip()):
+            continue
+        text = str(value).strip()
+        limit = BOOK_META_MAX_LEN.get(key)
+        if limit is not None and len(text) > limit:
+            raise AppError(
+                _S["err_book_meta_too_long"].format(field=key, limit=limit)
+            )
+        if kind == "lang" and text not in registry:
+            raise AppError(_S["err_book_bad_language"].format(code=text))
+        if kind == "cefr" and text not in CEFR_ORDER:
+            raise AppError(_S["err_book_bad_cefr"].format(code=text))
+    meta = read_book_meta(dest)
+    for key, value in patch.items():
+        if value is None or (isinstance(value, str) and not value.strip()):
+            meta[key] = None
+        else:
+            meta[key] = str(value).strip()
+    write_book_meta(dest, meta)
+    return meta
+
+
+def book_usage(
+    settings: Settings, repo: JobRepository | None, filename: str
+) -> dict[str, Any] | None:
+    """Серия R §7: задания, ссылающиеся на книгу — питает лист удаления.
+
+    None — книга не найдена (404). Порядок — как в списке (updated_at
+    desc); для каждого — статус и признак терминальности (каскад)."""
+    dest = book_epub_path(settings, filename)
+    if dest is None:
+        return None
+    jobs = (
+        repo.list_jobs(None, 0, book=filename, sort="updated_at", direction="desc")
+        if repo
+        else []
+    )
+    return {
+        "name": filename,
+        "count": len(jobs),
+        "jobs": [
+            {
+                "id": job.id,
+                "status": job.status.value,
+                "status_group": status_group(job.status.value),
+                "terminal": job.status in TERMINAL_STATES,
+                "created_at": job.created_at,
+            }
+            for job in jobs
+        ],
+    }
+
+
+def book_purge_dry_run(
+    settings: Settings, repo: JobRepository | None, filename: str
+) -> dict[str, Any]:
+    """Серия R §7: шаг 1 каскада — состав + ``confirm_token``.
+
+    Каскад удаляет ТОЛЬКО терминальные задания (по образцу ``/jobs/purge``):
+    есть не-терминальное — ``AppError`` (409, сперва отмена). Нет заданий —
+    ``AppError`` (409)."""
+    dest = book_epub_path(settings, filename)
+    if dest is None:
+        raise AppError(_S["err_book_not_found"].format(filename=filename))
+    jobs = (
+        repo.list_jobs(None, 0, book=filename, sort="updated_at", direction="desc")
+        if repo
+        else []
+    )
+    if not jobs:
+        raise AppError(_S["err_book_purge_empty"])
+    non_terminal = sorted(job.id for job in jobs if job.status not in TERMINAL_STATES)
+    if non_terminal:
+        raise AppError(
+            _S["err_book_purge_nonterminal"].format(ids=", ".join(non_terminal))
+        )
+    ids = sorted(job.id for job in jobs)
+    total_bytes = 0
+    for job_id in ids:
+        job_dir = settings.job_dir(job_id)
+        if job_dir.is_dir():
+            total_bytes += sum(p.stat().st_size for p in job_dir.rglob("*") if p.is_file())
+    return {
+        "book": filename,
+        "job_ids": ids,
+        "count": len(ids),
+        "total_bytes": total_bytes,
+        "confirm_token": book_purge_token(settings.server.auth_secret, filename, ids),
+    }
+
+
+def book_purge_execute(
+    settings: Settings, repo: JobRepository, filename: str, job_ids: list[str]
+) -> dict[str, Any]:
+    """Серия R §7: шаг 2 каскада — удаляются ровно перечисленные задания
+    (строки + каталоги артефактов, по образцу ``/jobs/purge``) и файл книги
+    с sidecar'ами."""
+    dest = book_epub_path(settings, filename)
+    if dest is None:
+        raise AppError(_S["err_book_not_found"].format(filename=filename))
+    rows = 0
+    for job_id in job_ids:
+        rows += repo.delete_job(job_id)
+        job_dir = settings.job_dir(job_id)
+        if job_dir.exists() or job_dir.is_symlink():
+            shutil.rmtree(job_dir, ignore_errors=True)
+    size = delete_book_files(settings, dest)
+    return {"rows": rows, "bytes": size, "purged": sorted(job_ids)}
 
 
 # ---------------------------------------------------------------- языки (Languages)

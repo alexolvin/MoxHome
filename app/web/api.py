@@ -237,10 +237,12 @@ async def upload_book(
     try:
         meta = scan_book(settings, dest)
     except AppError as exc:
-        dest.unlink(missing_ok=True)
+        views.delete_book_files(settings, dest)
         raise HTTPException(status_code=400, detail=exc.message) from exc
-    sidecar = dest.with_suffix(dest.suffix + ".detect.json")
-    sidecar.write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
+    # Серия R §15: новые загрузки пишут сразу .meta.json (старый формат
+    # .detect.json — только миграция при первом обращении, R5).
+    meta = {**views.book_meta_defaults(), **meta, "imported_at": time.time()}
+    views.write_book_meta(dest, meta)
     return {"name": dest.name, **meta}
 
 
@@ -248,31 +250,110 @@ async def upload_book(
 def delete_book(
     filename: str,
     request: Request,
+    file_only: bool = Query(default=False),
     deps: tuple[Settings, JobRepository] = Depends(get_deps),
 ) -> dict[str, Any]:
     """U3 3.6.28: удаление книги из ``input/``. Fail closed: на книгу
-    ссылаются задания — 409 + перечень job_id, книга остаётся."""
+    ссылаются задания — 409 + перечень job_id, книга остаётся.
+
+    Серия R §7 (R5): ``file_only=1`` — путь «Удалить только файл» из
+    листа удаления: книга удаляется, задания сохраняются со ссылкой на
+    (теперь отсутствующий) файл; без параметра — поведение U3 не меняется."""
     settings, repo = deps
-    if not filename or Path(filename).name != filename or not filename.endswith(".epub"):
-        raise HTTPException(
-            status_code=404, detail=_S["err_book_not_found"].format(filename=filename)
-        )
-    dest = settings.input_dir / filename
-    if not dest.is_file():
+    dest = views.book_epub_path(settings, filename)
+    if dest is None:
         raise HTTPException(
             status_code=404, detail=_S["err_book_not_found"].format(filename=filename)
         )
     job_ids = repo.list_job_ids_by_book(filename)
-    if job_ids:
+    if job_ids and not file_only:
         raise HTTPException(
             status_code=409,
             detail=_S["err_book_referenced"].format(ids=", ".join(job_ids)),
         )
-    size = dest.stat().st_size
-    dest.unlink()
-    dest.with_suffix(dest.suffix + ".detect.json").unlink(missing_ok=True)
-    logger.info("book_delete: user=%s name=%s bytes=%d", _user(request), filename, size)
-    return {"deleted": filename}
+    size = views.delete_book_files(settings, dest)
+    logger.info(
+        "book_delete: user=%s name=%s bytes=%d file_only=%s",
+        _user(request),
+        filename,
+        size,
+        file_only,
+    )
+    return {"deleted": filename, "file_only": file_only}
+
+
+@router.get("/books/{filename}/usage")
+def book_usage_endpoint(
+    filename: str,
+    deps: tuple[Settings, JobRepository] = Depends(get_deps),
+) -> dict[str, Any]:
+    """Серия R §7 (R5): задания, ссылающиеся на книгу — интерфейс
+    запрашивает ДО вызова удаления и открывает лист по сценарию;
+    голый 409 в UI не попадает (T10)."""
+    settings, repo = deps
+    usage = views.book_usage(settings, repo, filename)
+    if usage is None:
+        raise HTTPException(
+            status_code=404, detail=_S["err_book_not_found"].format(filename=filename)
+        )
+    return usage
+
+
+@router.patch("/books/{filename}")
+def book_meta_patch(
+    filename: str,
+    request: Request,
+    body: dict[str, Any] | None = None,
+    deps: tuple[Settings, JobRepository] = Depends(get_deps),
+) -> dict[str, Any]:
+    """Серия R §15 (R5): правка метаданных книги (6 полей ТЗ §7).
+    Fail closed: неизвестное поле/язык/CEFR/длина — 400, файл не тронут."""
+    settings, _repo = deps
+    try:
+        meta = views.update_book_meta(settings, filename, body or {})
+    except AppError as exc:
+        raise HTTPException(status_code=400, detail=exc.message) from exc
+    logger.info("book_meta_patch: user=%s name=%s", _user(request), filename)
+    return meta
+
+
+@router.post("/books/{filename}/purge")
+def book_purge(
+    filename: str,
+    request: Request,
+    body: dict[str, Any] | None = None,
+    deps: tuple[Settings, JobRepository] = Depends(get_deps),
+) -> dict[str, Any]:
+    """Серия R §7 (R5): каскад «книга + N заданий» — ДВА шага, по образцу
+    ``POST /jobs/purge``: шаг 1 (без confirm_token) — состав терминальных
+    заданий + confirm_token; шаг 2 — тот же состав + confirm_token,
+    удаляется ровно перечисленное. Не-терминальное задание — 409 (сначала
+    отмена); расхождение состава — 409."""
+    settings, repo = deps
+    body = body or {}
+    confirm_token = body.get("confirm_token")
+    if confirm_token is None:
+        try:
+            return views.book_purge_dry_run(settings, repo, filename)
+        except AppError as exc:
+            raise HTTPException(status_code=409, detail=exc.message) from exc
+    try:
+        dry = views.book_purge_dry_run(settings, repo, filename)
+    except AppError as exc:
+        raise HTTPException(status_code=409, detail=exc.message) from exc
+    expected = views.book_purge_token(settings.server.auth_secret, filename, dry["job_ids"])
+    if not hmac.compare_digest(str(confirm_token), expected):
+        raise HTTPException(status_code=409, detail=_S["err_book_purge_token"])
+    result = views.book_purge_execute(settings, repo, filename, dry["job_ids"])
+    logger.info(
+        "book_purge: user=%s name=%s jobs=%s rows=%d bytes=%d",
+        _user(request),
+        filename,
+        dry["job_ids"],
+        result["rows"],
+        result["bytes"],
+    )
+    return {"dry_run": False, **dry, **{k: result[k] for k in ("rows", "bytes", "purged")}}
 
 
 # ------------------------------------------------------------------ jobs
