@@ -13,6 +13,11 @@
     <tr><th scope="row">{{ s["job_row_status"] }}</th><td class="u3-status status-{{ facts.status | status_group }}"><span class="u3-status-ico" aria-hidden="true">{{ status_glyph(facts.status) }}</span>{{ facts.status }}{% if facts.error %} — <span class="err">{{ facts.error }}</span>{% endif %}</td></tr>
     <tr><th scope="row">{{ s["job_row_pair"] }}</th><td>{{ facts.source_language or s["common_not_set"] }} → {{ facts.target_language }}</td></tr>
     <tr><th scope="row">{{ s["job_row_mode"] }}</th><td>{{ facts.mode }}{% if facts.learning_level %} / {{ facts.learning_level }}{% if facts.learning_cefr %} ({{ facts.learning_cefr }}){% endif %}{% endif %}</td></tr>
+    {# Серия R §12: чипы «параметры, отличающиеся от умолчания»
+       (считаны в create_job против базовой линии; '' — строки нет). #}
+    {% if facts.param_chips %}
+    <tr><th scope="row">{{ s["job_row_param_chips"] }}</th><td>{% for chip in facts.param_chips %}<span class="u3-chip">{{ s["chip_" + chip.f] }}: {{ chip.v or s["common_not_set"] }}</span>{% endfor %}</td></tr>
+    {% endif %}
     <tr><th scope="row">{{ s["job_row_progress"] }}</th><td>{{ facts.progress_display }}</td></tr>
     <tr><th scope="row">{{ s["job_row_phase"] }}</th><td>{{ facts.phase or s["common_not_set"] }} ({{ facts.phases.completed }} / {{ facts.phases.total }})</td></tr>
     <tr><th scope="row">{{ s["job_row_segments"] }}</th><td>{% if facts.segments %}{{ facts.segments.processed }} / {{ facts.segments.total }}{% else %}{{ s["common_not_set"] }}{% endif %}</td></tr>

@@ -105,8 +105,8 @@ class JobRepository:
                 INSERT INTO jobs (
                     id, status, source_path, target_language, mode, priority, queue_rank,
                     progress, created_at, updated_at, input_sha256, config_sha256,
-                    prompt_version, learning_level, learning_cefr
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    prompt_version, learning_level, learning_cefr, param_chips
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     job.id,
@@ -124,6 +124,7 @@ class JobRepository:
                     job.prompt_version,
                     job.learning_level,
                     job.learning_cefr,
+                    job.param_chips,
                 ),
             )
 
@@ -819,5 +820,6 @@ class JobRepository:
             source_language=row["source_language"],
             learning_level=row["learning_level"],
             learning_cefr=row["learning_cefr"],
+            param_chips=row["param_chips"],
             error_message=row["error_message"],
         )

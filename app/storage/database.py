@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     source_language TEXT,
     learning_level TEXT,
     learning_cefr TEXT,
+    param_chips TEXT NOT NULL DEFAULT '',
     error_message TEXT
 );
 
@@ -110,6 +111,8 @@ _MIGRATED_JOB_COLUMNS: dict[str, str] = {
     "learning_cefr": "TEXT",
     # Серия R §15: ручная очередь («Вперёд очереди»); 0 = по времени создания.
     "queue_rank": "INTEGER NOT NULL DEFAULT 0",
+    # Серия R §12: чипы параметров, отличающихся от умолчаний (JSON; '' — нет).
+    "param_chips": "TEXT NOT NULL DEFAULT ''",
 }
 
 

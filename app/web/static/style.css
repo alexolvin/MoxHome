@@ -722,6 +722,41 @@ body:has(.u3-tabbar) .u3-toast-zone { bottom: calc(var(--u3-tabbar-h) + var(--u3
 .u3-appbar-menu-item.is-current { color: var(--accent-fg); font-weight: 600; }
 .u3-tab-dot { position: absolute; top: 0; right: 0; width: 8px; height: 8px; border-radius: var(--u3-radius-circle); background: var(--status-run-fg); }
 html:not(.js) .u3-skel-wrap { display: none; }
+/* R4 §12: мастер создания (одна форма: no-JS — стопка, JS — поведение),
+   чипы сводки задания, подсветка новой строки (1,5 с — TZ-длительность) */
+.u3-wiz { gap: var(--u3-space-3); }
+.u3-wiz-step { display: flex; flex-direction: column; gap: var(--u3-space-2); }
+.u3-wiz-step-title { margin: 0; font-size: var(--u3-fs-400); font-weight: 600; color: var(--fg-muted); }
+.u3-wiz-search { width: 100%; min-height: var(--u3-tap); padding: 0 var(--u3-space-2); border: 1px solid var(--u3-border); border-radius: var(--u3-radius-md); background: var(--surface-1); color: var(--u3-text); font-size: var(--u3-fs-400); }
+html:not(.js) .u3-wiz-search { display: none; }
+.u3-wiz-row { cursor: pointer; }
+.u3-wiz-row:has(input:checked) { background: var(--status-run-bg); }
+.u3-wiz-row:has(input:focus-visible) { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.u3-wiz-radio { flex: 0 0 auto; width: 20px; height: 20px; margin: 0; accent-color: var(--accent-fg); }
+.u3-wiz-pick { display: flex; align-items: center; gap: var(--u3-space-2); min-height: var(--u3-row-h); padding: 0 var(--u3-space-2); border: 1px solid var(--u3-border); border-radius: var(--u3-radius-md); }
+.u3-wiz-pick-name { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.u3-wiz-pick-sub { color: var(--fg-muted); font-size: var(--u3-fs-300); white-space: nowrap; }
+.u3-wiz-link { flex: 0 0 auto; min-width: var(--u3-tap); min-height: var(--u3-tap); padding: 0 var(--u3-space-1); border: 0; border-radius: var(--u3-radius-sm); background: none; color: var(--accent-fg); font-size: var(--u3-fs-300); font-weight: 600; cursor: pointer; }
+.u3-wiz-link:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.u3-wiz-source { margin: 0; font-size: var(--u3-fs-300); color: var(--fg-muted); }
+.u3-wiz-more { padding: var(--u3-space-1) var(--u3-space-2); border: 1px solid var(--u3-border); border-radius: var(--u3-radius-md); }
+.u3-wiz-more summary { display: flex; align-items: center; min-height: var(--u3-tap); cursor: pointer; font-weight: 600; }
+.u3-wiz-field { display: flex; align-items: center; gap: var(--u3-space-2); }
+.u3-wiz-readonly { color: var(--fg-muted); }
+/* шаг 2: строки сводки (значение — select в строке; тап = picker) */
+.u3-sum { display: flex; flex-direction: column; border-top: 1px solid var(--u3-border); }
+.u3-sum-row { display: flex; align-items: center; gap: var(--u3-space-2); min-height: var(--u3-row-h); padding: var(--u3-space-1) var(--u3-space-1); border-bottom: 1px solid var(--u3-border); }
+.u3-sum-label { flex: 0 0 96px; font-size: var(--u3-fs-400); color: var(--fg-muted); }
+.u3-sum-value { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--u3-space-1); font-size: var(--u3-fs-400); }
+.u3-sum-col { flex-direction: column; align-items: flex-start; }
+.u3-sum-src, .u3-sum-arrow { color: var(--fg-muted); }
+.u3-sum-select { min-height: var(--u3-tap); padding: 0 var(--u3-space-1); border: 1px solid var(--u3-border); border-radius: var(--u3-radius-sm); background: var(--surface-0); color: var(--u3-text); font-size: var(--u3-fs-400); max-width: 100%; }
+.u3-sum-select:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.u3-sum-hint { margin: 0; font-size: var(--u3-fs-300); color: var(--fg-muted); }
+/* R4: чипы сводки задания (параметры, отличные от умолчаний) */
+.u3-chip { display: inline-flex; align-items: center; margin: 0 var(--u3-space-1) var(--u3-space-1) 0; padding: 0 var(--u3-space-1); border: 1px solid var(--u3-border); border-radius: var(--u3-radius-sm); background: var(--surface-1); font-size: var(--u3-fs-300); white-space: nowrap; }
+@keyframes u3-row-new-kf { from { background: var(--status-run-bg); } to { background: var(--surface-0); } }
+.u3-row-slide.u3-row-new { animation: u3-row-new-kf 1500ms ease-out; }
 
 /* >= 641 px (R §5): тот же HTML; панель --u3-side-w, FAB -> кнопка */
 @media (min-width: 641px) {
