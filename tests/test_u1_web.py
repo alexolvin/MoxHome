@@ -515,22 +515,35 @@ _CONSUMERS: dict[str, tuple[tuple[str, str], ...]] = {
     ),
     "/api/jobs": (
         ("app/web/templates/jobs.html", 'data-u1-fetch="/api/jobs"'),  # GET
-        # POST (создание) — потребитель появится в R4 (лист-мастер); R2 — только GET.
+        # POST (R3): создание в листе + «Повторить» (повтор из FAILED/CANCELLED)
+        ("app/web/static/app.js", 'fetchJSON("/api/jobs", { method: "POST"'),
     ),
     "/api/jobs/{job_id}": (
         ("app/web/static/app.js", '"/api/jobs/" + encodeURIComponent(jobId)'),  # GET
         (
             "app/web/static/app.js",
-            '"/api/jobs/" + encodeURIComponent(job), { method: "DELETE"',  # DELETE
+            '"/api/jobs/" + enc(id), { method: "DELETE"',  # DELETE (R3: лист удаления)
         ),
     ),
     "/api/jobs/purge": (
         ("app/web/static/app.js", 'fetchJSON("/api/jobs/purge", {'),  # POST
     ),
+    "/api/jobs/bulk": (
+        ("app/web/static/app.js", 'fetchJSON("/api/jobs/bulk", {'),  # POST (R3: выбор/удаление)
+    ),
     "/api/jobs/{job_id}/confirm": (("app/web/static/app.js", '"/confirm"'),),
-    "/api/jobs/{job_id}/pause": (("app/web/static/app.js", '"u1-pause", "pause"'),),
-    "/api/jobs/{job_id}/resume": (("app/web/static/app.js", '"u1-resume", "resume"'),),
-    "/api/jobs/{job_id}/cancel": (("app/web/static/app.js", '"u1-cancel", "cancel"'),),
+    # R3: pause/resume/cancel — одна точка вызова
+    # (fetchJSON("/api/jobs/" + enc(id) + "/" + action)): action — из
+    # action-атрибута формы .u3-inline-form (страница задания).
+    "/api/jobs/{job_id}/pause": (
+        ("app/web/static/app.js", '"/api/jobs/" + enc(id) + "/" + action'),
+    ),
+    "/api/jobs/{job_id}/resume": (
+        ("app/web/static/app.js", '"/api/jobs/" + enc(id) + "/" + action'),
+    ),
+    "/api/jobs/{job_id}/cancel": (
+        ("app/web/static/app.js", '"/api/jobs/" + enc(id) + "/" + action'),
+    ),
     "/api/jobs/{job_id}/logs": (
         ("app/web/templates/job.html", "/api/jobs/{{ facts.id }}/logs"),
     ),

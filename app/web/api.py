@@ -140,6 +140,9 @@ def _job_row(
         "mode": job.mode,
         "learning_level": job.learning_level,
         "learning_cefr": job.learning_cefr,
+        # Серия R §11/§15: место в очереди («Вперёд очереди» — PATCH,
+        # клиент считает max по списку + 1).
+        "queue_rank": job.queue_rank,
         "progress": job.progress,
         "progress_display": views.progress_facts(job, validation)["display"],
         "progress_pct": progress_pct,
@@ -385,7 +388,9 @@ def job_delete(
 ) -> dict[str, Any]:
     """U3 3.5.21-23: удаление ТОЛЬКО терминального задания. Строки — одной
     транзакцией; каталог — после commit, путь проверен ``is_relative_to``
-    (Rule 6). Незавершённое — 409 verbatim, данные не изменяются."""
+    (Rule 6). Незавершённое — 409 verbatim, данные не изменяются.
+    POST-алиас — для no-JS-формы (?sheet=delete): HTML-форма не может
+    отправить DELETE (formmethod=DELETE невалиден, браузер шлёт GET)."""
     settings, repo = deps
     job = _job_or_404(repo, job_id)
     if job.status not in TERMINAL_STATES:
@@ -414,6 +419,18 @@ def _purge_token(secret: str, job_ids: list[str], filter_params: dict[str, Any])
     )
     return hmac.new(
         secret.encode("utf-8"), f"u3-purge|{payload}".encode(), hashlib.sha256
+    ).hexdigest()[:32]
+
+
+def _bulk_token(secret: str, action: str, job_ids: list[str]) -> str:
+    """Серия R §11: токен двухшагового массового удаления — тот же
+    механизм, что purge (HMAC от секрета, действия и состава); расхождение
+    состава между шагами — 409 (удаляются ровно перечисленные)."""
+    payload = json.dumps(
+        {"action": action, "ids": sorted(job_ids)}, sort_keys=True, ensure_ascii=False
+    )
+    return hmac.new(
+        secret.encode("utf-8"), f"u3-bulk|{payload}".encode(), hashlib.sha256
     ).hexdigest()[:32]
 
 
@@ -501,6 +518,136 @@ def purge_jobs(
     return {"dry_run": False, "purged": ids, "count": len(ids), "total_bytes": total_bytes}
 
 
+def _bulk_jobs(repo: JobRepository, body: dict[str, Any]) -> dict[str, Job]:
+    """R3 §11: валидация состава — дубликаты схлопываются; нет ids — 400;
+    неизвестное задание — 404."""
+    raw_ids = body.get("ids")
+    if not isinstance(raw_ids, list) or not raw_ids:
+        raise HTTPException(status_code=400, detail=_S["err_bulk_no_ids"])
+    jobs: dict[str, Job] = {}
+    for value in raw_ids:
+        job_id = str(value)
+        if job_id in jobs:
+            continue
+        job = repo.get(job_id)
+        if job is None:
+            raise HTTPException(
+                status_code=404, detail=_S["err_job_not_found"].format(id=job_id)
+            )
+        jobs[job_id] = job
+    return jobs
+
+
+def _bulk_flag(
+    repo: JobRepository, request: Request, action: str, jobs: dict[str, Job]
+) -> dict[str, Any]:
+    """R3 §11: bulk pause/cancel — флаги (переход делает воркер); отчёт
+    applied/skipped: терминальные и отказы — пропущены с причиной."""
+    applied: list[str] = []
+    skipped: list[dict[str, str]] = []
+    for job_id, job in jobs.items():
+        if job.status in TERMINAL_STATES:
+            skipped.append(
+                {
+                    "id": job_id,
+                    "reason": _S["bulk_skip_terminal"].format(status=job.status.value),
+                }
+            )
+            continue
+        try:
+            if action == "pause":
+                repo.request_pause(job_id)
+            else:
+                repo.request_cancel(job_id)
+            applied.append(job_id)
+        except AppError as exc:
+            skipped.append({"id": job_id, "reason": exc.message})
+    logger.info(
+        "jobs_bulk: user=%s action=%s ids=%s", _user(request), action, sorted(jobs)
+    )
+    return {"action": action, "applied": applied, "skipped": skipped}
+
+
+def _bulk_delete(
+    settings: Settings,
+    repo: JobRepository,
+    request: Request,
+    body: dict[str, Any],
+    jobs: dict[str, Job],
+) -> dict[str, Any]:
+    """R3 §11: массовое удаление — fail closed (хоть одно не-терминальное —
+    409, ничего нетронуто) и два шага с confirm_token (механизм purge)."""
+    non_terminal = sorted(
+        (
+            f"{job_id} ({job.status.value})"
+            for job_id, job in jobs.items()
+            if job.status not in TERMINAL_STATES
+        )
+    )
+    if non_terminal:
+        raise HTTPException(
+            status_code=409,
+            detail=_S["err_bulk_not_terminal"].format(ids=", ".join(non_terminal)),
+        )
+    ids = sorted(jobs)
+    token = _bulk_token(settings.server.auth_secret, "delete", ids)
+    confirm_token = body.get("confirm_token")
+    if confirm_token is None:
+        total_bytes = sum(_dir_size(settings.job_dir(job_id)) for job_id in ids)
+        return {
+            "dry_run": True,
+            "job_ids": ids,
+            "count": len(ids),
+            "total_bytes": total_bytes,
+            "confirm_token": token,
+        }
+    if not hmac.compare_digest(str(confirm_token), token):
+        raise HTTPException(status_code=409, detail=_S["err_bulk_token"])
+    # Токен гарантирует: текущий состав == составу шага 1 (удаляется ровно он).
+    for job_id in ids:
+        _safe_job_dir(settings, job_id)
+    rows = 0
+    for job_id in ids:
+        rows += repo.delete_job(job_id)
+        job_dir = settings.job_dir(job_id)
+        if job_dir.exists() or job_dir.is_symlink():
+            shutil.rmtree(job_dir, ignore_errors=True)
+    logger.info(
+        "jobs_bulk: user=%s action=delete ids=%s rows=%d", _user(request), ids, rows
+    )
+    return {"dry_run": False, "purged": ids, "count": len(ids), "rows": rows}
+
+
+@router.post("/jobs/bulk")
+def jobs_bulk(
+    request: Request,
+    body: dict[str, Any] | None = None,
+    deps: tuple[Settings, JobRepository] = Depends(get_deps),
+) -> dict[str, Any]:
+    """Серия R §11: массовая операция — ОДИН запрос на операцию
+    (``{action, ids[], confirm_token}``). pause/cancel — применяются к
+    допустимым, недопустимые пропущены с причиной (отчёт). delete —
+    только терминальные (fail closed: 409, ничего не удаляется) и два
+    шага с confirm_token — тот же механизм, что purge."""
+    settings, repo = deps
+    body = body or {}
+    action = str(body.get("action", ""))
+    if action not in ("pause", "cancel", "delete"):
+        raise HTTPException(
+            status_code=400, detail=_S["err_bulk_bad_action"].format(action=action)
+        )
+    jobs = _bulk_jobs(repo, body)
+    if action in ("pause", "cancel"):
+        return _bulk_flag(repo, request, action, jobs)
+    return _bulk_delete(settings, repo, request, body, jobs)
+
+
+# no-JS-форма удаления (job_delete): HTML-форма не умеет DELETE.
+# Регистрация ПОСЛЕ /jobs/bulk: иначе путь /jobs/{job_id} перехватил бы
+# /jobs/bulk (job_id="bulk") — маршруты матчатся в порядке регистрации.
+router.post("/jobs/{job_id}")(job_delete)
+
+
 @router.post("/jobs/{job_id}/confirm")
 def job_confirm(
     job_id: str,
@@ -556,6 +703,33 @@ def job_cancel(
     except AppError as exc:
         raise HTTPException(status_code=409, detail=exc.message) from exc
     return {"id": job.id, "status": job.status.value}
+
+
+@router.patch("/jobs/{job_id}")
+def job_patch(
+    job_id: str,
+    body: dict[str, Any],
+    deps: tuple[Settings, JobRepository] = Depends(get_deps),
+) -> dict[str, Any]:
+    """Серия R §15: единственное изменяемое поле задания — ``queue_rank``
+    («Вперёд очереди»). Прочие поля в теле — 400 (остальное задание не
+    редактируется из UI); не-целое/отрицательное значение — 400."""
+    _settings, repo = deps
+    _job_or_404(repo, job_id)
+    if set(body) - {"queue_rank"}:
+        raise HTTPException(status_code=400, detail=_S["err_job_patch_fields"])
+    raw = body.get("queue_rank")
+    if isinstance(raw, bool) or not isinstance(raw, int) or raw < 0:
+        raise HTTPException(status_code=400, detail=_S["err_queue_rank_bad"])
+    try:
+        job = repo.set_queue_rank(job_id, raw)
+    except AppError as exc:
+        raise HTTPException(status_code=409, detail=exc.message) from exc
+    return {
+        "id": job.id,
+        "status": job.status.value,
+        "queue_rank": job.queue_rank,
+    }
 
 
 @router.post("/jobs/{job_id}/logs/clear")

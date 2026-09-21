@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     target_language TEXT NOT NULL,
     mode TEXT NOT NULL DEFAULT 'bilingual',
     priority INTEGER NOT NULL DEFAULT 0,
+    queue_rank INTEGER NOT NULL DEFAULT 0,
     progress REAL NOT NULL DEFAULT 0.0,
     created_at REAL NOT NULL,
     updated_at REAL NOT NULL,
@@ -91,8 +92,6 @@ CREATE TABLE IF NOT EXISTS job_tokens (
     PRIMARY KEY (job_id, profile)
 );
 
-CREATE INDEX IF NOT EXISTS idx_jobs_claim
-    ON jobs (status, priority DESC, created_at ASC);
 CREATE INDEX IF NOT EXISTS idx_transitions_job ON transitions (job_id, id);
 CREATE INDEX IF NOT EXISTS idx_resolved_prompts_job ON resolved_prompts (job_id, task);
 """
@@ -109,6 +108,8 @@ _MIGRATED_JOB_COLUMNS: dict[str, str] = {
     # S1-базы (ТЗ_03): learning не хранился — NULL = learning не включён (no-op).
     "learning_level": "TEXT",
     "learning_cefr": "TEXT",
+    # Серия R §15: ручная очередь («Вперёд очереди»); 0 = по времени создания.
+    "queue_rank": "INTEGER NOT NULL DEFAULT 0",
 }
 
 
@@ -167,6 +168,14 @@ class Database:
                     "UPDATE jobs SET tokens_total = "
                     "tokens_translation + tokens_fill + tokens_analysis"
                 )
+        # Серия R §15: индекс очереди — ПОСЛЕ миграции колонок (на старых
+        # БД executescript предшествует ALTER TABLE); старому индексу
+        # (priority) замена — в выборке queue_rank, priority не участвует.
+        conn.execute("DROP INDEX IF EXISTS idx_jobs_claim")
+        conn.execute(
+            "CREATE INDEX idx_jobs_claim "
+            "ON jobs (status, queue_rank DESC, created_at ASC)"
+        )
         conn.commit()
 
     @property

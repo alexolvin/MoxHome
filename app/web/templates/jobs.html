@@ -89,4 +89,42 @@
   {% include "_sheet_purge.html" %}
 </section>
 {% endif %}
+{# Серия R §11/§12: создание (FAB; R3-минимум, R4 — мастер), экспорт
+   (ok-группа; JS — содержимое заполняет app.js по GET /api/jobs/{id}),
+   удаление одного (свайп; JS — содержимое из data-атрибутов строки),
+   массовое удаление (режим выделения; no-JS-варианта нет). #}
+{% if sheet != 'create' %}
+<dialog class="u3-sheet" id="u3-sheet-create" aria-label="{{ s["jobs_create_title"] }}">
+  <h2 class="u3-sheet-title">{{ s["jobs_create_title"] }}</h2>
+  {% include "_sheet_create.html" %}
+</dialog>
+{% endif %}
+{% if sheet != 'export' %}
+<dialog class="u3-sheet" id="u3-sheet-export" aria-label="{{ s["job_export_title"] }}">
+  <h2 class="u3-sheet-title">{{ s["job_export_title"] }}</h2>
+  <div id="u3-export-body"></div>
+</dialog>
+{% endif %}
+{# удаление одного: контейнер (без id внутри) — id не дублируются с
+   no-JS-вариантом на экране задания, рендер без условия #}
+<dialog class="u3-sheet" id="u3-sheet-delete-job" aria-label="{{ s["job_delete_sheet_title"] }}">
+  <h2 class="u3-sheet-title">{{ s["job_delete_sheet_title"] }}</h2>
+  <div id="u3-del-job-body"></div>
+</dialog>
+<dialog class="u3-sheet" id="u3-sheet-bulk-delete" aria-label="{{ s["jobs_del_title"] }}">
+  <h2 class="u3-sheet-title">{{ s["jobs_del_title"] }}</h2>
+  {% include "_sheet_bulk_delete.html" %}
+</dialog>
+{% if sheet == 'create' %}
+<section class="u3-sheet-page">
+  <h2>{{ s["jobs_create_title"] }}</h2>
+  {% include "_sheet_create.html" %}
+</section>
+{% endif %}
+{% if sheet == 'export' %}
+<section class="u3-sheet-page">
+  <h2>{{ s["job_export_title"] }}</h2>
+  {% include "_sheet_export.html" %}
+</section>
+{% endif %}
 {% endblock %}

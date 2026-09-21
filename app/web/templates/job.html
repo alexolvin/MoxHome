@@ -26,6 +26,9 @@
     <tr><th scope="row">{{ s["job_row_created"] }}</th><td>{{ facts.created_at_human }}</td></tr>
     <tr><th scope="row">{{ s["job_row_updated"] }}</th><td>{{ facts.updated_at_human }}</td></tr>
   </table>
+  {% if confirm_err %}
+  <p class="u3-warn" role="alert">{{ confirm_err }}</p>
+  {% endif %}
   {% if facts.stages %}
   <details id="u1-stages-details">
     <summary>{{ s["job_stages"].format(n=facts.stages | length) }}</summary>
@@ -64,9 +67,11 @@
 
 <div class="u3-actions">
   {% if facts.status == 'NEEDS_CONFIRMATION' %}
-  <form id="u1-confirm" data-job="{{ facts.id }}">
+  {# Серия R T15: no-JS — POST на страницу-маршрут /jobs/{id}/confirm
+     (тот же сервис confirm_job, 303); JS — перехват и fetch /api. #}
+  <form id="u1-confirm" method="post" action="/jobs/{{ facts.id }}/confirm" data-job="{{ facts.id }}">
     <label>{{ s["job_confirm_label"] }}:
-      <select id="u1-confirm-lang">
+      <select id="u1-confirm-lang" name="source_language">
         {% if detected %}
         <option value="{{ detected }}" selected>{{ detected }} ({{ s["job_confirm_detection"].format(conf=facts.language_detection.confidence) }})</option>
         {% endif %}
@@ -82,16 +87,30 @@
     <span id="u1-confirm-msg" role="status"></span>
   </form>
   {% endif %}
+  {# Серия R T15: управление — формы (no-JS: прямая отправка в API;
+     JS: перехват submit в bindJobActions, fetch + reload). #}
   {% if not facts.status_terminal %}
-  <button type="button" id="u1-pause" data-job="{{ facts.id }}">{{ s["job_pause_btn"] }}</button>
-  <button type="button" id="u1-cancel" data-job="{{ facts.id }}">{{ s["job_cancel_btn"] }}</button>
+  <form class="u3-inline-form" method="post" action="/api/jobs/{{ facts.id }}/pause">
+    <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+    <button type="submit" id="u1-pause" data-job="{{ facts.id }}">{{ s["job_pause_btn"] }}</button>
+  </form>
+  <form class="u3-inline-form" method="post" action="/api/jobs/{{ facts.id }}/cancel">
+    <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+    <button type="submit" id="u1-cancel" data-job="{{ facts.id }}">{{ s["job_cancel_btn"] }}</button>
+  </form>
   {% endif %}
   {% if facts.status == 'PAUSED' %}
-  <button type="button" id="u1-resume" data-job="{{ facts.id }}">{{ s["job_resume_btn"] }}</button>
+  <form class="u3-inline-form" method="post" action="/api/jobs/{{ facts.id }}/resume">
+    <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+    <button type="submit" id="u1-resume" data-job="{{ facts.id }}">{{ s["job_resume_btn"] }}</button>
+  </form>
   {% endif %}
   <button type="button" id="u3-clear-logs" class="btn" data-job="{{ facts.id }}">{{ s["job_clear_logs_btn"] }}</button>
+  {# Серия R §11: удаление — лист с именем книги; без JS — переход на
+     no-JS-форму (?sheet=delete), с JS — data-sheet-open открывает
+     <dialog> (initSheets). #}
   {% if facts.status_terminal %}
-  <button type="button" id="u3-delete-job" class="btn u3-danger" data-job="{{ facts.id }}">{{ s["job_delete_btn"] }}</button>
+  <a id="u3-delete-job" class="btn u3-danger" href="/jobs/{{ facts.id }}?sheet=delete" data-job="{{ facts.id }}" data-sheet-open="u3-sheet-delete-job">{{ s["job_delete_btn"] }}</a>
   {% endif %}
   <span id="u3-job-msg" role="status"></span>
   {% if facts.result_ready %}
@@ -124,4 +143,18 @@
   </p>
   <div id="u1-logs" data-u1-fetch="/api/jobs/{{ facts.id }}/logs" data-u1-render="logs">{{ s["common_loading"] }}</div>
 </details>
+{# Серия R §11: лист удаления (JS — <dialog>; no-JS — ?sheet=delete,
+   та же форма-страница; id не дублируются). #}
+{% if sheet != "delete" %}
+<dialog class="u3-sheet" id="u3-sheet-delete-job" aria-label="{{ s["job_delete_sheet_title"] }}">
+  <h2 class="u3-sheet-title">{{ s["job_delete_sheet_title"] }}</h2>
+  {% include "_sheet_delete_job.html" %}
+</dialog>
+{% endif %}
+{% if sheet == "delete" %}
+<section class="u3-sheet-page">
+  <h2>{{ s["job_delete_sheet_title"] }}</h2>
+  {% include "_sheet_delete_job.html" %}
+</section>
+{% endif %}
 {% endblock %}

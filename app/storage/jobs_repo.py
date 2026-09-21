@@ -103,10 +103,10 @@ class JobRepository:
             conn.execute(
                 """
                 INSERT INTO jobs (
-                    id, status, source_path, target_language, mode, priority, progress,
-                    created_at, updated_at, input_sha256, config_sha256, prompt_version,
-                    learning_level, learning_cefr
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    id, status, source_path, target_language, mode, priority, queue_rank,
+                    progress, created_at, updated_at, input_sha256, config_sha256,
+                    prompt_version, learning_level, learning_cefr
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     job.id,
@@ -115,6 +115,7 @@ class JobRepository:
                     job.target_language,
                     job.mode,
                     job.priority,
+                    job.queue_rank,
                     job.progress,
                     job.created_at,
                     job.updated_at,
@@ -526,7 +527,8 @@ class JobRepository:
     # ------------------------------------------------------------------ очередь (E3.5)
 
     def next_claimable(self) -> Job | None:
-        """Одно активное задание (E3.5): FIFO с приоритетом (приоритет выше, раньше — раньше).
+        """Одно активное задание (E3.5): FIFO с ручной очередью (серия R §15:
+        queue_rank выше — раньше; иначе по времени создания).
 
         PLANNING — после подтверждения подозрительной книги (арены нет);
         запись с действующей арендой не выбирается (занять её нельзя, E3.6).
@@ -540,12 +542,28 @@ class JobRepository:
                     OR (status = 'PAUSED' AND resume_requested = 1)
               )
               AND (worker_pid IS NULL OR lease_expires_at < ?)
-            ORDER BY priority DESC, created_at ASC, id ASC
+            ORDER BY queue_rank DESC, created_at ASC, id ASC
             LIMIT 1
             """,
             (now,),
         ).fetchone()
         return self._row_to_job(row) if row is not None else None
+
+    def set_queue_rank(self, job_id: str, queue_rank: int) -> Job:
+        """Серия R §15: единственное изменяемое поле задания из UI —
+        очередь («Вперёд очереди»). Терминальные задания в очередь не
+        встают — бессмысленно (JobStateError, как управляющие команды)."""
+        job = self.require(job_id)
+        if job.status in TERMINAL_STATES:
+            raise JobStateError(
+                f"queue_rank в терминальном состоянии {job.status.value}"
+            )
+        self._db.conn.execute(
+            "UPDATE jobs SET queue_rank = ?, updated_at = ? WHERE id = ?",
+            (queue_rank, _now(), job_id),
+        )
+        self._db.conn.commit()
+        return self.require(job_id)
 
     def count_active(self) -> int:
         row = self._db.conn.execute(
@@ -556,6 +574,17 @@ class JobRepository:
     # ------------------------------------------------------- управляющие команды (E3.1)
 
     def request_cancel(self, job_id: str) -> Job:
+        job = self.require(job_id)
+        if job.status is JobStatus.PAUSED:
+            # PAUSED-задание не исполняется: воркер занимает PAUSED только по
+            # resume, поэтому флаг cancel_requested не применялся бы никогда —
+            # отмена выполняется немедленным переходом (ребро PAUSED → CANCELLED).
+            return self.transition(
+                job_id,
+                JobStatus.CANCELLED,
+                reason="отмена из PAUSED (кооперативная, E3.8)",
+                actor="api",
+            )
         return self._flag(job_id, "cancel_requested")
 
     def request_pause(self, job_id: str) -> Job:
@@ -765,6 +794,7 @@ class JobRepository:
             target_language=row["target_language"],
             mode=row["mode"],
             priority=row["priority"],
+            queue_rank=row["queue_rank"],
             progress=row["progress"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],

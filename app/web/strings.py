@@ -108,7 +108,6 @@ UI_STRINGS: dict[str, str] = {
     "jobs_f_mode": "Режим",
     "jobs_f_level": "Уровень обучения",
     "jobs_f_cefr": "CEFR пользователя",
-    "jobs_create_btn": "Создать задание",
     "jobs_opt_none": "— не выбран —",
     "jobs_filter_title": "Фильтры",
     "jobs_f_status": "Статус",
@@ -254,6 +253,59 @@ UI_STRINGS: dict[str, str] = {
     "job_logs_lines": "Число строк:",
     "job_logs_more": "Докрутить",
     "job_logs_empty": "(пусто)",
+    # ------------------------------------------------------------- серия R3:
+    # первичные кнопки строки (§11; глиф + aria-label, зона 44×44)
+    "job_row_confirm": "Подтвердить",
+    "job_row_postpone": "Отложить",
+    "job_row_pause": "Пауза",
+    "job_row_resume": "Продолжить",
+    "job_row_export": "Экспорт",
+    "job_row_retry": "Повторить",
+    # свайп влево (до 4 кнопок, набор по TRANSITIONS)
+    "job_swipe_pause": "Пауза",
+    "job_swipe_resume": "Продолжить",
+    "job_swipe_cancel": "Отмена",
+    "job_swipe_logs": "Логи",
+    "job_swipe_delete": "Удалить",
+    "job_swipe_queue": "Вперёд очереди",
+    # тост (5 с, «Вернуть» — только обратимые операции)
+    "toast_cancelled": "Задание отменено",
+    "toast_undo": "Вернуть",
+    "toast_bulk_result": "применено: {applied} · пропущено: {skipped}",
+    "toast_queue_front": "Задание передвинуто в начало очереди",
+    # массовые операции: режим выделения (долгое нажатие, JS)
+    "jobs_selected": "Выбрано: {n}",
+    "jobs_sel_pause": "Пауза",
+    "jobs_sel_cancel": "Отмена",
+    "jobs_sel_delete": "Удалить",
+    "jobs_sel_done": "Готово",
+    "jobs_del_title": "Удаление заданий",
+    "jobs_del_question": "Удалить {n} заданий?",
+    "jobs_del_irreversible": "Действие необратимо.",
+    "jobs_del_ids": "Перечень заданий ({n})",
+    "jobs_del_confirm_btn": "Удалить",
+    "jobs_del_cancel_btn": "Отмена",
+    "jobs_del_done": "Удалено: {n}",
+    # лист «Создать задание» (R3-минимум; R4 — мастер §12)
+    "jobs_create_title": "Создать задание",
+    "jobs_create_book": "Книга",
+    "jobs_create_target": "Целевой язык",
+    "jobs_create_mode": "Режим",
+    "jobs_create_btn": "Запустить",
+    "jobs_create_retry_of": "Повтор задания {id} — параметры исходного задания",
+    "jobs_create_books_empty": "Книг нет — сначала добавьте книгу",
+    # лист «Удалить задание» (одно; книга + кнопка)
+    "job_delete_sheet_title": "Удалить задание",
+    "job_delete_sheet_line": "Удалить задание «{book}»?",
+    "job_delete_sheet_irreversible": (
+        "Удалятся задание, все его записи (переходы, токены, результаты "
+        "стадий) и каталог с артефактами. Действие необратимо."
+    ),
+    "job_delete_sheet_btn": "Удалить",
+    "job_delete_sheet_cancel": "Отмена",
+    # лист «Экспорт» (R3: существующие артефакты; 8 форматов — R7)
+    "job_export_title": "Экспорт",
+    "job_export_hint": "Файлы задания (существующие артефакты).",
     # ------------------------------------------------------------- Качество
     "qc_title": "QC (пункты отчёта)",
     "qc_alignment_title": "Покрытие выравнивания (E6)",
@@ -422,6 +474,19 @@ UI_STRINGS: dict[str, str] = {
         "повторите dry-run"
     ),
     "err_purge_bad_status": "в purge только терминальные статусы: {status}",
+    # Серия R §11: массовые операции и очередь
+    "err_bulk_bad_action": "неизвестная массовая операция: {action}",
+    "err_bulk_no_ids": "массовая операция: не указаны задания (ids)",
+    "err_bulk_not_terminal": (
+        "массовое удаление: задания не в терминальном статусе: {ids}"
+    ),
+    "err_bulk_token": (
+        "confirm_token недействителен или состав заданий изменился — "
+        "начните с dry-run"
+    ),
+    "bulk_skip_terminal": "недоступно в терминальном статусе: {status}",
+    "err_job_patch_fields": "единственное изменяемое поле задания — queue_rank",
+    "err_queue_rank_bad": "queue_rank: целое число не меньше 0",
     "err_sort_field": "сортировка: допустимы created_at | updated_at",
     "err_status_unknown": "неизвестный статус фильтра: {status}",
     "err_prompt_task_unknown": "задача не найдена в реестре: {task}",

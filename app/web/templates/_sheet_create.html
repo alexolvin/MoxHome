@@ -1,0 +1,48 @@
+{# Тело листа «Создать задание» (серия R §12, R3-минимум; R4 — мастер
+   с умолчаниями «как в прошлый раз»): книга + целевой язык + режим →
+   POST /api/jobs (JSON, потребитель app.js) либо страница-маршрут
+   POST /jobs/new (no-JS: форма → 303).
+   Рендерится в <dialog id=u3-sheet-create> (JS) ИЛИ в no-JS-секции
+   (?sheet=create) — не одновременно (id не дублируются).
+   Переменные: books (views.list_books), lang_codes, job_modes,
+   create ({} — умолчания; {retry_of, book, target, mode} — повтор),
+   create_err (строка причины отказа, no-JS), csrf. #}
+{% set def_target = "ru" if "ru" in lang_codes else (lang_codes[0] if lang_codes else "ru") %}
+{% if create_err %}
+<p class="u3-warn" role="alert">{{ create_err }}</p>
+{% endif %}
+{% if create.retry_of %}
+<p class="hint">{{ s["jobs_create_retry_of"].format(id=create.retry_of) }}</p>
+{% endif %}
+<form id="u3-create-form" class="u3-sheet-form" method="post" action="/jobs/new">
+  <label class="u3-filter">
+    {{ s["jobs_create_book"] }}:
+    <select name="book" required>
+      {% if not books %}
+      <option value="">{{ s["jobs_create_books_empty"] }}</option>
+      {% endif %}
+      {% for b in books %}
+      <option value="{{ b.name }}"{% if create.book == b.name %} selected{% endif %}>{{ b.title or b.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="u3-filter">
+    {{ s["jobs_create_target"] }}:
+    <select name="target_language" required>
+      {% for code in lang_codes %}
+      <option value="{{ code }}"{% if (create.target or def_target) == code %} selected{% endif %}>{{ code }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="u3-filter">
+    {{ s["jobs_create_mode"] }}:
+    <select name="mode">
+      {% for m in job_modes %}
+      <option value="{{ m }}"{% if (create.mode or "bilingual") == m %} selected{% endif %}>{{ m }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+  <button type="submit" class="u3-btn u3-primary u3-sheet-action">{{ s["jobs_create_btn"] }}</button>
+  <span id="u3-create-msg" role="status"></span>
+</form>
