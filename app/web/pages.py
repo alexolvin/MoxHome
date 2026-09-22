@@ -39,6 +39,14 @@ from app.core.worker_signal import worker_alive
 from app.domain.job import TERMINAL_STATES, Job, JobStatus
 from app.languages.cefr import CEFR_ORDER
 from app.languages.registry import load_registry
+from app.services.export_artifacts import (
+    EXPORT_FORMATS,
+    ExportInProgress,
+    ExportPending,
+    latest_export,
+    start_book_export,
+    start_job_export,
+)
 from app.services.import_book import get_import
 from app.services.jobs import JOB_MODES, confirm_job, create_job
 from app.storage.jobs_repo import JobRepository, TransitionRecord
@@ -141,32 +149,74 @@ def _sort_waiting_rows(rows: list[dict[str, object]]) -> None:
     )
 
 
-def _jobs_sheet_prep(
+def _jobs_sheet_prep(  # noqa: PLR0917 — параметры листов: sheet + job/retry/book
     repo: JobRepository,
     settings: Settings,
     sheet: str,
     job: str | None,
     retry_of: str | None,
+    book: str | None = None,
 ) -> tuple[dict[str, object] | None, dict[str, object] | None, bool]:
-    """Серия R §11/§12: данные листов /jobs (no-JS ``?sheet=``).
+    """Серия R §11/§12 + R7 (§9): данные листов /jobs (no-JS ``?sheet=``).
 
-    Возврат — ``(export, create, export_missing)``: export — артефакты
-    терминального задания; create — параметры листа создания
-    (предзаполнение из ``retry_of``); export_missing — задание не
-    найдено (страница 404)."""
+    Возврат — ``(export, create, export_missing)``: export — данные
+    листа экспорта (``kind=job`` — объект по заданию; ``kind=book`` —
+    карточка книги: завершённые задания книги + файл книги), create —
+    параметры листа создания (предзаполнение из ``retry_of``);
+    export_missing — задание не найдено (страница 404)."""
     export_data: dict[str, object] | None = None
     export_missing = False
     if sheet == "export":
-        target = repo.get(job) if job else None
-        if target is None:
-            export_missing = True
+        probe_status, _ = converter_probe(settings)
+        if job:
+            target = repo.get(job)
+            if target is None:
+                export_missing = True
+            else:
+                facts = views.job_facts(settings, repo, target, log_lines=1)
+                export_data = {
+                    "kind": "job",
+                    "job_id": target.id,
+                    "book_name": Path(target.source_path).name,
+                    "files": facts["files"],
+                    "result_ready": facts["result_ready"],
+                    "export": facts["export"],
+                    "converter_ok": probe_status == "ok",  # строка (R6)
+                    "formats": list(EXPORT_FORMATS),
+                }
         else:
-            facts = views.job_facts(settings, repo, target, log_lines=1)
+            book_norm = (
+                book
+                if book and views.book_epub_path(settings, book) is not None
+                else None
+            )
+            completed: list[dict[str, object]] = []
+            if book_norm:
+                rows = repo.list_jobs(
+                    None,
+                    0,
+                    statuses=("COMPLETED", "COMPLETED_WITH_WARNINGS"),
+                    book=book_norm,
+                    sort="updated_at",
+                    direction="desc",
+                )
+                for row in rows:
+                    completed.append(
+                        {
+                            "id": row.id,
+                            "book_name": Path(row.source_path).name,
+                            "status": row.status.value,
+                            "updated_at_human": views.human_ts(row.updated_at),
+                            "mode": row.mode,
+                            "target_language": row.target_language,
+                        }
+                    )
             export_data = {
-                "job_id": target.id,
-                "book_name": Path(target.source_path).name,
-                "files": facts["files"],
-                "result_ready": facts["result_ready"],
+                "kind": "book",
+                "book": book_norm,
+                "jobs": completed,
+                "converter_ok": probe_status == "ok",  # строка (R6)
+                "formats": list(EXPORT_FORMATS),
             }
     create_data: dict[str, object] | None = None
     if sheet == "create":
@@ -417,7 +467,9 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
                 "total_jobs": detail["total_jobs"],
                 "all_jobs_href": "/jobs?book=" + quote(filename),
                 "translate_href": "/jobs?sheet=create&book=" + quote(filename),
-                "export_href": "/jobs?book=" + quote(filename),
+                # R7 (ТЗ §9): «Экспорт» карточки — тот же лист, что у
+                # строки/экрана задания (jobs?sheet=export&book=).
+                "export_href": "/jobs?sheet=export&book=" + quote(filename),
                 "back_href": "/books",
                 "lang_codes": registry_codes(),
                 "cefr_levels": list(CEFR_ORDER),
@@ -694,6 +746,7 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
         retry_of: str | None = Query(default=None),
         book: str | None = Query(default=None),
         create_err: str | None = Query(default=None),
+        export_err: str | None = Query(default=None),
     ) -> Response:
         """Серия R §10: строки списка, сегментный фильтр (группы §4),
         группировка «Сейчас/Сегодня/Раньше», точный фильтр и очистка —
@@ -740,7 +793,7 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
 
         sheet_norm = sheet if sheet in ("filter", "purge", "create", "export") else ""
         export_data, create_data, export_missing = _jobs_sheet_prep(
-            repo, settings, sheet_norm, job, retry_of
+            repo, settings, sheet_norm, job, retry_of, book_norm
         )
         if export_missing:
             return templates.TemplateResponse(
@@ -841,6 +894,8 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
                 "create": create_data,
                 # причина отказа no-JS-создания (303 c ?create_err=)
                 "create_err": create_err if sheet_norm == "create" else None,
+                # R7: причина отказа no-JS-экспорта (303 c ?export_err=)
+                "export_err": export_err if sheet_norm == "export" else None,
                 # лист создания: коды языков (реестр) и режимы задания
                 "lang_codes": registry_codes(),
                 "job_modes": JOB_MODES,
@@ -957,6 +1012,169 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
                 "confirm_err": confirm_err,
             },
         )
+
+    # ------------------------------------------------------------- Экспорт (R7 no-JS, T15)
+    # Тот же сервис, что API (Rule 8): форма → 303 на страницу-статус
+    # (meta-refresh 1 с, образец R6 /imports/{id}); отказ — обратно на
+    # лист с ?export_err= (строка причины).
+
+    def _export_files(
+        job_id: str | None, filename: str | None, names: list[str]
+    ) -> list[dict[str, str]]:
+        """Ссылки статуса-страницы: download-эндпоинт API (T17: href —
+        переменные)."""
+        if job_id is not None:
+            return [
+                {"name": name, "href": f"/api/jobs/{job_id}/export/{quote(name)}"}
+                for name in names
+            ]
+        assert filename is not None  # взаимно с job_id (два вызова выше)
+        return [
+            {"name": name, "href": f"/api/books/{quote(filename)}/export/{quote(name)}"}
+            for name in names
+        ]
+
+    def _export_status_page(
+        request: Request,
+        rec: dict[str, Any],
+        files: list[dict[str, str]],
+        back_href: str,
+    ) -> Response:
+        return templates.TemplateResponse(
+            request,
+            "export_status.html",
+            ctx(request, _page_title("job_export_title"), "jobs")
+            | {
+                "state": rec["status"],
+                "done": rec.get("done", 0),
+                "total": rec.get("total", 0),
+                "error": rec.get("error"),
+                "files": files,
+                "back_href": back_href,
+            },
+        )
+
+    @router.get("/jobs/{job_id}/export")
+    def job_export_status_page(request: Request, job_id: str) -> Response:
+        """Статус экспорта задания (meta-refresh, R7 T15)."""
+        if repo.get(job_id) is None:
+            return templates.TemplateResponse(
+                request,
+                "not_found.html",
+                ctx(request, _page_title("title_not_found"), "jobs"),
+                status_code=404,
+            )
+        rec = latest_export(f"job:{job_id}")
+        if rec is None:
+            return templates.TemplateResponse(
+                request,
+                "not_found.html",
+                ctx(request, _page_title("title_not_found"), "jobs"),
+                status_code=404,
+            )
+        return _export_status_page(
+            request,
+            rec,
+            _export_files(job_id, None, [str(n) for n in rec.get("files", [])]),
+            f"/jobs/{job_id}",
+        )
+
+    @router.post("/jobs/{job_id}/export")
+    def job_export_form(
+        request: Request,
+        job_id: str,
+        # B006: дефолт обязателен (FastAPI: default — только через `=`);
+        # список handler не мутирует (fail-closed «нет выбора» — 400)
+        objects: Annotated[list[str], Form()] = [],  # noqa: B006
+        formats: Annotated[list[str], Form()] = [],  # noqa: B006
+        layout: str = Form(default="append_block"),
+    ) -> Response:
+        """Форма листа экспорта (no-JS, страница ?sheet=export&job=)."""
+        job = repo.get(job_id)
+        if job is None:
+            return templates.TemplateResponse(
+                request,
+                "not_found.html",
+                ctx(request, _page_title("title_not_found"), "jobs"),
+                status_code=404,
+            )
+        try:
+            start_job_export(settings, job, objects, formats, layout)
+        except (ExportPending, ExportInProgress, AppError) as exc:
+            return RedirectResponse(
+                f"/jobs?sheet=export&job={job_id}"
+                f"&export_err={quote(exc.message)}",
+                status_code=303,
+            )
+        return RedirectResponse(f"/jobs/{job_id}/export", status_code=303)
+
+    @router.post("/jobs/export")
+    def job_export_form_from_book(
+        job: str = Form(default=""),
+        book: str = Form(default=""),
+        objects: Annotated[list[str], Form()] = [],  # noqa: B006
+        formats: Annotated[list[str], Form()] = [],  # noqa: B006
+        layout: str = Form(default="append_block"),
+    ) -> Response:
+        """Форма листа экспорта из карточки книги (no-JS): задание —
+        radio (``job``); назад — на лист книги (?sheet=export&book=)."""
+
+        def back(href_err: str) -> RedirectResponse:
+            href = "/jobs?sheet=export"
+            if book:
+                href = f"/jobs?sheet=export&book={quote(book)}"
+            return RedirectResponse(href + f"&export_err={quote(href_err)}", status_code=303)
+
+        target = repo.get(job) if job else None
+        if target is None:
+            return back(_S["err_export_not_found"])
+        try:
+            start_job_export(settings, target, objects, formats, layout)
+        except (ExportPending, ExportInProgress, AppError) as exc:
+            return back(exc.message)
+        return RedirectResponse(f"/jobs/{target.id}/export", status_code=303)
+
+    @router.get("/books/{filename}/export")
+    def book_export_status_page(request: Request, filename: str) -> Response:
+        """Статус экспорта файла книги (meta-refresh, R7 T15)."""
+        if views.book_epub_path(settings, filename) is None:
+            return templates.TemplateResponse(
+                request,
+                "not_found.html",
+                ctx(request, _page_title("title_not_found"), "books"),
+                status_code=404,
+            )
+        rec = latest_export(f"book:{filename}")
+        if rec is None:
+            return templates.TemplateResponse(
+                request,
+                "not_found.html",
+                ctx(request, _page_title("title_not_found"), "books"),
+                status_code=404,
+            )
+        return _export_status_page(
+            request,
+            rec,
+            _export_files(None, filename, [str(n) for n in rec.get("files", [])]),
+            f"/books/{quote(filename)}",
+        )
+
+    @router.post("/books/{filename}/export")
+    def book_export_form(
+        request: Request,
+        filename: str,
+        format: str = Form(default=""),
+    ) -> Response:
+        """Форма «Файл книги» (no-JS, лист карточки без заданий)."""
+        try:
+            start_book_export(settings, filename, format)
+        except (ExportInProgress, AppError) as exc:
+            return RedirectResponse(
+                f"/jobs?sheet=export&book={quote(filename)}"
+                f"&export_err={quote(exc.message)}",
+                status_code=303,
+            )
+        return RedirectResponse(f"/books/{quote(filename)}/export", status_code=303)
 
     # ------------------------------------------------------------- Settings (серия R §5)
     @router.get("/settings")

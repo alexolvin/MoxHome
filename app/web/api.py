@@ -57,6 +57,14 @@ from app.llm.prompts import (
 from app.llm.tasks import task as task_lookup
 from app.services.analyze import scan_book
 from app.services.covers import extract_cover
+from app.services.export_artifacts import (
+    BookFileMissing,
+    ExportInProgress,
+    ExportPending,
+    latest_export,
+    start_book_export,
+    start_job_export,
+)
 from app.services.import_book import get_import, start_import
 from app.services.jobs import confirm_job, create_job
 from app.storage.jobs_repo import JobRepository
@@ -1029,6 +1037,134 @@ def job_quality(
     settings, repo = deps
     _job_or_404(repo, job_id)
     return views.quality_view(settings, job_id)
+
+
+# ------------------------------------------------------------------ export (R7, TZ §9)
+
+
+def _export_file(edir: Path, artifact: str) -> Path:
+    """Файл из каталога экспорта: ровно один элемент пути, файл —
+    иначе 404 (traversal невозможен, handoff R7 решение 7)."""
+    if (
+        not artifact
+        or "/" in artifact
+        or "\\" in artifact
+        or artifact.startswith(".")
+        or artifact in ("..",)
+    ):
+        raise HTTPException(
+            status_code=404, detail=_S["err_artifact_not_found"].format(name=artifact)
+        )
+    path = (edir / artifact).resolve()
+    if not path.is_relative_to(edir.resolve()) or not path.is_file():
+        raise HTTPException(
+            status_code=404, detail=_S["err_artifact_not_found"].format(name=artifact)
+        )
+    return path
+
+
+@router.post("/jobs/{job_id}/export", status_code=202)
+def job_export_create(
+    job_id: str,
+    body: dict[str, Any],
+    deps: tuple[Settings, JobRepository] = Depends(get_deps),
+) -> dict[str, Any]:
+    """Экспорт артефактов задания (TZ §9): объекты × форматы + макет
+    билингвы. Асинхронно (тот же пул, что импорт): 202 {export_id};
+    статус — GET /api/jobs/{id}/export."""
+    settings, repo = deps
+    job = _job_or_404(repo, job_id)
+    raw_objects = body.get("objects")
+    raw_formats = body.get("formats")
+    objects = [str(v) for v in raw_objects] if isinstance(raw_objects, list) else []
+    formats = [str(v) for v in raw_formats] if isinstance(raw_formats, list) else []
+    layout = body.get("layout") or "append_block"
+    try:
+        export_id = start_job_export(settings, job, objects, formats, str(layout))
+    except (ExportPending, ExportInProgress) as exc:
+        raise HTTPException(status_code=409, detail=exc.message) from exc
+    except AppError as exc:
+        raise HTTPException(status_code=400, detail=exc.message) from exc
+    return {"export_id": export_id}
+
+
+@router.get("/jobs/{job_id}/export")
+def job_export_status(
+    job_id: str,
+    deps: tuple[Settings, JobRepository] = Depends(get_deps),
+) -> dict[str, Any]:
+    """Состояние последнего экспорта задания (поллинг листа и no-JS)."""
+    _settings, repo = deps
+    _job_or_404(repo, job_id)
+    rec = latest_export(f"job:{job_id}")
+    if rec is None:
+        raise HTTPException(status_code=404, detail=_S["err_export_not_found"])
+    return rec
+
+
+@router.get("/jobs/{job_id}/export/{artifact}")
+def job_export_file(
+    job_id: str,
+    artifact: str,
+    deps: tuple[Settings, JobRepository] = Depends(get_deps),
+) -> FileResponse:
+    """Готовый файл экспорта (TZ §9: download — системный Share)."""
+    settings, repo = deps
+    _job_or_404(repo, job_id)
+    path = _export_file(settings.job_dir(job_id) / "export", artifact)
+    return FileResponse(path, filename=path.name, media_type="application/octet-stream")
+
+
+@router.post("/books/{filename}/export", status_code=202)
+def book_export_create(
+    filename: str,
+    body: dict[str, Any],
+    deps: tuple[Settings, JobRepository] = Depends(get_deps),
+) -> dict[str, Any]:
+    """Экспорт исходника книги в другой формат (TZ §15). Асинхронно,
+    как экспорт задания."""
+    settings, _repo = deps
+    fmt = str(body.get("format", ""))
+    try:
+        export_id = start_book_export(settings, filename, fmt)
+    except BookFileMissing as exc:
+        raise HTTPException(status_code=404, detail=exc.message) from exc
+    except ExportInProgress as exc:
+        raise HTTPException(status_code=409, detail=exc.message) from exc
+    except AppError as exc:
+        raise HTTPException(status_code=400, detail=exc.message) from exc
+    return {"export_id": export_id}
+
+
+@router.get("/books/{filename}/export")
+def book_export_status(
+    filename: str,
+    deps: tuple[Settings, JobRepository] = Depends(get_deps),
+) -> dict[str, Any]:
+    settings, _repo = deps
+    if not views.book_epub_path(settings, filename):
+        raise HTTPException(
+            status_code=404, detail=_S["err_book_not_found"].format(filename=filename)
+        )
+    rec = latest_export(f"book:{filename}")
+    if rec is None:
+        raise HTTPException(status_code=404, detail=_S["err_export_not_found"])
+    return rec
+
+
+@router.get("/books/{filename}/export/{artifact}")
+def book_export_file(
+    filename: str,
+    artifact: str,
+    deps: tuple[Settings, JobRepository] = Depends(get_deps),
+) -> FileResponse:
+    settings, _repo = deps
+    if not views.book_epub_path(settings, filename):
+        raise HTTPException(
+            status_code=404, detail=_S["err_book_not_found"].format(filename=filename)
+        )
+    path = _export_file(settings.input_dir / f"{filename}.export", artifact)
+    return FileResponse(path, filename=path.name, media_type="application/octet-stream")
 
 
 # ------------------------------------------------------------------ prompts

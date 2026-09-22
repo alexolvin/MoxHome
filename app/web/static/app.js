@@ -1639,45 +1639,282 @@ function initRowActions() {
    });
  });
 }
-/* R3 §9: the "Export" sheet — existing artifacts (GET /api/jobs/{id}). */
+/* R7 §9: export sheet — 4 objects × 8 formats + the bilingual layout.
+   Three entry points, one sheet: job row / job screen (fillExportBody:
+   one job, facts from GET /api/jobs/{id}) and book card
+   (fillExportBook: radio of the book's completed jobs, or the book
+   file itself when there are none). POST /api/jobs/{id}/export -> 202,
+   poll GET /api/jobs/{id}/export every 1 s, done -> <a download> links
+   (system Share on the phone). The /api/health converter probe gates
+   every non-EPUB format. "Two columns" needs PDF/HTMLZ checked. */
+const EXPORT_OBJECTS = ["translation", "learning", "cards", "reports"];
+const EXPORT_FORMATS = ["epub", "pdf", "docx", "fb2", "azw3", "txt", "md", "htmlz"];
+const EXPORT_LAYOUTS = ["append_block", "translation_only", "two_columns"];
+const LAYOUT_KEY = { append_block: "append", translation_only: "only", two_columns: "columns" };
+const dec = (v) => {
+ try {
+  return decodeURIComponent(v);
+ } catch {
+  return v;
+ }
+};
+
+function exportOptsHtml(objects, layouts, converterOk) {
+ let h = "<fieldset class='u3-exp-section'><legend>" + esc(S.job_export_section_objects) + "</legend>";
+ for (const o of EXPORT_OBJECTS) {
+  const ok = !!objects[o];
+  h +=
+   "<label class='u3-exp-item'><input type='checkbox' name='objects' value='" +
+   o +
+   "'" +
+   (ok ? " checked" : " disabled") +
+   "> " +
+   esc(S["job_export_obj_" + o]) +
+   (ok ? "" : " <span class='hint'>" + esc(S.job_export_obj_missing) + "</span>") +
+   "</label>";
+ }
+ h += "</fieldset>";
+ h += "<fieldset class='u3-exp-section'><legend>" + esc(S.job_export_section_formats) + "</legend><div class='u3-exp-grid'>";
+ for (const f of EXPORT_FORMATS) {
+  const dis = f !== "epub" && !converterOk;
+  h +=
+   "<label class='u3-exp-item'><input type='checkbox' name='formats' value='" +
+   f +
+   "'" +
+   (f === "epub" ? " checked" : dis ? " disabled" : "") +
+   "> " +
+   esc(S["job_export_fmt_" + f]) +
+   "</label>";
+ }
+ h +=
+  "</div>" +
+  (converterOk ? "" : "<p class='hint'>" + esc(S.err_converter_unavailable) + "</p>") +
+  "</fieldset>";
+ if (layouts) {
+  h += "<fieldset class='u3-exp-section'><legend>" + esc(S.job_export_section_layout) + "</legend>";
+  for (const l of EXPORT_LAYOUTS)
+   h +=
+    "<label class='u3-exp-item'><input type='radio' name='layout' value='" +
+    l +
+    "'" +
+    (l === "append_block" ? " checked" : "") +
+    (l === "two_columns" ? " data-u3-exp-two" : "") +
+    "> " +
+    esc(S["job_export_layout_" + LAYOUT_KEY[l]]) +
+    "</label>";
+  h += "</fieldset>";
+ }
+ return h;
+}
+
+function syncExportTwo(body) {
+ const two = body.querySelector("[data-u3-exp-two]");
+ if (!two) return;
+ const pdf = body.querySelector("[name='formats'][value='pdf']");
+ const hz = body.querySelector("[name='formats'][value='htmlz']");
+ const ok = (pdf && pdf.checked) || (hz && hz.checked);
+ two.disabled = !ok;
+ if (two.disabled && two.checked) {
+  const first = body.querySelector("[name='layout'][value='append_block']");
+  if (first) first.checked = true;
+ }
+}
+
+function exportPoll(res, mode, arg, btn) {
+ const base = (mode === "job" ? "/api/jobs/" : "/api/books/") + enc(arg) + "/export";
+ const tick = () => {
+  fetchJSON(base)
+   .then((rec) => {
+    if (rec.status === "done") {
+     let h = "<p class='hint'>" + esc(S.job_export_status_done) + "</p><div class='u3-export-files'>";
+     for (const n of rec.files || [])
+      h += "<a class='u3-btn' href='" + base + "/" + enc(n) + "' download='" + enc(n) + "'>" + esc(n) + "</a>";
+     res.innerHTML = h + "</div>";
+    } else if (rec.status === "error") {
+     btn.disabled = false;
+     res.textContent = S.job_export_status_error + ": " + (rec.error || NS);
+    } else {
+     res.textContent = fmt(S.job_export_progress, { done: rec.done || 0, total: rec.total || 0 });
+     setTimeout(tick, 1000);
+    }
+   })
+   .catch((e) => {
+    btn.disabled = false;
+    res.textContent = apiErr(e);
+   });
+ };
+ tick();
+}
+
+function exportRunClick(btn) {
+ const body = $("u3-export-body");
+ const res = $("u3-exp-result");
+ if (!body || !res) return;
+ const mode = btn.dataset.expMode || "job";
+ const arg = dec(btn.dataset.expArg || "");
+ btn.disabled = true;
+ res.textContent = fmt(S.job_export_progress, { done: 0, total: 1 });
+ if (mode === "bookfile") {
+  const fr = body.querySelector("[name='xformat']:checked");
+  const format = fr ? fr.value : "epub";
+  fetchJSON("/api/books/" + enc(arg) + "/export", { method: "POST", headers: JH, body: JSON.stringify({ format }) })
+   .then(() => exportPoll(res, "book", arg, btn))
+   .catch((e) => {
+    btn.disabled = false;
+    res.textContent = apiErr(e);
+   });
+  return;
+ }
+ let jobId = arg;
+ if (mode === "book") {
+  const r = body.querySelector("[name='xjob']:checked");
+  if (!r) {
+   btn.disabled = false;
+   res.textContent = NS;
+   return;
+  }
+  jobId = r.value;
+ }
+ const objects = Array.from(body.querySelectorAll("[name='objects']:checked")).map((c) => c.value);
+ const formats = Array.from(body.querySelectorAll("[name='formats']:checked")).map((c) => c.value);
+ const lr = body.querySelector("[name='layout']:checked");
+ const layout = lr ? lr.value : "append_block";
+ if (!objects.length || !formats.length) {
+  btn.disabled = false;
+  res.textContent = S.err_export_no_selection;
+  return;
+ }
+ fetchJSON("/api/jobs/" + enc(jobId) + "/export", { method: "POST", headers: JH, body: JSON.stringify({ objects, formats, layout }) })
+  .then(() => exportPoll(res, "job", jobId, btn))
+  .catch((e) => {
+   btn.disabled = false;
+   res.textContent = apiErr(e);
+  });
+}
+
+function exportFail(body, e, mode, arg) {
+ const ds = mode === "job" ? "data-job='" + enc(arg) + "'" : "data-book='" + enc(arg) + "'";
+ body.innerHTML =
+  esc(apiErr(e)) + " <button type='button' data-u3-export-retry " + ds + ">" + esc(S.common_retry) + "</button>";
+}
+
 function fillExportBody(jobId, bookName) {
  const body = $("u3-export-body");
  if (!body) return;
  body.textContent = S.common_loading;
+ Promise.all([fetchJSON("/api/jobs/" + enc(jobId)), fetchJSON("/api/health")])
+  .then(([facts, health]) => {
+   const ex = facts.export || { objects: {}, layouts: false };
+   let h = "<p class='u3-export-book'>" + esc(dec(bookName) || facts.book_name || NS) + "</p>";
+   if (!facts.result_ready) h += "<p class='hint'>" + esc(S.job_result_pending) + "</p>";
+   h += exportOptsHtml(ex.objects || {}, !!ex.layouts, health.converter === "ok");
+   h +=
+    "<button type='button' class='u3-btn u3-primary u3-sheet-action' data-u3-exp-run data-exp-mode='job' data-exp-arg='" +
+    enc(jobId) +
+    "'>" +
+    esc(S.job_export_btn) +
+    "</button>";
+   h += "<div id='u3-exp-result' role='status'></div>";
+   body.innerHTML = h;
+   syncExportTwo(body);
+  })
+  .catch((e) => exportFail(body, e, "job", jobId));
+}
+
+/* Book card: radio of completed jobs (objects/formats re-rendered per
+   selection) or, without jobs, the book file itself (POST
+   /api/books/{name}/export, no layout — the original has no alignment). */
+function exportBookOpts(jobId) {
+ const body = $("u3-export-body");
+ const opts = $("u3-exp-job-opts");
+ if (!body || !opts) return;
+ const ok = body.dataset.expOk === "1";
+ opts.textContent = S.common_loading;
  fetchJSON("/api/jobs/" + enc(jobId))
   .then((facts) => {
-   const files = facts.files || {};
-   const ART = [
-    ["target.epub", S.job_download_target],
-    ["learning.epub", S.job_download_learning],
-    ["cards.csv", S.job_download_cards_csv],
-    ["cards.anki.tsv", S.job_download_cards_anki],
-    ["cards.json", S.job_download_cards_json],
-    ["quality.json", S.job_download_quality],
-   ];
-   let h =
-    "<p class='hint'>" + esc(S.job_export_hint) + "</p>" +
-    "<p class='u3-export-book'>" + esc(bookName || NS) + "</p>";
-   if (facts.result_ready)
-    h +=
-     "<a class='u3-btn u3-primary u3-sheet-action' href='/api/jobs/" +
-     enc(jobId) + "/result'>" + esc(S.job_download_result) + "</a>";
-   h +=
-    "<div class='u3-export-files'>" +
-    ART.filter((f) => files[f[0]])
-     .map((f) => "<a class='u3-btn' href='/api/jobs/" + enc(jobId) + "/result?artifact=" + enc(f[0]) + "'>" + esc(f[1]) + "</a>")
-     .join("") +
-    "</div>";
-   if (!facts.result_ready && !ART.some((f) => files[f[0]]))
-    h += "<p class='hint'>" + esc(S.job_result_pending) + "</p>";
-   body.innerHTML = h;
+   if (opts.parentNode !== body) return;
+   const ex = facts.export || { objects: {}, layouts: false };
+   opts.innerHTML = exportOptsHtml(ex.objects || {}, !!ex.layouts, ok);
+   syncExportTwo(body);
   })
   .catch((e) => {
-   body.innerHTML =
-    esc(apiErr(e)) +
-    " <button type='button' data-u3-export-retry data-job='" + enc(jobId) + "' data-book='" + enc(bookName || "") + "'>" + esc(S.common_retry) + "</button>";
+   opts.innerHTML = "";
+   opts.textContent = apiErr(e);
   });
 }
+
+function fillExportBook(bookName) {
+ const body = $("u3-export-body");
+ if (!body) return;
+ body.textContent = S.common_loading;
+ const q =
+  "/api/jobs?book=" + enc(bookName) + "&status=COMPLETED&status=COMPLETED_WITH_WARNINGS&sort=updated_at&direction=desc";
+ Promise.all([fetchJSON(q), fetchJSON("/api/health")])
+  .then(([jobs, health]) => {
+   const ok = health.converter === "ok";
+   body.dataset.expOk = ok ? "1" : "0";
+   let h = "<p class='u3-export-book'>" + esc(bookName) + "</p>";
+   if (!jobs.length) {
+    h +=
+     "<p class='hint'>" +
+     esc(S.job_export_book_hint) +
+     "</p><fieldset class='u3-exp-section'><legend>" +
+     esc(S.job_export_book_block) +
+     "</legend><div class='u3-exp-grid'>";
+    for (const f of EXPORT_FORMATS) {
+     const dis = f !== "epub" && !ok;
+     h +=
+      "<label class='u3-exp-item'><input type='radio' name='xformat' value='" +
+      f +
+      "'" +
+      (f === "epub" ? " checked" : dis ? " disabled" : "") +
+      "> " +
+      esc(S["job_export_fmt_" + f]) +
+      "</label>";
+    }
+    h +=
+     "</div></fieldset><button type='button' class='u3-btn u3-primary u3-sheet-action' data-u3-exp-run data-exp-mode='bookfile' data-exp-arg='" +
+     enc(bookName) +
+     "'>" +
+     esc(S.job_export_btn) +
+     "</button>";
+   } else {
+    h += "<fieldset class='u3-exp-section'><legend>" + esc(S.job_export_section_job) + "</legend>";
+    for (const j of jobs)
+     h +=
+      "<label class='u3-exp-item'><input type='radio' name='xjob' value='" +
+      j.id +
+      "'" +
+      (jobs.indexOf(j) === 0 ? " checked" : "") +
+      "> " +
+      esc(j.book_name || NS) +
+      " · " +
+      esc(j.status) +
+      " · " +
+      esc(j.updated_at_human || NS) +
+      "</label>";
+    h +=
+     "</fieldset><div id='u3-exp-job-opts'></div><button type='button' class='u3-btn u3-primary u3-sheet-action' data-u3-exp-run data-exp-mode='book'>" +
+     esc(S.job_export_btn) +
+     "</button>";
+   }
+   h += "<div id='u3-exp-result' role='status'></div>";
+   body.innerHTML = h;
+   if (jobs.length) exportBookOpts(jobs[0].id);
+  })
+  .catch((e) => exportFail(body, e, "book", bookName));
+}
+
+/* Formats -> "two columns" availability; xjob -> re-render the options
+   of the newly selected job. One listener for the whole sheet. */
+document.addEventListener("change", (e) => {
+ const t = e && e.target;
+ if (!t || !t.name) return;
+ const body = $("u3-export-body");
+ if (!body) return;
+ if (t.name === "formats") syncExportTwo(body);
+ else if (t.name === "xjob") exportBookOpts(t.value);
+});
 /* R3 §11: swipe — left opens the panel (≤4 × 56 px), right opens the
    job; one row open at a time; a tap on the row/elsewhere closes it. */
 let swipeClose = null;
@@ -2271,9 +2508,11 @@ function initSheets() {
   e.preventDefault();
   const d = $(a.dataset.sheetOpen);
   if (!d || !d.showModal || d.open) return;
-  /* R3 §9: export — existing artifacts (fetch) */
-  if (d.id === "u3-sheet-export" && a.dataset.job) {
-   fillExportBody(a.dataset.job, a.dataset.bookName || "");
+  /* R7 §9: export — one job (row/screen) or the book card (job radio /
+     book file); the dialog exists on all three pages. */
+  if (d.id === "u3-sheet-export") {
+   if (a.dataset.job) fillExportBody(a.dataset.job, dec(a.dataset.bookName || ""));
+   else if (a.dataset.book) fillExportBook(dec(a.dataset.book || ""));
   }
   d.showModal();
   openSheetEl = d;
@@ -2312,7 +2551,10 @@ document.addEventListener("click", (e) => {
  } else if (target.hasAttribute("data-u3-books-retry") && booksRefresh) {
   booksRefresh();
  } else if (target.hasAttribute("data-u3-export-retry")) {
-  fillExportBody(target.dataset.job || "", target.dataset.book || "");
+  if (target.dataset.job) fillExportBody(target.dataset.job, dec(target.dataset.book || ""));
+  else if (target.dataset.book) fillExportBook(dec(target.dataset.book || ""));
+ } else if (target.hasAttribute("data-u3-exp-run")) {
+  exportRunClick(target);
  } else if (target.hasAttribute("data-u3-retry")) {
   const container = target.closest("[data-u1-fetch]");
   if (container) loadContainer(container);
