@@ -19,7 +19,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from app.adapters.convert import convert
+from app.adapters.convert import IMPORT_FLAGS, convert
 from app.adapters.epub_engine.epubcheck import facts as epubcheck_facts
 from app.adapters.epub_engine.epubcheck import run_epubcheck
 from app.core.config import Settings
@@ -101,7 +101,13 @@ def _run_import(
     cover_path: str | None = None
     try:
         _set(import_id, status="converting", step="converting")
-        ok, reason = convert(settings, src, dest)
+        ok, reason = convert(
+            settings,
+            src,
+            dest,
+            timeout=settings.converter.timeout_import_seconds,
+            flags=IMPORT_FLAGS,
+        )
         if not ok:
             raise AppError(_S["err_convert_failed"].format(reason=reason))
         _set(import_id, status="validating", step="validating")

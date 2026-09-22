@@ -119,6 +119,9 @@
   {% endif %}
   <span id="u3-job-msg" role="status"></span>
   {% if facts.result_ready %}
+  {# R7 (ТЗ §9): экран задания — точка входа в лист экспорта (тот же
+     лист, что у строки; no-JS — полная страница /jobs?sheet=export&job=). #}
+  <a class="btn" href="/jobs?sheet=export&job={{ facts.id }}" data-sheet-open="u3-sheet-export" data-job="{{ facts.id }}" data-book-name="{{ book_name }}">{{ s["job_export_btn"] }}</a>
   <a class="btn" href="/api/jobs/{{ facts.id }}/result">{{ s["job_download_result"] }}</a>
   {% if facts.files['target.epub'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=target.epub">{{ s["job_download_target"] }}</a>{% endif %}
   {% if facts.files['learning.epub'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=learning.epub">{{ s["job_download_learning"] }}</a>{% endif %}
@@ -162,4 +165,10 @@
   {% include "_sheet_delete_job.html" %}
 </section>
 {% endif %}
+{# R7 (ТЗ §9): лист экспорта — содержимое заполняет app.js
+   (fillExportBody: GET /api/jobs/{id} → 4 объекта × 8 форматов). #}
+<dialog class="u3-sheet" id="u3-sheet-export" aria-label="{{ s["job_export_title"] }}">
+  <h2 class="u3-sheet-title">{{ s["job_export_title"] }}</h2>
+  <div id="u3-export-body"></div>
+</dialog>
 {% endblock %}

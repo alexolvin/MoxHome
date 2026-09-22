@@ -365,6 +365,28 @@ def job_facts(
         JobStatus.COMPLETED,
         JobStatus.COMPLETED_WITH_WARNINGS,
     )
+    # R7 (ТЗ §9): данные листа экспорта — доступность объектов (отчёты —
+    # по любому из трёх, карточки — по любой из трёх) и макеты билингвы
+    # (только bilingual + APPEND_BLOCK: только там есть оригинальные
+    # блоки; единый источник — alignment_report, как в export_artifacts).
+    export_facts = {
+        "objects": {
+            "translation": files["target.epub"],
+            "learning": files["learning.epub"],
+            "cards": any(
+                files[name]
+                for name in ("cards.csv", "cards.anki.tsv", "cards.json")
+            ),
+            "reports": any(
+                (jdir / name).is_file()
+                for name in ("quality.json", "alignment_report.json", "validation.json")
+            ),
+        },
+        "layouts": bool(
+            job.mode == "bilingual" and alignment_report is not None
+            and alignment_report.get("submit_mode") == "APPEND_BLOCK"
+        ),
+    }
     paused_at = next(
         (r.at for r in reversed(transitions) if r.to_status is JobStatus.PAUSED),
         None,
@@ -427,6 +449,7 @@ def job_facts(
         "language_detection": validation.get("language_detection") if validation else None,
         "files": files,
         "result_ready": result_ready,
+        "export": export_facts,
         "logs": {
             "job": _tail(jdir / "job.log", log_lines),
             "errors": _tail(jdir / "errors.log", log_lines),

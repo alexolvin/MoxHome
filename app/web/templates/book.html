@@ -30,7 +30,9 @@
 </section>
 <div class="u3-book-actions">
   <a class="u3-btn u3-primary u3-book-action" href="{{ translate_href }}">{{ s["book_translate_btn"] }}</a>
-  <a class="u3-btn u3-book-action" href="{{ export_href }}">{{ s["book_export_btn"] }}</a>
+  {# R7 (ТЗ §9): карточка книги — точка входа в лист экспорта (тот же
+     лист/эндпоинт, что строка и экран задания; no-JS — ?sheet=export&book=). #}
+  <a class="u3-btn u3-book-action" href="{{ export_href }}" data-sheet-open="u3-sheet-export" data-book="{{ detail.name }}">{{ s["book_export_btn"] }}</a>
 </div>
 
 <section class="u3-book-block" aria-label="{{ s["book_block_languages"] }}">
@@ -109,6 +111,13 @@
     <button type="submit" class="u3-btn u3-primary u3-sheet-action">{{ s["book_meta_save"] }}</button>
     <span id="u3-book-meta-msg" role="status"></span>
   </form>
+</dialog>
+{# R7 (ТЗ §9): лист экспорта (3-я точка входа) — содержимое заполняет
+   app.js: радио завершённых заданий книги + объекты/форматы, либо блок
+   «Файл книги». #}
+<dialog class="u3-sheet" id="u3-sheet-export" aria-label="{{ s["job_export_title"] }}">
+  <h2 class="u3-sheet-title">{{ s["job_export_title"] }}</h2>
+  <div id="u3-export-body"></div>
 </dialog>
 {% include "_book_delete_sheets.html" %}
 {% endblock %}

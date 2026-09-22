@@ -6,12 +6,11 @@
 - ``probe`` — проба наличия: ``<обёртка> --version`` (без монтирования,
   D110); результат кэшируется на TTL секунд, чтобы ``/api/health`` и
   лист импорта не поднимали контейнер на каждый запрос;
-- ``convert`` — ``<обёртка> IN OUT --epub-version 3 --language und``
-  (subprocess, один поток веб-процесса — арена воркера не занимается,
-  TZ §8); жёсткий таймаут ``converter.timeout_import_seconds``.
-  Фиксированные опции: EPUB3 (умолчание calibre EPUB2 для ODF-входа —
-  class="calibre" на <html>, невалидно для EPUBCheck) и язык "und"
-  (контейнер без LANG пишет locale "C" — невалидный BCP-47).
+- ``convert`` — ``<обёртка> IN OUT [опции]`` (subprocess, один поток
+  веб-процесса — арена воркера не занимается, TZ §8/§9); таймаут и
+  опции — параметры: импорт — ``timeout_import_seconds`` +
+  :data:`IMPORT_FLAGS` (EPUB3 и язык "und" — см. комментарий к константе),
+  экспорт (R7) — ``timeout_export_seconds`` + без опций.
 
 Оба возвращают факты, не поднимают исключений. Пре-проверки (типы,
 DRM, скан-PDF, ZIP) — ``app.adapters.convert.checks``.
@@ -72,31 +71,35 @@ def probe(settings: Settings, ttl_seconds: float = PROBE_TTL_SECONDS) -> tuple[s
     return result
 
 
-def convert(settings: Settings, src: Path, dst: Path) -> tuple[bool, str]:
+#: Фиксированные опции импорта (R6, замер 2026-09-22, calibre 8.5.0):
+#: --epub-version 3 — умолчание calibre (EPUB2) для ODF-входа даёт
+#: class="calibre" на <html> — невалидно для EPUBCheck (RSC-005);
+#: --language und — контейнер без LANG пишет в OPF locale "C"
+#: (невалидный BCP-47, OPF-092); опция действует только при неизвестном
+#: языке входа, реальный язык детектит приложение (шаг «язык»).
+#: ВАЖНО: не `--version` — глобальный флаг calibre, печатает баннер и
+#: завершается без конвертации (rc=0!).
+IMPORT_FLAGS: tuple[str, ...] = ("--epub-version", "3", "--language", "und")
+
+
+def convert(
+    settings: Settings,
+    src: Path,
+    dst: Path,
+    *,
+    timeout: float,
+    flags: tuple[str, ...] = (),
+) -> tuple[bool, str]:
     """Конвертация ``src → dst`` обёрткой. Возврат ``(ok, причина)``.
 
-    Жёсткий таймаут — ``converter.timeout_import_seconds`` (TZ §8);
-    exit code ≠ 0 — причина из хвоста stderr (без трейса, T8)."""
-    timeout = settings.converter.timeout_import_seconds
+    ``timeout`` — жёсткий таймаут (импорт — ``timeout_import_seconds``,
+    экспорт — ``timeout_export_seconds``, R7); ``flags`` — опции вывода
+    (импорт — :data:`IMPORT_FLAGS`, экспорт — пусто: входной EPUB уже
+    несёт язык, формат выхода — по расширению dst). exit code ≠ 0 —
+    причина из хвоста stderr (без трейса, T8)."""
     try:
-        # Фиксированные опции вывода (замер 2026-09-22, calibre 8.5.0):
-        # --epub-version 3 — умолчание calibre (EPUB2) для ODF-входа даёт
-        # class="calibre" на <html> — невалидно для EPUBCheck (RSC-005);
-        # --language und — контейнер без LANG пишет в OPF locale "C"
-        # (невалидный BCP-47, OPF-092); опция действует только при
-        # неизвестном языке входа, реальный язык детектит приложение
-        # (шаг «язык»). ВАЖНО: не `--version` — глобальный флаг calibre,
-        # печатает баннер и завершается без конвертации (rc=0!).
         proc = subprocess.run(
-            [
-                settings.converter.binary,
-                str(src),
-                str(dst),
-                "--epub-version",
-                "3",
-                "--language",
-                "und",
-            ],
+            [settings.converter.binary, str(src), str(dst), *flags],
             capture_output=True,
             text=True,
             timeout=timeout,

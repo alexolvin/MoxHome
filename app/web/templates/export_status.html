@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+{# R7 no-JS (ТЗ §9): статус экспорта — /jobs/{id}/export и
+   /books/{name}/export (303 после формы). converting — meta-refresh 1 с;
+   done — ссылки на файлы (download — системный Share на телефоне);
+   error — причина. «Назад» — appbar (back_href). #}
+{% if state == "done" %}
+<div class="u3-state">
+  <span class="u3-state-ico" aria-hidden="true">&#10003;</span>
+  <p class="u3-state-line">{{ s["job_export_status_done"] }}</p>
+</div>
+<div class="u3-export-files">
+  {% for f in files %}
+  <a class="u3-btn" href="{{ f.href }}" download="{{ f.name }}">{{ f.name }}</a>
+  {% endfor %}
+</div>
+{% elif state == "error" %}
+<div class="u3-state">
+  <span class="u3-state-ico" aria-hidden="true">&#9675;</span>
+  <p class="u3-state-line">{{ s["job_export_status_error"] }}: {{ error }}</p>
+</div>
+{% else %}
+<meta http-equiv="refresh" content="1">
+<div class="u3-state" aria-busy="true">
+  <span class="u3-state-ico" aria-hidden="true">&#8635;</span>
+  <p class="u3-state-line">{{ s["job_export_progress"].format(done=done, total=total) }}</p>
+</div>
+{% endif %}
+{% endblock %}

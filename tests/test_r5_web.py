@@ -149,13 +149,15 @@ def test_r5_3_card_render(u1_env: U1Env) -> None:
     assert fields == {
         "title", "author", "note", "source_language", "target_default", "cefr_default"
     }
-    # кнопки: «Перевести» → ?sheet=create&book=, «Экспорт» → ?book=
+    # кнопки: «Перевести» → ?sheet=create&book=, «Экспорт» →
+    # ?sheet=export&book= (R7: лист экспорта — та же точка, что у
+    # строки/экрана задания)
     translate = doc.xpath('//a[contains(@class,"u3-book-action") and @href]')
     hrefs = sorted(a.get("href") for a in translate)
     assert hrefs == sorted(
         [
             f"/jobs?sheet=create&book={book}",
-            f"/jobs?book={book}",
+            f"/jobs?sheet=export&book={book}",
         ]
     )
     labels = [a.text_content() for a in translate]

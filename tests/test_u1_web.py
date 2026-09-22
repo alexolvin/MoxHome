@@ -592,6 +592,30 @@ _CONSUMERS: dict[str, tuple[tuple[str, str], ...]] = {
     "/api/jobs/{job_id}/result": (
         ("app/web/templates/job.html", "/api/jobs/{{ facts.id }}/result"),
     ),
+    # R7 (ТЗ §9): экспорт — старт (POST) и поллинг статуса (GET);
+    # артефакт — <a download> (JS) и страница статуса (no-JS, pages.py).
+    "/api/jobs/{job_id}/export": (
+        (
+            "app/web/static/app.js",
+            'fetchJSON("/api/jobs/" + enc(jobId) + "/export", { method: "POST"',
+        ),  # POST
+        ("app/web/static/app.js", '+ enc(arg) + "/export"'),  # GET
+    ),
+    "/api/jobs/{job_id}/export/{artifact}": (
+        ("app/web/static/app.js", 'base + "/" + enc(n)'),  # GET (download)
+        ("app/web/pages.py", '"/api/jobs/{job_id}/export/{quote(name)}"'),
+    ),
+    "/api/books/{filename}/export": (
+        (
+            "app/web/static/app.js",
+            'fetchJSON("/api/books/" + enc(arg) + "/export", { method: "POST"',
+        ),  # POST
+        ("app/web/static/app.js", '+ enc(arg) + "/export"'),  # GET
+    ),
+    "/api/books/{filename}/export/{artifact}": (
+        ("app/web/static/app.js", 'base + "/" + enc(n)'),  # GET (download)
+        ("app/web/pages.py", '"/api/books/{quote(filename)}/export/{quote(name)}"'),
+    ),
     "/api/models": (("app/web/templates/settings_llm.html", 'data-u1-fetch="/api/models"'),),
     "/api/config": (("app/web/templates/settings.html", 'data-u1-fetch="/api/config"'),),
     "/api/prompts": (

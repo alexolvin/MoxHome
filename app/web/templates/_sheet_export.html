@@ -1,22 +1,108 @@
-{# Тело листа «Экспорт» (серия R §9, R3): СУЩЕСТВУЮЩИЕ артефакты
-   задания (endpoint /result); конвертация в 8 форматов — R7.
-   Рендерится в <dialog id=u3-sheet-export> (JS: содержимое заполняет
-   app.js по данным GET /api/jobs/{id}) ИЛИ в no-JS-секции
-   (?sheet=export&job=) — серверная таблица артефактов.
-   Переменные (no-JS): export (job_id, book_name, files, result_ready), s. #}
-<p class="hint">{{ s["job_export_hint"] }}</p>
-<p class="u3-export-book">{{ export.book_name }}</p>
-{% if export.result_ready %}
-<a class="u3-btn u3-primary u3-sheet-action" href="/api/jobs/{{ export.job_id }}/result">{{ s["job_download_result"] }}</a>
+{# R7 (TZ §9): лист экспорта — no-JS серверная форма (образец: ?sheet=
+   create). JS: те же секции app.js рендерит в <dialog id=u3-sheet-export>
+   (fetch GET /api/jobs/{id}).
+   Переменные: export {kind: job|book, …}, s, csrf, export_err.
+   kind=job: 4 объекта × 8 форматов + макет билингвы (POST
+   /jobs/{id}/export). kind=book: радио завершённых заданий книги (POST
+   /jobs/export) + «Файл книги» (POST /books/{name}/export). #}
+{% if export_err %}
+<p class="u3-warn" role="alert">{{ export_err }}</p>
 {% endif %}
-<div class="u3-export-files">
-  {% if export.files["target.epub"] %}<a class="u3-btn" href="/api/jobs/{{ export.job_id }}/result?artifact=target.epub">{{ s["job_download_target"] }}</a>{% endif %}
-  {% if export.files["learning.epub"] %}<a class="u3-btn" href="/api/jobs/{{ export.job_id }}/result?artifact=learning.epub">{{ s["job_download_learning"] }}</a>{% endif %}
-  {% if export.files["cards.csv"] %}<a class="u3-btn" href="/api/jobs/{{ export.job_id }}/result?artifact=cards.csv">{{ s["job_download_cards_csv"] }}</a>{% endif %}
-  {% if export.files["cards.anki.tsv"] %}<a class="u3-btn" href="/api/jobs/{{ export.job_id }}/result?artifact=cards.anki.tsv">{{ s["job_download_cards_anki"] }}</a>{% endif %}
-  {% if export.files["cards.json"] %}<a class="u3-btn" href="/api/jobs/{{ export.job_id }}/result?artifact=cards.json">{{ s["job_download_cards_json"] }}</a>{% endif %}
-  {% if export.files["quality.json"] %}<a class="u3-btn" href="/api/jobs/{{ export.job_id }}/result?artifact=quality.json">{{ s["job_download_quality"] }}</a>{% endif %}
-</div>
-{% if not export.result_ready and not export.files.values() | select() | list %}
+{% if export.kind == "job" %}
+<p class="u3-export-book">{{ export.book_name }}</p>
+{% if not export.result_ready %}
 <p class="hint">{{ s["job_result_pending"] }}</p>
+{% else %}
+<form method="post" action="/jobs/{{ export.job_id }}/export" class="u3-sheet-form">
+  <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+  <fieldset class="u3-exp-section">
+    <legend>{{ s["job_export_section_objects"] }}</legend>
+    <label class="u3-exp-item"><input type="checkbox" name="objects" value="translation"{% if export.export.objects.translation %} checked{% else %} disabled{% endif %}> {{ s["job_export_obj_translation"] }}{% if not export.export.objects.translation %} <span class="hint">{{ s["job_export_obj_missing"] }}</span>{% endif %}</label>
+    <label class="u3-exp-item"><input type="checkbox" name="objects" value="learning"{% if export.export.objects.learning %} checked{% else %} disabled{% endif %}> {{ s["job_export_obj_learning"] }}{% if not export.export.objects.learning %} <span class="hint">{{ s["job_export_obj_missing"] }}</span>{% endif %}</label>
+    <label class="u3-exp-item"><input type="checkbox" name="objects" value="cards"{% if export.export.objects.cards %} checked{% else %} disabled{% endif %}> {{ s["job_export_obj_cards"] }}{% if not export.export.objects.cards %} <span class="hint">{{ s["job_export_obj_missing"] }}</span>{% endif %}</label>
+    <label class="u3-exp-item"><input type="checkbox" name="objects" value="reports"{% if export.export.objects.reports %} checked{% else %} disabled{% endif %}> {{ s["job_export_obj_reports"] }}{% if not export.export.objects.reports %} <span class="hint">{{ s["job_export_obj_missing"] }}</span>{% endif %}</label>
+  </fieldset>
+  <fieldset class="u3-exp-section">
+    <legend>{{ s["job_export_section_formats"] }}</legend>
+    <div class="u3-exp-grid">
+      <label class="u3-exp-item"><input type="checkbox" name="formats" value="epub" checked> {{ s["job_export_fmt_epub"] }}</label>
+      {% for fmt in export.formats %}
+      {% if fmt != "epub" %}
+      <label class="u3-exp-item"><input type="checkbox" name="formats" value="{{ fmt }}"{% if not export.converter_ok %} disabled{% endif %}> {{ s["job_export_fmt_" ~ fmt] }}</label>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% if not export.converter_ok %}
+    <p class="hint">{{ s["err_converter_unavailable"] }}</p>
+    {% endif %}
+  </fieldset>
+  {% if export.export.layouts %}
+  <fieldset class="u3-exp-section">
+    <legend>{{ s["job_export_section_layout"] }}</legend>
+    <label class="u3-exp-item"><input type="radio" name="layout" value="append_block" checked> {{ s["job_export_layout_append"] }}</label>
+    <label class="u3-exp-item"><input type="radio" name="layout" value="translation_only"> {{ s["job_export_layout_only"] }}</label>
+    <label class="u3-exp-item"><input type="radio" name="layout" value="two_columns"> {{ s["job_export_layout_columns"] }}</label>
+  </fieldset>
+  {% endif %}
+  <button type="submit" class="u3-btn u3-primary u3-sheet-action">{{ s["job_export_btn"] }}</button>
+</form>
+{% endif %}
+{% else %}
+{% if export.book is none %}
+<p class="hint" role="alert">{{ s["job_export_book_missing"] }}</p>
+{% endif %}
+{% if export.jobs %}
+<form method="post" action="/jobs/export" class="u3-sheet-form">
+  <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+  <input type="hidden" name="book" value="{{ export.book }}">
+  <fieldset class="u3-exp-section">
+    <legend>{{ s["job_export_section_job"] }}</legend>
+    {% for j in export.jobs %}
+    <label class="u3-exp-item"><input type="radio" name="job" value="{{ j.id }}"{% if loop.first %} checked{% endif %}> {{ j.book_name }} · {{ j.status }} · {{ j.updated_at_human }}</label>
+    {% endfor %}
+  </fieldset>
+  <fieldset class="u3-exp-section">
+    <legend>{{ s["job_export_section_objects"] }}</legend>
+    <label class="u3-exp-item"><input type="checkbox" name="objects" value="translation" checked> {{ s["job_export_obj_translation"] }}</label>
+    <label class="u3-exp-item"><input type="checkbox" name="objects" value="learning"> {{ s["job_export_obj_learning"] }}</label>
+    <label class="u3-exp-item"><input type="checkbox" name="objects" value="cards"> {{ s["job_export_obj_cards"] }}</label>
+    <label class="u3-exp-item"><input type="checkbox" name="objects" value="reports"> {{ s["job_export_obj_reports"] }}</label>
+  </fieldset>
+  <fieldset class="u3-exp-section">
+    <legend>{{ s["job_export_section_formats"] }}</legend>
+    <div class="u3-exp-grid">
+      <label class="u3-exp-item"><input type="checkbox" name="formats" value="epub" checked> {{ s["job_export_fmt_epub"] }}</label>
+      {% for fmt in export.formats %}
+      {% if fmt != "epub" %}
+      <label class="u3-exp-item"><input type="checkbox" name="formats" value="{{ fmt }}"{% if not export.converter_ok %} disabled{% endif %}> {{ s["job_export_fmt_" ~ fmt] }}</label>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% if not export.converter_ok %}
+    <p class="hint">{{ s["err_converter_unavailable"] }}</p>
+    {% endif %}
+  </fieldset>
+  <button type="submit" class="u3-btn u3-primary u3-sheet-action">{{ s["job_export_btn"] }}</button>
+</form>
+{% else %}
+<p class="hint">{{ s["job_export_no_jobs"] }}</p>
+{% endif %}
+{% if export.book %}
+<form method="post" action="/books/{{ export.book }}/export" class="u3-sheet-form">
+  <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+  <fieldset class="u3-exp-section">
+    <legend>{{ s["job_export_book_block"] }}</legend>
+    <p class="hint">{{ s["job_export_book_hint"] }}</p>
+    <div class="u3-exp-grid">
+      <label class="u3-exp-item"><input type="radio" name="format" value="epub" checked> {{ s["job_export_fmt_epub"] }}</label>
+      {% for fmt in export.formats %}
+      {% if fmt != "epub" %}
+      <label class="u3-exp-item"><input type="radio" name="format" value="{{ fmt }}"{% if not export.converter_ok %} disabled{% endif %}> {{ s["job_export_fmt_" ~ fmt] }}</label>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </fieldset>
+  <button type="submit" class="u3-btn u3-primary u3-sheet-action">{{ s["job_export_btn"] }}</button>
+</form>
+{% endif %}
 {% endif %}

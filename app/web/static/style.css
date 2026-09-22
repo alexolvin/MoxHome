@@ -692,6 +692,14 @@ body:has(.u3-tabbar) .u3-toast-zone { bottom: calc(var(--u3-tabbar-h) + var(--u3
 .u3-export-book { margin: 0 0 var(--u3-space-2); font-weight: 600; }
 .u3-export-files { display: flex; flex-direction: column; gap: var(--u3-space-2); margin-top: var(--u3-space-2); }
 .u3-export-files .u3-btn { width: 100%; }
+/* R7 §9: секции листа экспорта (объекты/форматы/макет) — одна стилизация
+   для no-JS-формы и JS-рендера (те же классы). */
+.u3-exp-section { margin: 0; padding: 0 var(--u3-space-1) var(--u3-space-1); border: 1px solid var(--u3-border); border-radius: var(--u3-radius-md); }
+.u3-exp-section legend { padding: 0 var(--u3-space-1); font-size: var(--u3-fs-300); font-weight: 600; }
+.u3-exp-item { display: flex; align-items: center; gap: var(--u3-space-1); min-height: var(--u3-tap); padding: 0 var(--u3-space-1); font-size: var(--u3-fs-300); }
+.u3-exp-item > input { flex: 0 0 auto; width: 20px; height: 20px; margin: 0; }
+.u3-exp-item .hint { margin-left: auto; }
+.u3-exp-grid { display: grid; grid-template-columns: 1fr 1fr; }
 .u3-sheet-del-line { margin: 0 0 var(--u3-space-1); }
 /* TZ §16: prefers-reduced-motion — без анимаций */
 @media (prefers-reduced-motion: reduce) {
