@@ -21,14 +21,16 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import re
 import shutil
+import subprocess
 import time
 from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
-from app.core.config import PROFILE_NAMES, Settings
+from app.core.config import PROFILE_NAMES, LLMProfile, Settings
 from app.core.errors import AppError
 from app.domain.job import LEARNING_LEVELS, TERMINAL_STATES, WORKING_STATES, Job, JobStatus
 from app.languages.cefr import CEFR_ORDER, language_cefr_label
@@ -45,6 +47,7 @@ from app.llm.tasks import all_tasks
 from app.services.jobs import create_baseline
 from app.services.languages import matrix_report
 from app.storage.jobs_repo import JobRepository
+from app.web.health import health_report
 from app.web.strings import UI_STRINGS
 from app.workers.pipeline import CHAPTER_LABEL_PREFIX, translation_phases
 
@@ -902,6 +905,76 @@ def book_purge_execute(
     return {"rows": rows, "bytes": size, "purged": sorted(job_ids)}
 
 
+# ---------------------------------------------------------------- purge заданий (R8)
+
+
+def jobs_purge_token(secret: str, job_ids: list[str], filter_params: dict[str, Any]) -> str:
+    """Токен двухшагового purge: HMAC от (секрет, состава заданий,
+    фильтра). Привязывает перечень шага 1 к подтверждению шага 2:
+    расхождение состава между шагами — 409 («удаляются ровно
+    перечисленные job_id»). R8: здесь (как book_purge_token), чтобы
+    страница «Обслуживание» (no-JS) использовала тот же механизм."""
+    payload = json.dumps(
+        {"ids": sorted(job_ids), "filter": filter_params}, sort_keys=True, ensure_ascii=False
+    )
+    return hmac.new(
+        secret.encode("utf-8"), f"u3-purge|{payload}".encode(), hashlib.sha256
+    ).hexdigest()[:32]
+
+
+def jobs_purge_resolve(
+    settings: Settings,
+    repo: JobRepository,
+    *,
+    statuses: list[str],
+    book: str | None,
+    source: str | None,
+    target: str | None,
+    min_age_days: int | float,
+) -> dict[str, Any]:
+    """R8: шаг 1 purge — состав терминальных старше N дней (+ опц.
+    книга/пара) + confirm_token. Единая точка для эндпоинта
+    ``/api/jobs/purge`` и no-JS-маршрута «Обслуживание» (Rule 8)."""
+    updated_before = time.time() - min_age_days * 86400
+    jobs = repo.list_jobs(
+        None,
+        0,
+        statuses=tuple(statuses),
+        book=book,
+        source_language=source,
+        target_language=target,
+        updated_before=updated_before,
+    )
+    ids = sorted(job.id for job in jobs)
+    total_bytes = 0
+    for job_id in ids:
+        job_dir = settings.job_dir(job_id)
+        if job_dir.is_dir():
+            total_bytes += sum(p.stat().st_size for p in job_dir.rglob("*") if p.is_file())
+    return {
+        "job_ids": ids,
+        "count": len(ids),
+        "total_bytes": total_bytes,
+        "confirm_token": jobs_purge_token(
+            settings.server.auth_secret,
+            ids,
+            {"statuses": statuses, "book": book, "source": source, "target": target},
+        ),
+    }
+
+
+def jobs_purge_execute(settings: Settings, repo: JobRepository, job_ids: list[str]) -> int:
+    """R8: шаг 2 purge — удаляются ровно перечисленные (строки +
+    каталоги артефактов). Возврат — число строк."""
+    rows = 0
+    for job_id in job_ids:
+        rows += repo.delete_job(job_id)
+        job_dir = settings.job_dir(job_id)
+        if job_dir.exists() or job_dir.is_symlink():
+            shutil.rmtree(job_dir, ignore_errors=True)
+    return rows
+
+
 # ---------------------------------------------------------------- языки (Languages)
 
 
@@ -1136,6 +1209,155 @@ def settings_view(settings: Settings) -> dict[str, Any]:
         },
         "ui": settings.ui.model_dump(),
     }
+
+
+# ---------------------------------------------------------------- LLM-форма (R8)
+
+
+def llm_form_view(settings: Settings) -> dict[str, Any]:
+    """R8 (ТЗ §13): данные формы /settings/llm.
+
+    API-ключи в данные НЕ попадают (U1-8) — только признак
+    «задан/не задан». Границы числовых полей — из схемы
+    ``LLMProfile`` (единый источник, Rule 1): шаблон получает ``min``
+    для number-инпутов (ТЗ §13: «Границы из limits»)."""
+    # Границы — из JSON-схемы (в pydantic ≥ 2.13 у FieldInfo нет .ge/.le)
+    props = LLMProfile.model_json_schema()["properties"]
+    profiles: list[dict[str, Any]] = []
+    for name in PROFILE_NAMES:
+        profile = settings.llm.profile(name)
+        profiles.append(
+            {
+                "name": name,
+                "base_url": profile.base_url,
+                "model": profile.model,
+                "api_key_set": bool(settings.llm.api_key_for(name)),
+                "temperature": profile.temperature,
+                "retry_times": profile.retry_times,
+                "concurrency": profile.concurrency,
+                "extra_body": (
+                    json.dumps(profile.extra_body, ensure_ascii=False)
+                    if profile.extra_body
+                    else ""
+                ),
+            }
+        )
+    urls = {p["base_url"] for p in profiles}
+    return {
+        "profiles": profiles,
+        #: ТЗ §13: переключатель «один эндпоинт» — включён, когда все
+        #: три base_url равны (по умолчанию вкл — состояние стенда).
+        "shared": len(urls) == 1,
+        "base_url": next(iter(urls)),
+        "bounds": {
+            "temperature_min": props["temperature"].get("minimum") or 0,
+            "temperature_max": props["temperature"].get("maximum") or 2,
+            "retries_min": props["retry_times"].get("minimum") or 0,
+            "parallelism_min": props["concurrency"].get("minimum") or 1,
+        },
+    }
+
+
+def llm_model_summary(settings: Settings) -> str:
+    """R8 (ТЗ §13, «Ещё» мастера R4): read-only-строка LLM-профиля —
+    одна модель, если у всех профилей одинаковая, иначе смешанный
+    маркер (профиль правится на /settings/llm, per-job выбора нет)."""
+    models = {settings.llm.profile(name).model for name in PROFILE_NAMES}
+    if len(models) == 1:
+        return next(iter(models))
+    return _S["create_llm_mixed"]
+
+
+# ---------------------------------------------------------------- обслуживание (R8)
+
+
+def maintenance_view(settings: Settings, repo: JobRepository) -> dict[str, Any]:
+    """R8 (ТЗ §13): «Обслуживание» — 4 строки статусов (health_report
+    — единая точка R6), размер jobs/, read-only-конфигурация."""
+    health = health_report(settings, repo)
+    detail = cast(dict[str, str], health.get("detail") or {})
+    rows = [
+        {
+            "name": _S["maint_status_epubcheck"],
+            "status": health["epubcheck"],
+            "detail": detail.get("epubcheck", ""),
+        },
+        {
+            "name": _S["maint_status_converter"],
+            "status": health["converter"],
+            "detail": detail.get("converter", ""),
+        },
+        {
+            "name": _S["maint_status_worker"],
+            "status": health["worker"],
+            "detail": detail.get("worker", ""),
+        },
+    ]
+    llm = cast(dict[str, str], health["llm"])
+    bad = [(name, status) for name, status in llm.items() if status != "ok"]
+    if bad:
+        rows.append(
+            {
+                "name": _S["maint_status_llm"],
+                "status": "error",
+                "detail": f"{bad[0][0]}: {bad[0][1]}",
+            }
+        )
+    else:
+        rows.append({"name": _S["maint_status_llm"], "status": "ok", "detail": ""})
+    jobs_dir = settings.jobs_dir
+    total = 0
+    if jobs_dir.is_dir():
+        total = sum(f.stat().st_size for f in jobs_dir.rglob("*") if f.is_file())
+    return {
+        "rows": rows,
+        "jobs_size": human_size(total),
+        "config": settings_view(settings),
+        "purge_min_age_days": settings.ui.purge_min_age_days,
+    }
+
+
+# ---------------------------------------------------------------- о системе (R8)
+
+_COMMIT_CACHE: dict[str, str] = {}
+
+
+def _git_commit(root: Path) -> str:
+    """Короткий коммит storage.root (кэш на процесс, fail-safe)."""
+    key = str(root)
+    cached = _COMMIT_CACHE.get(key)
+    if cached is not None:
+        return cached
+    value = _S["about_unknown"]
+    try:
+        result = subprocess.run(
+            ["git", "-C", key, "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        value = result.stdout.strip() or _S["about_unknown"]
+    except (OSError, subprocess.SubprocessError):
+        pass
+    _COMMIT_CACHE[key] = value
+    return value
+
+
+def about_view(settings: Settings) -> dict[str, str]:
+    """R8 (ТЗ §13): «О системе». Версия — pyproject.toml (пакет не
+    установлен в venv — importlib.metadata недоступен)."""
+    version = _S["about_unknown"]
+    pyproject = settings.storage.root / "pyproject.toml"
+    if pyproject.is_file():
+        match = re.search(
+            r'^version\s*=\s*"([^"]+)"',
+            pyproject.read_text(encoding="utf-8"),
+            re.MULTILINE,
+        )
+        if match is not None:
+            version = match.group(1)
+    return {"version": version, "commit": _git_commit(settings.storage.root)}
 
 
 # ---------------------------------------------------------------- качество (quality)

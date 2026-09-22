@@ -1,8 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
+{# R8 (ТЗ §13): данные сервером (views.languages_view) — data-u1-fetch
+   и JS-рендерер удалены: страница и так была полностью серверной. #}
 <p class="hint">{{ s["languages_hint"] }}</p>
 
-<div id="u1-languages" data-u1-fetch="/api/languages" data-u1-render="languages">
+<div id="u1-languages">
   <h2>{{ s["languages_h2"] }}</h2>
   <table class="u3-table">
     <thead>

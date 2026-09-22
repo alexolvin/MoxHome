@@ -132,8 +132,9 @@ def test_u3_1_no_ui_literals_outside_strings() -> None:
 
 def test_u3_2_table_card_parity(u1_env: U1Env) -> None:
     """U3-2: для каждой таблицы — поля карточки == столбцы (число и порядок),
-    ``<th scope="col">``; минимум 5 таблиц. R2: /jobs и /books — строки
-    (§6/§10), дубль таблица/карточки на них снят (осталось 5)."""
+    ``<th scope="col">``; минимум 4 таблицы. R2: /jobs и /books — строки
+    (§6/§10), дубль таблица/карточки на них снят (осталось 5). R8: /models —
+    301 на /settings/llm (форма вместо таблицы), остаток — 4."""
     profile = u1_env.profiles["main"]
     client, repo = profile.client, profile.repo
     book = _upload_book(client, u1_env.books["tiny"])
@@ -166,7 +167,7 @@ def test_u3_2_table_card_parity(u1_env: U1Env) -> None:
                 ]
                 assert dts == columns, f"{url}: поля карточки {dts} != столбцы {columns}"
             checked += 1
-    assert checked >= 5, f"проверено таблиц: {checked} < 5"
+    assert checked >= 4, f"проверено таблиц: {checked} < 4"
 
 
 # ------------------------------------------------------------------ T-U3-3
@@ -895,6 +896,26 @@ documentStub.getElementById("u3-ui").textContent = readFileSync(uiFile, "utf8");
 const u1jobs = documentStub.getElementById("u1-jobs");
 u1jobs.dataset = { u1Fetch: "/api/jobs", u1Render: "jobs", u1Group: "all" };
 u1jobs._listBody = makeEl("u3-list-body");
+
+// R8: settings pages exist — the prompts form and the LLM form need
+// .elements (a flat stub has no field collections); the versions JSON
+// is always present on the real prompts page (tojson of a list).
+const promptForm = documentStub.getElementById("u3-prompt-form");
+promptForm.elements = {
+  task: { value: "", addEventListener() {} },
+  level: { value: "", addEventListener() {} },
+  source: { value: "", addEventListener() {} },
+  target: { value: "", addEventListener() {} },
+  content: { value: "" },
+};
+documentStub.getElementById("u3-prompt-versions").textContent = "[]";
+documentStub.getElementById("u3-llm-form").elements = {
+  shared_endpoint: { checked: false, addEventListener() {} },
+  base_url: { value: "", addEventListener() {} },
+  base_url_translation: { value: "", addEventListener() {} },
+  base_url_fill: { value: "", addEventListener() {} },
+  base_url_analysis: { value: "", addEventListener() {} },
+};
 
 if (scenario === "restart") {
   /* wizard form: one checked book radio + named selects, so the real

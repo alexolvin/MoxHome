@@ -70,6 +70,8 @@
   --u3-job-row-h: 72px;
   /* R §6: высота строки книги (row_height_px = 64 px) */
   --u3-row-h: 64px;
+  /* R8 §13: высота строки при плотности «Плотная» (T3: ≥ 44 px) */
+  --u3-row-h-compact: 48px;
   /* R §7: обложка книги (карточка) — фиксированные (D1 §3.4) */
   --u3-book-cover-w: 96px;
   --u3-book-cover-h: 136px;
@@ -409,7 +411,10 @@ select,
 input[type="text"],
 input[type="search"],
 input[type="date"],
-input[type="file"] {
+input[type="file"],
+input[type="url"],
+input[type="password"],
+input[type="number"] {
   font: inherit;
   color: var(--u3-text);
   background: var(--surface-0);
@@ -423,7 +428,8 @@ input[type="file"] {
   cursor: pointer;
 }
 
-select, input[type="text"], input[type="search"], input[type="date"] { cursor: default; }
+select, input[type="text"], input[type="search"], input[type="date"],
+input[type="url"], input[type="password"], input[type="number"] { cursor: default; }
 input[type="file"] { padding: var(--u3-space-2); }
 
 .u3-filter label,
@@ -594,6 +600,8 @@ summary {
 .ok { color: var(--status-ok-fg); font-weight: 600; }
 .u3-warn { color: var(--status-warn-fg); font-weight: 600; }
 .u3-danger { color: var(--status-err-fg); font-weight: 600; }
+.u3-ok { color: var(--status-ok-fg); font-weight: 600; }
+.u3-err { color: var(--status-err-fg); font-weight: 600; }
 .u3-empty { padding: var(--u3-space-4) 0; }
 .u3-mono {
   font-family: var(--u3-font-mono);
@@ -977,3 +985,57 @@ a.u3-book-v:focus-visible { outline: 2px solid var(--focus-ring); outline-offset
 .u3-book-cover {
   object-fit: cover;
 }
+
+/* R8 §13: «Настройки» — component «field» (ТЗ §14), LLM-форма,
+   внешний вид, обслуживание, плотность «Плотная». */
+
+/* component «field»: подпись сверху, контрол 16 px (--u3-input-fs), подсказка */
+.u3-fld { margin: 0 0 var(--u3-space-3); }
+.u3-fld input { width: 100%; font-size: var(--u3-input-fs); }
+.u3-fld-label {
+  display: block;
+  margin: 0 0 var(--u3-space-1);
+  font-size: var(--u3-fs-300);
+  font-weight: 600;
+  color: var(--fg-muted);
+}
+.u3-fld-hint { margin: var(--u3-space-1) 0 0; font-size: var(--u3-fs-200); color: var(--fg-muted); }
+
+/* внешний вид: группы радио; «Сохранить» — только no-JS
+   (JS — submit при смене радио) */
+.u3-fld-group {
+  margin: 0 0 var(--u3-space-3);
+  padding: var(--u3-space-1) var(--u3-space-3) var(--u3-space-2);
+  border: 1px solid var(--u3-border);
+  border-radius: var(--u3-radius-md);
+}
+.u3-fld-group legend { padding: 0 var(--u3-space-1); font-weight: 600; }
+html.js #u3-appearance-submit { display: none; }
+
+/* LLM: 3 профиля в <details> (первый открыт — сервер); «единый
+   эндпоинт» (JS) — одно общее поле вместо трёх */
+.u3-llm-profile {
+  margin: 0 0 var(--u3-space-3);
+  padding: 0 var(--u3-space-2) var(--u3-space-2);
+  border: 1px solid var(--u3-border);
+  border-radius: var(--u3-radius-md);
+}
+html.js .u3-llm-form.u3-llm-shared-on .u3-llm-profile-url { display: none; }
+html.js .u3-llm-form:not(.u3-llm-shared-on) .u3-llm-shared { display: none; }
+.u3-llm-extra { margin: 0 0 var(--u3-space-2); }
+
+/* обслуживание: строка статуса (имя — статус) + подпись под ней */
+.u3-maint-row { justify-content: space-between; }
+.u3-maint-detail {
+  margin: var(--u3-space-1) var(--u3-space-3) 0;
+  font-size: var(--u3-fs-200);
+  color: var(--fg-muted);
+}
+.u3-maint-section { margin: var(--u3-space-3) 0 var(--u3-space-1); font-size: var(--u3-fs-400); }
+.u3-maint-purge-label { display: inline-flex; align-items: center; gap: var(--u3-space-2); }
+
+/* readme: горизонтальный скролл длинных строк */
+.u3-overflow { overflow-x: auto; }
+
+/* плотность «Плотная»: строка списка 48 px (T3: ≥ 44 px) */
+html[data-density="compact"] { --u3-row-h: var(--u3-row-h-compact); }

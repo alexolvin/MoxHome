@@ -6,20 +6,25 @@
   <title>{{ s["brand"] }} — {{ title }}</title>
   <link rel="icon" href="/static/favicon.ico">
   <link rel="stylesheet" href="/static/style.css">
-  {# R1 §4: ручная тема — localStorage('u3-theme') -> html[data-theme],
-     до первой отрисовки; серверного состояния нет, переключатель — R8 #}
+  {# R1 §4 / R8 (ТЗ §13): тема и плотность — cookies u3-theme/u3-density
+     (пишет POST /settings/appearance; отсутствуют = системная/обычная)
+     -> html[data-theme]/[data-density], до первой отрисовки. #}
   <script>
     (function () {
       /* R2: list skeleton is visible only with JS (html.js); no-JS
          browsers see the full list in <noscript> instead */
       document.documentElement.className += " js";
-      try {
-        var t = localStorage.getItem("u3-theme");
-        if (t === "dark" || t === "light") {
-          document.documentElement.setAttribute("data-theme", t);
-        }
-      } catch (e) {
-        /* private mode: system theme */
+      function cookie(name) {
+        var m = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
+        return m ? decodeURIComponent(m[1]) : "";
+      }
+      var t = cookie("u3-theme");
+      if (t === "dark" || t === "light") {
+        document.documentElement.setAttribute("data-theme", t);
+      }
+      var d = cookie("u3-density");
+      if (d === "compact") {
+        document.documentElement.setAttribute("data-density", "compact");
       }
     })();
   </script>

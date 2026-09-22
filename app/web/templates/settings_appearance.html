@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+{# R8 (ТЗ §13): тема (Системная/Светлая/Тёмная) + плотность
+   (Обычная/Плотная) — cookies u3-theme/u3-density (отсутствуют =
+   системная/обычная), читает inline-скрипт base.html ДО отрисовки.
+   JS: смена радио → form.submit() (data-u3-appearance); no-JS —
+   кнопка «Сохранить» (скрыта при html.js). #}
+<form id="u3-appearance-form" method="post" action="/settings/appearance">
+  <fieldset class="u3-fld-group">
+    <legend>{{ s["app_theme_label"] }}</legend>
+    <label class="u3-check">
+      <input type="radio" name="theme" value="system"{% if theme == "" %} checked{% endif %} data-u3-appearance>
+      {{ s["app_theme_system"] }}
+    </label>
+    <label class="u3-check">
+      <input type="radio" name="theme" value="light"{% if theme == "light" %} checked{% endif %} data-u3-appearance>
+      {{ s["app_theme_light"] }}
+    </label>
+    <label class="u3-check">
+      <input type="radio" name="theme" value="dark"{% if theme == "dark" %} checked{% endif %} data-u3-appearance>
+      {{ s["app_theme_dark"] }}
+    </label>
+  </fieldset>
+  <fieldset class="u3-fld-group">
+    <legend>{{ s["app_density_label"] }}</legend>
+    <label class="u3-check">
+      <input type="radio" name="density" value="normal"{% if density == "" %} checked{% endif %} data-u3-appearance>
+      {{ s["app_density_normal"] }}
+    </label>
+    <label class="u3-check">
+      <input type="radio" name="density" value="compact"{% if density == "compact" %} checked{% endif %} data-u3-appearance>
+      {{ s["app_density_compact"] }}
+    </label>
+  </fieldset>
+  <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+  <button type="submit" id="u3-appearance-submit" class="u3-btn u3-primary u3-sheet-action">{{ s["common_save"] }}</button>
+</form>
+{% endblock %}

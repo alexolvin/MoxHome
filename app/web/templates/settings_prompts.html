@@ -61,6 +61,11 @@
 <p class="u3-empty">{{ s["prompts_empty"] }}</p>
 {% endif %}
 
+{# R8 (ТЗ §13): JS-подпись кнопки «Создать v(N+1)» — те же строки,
+   что в таблице/карточках (единый источник, Rule 8); no-JS —
+   статичная подпись «Создать». #}
+<script id="u3-prompt-versions" type="application/json">{{ rows | tojson }}</script>
+
 <details class="u3-panel" open>
   <summary id="u3-prompt-form-title">{{ s["prompts_create_title"] }}</summary>
   <form id="u3-prompt-form" class="u3-filter" data-mode="create">

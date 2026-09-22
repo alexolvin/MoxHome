@@ -67,6 +67,14 @@ from app.services.export_artifacts import (
 )
 from app.services.import_book import get_import, start_import
 from app.services.jobs import confirm_job, create_job
+from app.services.llm_config import (
+    clear_app_log,
+    list_models,
+    probe_profile,
+    probe_request,
+    update_llm_config,
+    validate_base_url,
+)
 from app.storage.jobs_repo import JobRepository
 from app.web import views
 from app.web.health import health_report
@@ -624,19 +632,6 @@ def job_delete(
     return {"deleted": job_id, "rows": rows, "bytes": dir_bytes}
 
 
-def _purge_token(secret: str, job_ids: list[str], filter_params: dict[str, Any]) -> str:
-    """Токен двухшагового purge: HMAC от (секрет, состав задания, фильтр).
-
-    Привязывает перечень шага 1 к подтверждению шага 2: расхождение состава
-    между шагами — 409 (3.5.24: «удаляются ровно перечисленные job_id»)."""
-    payload = json.dumps(
-        {"ids": sorted(job_ids), "filter": filter_params}, sort_keys=True, ensure_ascii=False
-    )
-    return hmac.new(
-        secret.encode("utf-8"), f"u3-purge|{payload}".encode(), hashlib.sha256
-    ).hexdigest()[:32]
-
-
 def _bulk_token(secret: str, action: str, job_ids: list[str]) -> str:
     """Серия R §11: токен двухшагового массового удаления — тот же
     механизм, что purge (HMAC от секрета, действия и состава); расхождение
@@ -657,8 +652,11 @@ def purge_jobs(
 ) -> dict[str, Any]:
     """U3 3.5.24: массовая очистка — ДВА шага. Фильтр: только терминальные
     (подмножество статусов), старше ``ui.purge_min_age_days``, опционально
-    книга/пара. Шаг 1 (dry-run) — перечень + confirm_token; шаг 2 — тот же
-    фильтр + confirm_token, удаляются ровно перечисленные job_id."""
+    книга/пара. R8 (ТЗ §13 «Обслуживание»): опционально ``days`` (число ≥ 0)
+    — своё N со страницы «Обслуживание». Шаг 1 (dry-run) — перечень +
+    confirm_token; шаг 2 — тот же фильтр + confirm_token, удаляются ровно
+    перечисленные job_id. Состав/токен/исполнение — views.jobs_purge_*
+    (единая точка с no-JS-маршрутом, Rule 8)."""
     settings, repo = deps
     body = body or {}
     raw_statuses = body.get("statuses")
@@ -679,25 +677,22 @@ def purge_jobs(
     book = str(body["book"]) if body.get("book") else None
     source_lang, target_lang = _split_pair(str(body["pair"]) if body.get("pair") else None)
     min_age_days = settings.ui.purge_min_age_days
-    updated_before = time.time() - min_age_days * 86400
-    jobs = repo.list_jobs(
-        None,
-        0,
-        statuses=tuple(statuses),
+    raw_days = body.get("days")
+    if raw_days is not None:
+        if isinstance(raw_days, bool) or not isinstance(raw_days, (int, float)) or raw_days < 0:
+            raise HTTPException(status_code=400, detail=_S["err_purge_bad_days"])
+        min_age_days = int(raw_days) if float(raw_days).is_integer() else float(raw_days)
+    dry = views.jobs_purge_resolve(
+        settings,
+        repo,
+        statuses=statuses,
         book=book,
-        source_language=source_lang,
-        target_language=target_lang,
-        updated_before=updated_before,
+        source=source_lang,
+        target=target_lang,
+        min_age_days=min_age_days,
     )
-    ids = sorted(job.id for job in jobs)
-    total_bytes = sum(_dir_size(settings.job_dir(job_id)) for job_id in ids)
-    filter_params = {
-        "statuses": statuses,
-        "book": book,
-        "source": source_lang,
-        "target": target_lang,
-    }
-    token = _purge_token(settings.server.auth_secret, ids, filter_params)
+    ids = dry["job_ids"]
+    total_bytes = dry["total_bytes"]
     confirm_token = body.get("confirm_token")
     if confirm_token is None:
         if not ids:
@@ -707,22 +702,17 @@ def purge_jobs(
         return {
             "dry_run": True,
             "job_ids": ids,
-            "count": len(ids),
+            "count": dry["count"],
             "total_bytes": total_bytes,
             "min_age_days": min_age_days,
-            "confirm_token": token,
+            "confirm_token": dry["confirm_token"],
         }
-    if not hmac.compare_digest(str(confirm_token), token):
+    if not hmac.compare_digest(str(confirm_token), dry["confirm_token"]):
         raise HTTPException(status_code=409, detail=_S["err_purge_token"])
     # Токен гарантирует: текущий состав == составу шага 1 (удаляется ровно он).
     for job_id in ids:
         _safe_job_dir(settings, job_id)
-    rows = 0
-    for job_id in ids:
-        rows += repo.delete_job(job_id)
-        job_dir = settings.job_dir(job_id)
-        if job_dir.exists() or job_dir.is_symlink():
-            shutil.rmtree(job_dir, ignore_errors=True)
+    rows = views.jobs_purge_execute(settings, repo, ids)
     logger.info(
         "jobs_purge: user=%s ids=%s rows=%d bytes=%d",
         _user(request),
@@ -1392,3 +1382,109 @@ def models(deps: tuple[Settings, JobRepository] = Depends(get_deps)) -> list[dic
 def config(deps: tuple[Settings, JobRepository] = Depends(get_deps)) -> dict[str, Any]:
     settings, _repo = deps
     return views.settings_view(settings)
+
+
+# ------------------------------------------------------------------ LLM (R8)
+
+
+@router.post("/llm/probe")
+def llm_probe(
+    body: dict[str, Any],
+    deps: tuple[Settings, JobRepository] = Depends(get_deps),
+) -> dict[str, Any]:
+    """ТЗ §13: проба профиля — GET {base_url}/models + минимальный
+    chat-вызов на 8 токенов. Не пишет конфиг, не создаёт задание.
+
+    200 всегда: ``ok``/``message`` — данные (одна строка результата);
+    400 — некорректное тело. Пустые ключ/extra_body = сохранённые."""
+    settings, _repo = deps
+    try:
+        base_url, model, api_key, temperature, extra_body = probe_request(body, settings)
+    except AppError as exc:
+        raise HTTPException(status_code=400, detail=exc.message) from exc
+    return probe_profile(base_url, model, api_key, temperature, extra_body)
+
+
+@router.put("/config/llm")
+def config_llm_update(
+    body: dict[str, Any],
+    request: Request,
+    deps: tuple[Settings, JobRepository] = Depends(get_deps),
+) -> dict[str, Any]:
+    """ТЗ §13: запись ``llm.profiles.*`` (config.yaml) + ключи (.env).
+
+    Fail-closed: валидация ДО записи — AppError → 400, файлы не
+    тронуты. Успех — атомарная замена файлов, НОВЫЕ Settings в
+    ``app.state`` (применяются к следующему заданию: идемпотентные
+    ключи стадий включают конфиг)."""
+    _settings, _repo = deps
+    config_path = request.app.state.config_path
+    env_path = request.app.state.env_path
+    if config_path is None or env_path is None:
+        raise HTTPException(
+            status_code=500, detail=_S["err_llm_paths_missing"]
+        )
+    profiles_raw = body.get("profiles")
+    if not isinstance(profiles_raw, dict):
+        raise HTTPException(
+            status_code=400,
+            detail=_S["err_llm_unknown_profile"].format(profile="—"),
+        )
+    profile_fields = {
+        str(name): dict(raw)
+        for name, raw in profiles_raw.items()
+        if isinstance(raw, dict)
+    }
+    shared_url = body.get("base_url")
+    try:
+        new_settings = update_llm_config(
+            shared=bool(body.get("shared_endpoint")),
+            shared_url=shared_url if isinstance(shared_url, str) else None,
+            profile_fields=profile_fields,
+            config_path=config_path,
+            env_path=env_path,
+        )
+    except AppError as exc:
+        raise HTTPException(status_code=400, detail=exc.message) from exc
+    request.app.state.settings = new_settings
+    logger.info(
+        "llm_config_update: user=%s shared=%s",
+        _user(request),
+        bool(body.get("shared_endpoint")),
+    )
+    return {"saved": True, "profiles": views.models_view(new_settings)}
+
+
+@router.get("/llm/models")
+def llm_models(
+    base_url: str = Query(...),
+    deps: tuple[Settings, JobRepository] = Depends(get_deps),
+) -> dict[str, Any]:
+    """ТЗ §13: модели эндпоинта для автодополнения (datalist).
+    Сервер-прокси (CORS локального LLM не гарантирован). 400 —
+    некорректный URL, 502 — эндпоинт недоступен/ответ не-JSON."""
+    settings, _repo = deps
+    try:
+        validate_base_url(base_url)
+    except AppError as exc:
+        raise HTTPException(status_code=400, detail=exc.message) from exc
+    try:
+        models = list_models(base_url, settings.llm.api_key_for("translation") or "")
+    except AppError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=_S["llm_models_unavailable"].format(reason=exc.message),
+        ) from exc
+    return {"models": models}
+
+
+@router.post("/logs/clear")
+def app_logs_clear(
+    request: Request,
+    deps: tuple[Settings, JobRepository] = Depends(get_deps),
+) -> dict[str, Any]:
+    """R8 «Обслуживание»: очистка ``logs/app.log`` — тот же механизм,
+    что per-job (U3 3.5.25-26): truncate(0) + строка факта."""
+    settings, _repo = deps
+    cleared = clear_app_log(settings, _user(request))
+    return {"cleared": True, "bytes": cleared}

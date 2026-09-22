@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+{# R8 (ТЗ §13): no-JS purge — страница подтверждения (шаг 1).
+   Состав + confirm_token — views.jobs_purge_resolve (тот же механизм,
+   что /api/jobs/purge): шаг 2 удалит ровно перечисленные job_id. #}
+<h2>{{ s["maint_purge_confirm_title"] }}</h2>
+{% if error is defined and error %}
+<p class="hint u3-warn" role="alert">{{ error }}</p>
+{% endif %}
+<p class="hint">{{ s["maint_purge_title"] }}: {{ days }} {{ s["maint_purge_days_label"] | lower }}</p>
+<p>{{ purge_info }}</p>
+<ul class="u3-list">
+  {% for job_id in dry.job_ids %}
+  <li><span class="u3-mono">{{ job_id }}</span></li>
+  {% endfor %}
+</ul>
+<form class="u3-inline-form" method="post" action="/settings/maintenance/purge">
+  <input type="hidden" name="days" value="{{ days }}">
+  <input type="hidden" name="confirm_token" value="{{ dry.confirm_token }}">
+  <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+  <button type="submit" class="btn u3-danger">{{ s["maint_purge_btn"] }}</button>
+  <a class="btn" href="/settings/maintenance">{{ s["jobs_del_cancel_btn"] }}</a>
+</form>
+{% endblock %}

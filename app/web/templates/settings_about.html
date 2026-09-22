@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+{# R8 (ТЗ §13): О системе — версия (pyproject.toml), коммит
+   (git rev-parse, fail-safe), README, выход (cookie-логин). #}
+<ul class="u3-list">
+  <li>
+    <div class="u3-list-row u3-maint-row">
+      <span class="u3-maint-name">{{ s["about_version"] }}</span>
+      <span class="u3-mono">{{ about.version }}</span>
+    </div>
+  </li>
+  <li>
+    <div class="u3-list-row u3-maint-row">
+      <span class="u3-maint-name">{{ s["about_commit"] }}</span>
+      <span class="u3-mono">{{ about.commit }}</span>
+    </div>
+  </li>
+  <li><a class="u3-list-row" href="/readme">{{ s["about_readme"] }}</a></li>
+</ul>
+<form class="u3-inline-form" method="post" action="/logout">
+  <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+  <button type="submit" class="btn u3-danger">{{ s["about_logout_btn"] }}</button>
+</form>
+{% endblock %}

@@ -18,9 +18,10 @@ import logging
 import os
 import threading
 import time
+from pathlib import Path
 
-from app.core.config import Settings
-from app.core.errors import AppError
+from app.core.config import Settings, load_settings
+from app.core.errors import AppError, ConfigurationError
 from app.core.logging import attach_job_logs, detach_job_logs, job_context
 from app.core.worker_signal import write_heartbeat
 from app.domain.job import NEXT_STAGE, WORKING_STATES, Job, JobStatus
@@ -33,10 +34,20 @@ logger = logging.getLogger("app.worker")
 
 
 class Worker:
-    def __init__(self, settings: Settings, repo: JobRepository) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        repo: JobRepository,
+        config_path: Path | None = None,
+        env_path: Path | None = None,
+    ) -> None:
         self._settings = settings
         self._repo = repo
         self._pipeline = Pipeline(settings)
+        #: R8 (ТЗ §13): пути конфигов для релоада перед каждым новым
+        #: заданием — «сохранено в UI применяется к следующему заданию».
+        self._config_path = config_path
+        self._env_path = env_path
         self._pid = os.getpid()
         self._stop_event = threading.Event()
         self._lease_lost = threading.Event()
@@ -55,6 +66,7 @@ class Worker:
     def run_once(self) -> Job | None:
         """Взять одно задание (если есть) и выполнить до терминального/стоп-состояния."""
         self.startup()
+        self._reload_config()
         job = self._repo.next_claimable()
         if job is None:
             return None
@@ -64,6 +76,7 @@ class Worker:
         """Непрерывный цикл: одно активное задание, затем следующее из очереди."""
         self.startup()
         while True:
+            self._reload_config()
             job = self._repo.next_claimable()
             if job is None:
                 time.sleep(poll_seconds)
@@ -74,19 +87,43 @@ class Worker:
 
     # ------------------------------------------------------------------ внутреннее
 
+    def _reload_config(self) -> None:
+        """R8: новая конфигурация с диска ПЕРЕД новым заданием (ТЗ §13).
+
+        Записанное в UI сохраняется к СЛЕДУЮЩЕМУ заданию; текущее
+        продолжается на стартовом профиле (Pipeline захвачен в
+        `_execute`). Ошибка валидации — лог + прежняя конфигурация
+        (веб-запись fail-closed, сбой релоада — только внешнее
+        вмешательство в файлы; остановка очереди из-за этого не
+        требуется)."""
+        if self._config_path is None or self._env_path is None:
+            return
+        try:
+            settings = load_settings(self._config_path, self._env_path)
+        except ConfigurationError as exc:
+            logger.error(
+                "релоад конфигурации: %s — работаю на прежней", exc.message
+            )
+            return
+        self._settings = settings
+        self._pipeline = Pipeline(settings)
+
     def _execute(self, job: Job) -> Job:
         lease = self._settings.server.lease_seconds
         if not self._repo.claim(job.id, self._pid, lease):
             logger.info("задание не занято (арена занята другим): %s", job.id)
             return job
+        # R8: задание держит Pipeline НА СТАРТОВЫХ настройках — подмена
+        # конфигурации между стадиями недопустима (ТЗ §13).
+        pipeline = self._pipeline
         handlers = attach_job_logs(self._settings.job_dir(job.id), self._settings.secrets())
         try:
             with job_context(job.id):
-                return self._run(job)
+                return self._run(job, pipeline)
         finally:
             detach_job_logs(handlers)
 
-    def _run(self, job: Job) -> Job:
+    def _run(self, job: Job, pipeline: Pipeline) -> Job:
         try:
             self._check_control(job.id)
             self._resume_if_needed(job.id)
@@ -96,7 +133,7 @@ class Worker:
             state = job_now.status if job_now.status in WORKING_STATES else JobStatus.VALIDATING
             while state in WORKING_STATES:
                 self._check_control(job.id)
-                next_state = self._run_stage(job.id, state)
+                next_state = self._run_stage(job.id, state, pipeline)
                 if next_state is None:
                     break
                 state = next_state
@@ -129,8 +166,12 @@ class Worker:
                 job_id, job_now.paused_from, reason="resume: управляющая команда"
             )
 
-    def _run_stage(self, job_id: str, state: JobStatus) -> JobStatus | None:
+    def _run_stage(self, job_id: str, state: JobStatus, pipeline: Pipeline) -> JobStatus | None:
         """Переход в `state` (до побочного эффекта, E3.3) → исполнение → следующее состояние.
+
+        ``pipeline`` — захваченный на старте задания (R8: задание
+        продолжается на стартовых настройках даже после релоада
+        конфигурации воркером).
 
         Возвращает None, если конвейер останавливается (NEEDS_CONFIRMATION или
         терминальное состояние после LEARNING — финального рабочего этапа,
@@ -142,42 +183,42 @@ class Worker:
         job = self._repo.require(job_id)
 
         if state is JobStatus.VALIDATING:
-            if self._pipeline.run_validating(self._repo, job):
+            if pipeline.run_validating(self._repo, job):
                 self._check_control(job_id)
                 self._repo.transition(
                     job_id,
                     JobStatus.NEEDS_CONFIRMATION,
-                    reason=self._confirmation_reason(job_id),
+                    reason=self._confirmation_reason(job_id, pipeline),
                 )
                 self._repo.release(job_id, self._pid)
                 return None
             self._check_control(job_id)
         elif state is JobStatus.PLANNING:
-            self._pipeline.run_planning(self._repo, job)
+            pipeline.run_planning(self._repo, job)
             self._check_control(job_id)
         elif state is JobStatus.TRANSLATING:
-            self._pipeline.run_translating(
+            pipeline.run_translating(
                 self._repo, job, lambda: self._check_control(job_id)
             )
             self._check_control(job_id)
         elif state is JobStatus.ANALYZING:
-            self._pipeline.run_analyzing(self._repo, job)
+            pipeline.run_analyzing(self._repo, job)
             self._check_control(job_id)
         elif state is JobStatus.GENERATING:
-            self._pipeline.run_generating(self._repo, job)
+            pipeline.run_generating(self._repo, job)
             self._check_control(job_id)
         elif state is JobStatus.VALIDATING_OUTPUT:
             # Предупреждения записаны в quality.json стадией (единый источник);
             # финальный статус — по итогам LEARNING (L3/S могут добавить свои).
-            self._pipeline.run_validating_output(self._repo, job)
+            pipeline.run_validating_output(self._repo, job)
             self._check_control(job_id)
         elif state is JobStatus.GLOSSARY_FIX:
             # L3: после правки — LEARNING (S1–S5, ТЗ_03); halt (L3.6) —
             # AppError → FAILED (D63).
-            self._pipeline.run_glossary_fix(self._repo, job)
+            pipeline.run_glossary_fix(self._repo, job)
             self._check_control(job_id)
         else:  # LEARNING — финальный рабочий этап: терминальный статус по итогам
-            warnings = self._pipeline.run_learning(self._repo, job)
+            warnings = pipeline.run_learning(self._repo, job)
             final = JobStatus.COMPLETED_WITH_WARNINGS if warnings else JobStatus.COMPLETED
             self._repo.transition(
                 job_id, final, reason="результат валидирован (вкл. L3, S)"
@@ -185,11 +226,11 @@ class Worker:
             return None
         return NEXT_STAGE[state]
 
-    def _confirmation_reason(self, job_id: str) -> str:
+    def _confirmation_reason(self, job_id: str, pipeline: Pipeline) -> str:
         """Причина NEEDS_CONFIRMATION (E2.7 + L0.5): подозрительная книга и/или
         язык. Строится из validation.json — единый источник с пайплайном (Rule 8)."""
         try:
-            payload = self._pipeline.validation(job_id)
+            payload = pipeline.validation(job_id)
         except (OSError, ValueError):
             return "подозрительная книга (требует подтверждения, E2.7)"
         parts: list[str] = []

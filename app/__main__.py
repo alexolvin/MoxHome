@@ -48,7 +48,9 @@ def main(argv: list[str] | None = None) -> int:
             "port": settings.server.port,
         },
     )
-    app = create_app(settings)
+    # R8: пути конфигов — запись LLM-настроек из UI + релоад после
+    # сохранения (ТЗ §13).
+    app = create_app(settings, config_path=Path(args.config), env_path=Path(args.env))
     log.info(
         "U1: запуск FastAPI-сервера",
         extra={
