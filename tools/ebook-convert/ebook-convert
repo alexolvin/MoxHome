@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Обёртка ebook-convert (Calibre) в Podman-контейнере без сети.
+# Решение владельца 2026-09-21 (поправка к TZ-R §8, docs/DECISIONS.md D110):
+#   podman run --rm --network=none --read-only --tmpfs /tmp
+#   -e HOME=/tmp --userns=keep-id --memory=4g --pids-limit=256
+# Каталог входа монтируется :ro,z, каталог вывода :rw,z; вызов --version
+# проходит без монтирования (проба /api/health). Exit code и stderr
+# контейнера проходят как есть. Использование:
+#   ebook-convert INPUT OUTPUT [опции ebook-convert]
+set -euo pipefail
+
+IMAGE=localhost/ebook-convert
+
+SECURITY=(--rm --network=none --read-only --tmpfs /tmp
+          -e HOME=/tmp --userns=keep-id --memory=4g --pids-limit=256)
+
+if [ "${1:-}" = "--version" ] || [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+    exec podman run "${SECURITY[@]}" "$IMAGE" "$@"
+fi
+
+if [ "$#" -lt 2 ]; then
+    echo "usage: ebook-convert INPUT OUTPUT [options]" >&2
+    exit 2
+fi
+
+IN="$1"
+OUT="$2"
+shift 2
+
+if [ ! -f "$IN" ]; then
+    echo "ebook-convert: входной файл не найден: $IN" >&2
+    exit 66
+fi
+
+IN_DIR="$(cd "$(dirname "$IN")" && pwd)"
+OUT_DIR="$(cd "$(dirname "$OUT")" && pwd)"
+mkdir -p "$OUT_DIR"
+
+if [ "$IN_DIR" = "$OUT_DIR" ]; then
+    # Обычный случай приложения: вход и вывод в одном каталоге (input/) —
+    # единый mount :rw,z (каталог нельзя смонтировать и :ro, и :rw).
+    exec podman run "${SECURITY[@]}" \
+        -v "$IN_DIR":/in:rw,z \
+        "$IMAGE" "/in/$(basename "$IN")" "/in/$(basename "$OUT")" "$@"
+fi
+
+exec podman run "${SECURITY[@]}" \
+    -v "$IN_DIR":/in:ro,z \
+    -v "$OUT_DIR":/out:rw,z \
+    "$IMAGE" "/in/$(basename "$IN")" "/out/$(basename "$OUT")" "$@"

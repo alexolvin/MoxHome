@@ -26,6 +26,7 @@ import hashlib
 import hmac
 import json
 import logging
+import mimetypes
 import os
 import re
 import shutil
@@ -37,8 +38,12 @@ from typing import Annotated, Any
 
 import yaml
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 
+from app.adapters.convert import probe as converter_probe
+from app.adapters.convert.checks import classify
+from app.adapters.epub_engine.epubcheck import facts as epubcheck_facts
+from app.adapters.epub_engine.epubcheck import run_epubcheck
 from app.core.config import Settings
 from app.core.errors import AppError
 from app.domain.job import TERMINAL_STATES, Job, JobStatus
@@ -51,6 +56,8 @@ from app.llm.prompts import (
 )
 from app.llm.tasks import task as task_lookup
 from app.services.analyze import scan_book
+from app.services.covers import extract_cover
+from app.services.import_book import get_import, start_import
 from app.services.jobs import confirm_job, create_job
 from app.storage.jobs_repo import JobRepository
 from app.web import views
@@ -219,31 +226,148 @@ def books(
     return views.list_books(settings, repo, q=q)
 
 
-@router.post("/books")
+@router.post("/books", response_model=None)
 async def upload_book(
+    request: Request,
     deps: tuple[Settings, JobRepository] = Depends(get_deps),
     file: UploadFile = File(...),  # noqa: B008 — FastAPI file-параметр
-) -> dict[str, Any]:
-    """Загрузка EPUB в ``input/`` + определение языка (тот же механизм L0,
-    что и стадия validating — ``detect_book``, не дублируется)."""
+) -> dict[str, Any] | Response:
+    """R6 (ТЗ §8): загрузка книги — 16 форматов (``converter.accept``),
+    calibre в контейнере без сети (D110).
+
+    ``.epub`` — синхронный путь: пре-проверка (DRM) → EPUBCheck →
+    определение языка (тот же механизм L0, что и стадия validating) →
+    ``.meta.json`` (Серия R §15) → 200 ``{name, …meta}``. Всё остальное —
+    сохранить оригинал ``<name>.source.<ext>`` (хранится и после успеха),
+    202 ``{import_id}``, фоновый поток: конвертация → EPUBCheck → язык →
+    ``done|error`` (прогресс — ``GET /api/imports/{id}``). no-JS (форма,
+    ``Accept: text/html``) — 303: для ``.epub`` → ``/books``, иначе →
+    ``/imports/{id}`` (страница с meta-refresh).
+
+    Отказы fail closed (T8): 400 с точной причиной (``strings.py``),
+    файл не остаётся в библиотеке.
+    """
     settings, _repo = deps
-    filename = file.filename
-    if not filename or not filename.endswith(".epub"):
-        raise HTTPException(status_code=400, detail=_S["err_expected_epub"])
+    filename = file.filename or ""
+    if not filename:
+        raise HTTPException(status_code=400, detail=_S["err_book_required"])
+    ext = Path(filename).suffix.lstrip(".").lower()
+    if not ext:
+        raise HTTPException(
+            status_code=400,
+            detail=_S["err_format_unsupported"].format(
+                ext="",
+                formats=", ".join("." + f for f in settings.converter.accept),
+            ),
+        )
+    if (file.size or 0) > settings.limits.upload_max_mb * 1024 * 1024:
+        raise HTTPException(
+            status_code=400,
+            detail=_S["err_upload_too_big"].format(mb=settings.limits.upload_max_mb),
+        )
     name = f"u1-{uuid.uuid4().hex[:8]}-{Path(filename).name}"
+    wants_html = "text/html" in request.headers.get("accept", "")
+    if ext == "epub":
+        meta = await _import_epub_sync(settings, file, name)
+        if wants_html:
+            return RedirectResponse("/books", status_code=303)
+        return {"name": name, **meta}
+    # Не-EPUB требует calibre (D110) — без конвертера принимается только EPUB.
+    status, _detail = converter_probe(settings)
+    if status != "ok":
+        raise HTTPException(status_code=400, detail=_S["err_converter_unavailable"])
+    src = settings.input_dir / f"{name}.source.{ext}"
+    with src.open("wb") as handle:
+        shutil.copyfileobj(file.file, handle)
+    verdict = classify(settings, src, ext, file.size or src.stat().st_size)
+    if not verdict["ok"]:
+        src.unlink(missing_ok=True)
+        raise HTTPException(status_code=400, detail=verdict["detail"])
+    import_id = start_import(settings, src, name, verdict["format"])
+    if wants_html:
+        return RedirectResponse(f"/imports/{import_id}", status_code=303)
+    return JSONResponse(
+        {"import_id": import_id, "name": f"{name}.epub"}, status_code=202
+    )
+
+
+async def _import_epub_sync(
+    settings: Settings, file: UploadFile, name: str
+) -> dict[str, Any]:
+    """EPUB — первичный формат (ТЗ §8): конвертации нет — пре-проверка
+    (DRM) → EPUBCheck → язык → ``.meta.json``. Сбой на любом шаге —
+    400 и файл не остаётся в библиотеке (fail closed)."""
     dest = settings.input_dir / name
     with dest.open("wb") as handle:
         shutil.copyfileobj(file.file, handle)
     try:
+        verdict = classify(settings, dest, "epub", file.size or dest.stat().st_size)
+        if not verdict["ok"]:
+            raise HTTPException(status_code=400, detail=verdict["detail"])
+        outcome = run_epubcheck(
+            settings.epubcheck_jar_path, dest, settings.epubcheck.timeout_seconds
+        )
+        if outcome.available and (outcome.fatals or outcome.errors):
+            first = " ".join((*outcome.fatals, *outcome.errors)[:3])
+            raise HTTPException(
+                status_code=400,
+                detail=_S["err_import_epubcheck"].format(
+                    n=len(outcome.fatals) + len(outcome.errors), first=first
+                ),
+            )
         meta = scan_book(settings, dest)
+        cover_path = extract_cover(dest)
+        # Серия R §15: новые загрузки пишут сразу .meta.json (старый формат
+        # .detect.json — только миграция при первом обращении, R5).
+        # R6: + source_format / epubcheck / cover_path (ТЗ §15).
+        meta = {
+            **views.book_meta_defaults(),
+            **meta,
+            "imported_at": time.time(),
+            "source_format": "epub",
+            "epubcheck": epubcheck_facts(outcome),
+            "cover_path": cover_path,
+        }
+        views.write_book_meta(dest, meta)
+    except HTTPException:
+        views.delete_book_files(settings, dest)
+        raise
     except AppError as exc:
         views.delete_book_files(settings, dest)
         raise HTTPException(status_code=400, detail=exc.message) from exc
-    # Серия R §15: новые загрузки пишут сразу .meta.json (старый формат
-    # .detect.json — только миграция при первом обращении, R5).
-    meta = {**views.book_meta_defaults(), **meta, "imported_at": time.time()}
-    views.write_book_meta(dest, meta)
-    return {"name": dest.name, **meta}
+    return meta
+
+
+@router.get("/imports/{import_id}")
+def import_status(import_id: str) -> dict[str, Any]:
+    """R6 (ТЗ §15): прогресс импорта —
+    ``{id, status, step, format, name, error}``; status —
+    ``checking|converting|validating|language|done|error``. Реестр —
+    в памяти веб-процесса: после рестарта неизвестный id → 404."""
+    rec = get_import(import_id)
+    if rec is None:
+        raise HTTPException(
+            status_code=404, detail=_S["err_import_not_found"].format(id=import_id)
+        )
+    return rec
+
+
+@router.get("/books/covers/{filename}")
+def book_cover(
+    filename: str,
+    deps: tuple[Settings, JobRepository] = Depends(get_deps),
+) -> FileResponse:
+    """R6 (ТЗ §8): обложка — файл ``<name>.cover.<ext>``; путь
+    валидирует ``views.book_cover_path`` (только ``input/``, имя —
+    по книге), traversal отклоняется."""
+    settings, _repo = deps
+    path = views.book_cover_path(settings, filename)
+    if path is None:
+        raise HTTPException(
+            status_code=404, detail=_S["err_cover_not_found"].format(filename=filename)
+        )
+    media_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+    return FileResponse(path, media_type=media_type)
 
 
 @router.delete("/books/{filename}")

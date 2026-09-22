@@ -15,6 +15,7 @@ EPUB; на выходе — двуязычный (или одноязычный)
 - Python 3.11–3.13
 - [uv](https://docs.astral.sh/uv/) (менеджер зависимостей проекта; `uv.lock` в репозитории)
 - Java 17+ — для EPUBCheck (опционально; см. шаг 1)
+- [Podman](https://podman.io/) — для Calibre/импорта форматов (опционально; см. шаг 1)
 - LLM-эндпоинт: OpenAI-совместимый (`/v1/chat/completions`)
 
 ## Быстрый старт (7 шагов)
@@ -53,6 +54,21 @@ EPUBCheck (опционально; нужен Java 17+): скачать дист
 (`lib/` рядом с jar — classpath собирается автоматически). Без EPUBCheck
 задания завершаются `COMPLETED_WITH_WARNINGS` с причиной
 `VALIDATION_UNAVAILABLE` (Rule 6: честное предупреждение, не «успех»).
+
+Calibre для импорта форматов (опционально; нужен [Podman](https://podman.io/)):
+Calibre работает в контейнере **без сети** (решение D110:
+`tools/ebook-convert/` — Containerfile debian:trixie-slim + обёртка).
+Сборка одним скриптом:
+
+```bash
+tools/ebook-convert/build.sh
+```
+
+(образ `localhost/ebook-convert`; затем в `config.yaml` —
+`converter.binary` с абсолютным путём к обёртке
+`tools/ebook-convert/ebook-convert`). Без Calibre интерфейс принимает
+только EPUB и показывает явную строку «Конвертация недоступна: не
+установлен calibre» (молчаливой деградации нет).
 
 ### Шаг 2. Настройка LLM
 

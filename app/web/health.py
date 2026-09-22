@@ -22,6 +22,7 @@ import shutil
 
 import httpx
 
+from app.adapters.convert import probe
 from app.core.config import PROFILE_NAMES, Settings
 from app.core.worker_signal import worker_alive
 from app.languages.registry import load_registry
@@ -95,11 +96,20 @@ def _probe_epubcheck(settings: Settings) -> tuple[str, str]:
     return "ok", ""
 
 
+def _probe_converter(settings: Settings) -> tuple[str, str]:
+    """R6 (TZ §8): проба ``<обёртка> --version``; единая точка —
+    ``app.adapters.convert.probe`` (TTL-кэш 300 c: контейнер не
+    поднимается на каждый health; тот же результат читают лист
+    импорта и no-JS-страница загрузки)."""
+    return probe(settings)
+
+
 def health_report(settings: Settings, repo: JobRepository) -> dict[str, object]:
     """Собранное покомпонентное состояние (единая точка для /api/health)."""
     db_status, db_detail = _probe_database(repo)
     storage_status, storage_detail = _probe_storage(settings)
     epub_status, epub_detail = _probe_epubcheck(settings)
+    converter_status, converter_detail = _probe_converter(settings)
     worker_status, worker_detail = worker_alive(settings)
     report: dict[str, object] = {
         "app": "ok",
@@ -108,6 +118,7 @@ def health_report(settings: Settings, repo: JobRepository) -> dict[str, object]:
         "worker": worker_status,
         "llm": _probe_llm(settings),
         "epubcheck": epub_status,
+        "converter": converter_status,
         "nlp": _probe_nlp(settings),
     }
     details: dict[str, str] = {}
@@ -117,6 +128,8 @@ def health_report(settings: Settings, repo: JobRepository) -> dict[str, object]:
         details["storage"] = storage_detail
     if epub_detail:
         details["epubcheck"] = epub_detail
+    if converter_detail:
+        details["converter"] = converter_detail
     if worker_detail:
         details["worker"] = worker_detail
     if details:

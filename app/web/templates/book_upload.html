@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+{# R6 no-JS (ТЗ §8): страница загрузки книги (FAB). Форма — POST
+   multipart в /api/books (CSRF — поле u3_csrf, middleware читает и из
+   multipart). .epub — синхронный ответ → 303 /books; остальное —
+   303 /imports/{id} (прогресс с meta-refresh). JS-клиенту эта
+   страница не показывается (FAB открывает лист). #}
+<form class="u3-panel" method="post" action="/api/books" enctype="multipart/form-data">
+  <label>{{ s["books_upload_label"] }}:
+    <input type="file" name="file" accept="{{ import_accept }}" required>
+  </label>
+  <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+  <button type="submit">{{ s["books_upload_btn"] }}</button>
+</form>
+{% if not converter_ok %}
+<p class="u3-warn" role="alert">{{ s["import_converter_unavailable"] }}<br>
+<span class="hint">{{ converter_detail }}</span></p>
+{% endif %}
+<p class="hint">{{ s["books_upload_hint"] }}</p>
+<p class="hint">{{ s["import_formats_line"] }}:
+  {% for fmt in import_accept_list %}
+  {{ ". " + fmt if loop.last else ". " + fmt + ", " }}
+  {% endfor %}
+  {{ s["import_formats_note"] }}</p>
+{% endblock %}

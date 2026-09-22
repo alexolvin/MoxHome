@@ -1,0 +1,33 @@
+{# Тело листа «Импорт книги» (R6, ТЗ §8).
+   Drop-зона 96 px (кнопка-файл + drag&drop, multiple), очередь файлов
+   (последовательно, «N из M»), 4 шага на файл (проверка → конвертация
+   → валидация → язык), сводка по завершении. Только JS: no-JS-путь —
+   страница /books/upload (FAB — ссылка).
+   Переменные: converter_ok, converter_detail, import_accept,
+   import_accept_list. #}
+{% if not converter_ok %}
+<p class="u3-warn" role="alert">{{ s["import_converter_unavailable"] }}<br>
+<span class="hint">{{ converter_detail }}</span></p>
+{% endif %}
+<div class="u3-import-drop" id="u3-import-drop" role="button" tabindex="0"
+     aria-label="{{ s["import_drop_line"] }}">
+  <input type="file" id="u3-import-files" name="file"
+         accept="{{ import_accept }}" multiple hidden
+         aria-label="{{ s["import_files_label"] }}">
+  <span class="u3-import-drop-ico" aria-hidden="true">&#8682;</span>
+  <span class="u3-import-drop-line">{{ s["import_drop_line"] }}</span>
+</div>
+<p class="u3-sum-hint">{{ s["import_formats_line"] }} —
+  <details class="u3-inline">
+    <summary>{{ s["import_formats_link"] }}</summary>
+    <ul class="u3-import-formats">
+      {% for fmt in import_accept_list %}<li>.{{ fmt }}</li>{% endfor %}
+    </ul>
+  </details>
+  {{ s["import_formats_note"] }}</p>
+<ul id="u3-import-list" class="u3-import-list" hidden></ul>
+<div id="u3-import-summary" role="status" hidden>
+  <p id="u3-import-summary-line" class="u3-import-summary-line"></p>
+  <p id="u3-import-caption" class="u3-sum-hint" hidden></p>
+</div>
+<button type="button" class="u3-btn u3-sheet-action" id="u3-import-close">{{ s["common_close"] }}</button>

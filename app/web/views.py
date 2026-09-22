@@ -542,6 +542,23 @@ def book_epub_path(settings: Settings, filename: str) -> Path | None:
     return dest if dest.is_file() else None
 
 
+def book_cover_path(settings: Settings, filename: str) -> Path | None:
+    """R6: файл обложки по sidecar-метаданным. Guard имени (паттерн
+    ``book_epub_path``): только ``<stem>.cover.<ext>`` внутри ``input/``;
+    обложки нет или файла нет — ``None``."""
+    dest = book_epub_path(settings, filename)
+    if dest is None:
+        return None
+    cover_name = read_book_meta(dest).get("cover_path")
+    if not cover_name or Path(cover_name).name != cover_name:
+        return None
+    stem = filename[: -len(".epub")]
+    if not cover_name.startswith(stem + ".cover."):
+        return None
+    cover = settings.input_dir / cover_name
+    return cover if cover.is_file() else None
+
+
 def book_meta_path(path: Path) -> Path:
     """Sidecar-метаданные книги: ``<имя>.epub`` → ``<имя>.meta.json``."""
     return path.with_suffix(path.suffix + ".meta.json")
@@ -568,7 +585,8 @@ def read_book_meta(path: Path) -> dict[str, Any]:
 
 def book_meta_defaults() -> dict[str, Any]:
     """Новые поля sidecar с дефолтами (ТЗ §15: title, author,
-    target_default, cefr_default, note; R5-расширение — source_language)."""
+    target_default, cefr_default, note; R5 — source_language;
+    R6 — source_format, cover_path, epubcheck)."""
     return {
         "title": None,
         "author": None,
@@ -576,6 +594,9 @@ def book_meta_defaults() -> dict[str, Any]:
         "target_default": None,
         "cefr_default": None,
         "note": None,
+        "source_format": None,
+        "cover_path": None,
+        "epubcheck": None,
     }
 
 
@@ -588,12 +609,22 @@ def write_book_meta(path: Path, meta: dict[str, Any]) -> None:
 
 
 def delete_book_files(settings: Settings, dest: Path) -> int:
-    """Удаление файла книги + обоих sidecar (единая точка: API, страницы,
-    каскад). Возврат — число удалённых байт файла (строка аудита)."""
+    """Удаление файла книги + sidecar (единая точка: API, страницы,
+    каскад). R6: вместе с книгой — оригинал импорта ``<name>.source.*``
+    и обложка ``<name>.cover.*``. Возврат — байты файла (аудит)."""
     size = dest.stat().st_size if dest.is_file() else 0
     dest.unlink(missing_ok=True)
     book_meta_path(dest).unlink(missing_ok=True)
     dest.with_suffix(dest.suffix + ".detect.json").unlink(missing_ok=True)
+    stem = dest.name[: -len(dest.suffix)] if dest.suffix else dest.name
+    if dest.parent.is_dir():
+        for sidecar in dest.parent.iterdir():
+            if not sidecar.is_file():
+                continue
+            if sidecar.name.startswith(
+                (f"{stem}.source.", f"{stem}.cover.")
+            ):
+                sidecar.unlink(missing_ok=True)
     return size
 
 
@@ -625,42 +656,52 @@ def list_books(
     (имя файла + название, без учёта регистра); ``repo`` — при заданном
     у каждой книги ``has_active_job`` (есть ли задание в run-группе:
     точка на строке).
+
+    R6 (ТЗ §8): порядок — сначала новые: импортированная книга
+    появляется первой строкой списка (``imported_at``, запасной ключ —
+    mtime; равенство — по имени).
     """
-    books: list[dict[str, Any]] = []
     input_dir = settings.input_dir
     if not input_dir.is_dir():
-        return books
-    for path in sorted(input_dir.glob("*.epub")):
+        return []
+    rows: list[tuple[float, str, dict[str, Any]]] = []
+    for path in input_dir.glob("*.epub"):
         meta = read_book_meta(path)
         stats = meta.get("stats") or {}
         st = path.stat()
-        books.append(
-            {
-                "name": path.name,
-                "path": str(path),
-                "size_bytes": st.st_size,
-                "size_human": human_size(st.st_size),
-                "modified_at": st.st_mtime,
-                "uploaded_at_human": human_ts(st.st_mtime),
-                "title": meta.get("title"),
-                "author": meta.get("author"),
-                "dc_language": meta.get("dc_language"),
-                "detected": meta.get("detected"),
-                "confidence": meta.get("confidence"),
-                "probabilities": meta.get("probabilities") or {},
-                "decision": meta.get("decision"),
-                "accepted_language": meta.get("accepted_language"),
-                "reasons": meta.get("reasons") or [],
-                # Серия R §7: метаданные карточки (правка — PATCH §15)
-                "source_language": meta.get("source_language"),
-                "target_default": meta.get("target_default"),
-                "cefr_default": meta.get("cefr_default"),
-                "note": meta.get("note"),
-                "chapters": stats.get("chapter_count"),
-                "segments": stats.get("segment_count"),
-                "words": stats.get("word_count"),
-            }
-        )
+        row: dict[str, Any] = {
+            "name": path.name,
+            "path": str(path),
+            "size_bytes": st.st_size,
+            "size_human": human_size(st.st_size),
+            "modified_at": st.st_mtime,
+            "uploaded_at_human": human_ts(st.st_mtime),
+            "title": meta.get("title"),
+            "author": meta.get("author"),
+            "dc_language": meta.get("dc_language"),
+            "detected": meta.get("detected"),
+            "confidence": meta.get("confidence"),
+            "probabilities": meta.get("probabilities") or {},
+            "decision": meta.get("decision"),
+            "accepted_language": meta.get("accepted_language"),
+            "reasons": meta.get("reasons") or [],
+            # Серия R §7: метаданные карточки (правка — PATCH §15)
+            "source_language": meta.get("source_language"),
+            "target_default": meta.get("target_default"),
+            "cefr_default": meta.get("cefr_default"),
+            "note": meta.get("note"),
+            # R6: исходный формат импорта + обложка (решение R5 №8)
+            "source_format": meta.get("source_format"),
+            "cover_path": meta.get("cover_path"),
+            "chapters": stats.get("chapter_count"),
+            "segments": stats.get("segment_count"),
+            "words": stats.get("word_count"),
+        }
+        # R6 (ТЗ §8): сначала новые — импортированная книга первой
+        # строкой (imported_at, запасной ключ — mtime; равенство — имя).
+        rows.append((float(meta.get("imported_at") or st.st_mtime), path.name, row))
+    rows.sort(key=lambda item: (-item[0], item[1]))
+    books = [row for _, _, row in rows]
     if q:
         needle = q.strip().lower()
         if needle:

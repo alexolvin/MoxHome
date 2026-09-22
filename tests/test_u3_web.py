@@ -756,6 +756,10 @@ function makeEl(id) {
       return null;
     },
     querySelectorAll() { return []; },
+    // R6: bindImportSheet использует Element.closest; в плоском
+    // стабе нет цепочки предков — верное поведение = null (app.js
+    // проверяет `sheet &&`).
+    closest() { return null; },
     appendChild(c) {
       if (c && typeof c === "object") { c.parentNode = el; el.children.push(c); }
       return c;

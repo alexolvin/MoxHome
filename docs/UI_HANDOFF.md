@@ -107,17 +107,14 @@ merge --no-ff в main на этап).
 - **Стенд 2026-09-20:** сервер + воркер запущены заново (были
   остановлены); health: app/database/storage ok, worker ok, llm
   translation/fill/analysis ok, epubcheck ok. Java 17 для EPUBCheck
-  на месте. **Calibre для R6: НЕДОСТУПЕН — все каналы исчерпаны
-  (2026-09-20):** официальный хост download.calibre-ebook.com в этом
-  окружении отдаёт HTML-индекс (2362 Б) на ЛЮБЫЕ пути (проверено
-  с двух нод: 3p14-aaa и vzu5-claw); dnf/EPEL-9: «No match for
-  argument: calibre» (RC=1); GitHub org calibre-ebook: 404; PyPI
-  «calibre» — чужой ML-пакет (не тот); Fedora 41 RPM: цепочка
-  зависимостей не собирается на Alma 9 (py3.13-расширения); на
-  диске установки нет. Решение: R6 реализует деградированный режим
-  TZ §8 (импорт EPUB без конвертации + явная строка «Конвертация
-  недоступна: не установлен calibre»); T7/T8-конвертация BLOCKED,
-  поднять владельцу до merge R6.
+  на месте. **Calibre для R6 — решение владельца 2026-09-21
+  (блокер 2026-09-20 снят):** установка на хост закрыта (Alma 9:
+  freetype 2.10.4, Calibre требует ≥ 2.11; все прямые каналы
+  исчерпаны 2026-09-20) → Calibre работает в Podman-контейнере
+  без сети (debian:trixie-slim + calibre 8.5.0; образ
+  `localhost/ebook-convert`, обёртка
+  `tools/ebook-convert/ebook-convert`); поправка к ТЗ §8 —
+  `docs/DECISIONS.md`, детали — секция R6.
 - **Завершён 2026-09-19: D1** (дизайн-система: выбор GitHub/Primer по
   5 критериям §3.2; docs/design-system.md; 29 токенов в :root,
   0 литералов цвета/кегля/отступа/радиуса вне :root; контраст —
@@ -1428,3 +1425,279 @@ ebook-convert, 16 форматов, лист импорта, отказы: T7/T8
   цикл с живым LLM) + mobile recheck 384×715 + полный pytest
   (env -u SERVER_AUTH_SECRET -u SERVER_BIND_ADDRESS -u LLM_API_KEY)
   + ruff + mypy strict.
+
+---
+
+## R6 (2026-09-21) — Импорт: 16 форматов через ebook-convert: T7, T8
+
+**Scope (ТЗ §17 строка R6 + §8 + §15):** импорт 16 форматов (EPUB
+нативно, остальное — нормализация в EPUB при загрузке), адаптер
+`app/adapters/convert/` (Calibre — в контейнере без сети, решение
+владельца 2026-09-21), лист импорта (FAB → bottom sheet: drop-зона
+96 px, 4 шага, множественный импорт с очередью и сводкой),
+EPUBCheck в конвейере импорта, sidecar (`.meta.json`) поля
+`source_format`/`cover_path`/`epubcheck`, обложки (извлечение из
+EPUB — решение R5 №8), `GET /api/imports/{id}`, поле `converter`
+в `GET /api/health`, `limits.upload_max_mb`, жёсткие отказы
+(DRM, скан-PDF, CBZ/CBR, ZIP нескольких книг, аудио, размер,
+неподдерживаемый формат) с явным текстом, деградация без Calibre
+(EPUB-only + явная строка в листе — TZ §8). Приёмка: **T7** (12/12
+фикстур → EPUB + EPUBCheck), **T8** (4/4 отказа с точной причиной,
+без трейса), T15 no-JS (загрузка), T17 (литералы).
+
+### Решения (зафиксированы до кода)
+
+1. **Calibre в контейнере без сети (решение владельца 2026-09-21;
+   поправка к ТЗ §8 «Инструмент конвертации» записана в
+   `docs/DECISIONS.md`).** На хост установка закрыта (Alma 9:
+   freetype 2.10.4 < 2.11, требуемого Calibre; прямые каналы
+   исчерпаны 2026-09-20). Состав:
+   (а) `tools/ebook-convert/Containerfile` (в репозитории):
+   `FROM docker.io/library/debian:trixie-slim`,
+   `apt-get install -y --no-install-recommends calibre` (8.5.0),
+   `ENV QT_QPA_PLATFORM=offscreen LC_ALL=C.UTF-8`,
+   `ENTRYPOINT ["ebook-convert"]`;
+   (б) образ `localhost/ebook-convert` — сборка одним скриптом
+   `tools/ebook-convert/build.sh` (`podman build`); шаг в README
+   «Шаг 1. Установка» на том же уровне, что EPUBCheck;
+   (в) обёртка `tools/ebook-convert/ebook-convert` (bash,
+   исполняемый, в репозитории):
+   `podman run --rm --network=none --read-only --tmpfs /tmp
+   -e HOME=/tmp --userns=keep-id --memory=4g --pids-limit=256
+   localhost/ebook-convert <args>`; `--version` — БЕЗ монтирования
+   (проба health); иначе каталог входа `:ro,z` → `/in`, каталог
+   вывода `:rw,z` → `/out` (обычный случай — один каталог `input/`:
+   единый mount `:rw,z`); exit code и stderr обёртки проходят
+   как есть;
+   (г) `converter.binary` в config.yaml — **абсолютный путь**
+   к обёртке.
+2. **Конфиг (Rule 1):** новая секция `converter` (схема в
+   `app/core/config.py`, явное зеркало в config.yaml +
+   config.example.yaml): `binary: str`,
+   `timeout_import_seconds: 120` (ТЗ §8 «жёсткий таймаут 120 с»),
+   `timeout_export_seconds: 180` (резерв R7), `accept` — кортеж 16
+   расширений ИЗ ТЗ §15 (epub, fb2, mobi, azw, azw3, docx, odt,
+   rtf, txt, md, html, htmlz, lit, pdb, chm, pdf). Новое поле
+   `limits.upload_max_mb: 50` (LimitsSection). Псевдонимы вне
+   кортежа: `.htm` → html; `.zip` (включая `.fb2.zip`) — особый
+   путь (решение 3); `.cbz`/`.cbr` — жёсткий отказ.
+3. **Тип и пре-проверки — быстрые, ДО конвертации, fail-closed
+   (400 + точная причина из `strings.py`, файл НЕ сохраняется):**
+   (а) размер > `limits.upload_max_mb` — до сохранения (`UploadFile.size`);
+   (б) расширение вне accept → «формат не поддерживается» + список;
+   (в) `.cbz`/`.cbr` → «комиксы не поддерживаются»;
+   (г) `.zip`/`.fb2.zip`: ровно одна поддерживаемая книга внутри →
+   конвертация как она; несколько книг → «ZIP-архив нескольких
+   книг»; только изображения → «комиксы»; иначе → «несодержимый
+   для книг ZIP»;
+   (д) DRM: EPUB — `META-INF/encryption.xml` (фикстура
+   `tests/fixtures/epub/drm.epub` уже существует), PDF — `/Encrypt`
+   в трейлере, MOBI/AZW/AZW3 — флаги заголовка (если не распознать —
+   ошибка ebook-convert ловится: import-error с причиной, трейса нет);
+   (е) аудио-сигнатуры (MP3/FLAC/OGG/WAV magic) → «аудиокниги не
+   поддерживаются»;
+   (ж) скан-PDF: в раскомпрессированных content-стримах нет
+   операторов вывода текста (Tj/TJ/'/") → «сканерный PDF (нет
+   текстового слоя); OCR не выполняется»;
+   (з) конвертер недоступен (проба решения 9) — только для
+   НЕ-EPUB: «Конвертация недоступна: не установлен calibre»
+   (EPUB проходит — нативный путь). T8: каждый отказ — 400 +
+   `detail` (точная строка), 0×500, без трейса в теле.
+4. **Конвейер — один механизм.** `app/adapters/convert/` (проба
+   + вызов обёртки + пре-проверки), `app/services/import_book.py`
+   (реестр импортов + оркестрация), `app/services/covers.py`
+   (извлечение обложки). `POST /api/books`:
+   (а) `.epub` — синхронно, как сейчас: пре-проверки → EPUBCheck
+   (решение 6) → `scan_book` → `.meta.json` → 200 `{name, …}`;
+   (б) не-EPUB — сохранить оригинал как `<name>.source.<ext>`
+   (name = `u1-<hex>-<имя>`, epub будет `<name>.epub`), ответить
+   202 `{import_id}`, конвейер — в потоке веб-процесса (арена
+   воркера не трогается — TZ §8): `checking → converting
+   (ebook-convert, timeout_import_seconds) → validating
+   (EPUBCheck) → language (scan_book) → done`; ошибка на любом
+   шаге — `error` + причина, созданные файлы (чистовые + source)
+   удаляются. Оригинальный файл после успешного импорта
+   СОХРАНЯЕТСЯ (TZ §8: доступен для повторной конвертации).
+5. **`GET /api/imports/{id}`** — `{id, status, step, format, name,
+   error}`; статусы `checking|converting|validating|language|
+   done|error` (step = тот же ключ — один источник). Реестр — в
+   памяти веб-процесса; после рестарта неизвестный id → 404;
+   осиротевшие `<name>.source.*` без пары `.epub` — sweep при
+   старте веб-процесса (create_app). no-JS-страница
+   `/imports/{id}`: meta-refresh пока активен; done — ссылка на
+   карточку; error — причина.
+6. **EPUBCheck в конвейере импорта** (переиспользуется
+   `run_epubcheck` из `app/adapters/epub_engine/epubcheck.py`;
+   jar/timeout — из конфига): fatals+errors > 0 → импорт в error
+   («EPUBCheck: N ошибок» + первые строки), файлы удаляются;
+   warnings → книга регистрируется, `meta["epubcheck"] =
+   {available, version, errors, warnings}`. EPUBCheck недоступен
+   (нет java/jar) → книга всё равно регистрируется с
+   `epubcheck.available=false` + причиной (аналог
+   VALIDATION_UNAVAILABLE — книга не блокируется). Нативный
+   `.epub` — тот же путь (ТЗ §8: «проверка EPUBCheck, без
+   конвертации»). Существующие (R5) книги ретроактивно НЕ
+   проверяются. T7 требует 0 ошибок у каждой из 12 фикстур: если
+   вывод calibre тащит ошибки EPUBCheck — чинится генератор
+   фикстур (контент), а не проверка.
+7. **Sidecar `.meta.json`** (R5): + `source_format` (исходное
+   расширение), `cover_path` (решение 8), `epubcheck` (решение 6);
+   `imported_at` уже есть. `book_meta_defaults()` — новые поля;
+   `list_books` и карточка — выводят `source_format`, `cover_path`.
+8. **Обложки (закрытие решения R5 №8):** извлечение из финального
+   EPUB — OPF-item `properties="cover-image"` (EPUB3) или
+   `<meta name="cover">` (EPUB2) → `<name>.cover.<ext>`; обложки
+   нет (txt/md/…) — None. UI: строка (40×56) и карточка (96×136)
+   показывают `img` при `cover_path`, иначе — плитку-букву
+   (существующее). Endpoint `GET /books/covers/{filename}` — файл
+   по sidecar, guard имени как в `book_epub_path`.
+9. **Health:** поле `converter` — проба `<wrapper> --version`
+   (subprocess, timeout 30 c), результат с TTL-кэшем 300 c
+   (health не поднимает контейнер на каждый запрос): `ok`
+   (+ версия) / `error` + причина (detail). Лист импорта и
+   no-JS-страница читают тот же результат: конвертер недоступен —
+   явная строка «Конвертация недоступна: не установлен calibre»
+   + accept в форме = `.epub` (молчаливой деградации нет — TZ §8).
+10. **UI — лист импорта `#u3-sheet-import` (ТЗ §8 «Лист импорта»,
+    «Множественный импорт»):**
+    (а) FAB (`_fab.html`): `fab_sheet="u3-sheet-import"`,
+    `fab_href="/books/upload"` (no-JS-страница); inline-форма
+    `#u1-upload` с первого экрана УБИРАЕТСЯ (T15: no-JS-загрузка —
+    страницами);
+    (б) лист: drop-зона 96 px «Файл или перетащите сюда» (клик →
+    file dialog, drag&drop; `multiple`); под ней строка
+    «Поддерживаются EPUB, FB2, MOBI, AZW3, DOCX, PDF, TXT и ещё 6
+    форматов» + ссылка «полный список» (`<details>`: 16 форматов +
+    примечание «Сканерные PDF, комиксы и DRM отклоняются»);
+    (в) прогресс после выбора: 4 шага на файл (проверка →
+    конвертация → валидация → язык), состояние — polling
+    `GET /api/imports/{id}` (750 мс); подпись «Определение языка
+    при загрузке…» — только под прогресс-баром, пока идёт шаг
+    language; очередь последовательная, «3 из 7»; ошибка одного
+    файла не прерывает очередь (его строка — error + причина);
+    итог — сводка «N добавлено, M с ошибкой» + список причин;
+    (г) после одиночного успеха: лист закрывается, список книг —
+    рефетч (новая книга — первой строкой), тост «Книга добавлена ·
+    Перевести» (действие — открытие листа создания R4 с
+    `?book=<имя>`-предвыбором);
+    (д) no-JS: страница `/books/upload` (форма, CSRF — поле
+    `u3_csrf`); не-EPUB → 202 → 303 на `/imports/{id}` (страница
+    решения 5). Все новые строки — `strings.py` (T17);
+    комментарии app.js — английский.
+11. **`delete_book_files`** (единая точка: API, страницы,
+    каскад R5): + `<name>.source.*` и `<name>.cover.*`.
+12. **T7 — 12 фикстур.** Генератор `tools/ebook-convert/
+    gen_fixtures.py` (коммитится, детерминированный, без внешних
+    зависимостей; вывод — `.a/tasks/ui-audit/fixtures/import/`,
+    НЕ коммитится — .a/ вне git; фикстуры воспроизводятся). Из
+    одного базового текста — 12 файлов: `.epub` (механика
+    `tests/fixtures/epub/build.py`), `.fb2` (XML 2.0), `.mobi` +
+    `.azw3` (из базового EPUB **реальным** ebook-convert в
+    контейнере), `.docx`/`.odt` (минимально валидные zip), `.rtf`,
+    `.txt`, `.md`, `.html`, `.htmlz` (zip), `.pdf` (ручной,
+    текстовый слой — Tj/TJ). Замер `r6_measure.py` на живом стенде
+    (реальный контейнер): 12/12 → `done`, 0 ошибок EPUBCheck в
+    meta, книги в списке.
+13. **T8 — 4/4** (тот же замер): (1) DRM — `drm.epub`
+    (encryption.xml); (2) скан-PDF (изображение, без текстовых
+    операторов); (3) CBZ (zip изображений); (4) превышение размера
+    (`upload_max_mb`). Все — 400 + точная причина, 0×500, без
+    трейса в теле. Unit-тесты дополнительно: ZIP нескольких книг,
+    аудио, неподдерживаемый формат, конвертер недоступен (только
+    не-EPUB; EPUB при этом проходит).
+14. **Unit-тесты `tests/test_r6_web.py` — stub-конвертер:** в
+    тестовой конфигурации `converter.binary` → stub-скрипт
+    (`--version`; ввод → валидный `.epub`; опциональная задержка —
+    ловить промежуточные статусы). Сценарии: нативный epub
+    (синхронно, EPUBCheck, обложка), не-EPUB (202 → polling →
+    done, `source_format`), 4 отказа T8 + zip/multi-book/аудио/
+    формат/без-конвертера, состояния импорта, health `converter`
+    (ok / binary отсутствует / бинарь не запускается), no-JS
+    `/books/upload` + `/imports/{id}` (progress/done/error),
+    удаление книги с `.source`/`.cover`, T17-гвард.
+15. **Не в R6:** экспорт (R7); повторная конвертация из
+    `.source` с другими параметрами (ТЗ оставляет — R7+); OCR
+    (никогда); «слияние» ZIP из нескольких книг (отказ);
+    переписывание метаданных внутри EPUB; выбор/правка обложки
+    (только извлечение).
+
+### Поправки (зафиксированы замером, до CONTROL)
+
+1. **Фиксированные опции конвертации: `--epub-version 3
+   --language und`** (`app/adapters/convert/__init__.py convert()`,
+   регрессия r6_26). Два дефекта умолчаний calibre 8.5.0, оба
+   ловит EPUBCheck:
+   (а) ODF-вход → умолчание EPUB2 с `class="calibre"` на
+   `<html>` — RSC-005 (невалидный XHTML 1.1); EPUB3 (HTML5) —
+   легально. EPUB3 — нативный формат приложения (все фикстуры
+   pipeline — EPUB3), принудительно для всех входов;
+   (б) контейнер без `LANG` (обёртка передаёт только
+   `HOME=/tmp`) → calibre пишет в OPF locale `C` (невалидный
+   BCP-47, OPF-092) для входов без языка (txt/md/html/htmlz/odt);
+   `--language und` — «неопределён», валиден в EPUB2 и EPUB3;
+   опция действует только при неизвестном языке входа (язык
+   fb2/mobi/azw3 не переписывается), реальный язык детектит
+   приложение на шаге «язык».
+   **Ошибки замера (почему поправки не нашли первичным
+   префлайтом):** (1) `ebook-convert IN OUT --version 3` —
+   `--version` в аргументах calibre — ГЛОБАЛЬНЫЙ флаг (баннер
+   версии, rc=0, файл НЕ создаётся, `calibre/ebooks/conversion/
+   cli.py:309 if '--version' in args`) — первый «фикс» ломал
+   ВСЕ конвертации на стенде («конвертер завершился, файл не
+   создан», 11/11 error за <1 с); (2) EPUBCheck на несуществующий
+   файл печатает `File not found:` + `Messages: 0 fatals /
+   0 errors / ...` — фильтрующий grep пропускал строку «File not
+   found», и отсутствующие файлы считывались как «0 ошибок».
+   После исправления: preflight 11/11 не-EPUB фикстур 0/0/0/0
+   (calibre + EPUBCheck), EPUB-фикстура проходит без конвертации
+   (путь приложения: EPUB не конвертируется; calibre-EPUB→EPUB
+   не используется и даёт RSC-026 — артефакт перепаковки,
+   на продукт не влияет).
+2. **`book.azw3` генерируется из `book.txt`, а не из EPUB**
+   (поправка к решению 12, `gen_fixtures.py`): KF8-раундтреп из
+   EPUB-с-навигацией calibre 8.5.0 пишет невалидные XML-id
+   `N-<hash>` (начинаются с цифры) → RSC-005; из TXT — чисто.
+   `book.mobi` — из EPUB (мobi-раундтреп чистый).
+3. **ODT-фикстура**: добавлен `meta.xml` (calibre ODF-ридер
+   падает `KeyError` без него).
+
+### Контрольные точки (заполняются по мере замеров)
+
+- [x] Образ `localhost/ebook-convert` собран (build.sh), обёртка
+      `--version` отвечает, `docs/DECISIONS.md` + README обновлены.
+- [x] CONTROL R6 (T7/T8/NOJS/CLEAN/T17) — таблица результатов
+      (замер 2026-09-22 04:47, `r6_measure.py` прогон 3, 54 с,
+      стенд: сервер + воркер, конвертер = Podman D110):
+
+  | Точка | Результат | Детали |
+  |---|---|---|
+  | **T7** | **PASS** | 12/12 стали EPUB и прошли EPUBCheck (0 ошибок/0 warning, `source_format` = исходный формат). JS-единичный (book.epub): лист → тост «Книга добавлена» + «Перевести» → лист R4 с предвыбором книги (радио checked); JS-очередь (txt+fb2+docx): прогресс «0 из 3»→«1 из 3»→«2 из 3», финал «3 добавлено, 0 с ошибкой», лист остаётся открыт; API 8× (mobi/azw3/odt/rtf/md/html/htmlz/pdf): 202 → polling → done (~3 с/файл); обложка: строка списка + GET /api/books/covers (200, image/png) + карточка |
+  | **T8** | **PASS** | 4/4 отказа с точной причиной, без трейса. Лист: DRM — «файл защищён DRM», скан-PDF — «сканерный PDF (нет текстового слоя); OCR не выполняется», CBZ — «комиксы (.cbz/.cbr) не поддерживаются» — 3× 400, причина в API-теле и в строке листа (3 err-строки); oversize 51 МБ — «файл больше 50 МБ (limits.upload_max_mb)» — 400, остатков в input/ нет; 0× 5xx |
+  | **NOJS** (T15) | **PASS** | /books/upload: `accept` = 16/16 форматов; форма → 303 /imports/{id} («Обработка…» + meta-refresh) → «Книга добавлена: u1-…-tmp_r6_nojs.txt.epub» |
+  | **CLEAN** | **PASS** | 0 ошибок консоли, 0 pageerror, 0× 5xx (намеренные 400 T8 — HTTP-уровень, проверяются самой фазой; в console_errors не входят) |
+  | **T17** | **PASS** | 0 текстовых литералов вне strings.py в templates/ и static/ (t17_literals.py RC=0) |
+
+  Чистка: 13 своих книг удалено (1 остаток прогона 2 + 12 прогона 3),
+  в input/ остался только стендовый probe; скриншоты — `shots/R6/`
+  (9 шт.). Флаги конвертера: `--epub-version 3 --language und`
+  (см. «Поправки» выше).
+
+  Дефекты, найденные полным pytest (прогон 1) и исправленные:
+  (1) скрытый file-input листа импорта без aria-label — u3_14
+  (a11y «контрол без label/aria-label» на /books) → строка
+  `s["import_files_label"]` + `aria-label` в `_book_import_sheet.html`;
+  (2) stub-DOM харнесса u3_15 не знал `Element.closest` (новый
+  `bindImportSheet` app.js использует `drop.closest("dialog")`; stub
+  создаёт элементы лениво без предков, guard `!drop` не срабатывает)
+  → в stub добавлен `closest() { return null; }` (app.js проверяет
+  `sheet &&` — поведение корректное, код продукта не изменён);
+  (3) гонка (латентная, E3): переход в FAILED и `error_message` — две
+  отдельные записи; опрашивающий читатель (CLI `translate --wait`,
+  poll 0,5 с) мог увидеть терминальный статус БЕЗ причины → флейк u2_2
+  под нагрузкой (прогон 1: rc=1, «исход: FAILED», «причина:» отсутствует;
+  в изоляции PASS) → `transition(..., error_message=...)` — причина в
+  той же транзакции (worker._finalize_failed), регрессия e3_2b.
+
+  Гейты: полный pytest **383/383** (02:48 UTC, 20:15, RC=0 — прогон 2
+  после всех фиксов), ruff 0, mypy 0 (82 файла), CSS **40 960 Б**
+  (83 % из 49 152), JS **82 832 Б** (84 % из 98 304).

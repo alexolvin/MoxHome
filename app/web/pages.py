@@ -32,12 +32,14 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.responses import Response
 
+from app.adapters.convert import probe as converter_probe
 from app.core.config import Settings
 from app.core.errors import AppError
 from app.core.worker_signal import worker_alive
 from app.domain.job import TERMINAL_STATES, Job, JobStatus
 from app.languages.cefr import CEFR_ORDER
 from app.languages.registry import load_registry
+from app.services.import_book import get_import
 from app.services.jobs import JOB_MODES, confirm_job, create_job
 from app.storage.jobs_repo import JobRepository, TransitionRecord
 from app.web import views
@@ -285,6 +287,28 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
         return RedirectResponse("/jobs", status_code=302)
 
     # ------------------------------------------------------------- Books
+    # R6 (ТЗ §8): проба конвертера — с TTL-кэшем (D110): контейнер не
+    # поднимается на каждый запрос; один результат читают страница,
+    # лист импорта, no-JS-страница загрузки и /api/health.
+    def _converter_ctx() -> dict[str, Any]:
+        status, detail = converter_probe(settings)
+        ok = status == "ok"  # статус — строка, не bool (fail closed)
+        formats = ["epub"] if not ok else list(settings.converter.accept)
+        return {
+            "converter_ok": ok,
+            "converter_detail": detail,
+            "import_accept": ",".join("." + fmt for fmt in formats),
+            "import_accept_list": formats,
+        }
+
+    # R6-шаги импорта → строки (единая точка для no-JS-страницы):
+    _IMPORT_STEP_LABELS = {
+        "checking": "import_step_check",
+        "converting": "import_step_convert",
+        "validating": "import_step_validate",
+        "language": "import_step_language",
+    }
+
     @router.get("/books")
     def books_page(
         request: Request,
@@ -293,6 +317,7 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
         # Серия R §6: строки книги; `q` — серверный подстроковый фильтр
         # (имя файла + название). Серия R §7 (R5): поиск — строка UI,
         # тот же серверный фильтр (JS — рефетч, no-JS — GET-редирект).
+        # R6: FAB — лист импорта (JS) / страница /books/upload (no-JS).
         return templates.TemplateResponse(
             request,
             "books.html",
@@ -300,8 +325,57 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
             | {
                 "books": views.list_books(settings, repo, q=q),
                 "q": q or "",
-                "fab_href": "#u1-upload",
+                "fab_href": "/books/upload",
+                "fab_sheet": "u3-sheet-import",
                 "fab_label": "fab_add_book",
+                **_converter_ctx(),
+            },
+        )
+
+    @router.get("/books/upload")
+    def book_upload_page(request: Request) -> Response:
+        """R6 no-JS: страница загрузки (форма POST /api/books).
+        Для не-EPUB API отвечает 303 на ``/imports/{id}`` (прогресс с
+        meta-refresh). Регистрация ДО ``/books/{filename}``."""
+        return templates.TemplateResponse(
+            request,
+            "book_upload.html",
+            ctx(request, _page_title("import_sheet_title"), "books")
+            | _converter_ctx()
+            | {"back_href": "/books"},
+        )
+
+    @router.get("/imports/{import_id}")
+    def import_status_page(request: Request, import_id: str) -> Response:
+        """R6 no-JS: прогресс импорта (meta-refresh 1 с). done →
+        карточка книги; error → причина + список книг; неизвестный id
+        (в т.ч. после рестарта) → 404."""
+        rec = get_import(import_id)
+        ctx_ = ctx(request, _page_title("import_status_title"), "books") | {
+            "back_href": "/books"
+        }
+        if rec is None:
+            return templates.TemplateResponse(
+                request,
+                "import_status.html",
+                ctx_
+                | {
+                    "state": "missing",
+                    "reason": _S["err_import_not_found"].format(id=import_id),
+                },
+                status_code=404,
+            )
+        step = rec.get("step") or ""
+        step_key = _IMPORT_STEP_LABELS.get(step, "import_step_convert")
+        return templates.TemplateResponse(
+            request,
+            "import_status.html",
+            ctx_
+            | {
+                "state": rec.get("status"),
+                "step_label": _S[step_key],
+                "name": rec.get("name"),
+                "reason": rec.get("error"),
             },
         )
 

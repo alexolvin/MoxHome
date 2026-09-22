@@ -79,6 +79,8 @@ limits:
   # S4: состав типов упражнений главы; тип вне списка отклоняется
   # детерминированной валидацией (mc, tf, gap, translation, vocab, grammar, free)
   exercises_types: [mc, tf, gap, translation, vocab, grammar, free]
+  # R6 (TZ §8): максимум размера загружаемого файла, МБ — жёсткий отказ
+  upload_max_mb: 50
 
 glossary:
   # L2: глоссарий книги (кандидаты детерминированно, LLM — перевод/пояснение/
@@ -131,6 +133,16 @@ epubcheck:
   # задание не станет COMPLETED: COMPLETED_WITH_WARNINGS (VALIDATION_UNAVAILABLE, Rule 6).
   jar_path: data/tools/epubcheck.jar
   timeout_seconds: 300
+
+converter:
+  # R6 (TZ §8, D110): Calibre ebook-convert в Podman-контейнере без сети
+  # (сборка — tools/ebook-convert/build.sh, шаг в README «Шаг 1»).
+  # Абсолютный путь к обёртке; пустое значение — конвертер недоступен:
+  # импорт только EPUB + явная строка в UI (молчаливой деградации нет).
+  binary: /absolute/path/to/tools/ebook-convert/ebook-convert
+  timeout_import_seconds: 120  # TZ §8: жёсткий таймаут конвертации, с
+  timeout_export_seconds: 180  # R7: экспорт
+  accept: [epub, fb2, mobi, azw, azw3, docx, odt, rtf, txt, md, html, htmlz, lit, pdb, chm, pdf]
 
 translation:
   # Режим перевода задания (E5.2): translation → REPLACE (движок),

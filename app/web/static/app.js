@@ -235,10 +235,14 @@ function jobRowHtml(j, group) {
 function bookRowHtml(b) {
  const title = b.title || b.name;
  const dot = b.has_active_job ? "<span class='u3-row-dot' aria-hidden='true'></span>" : "";
+ /* R6 §8: real cover (GET /api/books/covers/<name>) or letter tile */
+ const cover = b.cover_path
+  ? "<img class='u3-row-cover' src='/api/books/covers/" + enc(b.name) + "' alt='' loading='lazy'>"
+  : "<span class='u3-row-cover' aria-hidden='true'>" + esc(title.charAt(0).toUpperCase()) + "</span>";
  return (
   "<article class='u3-row u3-row-book' data-name='" + esc(b.name) + "'>" +
   "<a class='u3-row-link' href='/books/" + enc(b.name) + "'>" +
-  "<span class='u3-row-cover' aria-hidden='true'>" + esc(title.charAt(0).toUpperCase()) + "</span>" +
+  cover +
   "<span class='u3-row-body'>" +
   "<span class='u3-row-line1' title='" + esc(title) + "'>" + esc(title) + "</span>" +
   "<span class='u3-row-line2'>" + esc(b.detected || b.dc_language || NS) + "→? · " + esc(b.size_human || NS) + "</span>" +
@@ -960,33 +964,171 @@ function failWithRetry(el, text, retry) {
  el.innerHTML = "";
  el.appendChild(n);
 }
-function bindUpload() {
- const form = $("u1-upload");
- if (!form) return;
- const fi = $("u1-upload-file");
- const msg = $("u1-upload-msg");
- const run = async () => {
-  const file = fi.files && fi.files[0];
-  if (!file) {
-   msg.textContent = S.common_select_file;
-   return;
+/* R6 §8: import sheet (#u3-sheet-import): drop zone (click + drag &
+   drop, multiple), sequential queue (one file at a time; an error does
+   not stop the queue), 4 steps per file (check -> convert -> validate
+   -> language), "N of M" while running, summary at the end. EPUB —
+   sync 200; other formats — 202 + polling GET /api/imports/{id}.
+   Single file, success: close the sheet, refresh the list, toast with
+   a "Translate" action (R5). Otherwise — the sheet stays open with
+   the summary. The drop zone is busy-blocked while the queue runs. */
+function bindImportSheet() {
+ const drop = $("u3-import-drop");
+ const fi = $("u3-import-files");
+ const listEl = $("u3-import-list");
+ const sumEl = $("u3-import-summary");
+ if (!drop || !fi || !listEl || !sumEl) return;
+ const sheet = drop.closest("dialog");
+ const STEPS = ["checking", "converting", "validating", "language"];
+ const STEP_LABELS = {
+  checking: S.import_step_check,
+  converting: S.import_step_convert,
+  validating: S.import_step_validate,
+  language: S.import_step_language,
+ };
+ const POLL_MS = 750;
+ const stepsHtml = (idx) => {
+  let html = "";
+  for (let i = 0; i < STEPS.length; i++) {
+   const cls = i < idx ? " u3-import-step-done" : i === idx ? " u3-import-step-active" : "";
+   html += "<span class='u3-import-step" + cls + "'></span>";
   }
-  const fd = new FormData();
-  fd.append("file", file);
-  msg.textContent = S.common_uploading;
-  try {
-   await fetchJSON("/api/books", { method: "POST", body: fd });
-   msg.textContent = S.common_uploaded;
-   if (booksRefresh) booksRefresh();
-   fi.value = "";
-  } catch (e) {
-   failWithRetry(msg, apiErr(e), run);
+  return html;
+ };
+ let total = 0;
+ let done = 0;
+ let okCount = 0;
+ let errLines = [];
+ let lastOkName = "";
+ let busy = false;
+ const setRow = (li, stepIdx, text, cls) => {
+  const steps = li.querySelector(".u3-import-row-steps");
+  if (steps) steps.innerHTML = stepsHtml(stepIdx == null ? -1 : stepIdx);
+  const st = li.querySelector(".u3-import-row-status");
+  if (st) {
+   st.textContent = text || "";
+   st.className = "u3-import-row-status" + (cls ? " " + cls : "");
   }
  };
- form.addEventListener("submit", (e) => {
-  e.preventDefault();
-  run();
+ const renderSummary = (activeStep) => {
+  const line = $("u3-import-summary-line");
+  const cap = $("u3-import-caption");
+  let text = "";
+  if (total > 0) {
+   if (done < total) text = fmt(S.import_progress_of, { done: done, total: total });
+   else text = fmt(S.import_summary_line, { ok: okCount, err: errLines.length });
+  }
+  line.textContent = text;
+  cap.textContent = activeStep === "language" ? S.import_detecting : "";
+  cap.hidden = activeStep !== "language";
+  sumEl.hidden = !text && activeStep !== "language";
+ };
+ const pollImport = (id, li) =>
+  new Promise((resolve) => {
+   const tick = () => {
+    fetchJSON("/api/imports/" + enc(id))
+     .then((rec) => {
+      if (rec.status === "done" || rec.status === "error") resolve(rec);
+      else {
+       const idx = STEPS.indexOf(rec.step);
+       setRow(li, idx === -1 ? null : idx, STEP_LABELS[rec.step] || rec.step);
+       renderSummary(rec.step);
+       setTimeout(tick, POLL_MS);
+      }
+     })
+     .catch(() => setTimeout(tick, POLL_MS * 2));
+   };
+   tick();
+  });
+ const uploadOne = async (file) => {
+  const li = $ce("li");
+  li.className = "u3-import-row";
+  li.innerHTML =
+   "<span class='u3-import-row-name' title='" + esc(file.name) + "'>" +
+   esc(file.name) +
+   "</span>" +
+   "<span class='u3-import-row-steps'>" +
+   stepsHtml(-1) +
+   "</span>" +
+   "<span class='u3-import-row-status'></span>";
+  listEl.appendChild(li);
+  const fd = new FormData();
+  fd.append("file", file);
+  try {
+   const data = await fetchJSON("/api/books", { method: "POST", body: fd });
+   let rec = data;
+   if (data && data.import_id) rec = await pollImport(data.import_id, li);
+   if (rec && rec.status === "error") throw new Error(rec.error || NS);
+   okCount += 1;
+   lastOkName = (rec && rec.name) || (data && data.name) || file.name;
+   setRow(li, STEPS.length, S.import_toast_added, "u3-import-row-ok");
+  } catch (e) {
+   errLines.push(file.name + ": " + (e.message || NS));
+   setRow(li, null, e.message || NS, "u3-import-row-err");
+  }
+ };
+ const queueFiles = (list) => {
+  if (busy) return;
+  const files = Array.prototype.slice.call(list || []);
+  if (!files.length) return;
+  busy = true;
+  drop.classList.add("is-busy");
+  fi.value = "";
+  total = files.length;
+  done = 0;
+  okCount = 0;
+  errLines = [];
+  lastOkName = "";
+  listEl.innerHTML = "";
+  listEl.hidden = false;
+  (async () => {
+   for (const file of files) {
+    await uploadOne(file);
+    done += 1;
+    renderSummary(null);
+   }
+   busy = false;
+   drop.classList.remove("is-busy");
+   renderSummary(null);
+   if (total === 1 && okCount === 1) {
+    if (sheet && sheet.close) sheet.close();
+    if (booksRefresh) booksRefresh();
+    toast(S.import_toast_added, {
+     actionLabel: S.import_toast_translate,
+     actionHref: "/jobs?sheet=create&book=" + enc(lastOkName),
+    });
+   } else if (okCount > 0) {
+    if (booksRefresh) booksRefresh();
+   }
+  })();
+ };
+ drop.addEventListener("click", () => {
+  if (!busy) fi.click();
  });
+ drop.addEventListener("keydown", (e) => {
+  if ((e.key === "Enter" || e.key === " ") && !busy) {
+   e.preventDefault();
+   fi.click();
+  }
+ });
+ fi.addEventListener("change", () => queueFiles(fi.files));
+ ["dragenter", "dragover"].forEach((ev) =>
+  drop.addEventListener(ev, (e) => {
+   e.preventDefault();
+   drop.classList.add("u3-import-drop-over");
+  })
+ );
+ ["dragleave", "drop"].forEach((ev) =>
+  drop.addEventListener(ev, (e) => {
+   e.preventDefault();
+   drop.classList.remove("u3-import-drop-over");
+  })
+ );
+ drop.addEventListener("drop", (e) => {
+  if (e.dataTransfer && e.dataTransfer.files.length) queueFiles(e.dataTransfer.files);
+ });
+ const closeBtn = $("u3-import-close");
+ if (closeBtn && sheet && sheet.close) closeBtn.addEventListener("click", () => sheet.close());
 }
 function bindJobActions() {
  const jobMsg = $("u3-job-msg");
@@ -1068,8 +1210,10 @@ function bindBookDeletes() {
    const target = e.target;
    if (!target || !target.hasAttribute) return;
    if (target.hasAttribute("data-book-upload")) {
-    const fi = $("u1-upload-file");
-    if (fi) fi.click();
+    /* R6 §8: open the import sheet through the shared [data-sheet-open]
+       handler (initSheets) — one mechanism for sheet open/close state */
+    const fab = document.querySelector('[data-sheet-open="u3-sheet-import"]');
+    if (fab) fab.click();
    }
   });
  bindBookDeleteFlow();
@@ -1411,6 +1555,15 @@ function toast(msg, opts) {
    remove();
   });
   el.appendChild(b);
+ }
+ /* R6 §8: link action (toast "Book added" + "Translate" -> create sheet) */
+ if (opts.actionLabel && opts.actionHref) {
+  const a = $ce("a");
+  a.className = "u3-toast-undo";
+  a.href = opts.actionHref;
+  a.textContent = opts.actionLabel;
+  a.addEventListener("click", () => remove());
+  el.appendChild(a);
  }
  zone.appendChild(el);
  setTimeout(remove, opts.duration || 5000);
@@ -2172,7 +2325,7 @@ document.addEventListener("DOMContentLoaded", () => {
  startJobsList();
  startBooksList();
  initSheets();
- bindUpload();
+ bindImportSheet();
  bindJobActions();
  bindBookDeletes();
  bindBookMeta();

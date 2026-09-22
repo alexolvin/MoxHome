@@ -2,7 +2,8 @@
 {% block content %}
 {# Серия R §7 (R5): карточка книги. Шесть позиций ТЗ: (1) шапка — appbar
    (назад/название/⋯ — «Удалить книгу», тот же поток, что текст внизу);
-   (2) шапка карточки: обложка 96×136 (буква; настоящая — R6), название,
+   (2) шапка карточки: обложка 96×136 (R6: настоящая, иначе буква),
+   название,
    автор + две кнопки во всю ширину «Перевести»/«Экспорт»; (3) блок
    «Языки» — редактируется тапом; (4) «Задания по этой книге» — до 3
    последних строк (§10, переиспользуется _job_row.html) + «Все (N)»;
@@ -16,7 +17,11 @@
 {% set tgt_val = meta.target_default or s["common_not_set"] %}
 {% set cefr_val = meta.cefr_default or s["common_not_set"] %}
 <section class="u3-book-head">
+  {% if meta.cover_path %}
+  <img class="u3-book-cover" src="/api/books/covers/{{ detail.name }}" alt="">
+  {% else %}
   <span class="u3-book-cover" aria-hidden="true">{{ title[:1] | upper }}</span>
+  {% endif %}
   <div class="u3-book-id">
     <h2 class="u3-book-title" title="{{ title }}"><a class="u3-book-val" href="/books/{{ detail.name }}/meta?field=title" data-book-field="title" data-book-value="{{ meta.title or '' }}">{{ title }}</a></h2>
     <p class="u3-book-author"><a class="u3-book-val" href="/books/{{ detail.name }}/meta?field=author" data-book-field="author" data-book-value="{{ meta.author or '' }}">{% if author %}{{ author }}{% else %}{{ s["common_not_set"] }}{% endif %}</a></p>
@@ -73,6 +78,9 @@
   <summary>{{ s["book_block_tech"] }}</summary>
   <dl class="u3-book-tech-list">
     <div><dt>{{ s["book_tech_file"] }}</dt><dd class="u3-mono u3-wrap">{{ detail.name }}</dd></div>
+    {% if meta.source_format %}
+    <div><dt>{{ s["book_source_format"] }}</dt><dd class="u3-mono">{{ meta.source_format }}</dd></div>
+    {% endif %}
     <div><dt>{{ s["book_tech_path"] }}</dt><dd class="u3-mono u3-wrap">{{ detail.path }}</dd></div>
     <div><dt>{{ s["book_tech_size"] }}</dt><dd>{{ detail.size_human }}</dd></div>
     <div><dt>{{ s["book_tech_sha256"] }}</dt><dd class="u3-mono u3-wrap">{{ detail.sha256 }}</dd></div>

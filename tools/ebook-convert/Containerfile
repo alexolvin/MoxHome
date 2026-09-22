@@ -1,0 +1,16 @@
+# Calibre ebook-convert — импорт 16 форматов (TZ-R §8, серия R6).
+# Решение владельца 2026-09-21 (docs/DECISIONS.md D110): контейнер без
+# сети — на хост Calibre установить нельзя (Alma 9: freetype 2.10.4,
+# Calibre требует ≥ 2.11). Сборка: ./build.sh → localhost/ebook-convert.
+FROM docker.io/library/debian:trixie-slim
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    QT_QPA_PLATFORM=offscreen \
+    LC_ALL=C.UTF-8
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends calibre \
+    && rm -rf /var/lib/apt/lists/* \
+    && ebook-convert --version
+
+ENTRYPOINT ["ebook-convert"]
