@@ -35,6 +35,7 @@ import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 _MAIN_CLASS = "com.adobe.epubcheck.tool.Checker"
 _MESSAGE_RE = re.compile(r"^(FATAL|ERROR|WARNING|INFO)\([A-Z0-9-]+\)[: ]\s*(.*)$")
@@ -56,6 +57,18 @@ class EpubcheckOutcome:
     errors: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
     infos: tuple[str, ...] = ()
+
+
+def facts(outcome: EpubcheckOutcome) -> dict[str, Any]:
+    """Факты EPUBCheck для ``.meta.json`` (ТЗ §15, R6): единая точка
+    для синхронного и фонового пути импорта (Rule 8)."""
+    return {
+        "available": outcome.available,
+        "version": outcome.version,
+        "errors": len(outcome.fatals) + len(outcome.errors),
+        "warnings": len(outcome.warnings),
+        "reason": outcome.unavailable_reason,
+    }
 
 
 def _resolve(jar_path: Path) -> tuple[list[str], str, str | None]:

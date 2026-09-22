@@ -344,11 +344,16 @@ class JobRepository:
         reason: str,
         *,
         actor: str = "worker",
+        error_message: str | None = None,
     ) -> Job:
         """Переход по явной таблице; фиксирует строку в transitions и возвращает снимок.
 
         Resume-правило: из INTERRUPTED/PAUSED в рабочее состояние разрешён только
         сохранённый *_from-статус (T-E3-2 перебирает и недопустимые пары).
+
+        ``error_message`` (опционально) пишется в той же транзакции —
+        опрашивающий читатель (CLI --wait, UI) не видит терминальный
+        статус без причины (гонка двух отдельных записей).
         """
         conn = self._db.conn
         with transaction(conn):
@@ -376,6 +381,8 @@ class JobRepository:
 
             now = _now()
             updates = self._build_updates(current, to_status, now)
+            if error_message is not None:
+                updates["error_message"] = error_message
 
             sets = ", ".join(f"{key} = ?" for key in updates)
             cur = conn.execute(

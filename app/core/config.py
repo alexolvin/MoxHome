@@ -168,6 +168,9 @@ class LimitsSection(BaseModel):
     #: целевом языке); превышение — отклонение заметки, НЕ тихая усечка
     #: (S3.1/T-S3-10).
     grammar_note_max_chars: int = Field(default=300, gt=0)
+    #: R6 (TZ-R §8): максимум размера загружаемого файла, МБ — жёсткий
+    #: отказ импорта «файл больше limits.upload_max_mb».
+    upload_max_mb: int = Field(default=50, ge=1)
     #: S1 (ТЗ_03): «вне CEFR-диапазона пользователя» — дистанция уровней
     #: (A1..C2) >= этого значения. Диапазон — не абсолютный фильтр: материал
     #: допускается с меткой cefr_out_of_range (ТЗ_03 общее требование 3).
@@ -333,6 +336,36 @@ class EpubcheckSection(BaseModel):
     timeout_seconds: float = Field(default=300.0, gt=0.0)
 
 
+class ConverterSection(BaseModel):
+    """Инструмент конвертации (TZ-R §8, R6): Calibre ``ebook-convert`` в
+    Podman-контейнере без сети (D110). Пустое ``binary`` — конвертер
+    недоступен: импорт только EPUB + явная строка в UI (TZ §8)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    #: Абсолютный путь к обёртке (D110); пустое значение — не задан.
+    binary: str = ""
+    #: Жёсткий таймаут конвертации при импорте, с (TZ §8).
+    timeout_import_seconds: float = Field(default=120.0, gt=0.0)
+    #: Жёсткий таймаут конвертации при экспорте, с (R7).
+    timeout_export_seconds: float = Field(default=180.0, gt=0.0)
+    #: Принимаемые расширения (TZ-R §15, 16 шт.) — данные, не код.
+    accept: tuple[str, ...] = (
+        "epub", "fb2", "mobi", "azw", "azw3", "docx", "odt", "rtf",
+        "txt", "md", "html", "htmlz", "lit", "pdb", "chm", "pdf",
+    )
+
+    @field_validator("accept")
+    @classmethod
+    def _check_accept(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        normalized = tuple(v.strip().lstrip(".").lower() for v in value)
+        if "epub" not in normalized:
+            raise ValueError("converter.accept: отсутствует обязательный формат 'epub'")
+        if len(set(normalized)) != len(normalized):
+            raise ValueError("converter.accept: дубликаты форматов")
+        return normalized
+
+
 class TranslationSection(BaseModel):
     """Режимы перевода задания (E5.2): translation → REPLACE, bilingual → submit из YAML.
 
@@ -413,6 +446,7 @@ class Settings(BaseModel):
     language_detection: LanguageDetectionSection
     languages: LanguagesSection
     epubcheck: EpubcheckSection
+    converter: ConverterSection
     translation: TranslationSection
     #: Параметры Web-интерфейса (U3); опциональная секция YAML (дефолты в схеме).
     ui: UiSection = Field(default_factory=UiSection)
@@ -620,6 +654,7 @@ def load_settings(config_yaml: Path, env_file: Path) -> Settings:
         )
         languages_section = LanguagesSection.model_validate(_sub(data, "languages"))
         epubcheck_section = EpubcheckSection.model_validate(_sub(data, "epubcheck"))
+        converter_section = ConverterSection.model_validate(_sub(data, "converter"))
         translation_section = TranslationSection.model_validate(_sub(data, "translation"))
         ui_section = UiSection.model_validate(_sub(data, "ui"))
     except ValidationError as exc:
@@ -638,6 +673,7 @@ def load_settings(config_yaml: Path, env_file: Path) -> Settings:
         language_detection=detection_section,
         languages=languages_section,
         epubcheck=epubcheck_section,
+        converter=converter_section,
         translation=translation_section,
         ui=ui_section,
     )

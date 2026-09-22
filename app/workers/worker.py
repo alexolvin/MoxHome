@@ -243,10 +243,19 @@ class Worker:
     def _finalize_failed(self, job_id: str, exc: AppError) -> None:
         job_now = self._repo.require(job_id)
         if job_now.status in WORKING_STATES or job_now.status is JobStatus.CREATED:
-            self._repo.transition(job_id, JobStatus.FAILED, reason=f"сбой этапа: {exc.message}")
+            # Причина — в той же транзакции, что переход в FAILED:
+            # опрашивающий (CLI --wait, UI) не должен видеть терминальный
+            # статус без причины (гонка двух отдельных записей, флейк u2_2
+            # под нагрузкой).
+            self._repo.transition(
+                job_id,
+                JobStatus.FAILED,
+                reason=f"сбой этапа: {exc.message}",
+                error_message=exc.message,
+            )
         else:
             logger.error("сбой в не-рабочем состоянии %s: %s", job_now.status.value, exc.message)
-        self._repo.set_error(job_id, exc.message)
+            self._repo.set_error(job_id, exc.message)
         logger.error("задание завершено ошибкой: %s — %s", job_id, exc.message)
 
     # ------------------------------------------------------------------ heartbeat

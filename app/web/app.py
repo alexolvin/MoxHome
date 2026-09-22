@@ -38,6 +38,7 @@ from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse, Response
 
 from app.core.config import Settings
+from app.services.import_book import sweep_orphans
 from app.storage.database import Database
 from app.storage.jobs_repo import JobRepository
 from app.web import views
@@ -129,6 +130,9 @@ def create_app(settings: Settings, db: Database | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.db = db
     app.state.repo = repo
+    # R6 (ТЗ §8): осиротевшие <name>.source.* (рестарт посреди
+    # конвертации) — sweep при старте веб-процесса.
+    sweep_orphans(settings)
 
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
     # Серия R §4: статус→группа и глиф — единая таблица views.STATUS_GROUP;

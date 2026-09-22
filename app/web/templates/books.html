@@ -5,9 +5,10 @@
    рендерится JS (fetch /api/books?q=…); no-JS — полный список.
    Серия R §7 (R5): поиск — строка над списком (один механизм:
    no-JS — GET /books?q=, JS — перехват submit и рефетч без
-   перезагрузки; серверный фильтр — тот же, что API). Форма загрузки
-   остаётся (FAB — якорь #u1-upload; bottom-sheet импорта — R6).
-   5 состояний §14 — data-state на .u3-list-body. #}
+   перезагрузки; серверный фильтр — тот же, что API).
+   R6 (ТЗ §8): загрузка — лист импорта (FAB; JS — <dialog>,
+   no-JS — страница /books/upload). 5 состояний §14 — data-state
+   на .u3-list-body. #}
 <form id="u1-books-search" class="u3-search" method="get" action="/books" role="search">
   <input type="search" name="q" value="{{ q }}" class="u3-input u3-search-input"
          placeholder="{{ s["books_search_ph"] }}" aria-label="{{ s["books_search_ph"] }}">
@@ -35,7 +36,7 @@
       <div class="u3-state" data-state="empty">
         <span class="u3-state-ico" aria-hidden="true">&#9675;</span>
         <p class="u3-state-line">{{ s["books_empty_line"] }}</p>
-        <button type="button" class="u3-btn u3-primary" data-book-upload>{{ s["fab_add_book"] }}</button>
+        <a class="u3-btn u3-primary" href="/books/upload">{{ s["fab_add_book"] }}</a>
       </div>
       {% endif %}
       {% endif %}
@@ -43,16 +44,10 @@
   </noscript>
 </div>
 
-{# Серия R T15: no-JS-загрузка — POST multipart в /api/books (CSRF —
-   поле u3_csrf, middleware читает и из multipart); JS — перехват
-   submit (bindUpload, fetch). #}
-<form id="u1-upload" class="u3-panel" method="post" action="/api/books" enctype="multipart/form-data">
-  <label>{{ s["books_upload_label"] }}:
-    <input type="file" id="u1-upload-file" name="file" accept=".epub" required>
-  </label>
-  <input type="hidden" name="u3_csrf" value="{{ csrf }}">
-  <button type="submit">{{ s["books_upload_btn"] }}</button>
-  <span id="u1-upload-msg" role="status"></span>
-</form>
-<p class="hint">{{ s["books_upload_hint"] }}</p>
+{# R6 (ТЗ §8): лист импорта (FAB: data-sheet-open → JS; no-JS —
+   та же FAB — ссылка /books/upload). Содержимое — _book_import_sheet. #}
+<dialog class="u3-sheet" id="u3-sheet-import" aria-label="{{ s["import_sheet_title"] }}">
+  <h2 class="u3-sheet-title">{{ s["import_sheet_title"] }}</h2>
+  {% include "_book_import_sheet.html" %}
+</dialog>
 {% endblock %}

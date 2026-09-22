@@ -857,3 +857,115 @@ a.u3-book-v:focus-visible { outline: 2px solid var(--focus-ring); outline-offset
     box-shadow: none;
   }
 }
+
+/* R6 §8: лист импорта — drop-зона 96×136 (фиксированные, как обложка
+   карточки), очередь файлов, 4 шага (сегменты), сводка. */
+.u3-import-drop {
+  margin: var(--u3-space-3) auto;
+  width: var(--u3-book-cover-w);
+  min-height: var(--u3-book-cover-h);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--u3-space-2);
+  padding: var(--u3-space-2);
+  border: 2px dashed var(--u3-border);
+  border-radius: var(--u3-radius-md);
+  cursor: pointer;
+  text-align: center;
+}
+.u3-import-drop-over {
+  border-color: var(--accent-fg);
+  background: var(--surface-1);
+}
+.u3-import-drop.is-busy {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.u3-import-drop-ico {
+  font-size: var(--u3-fs-600);
+  color: var(--fg-muted);
+}
+.u3-import-drop-line {
+  font-size: var(--u3-fs-200);
+  color: var(--fg-muted);
+}
+.u3-inline {
+  display: inline;
+}
+.u3-inline summary {
+  color: var(--accent-fg);
+  cursor: pointer;
+}
+.u3-import-formats {
+  margin: var(--u3-space-1) 0 0;
+  padding-left: var(--u3-space-4);
+  font-size: var(--u3-fs-200);
+  columns: 2;
+}
+.u3-import-list {
+  margin: var(--u3-space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--u3-space-2);
+}
+.u3-import-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--u3-space-1) var(--u3-space-2);
+  align-items: center;
+}
+.u3-import-row-name {
+  font-size: var(--u3-fs-200);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.u3-import-row-steps {
+  display: flex;
+  gap: var(--u3-space-1);
+}
+.u3-import-step {
+  width: var(--u3-space-4);
+  height: var(--u3-space-1);
+  border: 1px solid var(--u3-border);
+  border-radius: 2px;
+  background: var(--surface-1);
+}
+.u3-import-step-done {
+  border-color: var(--status-ok-fg);
+  background: var(--status-ok-bg);
+}
+.u3-import-step-active {
+  border-color: var(--status-run-fg);
+  background: var(--status-run-bg);
+}
+.u3-import-row-status {
+  grid-column: 1 / -1;
+  font-size: var(--u3-fs-200);
+  color: var(--fg-muted);
+}
+.u3-import-row-ok .u3-import-row-status {
+  color: var(--status-ok-fg);
+}
+.u3-import-row-err .u3-import-row-status {
+  color: var(--status-err-fg);
+}
+.u3-import-summary {
+  margin: var(--u3-space-3) 0 0;
+}
+.u3-import-summary-line {
+  margin: 0;
+  font-size: var(--u3-fs-300);
+  font-weight: 600;
+}
+/* R6 §8: настоящие обложки (строка 40×56, карточка 96×136) */
+.u3-row-cover {
+  object-fit: cover;
+}
+.u3-book-cover {
+  object-fit: cover;
+}

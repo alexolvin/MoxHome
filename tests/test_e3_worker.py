@@ -365,6 +365,33 @@ def test_e3_2_transition_table_exhaustive(
         db.close()
 
 
+def test_e3_2b_failed_error_message_atomic(
+    tmp_path: Path,
+    make_env: Callable[[Mapping[str, str | None] | None], Path],
+    make_yaml: Callable[[str, str], Path],
+) -> None:
+    """E3-2 (флейк u2_2, 2026-09-22): error_message — в той же транзакции,
+    что переход в FAILED: снимок, возвращённый transition, уже содержит
+    причину; опрашивающий читатель (CLI --wait) не видит терминальный
+    статус без причины. Без error_message поле не затрагивается."""
+    settings, db, repo = _settings_for(tmp_path, make_env, make_yaml, None)
+    try:
+        job = create_job(repo, settings, source_path=_COMPLEX, target_language="de")
+        job_now = repo.transition(
+            job.id,
+            JobStatus.FAILED,
+            reason="сбой этапа: трак T недоступен",
+            error_message="тракт T недоступен",
+        )
+        assert job_now.status is JobStatus.FAILED
+        assert job_now.error_message == "тракт T недоступен"
+        job2 = create_job(repo, settings, source_path=_COMPLEX, target_language="de")
+        job_now2 = repo.transition(job2.id, JobStatus.FAILED, reason="сбой этапа: X")
+        assert job_now2.error_message is None
+    finally:
+        db.close()
+
+
 # ------------------------------------------------------------------ E3-3
 
 

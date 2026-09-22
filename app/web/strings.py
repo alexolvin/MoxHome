@@ -76,13 +76,43 @@ UI_STRINGS: dict[str, str] = {
     "common_size_mb": "МБ",
     "common_size_gb": "ГБ",
     # ------------------------------------------------------------- Books
-    "books_upload_label": "EPUB-файл",
+    "books_upload_label": "Файл книги",
     "books_upload_btn": "Загрузить",
     "books_upload_hint": (
-        "Определение языка при загрузке — тот же механизм L0, что и стадия "
-        "validating (детектор + dc:language); уверенность показана явно."
+        "Всё, что не EPUB, конвертируется в EPUB при загрузке (calibre); "
+        "оригинал сохраняется рядом. Определение языка — тот же механизм "
+        "L0, что и стадия validating."
     ),
-    "books_empty": "Книг нет. Загрузите EPUB — это первый шаг к переводу.",
+    "books_empty": "Книг нет. Импортируйте книгу — это первый шаг к переводу.",
+    # ------------------------------------------------------------- Импорт (R6, TZ §8)
+    "import_sheet_title": "Импорт книги",
+    "import_drop_line": "Файл или перетащите сюда",
+    "import_files_label": "Файлы для импорта",
+    "import_formats_line": (
+        "Поддерживаются EPUB, FB2, MOBI, AZW3, DOCX, PDF, TXT и ещё 6 форматов"
+    ),
+    "import_formats_link": "полный список",
+    "import_formats_note": "Сканерные PDF, комиксы и DRM отклоняются.",
+    "import_converter_unavailable": (
+        "Конвертация недоступна: не установлен calibre — принимается только EPUB."
+    ),
+    "import_step_check": "Проверка",
+    "import_step_convert": "Конвертация",
+    "import_step_validate": "Валидация",
+    "import_step_language": "Язык",
+    "import_detecting": "Определение языка при загрузке…",
+    "import_progress_of": "{done} из {total}",
+    "import_summary_line": "{ok} добавлено, {err} с ошибкой",
+    "import_toast_added": "Книга добавлена",
+    "import_toast_translate": "Перевести",
+    "import_error_line": "Ошибка: {reason}",
+    "import_status_title": "Импорт книги",
+    "import_status_active": "Обработка…",
+    "import_status_done_line": "Книга добавлена: {name}",
+    "import_status_error_line": "Импорт не выполнен: {reason}",
+    "import_status_to_book": "К карточке книги",
+    "import_status_to_books": "К списку книг",
+    "book_source_format": "Исходный формат",
     "books_col_file": "файл",
     "books_col_title": "название",
     "books_col_dc_lang": "dc:language",
@@ -542,7 +572,26 @@ UI_STRINGS: dict[str, str] = {
     "forbidden_back": "Вернуться к заданиям",
     "err_job_not_found": "задание не найдено: {id}",
     "err_book_not_found": "книга не найдена: {filename}",
-    "err_expected_epub": "ожидается файл .epub",
+    # Серия R §8 (R6): импорт — жёсткие отказы с точной причиной (T8,
+    # без трейса)
+    "err_upload_too_big": "файл больше {mb} МБ (limits.upload_max_mb)",
+    "err_format_unsupported": (
+        "формат .{ext} не поддерживается; поддерживаются: {formats}"
+    ),
+    "err_comics": "комиксы (.cbz/.cbr) не поддерживаются",
+    "err_zip_multi": "ZIP-архив нескольких книг",
+    "err_zip_no_book": "ZIP не содержит книгу",
+    "err_zip_bad": "не является корректным ZIP-архивом",
+    "err_audiobook": "аудиокниги не поддерживаются",
+    "err_drm": "файл защищён DRM",
+    "err_scan_pdf": "сканерный PDF (нет текстового слоя); OCR не выполняется",
+    "err_converter_unavailable": "конвертация недоступна: не установлен calibre",
+    "err_convert_failed": "конвертация не выполнена: {reason}",
+    "err_import_epubcheck": "EPUBCheck: {n} ошибок: {first}",
+    "err_import_scan": "определение языка не выполнено: {reason}",
+    "err_import_internal": "импорт не выполнен: {reason}",
+    "err_import_not_found": "импорт не найден: {id}",
+    "err_cover_not_found": "обложка не найдена: {filename}",
     "err_book_required": "не выбран файл книги (book)",
     "err_result_pending": "результат не готов (статус: {status})",
     "err_artifact_not_found": "файл не найден: {name}",
