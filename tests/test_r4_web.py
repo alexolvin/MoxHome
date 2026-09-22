@@ -157,16 +157,18 @@ def test_r4_4_wizard_markup(u1_env: U1Env) -> None:
     # CEFR-метка — единая точка (derived — «Estimated CEFR level»)
     label = doc.xpath('//span[@id="u3-cefr-label"]')
     assert label and "CEFR level" in label[0].text_content()
-    # «Ещё»: подсказка объёма + глоссарий read-only (конфиг)
+    # «Ещё»: подсказка объёма + глоссарий read-only (конфиг) +
+    # строка LLM-профиля (R8, решение 12)
     assert doc.xpath('//p[@id="u3-vol-hint"]')
     glossary = doc.xpath('//p[contains(@class,"u3-wiz-readonly")]')
-    assert len(glossary) == 1
+    assert len(glossary) == 2
     expected_glossary = S["create_more_glossary"] + ": " + (
         S["create_glossary_on"]
         if profile.settings.glossary.enabled
         else S["create_glossary_off"]
     )
     assert glossary[0].text_content().strip() == expected_glossary
+    assert S["create_more_llm"] in glossary[1].text_content()
 
 
 def test_r4_5_book_preselect(u1_env: U1Env) -> None:

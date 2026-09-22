@@ -502,10 +502,11 @@ def test_u1_5_estimated_cefr_labels_everywhere(u1_env: U1Env) -> None:
 #: потребитель (GET — fetch страницы, POST — форма загрузки/создания,
 #: DELETE — кнопка удаления U3).
 _CONSUMERS: dict[str, tuple[tuple[str, str], ...]] = {
-    "/api/health": (("app/web/templates/settings.html", 'data-u1-fetch="/api/health"'),),
-    "/api/languages": (
-        ("app/web/templates/settings_languages.html", 'data-u1-fetch="/api/languages"'),
-    ),
+    # R8 (решение 13): потребители — серверный рендер (pages.py):
+    # страница использует ту же единственную точку данных, что
+    # обёртывает endpoint (health_report/settings_view в views).
+    "/api/health": (("app/web/pages.py", "maintenance_view"),),  # «Обслуживание»
+    "/api/languages": (("app/web/pages.py", "languages_view"),),  # /settings/languages
     "/api/books": (
         ("app/web/templates/books.html", 'data-u1-fetch="/api/books"'),  # GET
         ("app/web/static/app.js", 'fetchJSON("/api/books", { method: "POST"'),  # POST
@@ -616,8 +617,11 @@ _CONSUMERS: dict[str, tuple[tuple[str, str], ...]] = {
         ("app/web/static/app.js", 'base + "/" + enc(n)'),  # GET (download)
         ("app/web/pages.py", '"/api/books/{quote(filename)}/export/{quote(name)}"'),
     ),
-    "/api/models": (("app/web/templates/settings_llm.html", 'data-u1-fetch="/api/models"'),),
-    "/api/config": (("app/web/templates/settings.html", 'data-u1-fetch="/api/config"'),),
+    # R8 (решение 13): u1-рендереры models/config из app.js убраны —
+    # серверный рендер (llm_form_view в /settings/llm; settings_view —
+    # «Конфигурация» обслуживания).
+    "/api/models": (("app/web/pages.py", "llm_form_view"),),
+    "/api/config": (("app/web/pages.py", "maintenance_view"),),
     "/api/prompts": (
         ("app/web/static/app.js", 'fetchJSON("/api/prompts", {'),  # POST
     ),
@@ -626,6 +630,20 @@ _CONSUMERS: dict[str, tuple[tuple[str, str], ...]] = {
     ),
     "/api/prompts/version": (
         ("app/web/static/app.js", '"/api/prompts/version?path="'),  # DELETE
+    ),
+    # R8 (ТЗ §15, решение 13): LLM-проба, запись профилей, список
+    # моделей, очистка логов (app.js fetchJSON; no-JS — формы pages.py).
+    "/api/llm/probe": (
+        ("app/web/static/app.js", 'fetchJSON("/api/llm/probe"'),  # POST
+    ),
+    "/api/config/llm": (
+        ("app/web/static/app.js", 'fetchJSON("/api/config/llm"'),  # PUT
+    ),
+    "/api/llm/models": (
+        ("app/web/static/app.js", 'fetchJSON("/api/llm/models?base_url="'),  # GET
+    ),
+    "/api/logs/clear": (
+        ("app/web/static/app.js", 'fetchJSON("/api/logs/clear"'),  # POST
     ),
 }
 
@@ -675,12 +693,18 @@ def test_u1_7_auth_denies_without_secret(u1_env: U1Env) -> None:
         "/models",
         "/prompts",
         "/settings",
+        "/settings/llm",  # R8
+        "/settings/appearance",  # R8
+        "/settings/maintenance",  # R8
+        "/settings/about",  # R8
+        "/readme",  # R8
         "/api/health",
         "/api/languages",
         "/api/books",
         "/api/jobs",
         "/api/models",
         "/api/config",
+        "/api/llm/models",  # R8 (без base_url — 422 с секретом, 401 без)
         "/jobs/no-such-job",
         "/api/jobs/no-such-job",
     )
@@ -688,6 +712,19 @@ def test_u1_7_auth_denies_without_secret(u1_env: U1Env) -> None:
         response = client.get(path)
         assert response.status_code == 401, (
             f"GET {path} без секрета: {response.status_code} (ожидался 401)"
+        )
+    # R8: POST-маршруты настроек — без секрета тоже 401 (до CSRF и роутинга).
+    for path in (
+        "/settings/llm",
+        "/settings/llm/probe",
+        "/settings/appearance",
+        "/settings/maintenance/logs-clear",
+        "/settings/maintenance/purge",
+        "/logout",
+    ):
+        response = client.post(path)
+        assert response.status_code == 401, (
+            f"POST {path} без секрета: {response.status_code} (ожидался 401)"
         )
     # TЗ UI §7.1: статика публична — оформление страницы входа для гостя.
     for path in ("/static/app.js", "/static/style.css", "/static/favicon.ico"):
@@ -698,7 +735,19 @@ def test_u1_7_auth_denies_without_secret(u1_env: U1Env) -> None:
     for path in routes:
         response = client.get(path, headers=_auth_header())
         assert response.status_code != 401, f"GET {path} с секретом: {response.status_code}"
-    for path in ("/books", "/jobs", "/languages", "/models", "/prompts", "/settings"):
+    for path in (
+        "/books",
+        "/jobs",
+        "/languages",
+        "/models",
+        "/prompts",
+        "/settings",
+        "/settings/llm",  # R8
+        "/settings/appearance",  # R8
+        "/settings/maintenance",  # R8
+        "/settings/about",  # R8
+        "/readme",  # R8
+    ):
         assert client.get(path, headers=_auth_header()).status_code == 200
     wrong = "Basic " + base64.b64encode(b"user:wrong-secret").decode()
     assert client.get("/jobs", headers={"Authorization": wrong}).status_code == 401
@@ -727,6 +776,11 @@ def test_u1_8_secrets_never_in_html_or_access_log(u1_env: U1Env) -> None:
         "/models",
         "/prompts",
         "/settings",
+        "/settings/llm",  # R8
+        "/settings/appearance",  # R8
+        "/settings/maintenance",  # R8 (конфиг-дамп — маскирован)
+        "/settings/about",  # R8
+        "/readme",  # R8
         "/api/health",
         "/api/languages",
         "/api/books",

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block content %}
+{# R8 (ТЗ §13): Обслуживание — 4 строки статусов (health_report —
+   единая точка R6, LLM-пробы 3×5 с при загрузке), размер jobs/,
+   «Очистить логи» (JS — fetch POST /api/logs/clear, no-JS — форма),
+   purge «старше N дней» (JS — 2 шага через /api/jobs/purge, no-JS —
+   POST /settings/maintenance/purge → страница подтверждения),
+   read-only конфигурация (data.config = views.settings_view). #}
+{% if error is defined and error %}
+<p class="hint u3-warn" role="alert">{{ error }}</p>
+{% endif %}
+<h2>{{ s["maint_h2_components"] }}</h2>
+<ul class="u3-list">
+  {% for row in data.rows %}
+  <li>
+    <div class="u3-list-row u3-maint-row">
+      <span class="u3-maint-name">{{ row.name }}</span>
+      {# worker_alive: "ok (pid …)" — startswith, не строгое равенство #}
+      <span class="{{ "u3-ok" if row.status.startswith("ok") else "u3-err" }}">{{ row.status }}</span>
+    </div>
+    {% if row.detail %}
+    <p class="u3-maint-detail">{{ row.detail }}</p>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+<ul class="u3-list">
+  <li>
+    <div class="u3-list-row u3-maint-row">
+      <span class="u3-maint-name">{{ s["maint_jobs_size"] }}</span>
+      <span class="u3-mono">{{ data.jobs_size }}</span>
+    </div>
+  </li>
+</ul>
+
+<form class="u3-inline-form" method="post" action="/settings/maintenance/logs-clear" data-u3-logs-clear>
+  <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+  <button type="submit" class="btn" data-u3-logs-clear-btn>{{ s["maint_clear_logs_btn"] }}</button>
+  <span id="u3-logs-clear-msg" role="status"></span>
+</form>
+
+<form class="u3-inline-form" method="post" action="/settings/maintenance/purge" data-u3-purge>
+  <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+  <label class="u3-maint-purge-label">{{ s["maint_purge_title"] }}:
+    <input type="number" name="days" value="{{ data.purge_min_age_days }}" min="0" step="1"
+           data-u3-purge-days>
+    <span class="u3-mono">{{ s["maint_purge_days_label"] }}</span>
+  </label>
+  <button type="submit" class="btn u3-danger" data-u3-purge-btn>{{ s["maint_purge_btn"] }}</button>
+  <span id="u3-purge-msg" role="status"></span>
+</form>
+
+<details class="u3-panel">
+  <summary>{{ s["settings_h2_config"] }}</summary>
+  <p class="hint">{{ s["maint_config_hint"] }}</p>
+  {% for section, values in data.config.items() %}
+  <h3 class="u3-maint-section">{{ section }}</h3>
+  <dl class="u3-card-fields u3-config-dump">
+    {% if values is mapping %}
+    {% for key, value in values.items() %}
+    <div class="u3-field"><dt class="u3-mono">{{ key }}</dt><dd class="u3-mono">{{ value | tojson if value is mapping else value }}</dd></div>
+    {% endfor %}
+    {% else %}
+    <div class="u3-field"><dd class="u3-mono">{{ values }}</dd></div>
+    {% endif %}
+  </dl>
+  {% endfor %}
+</details>
+{% endblock %}

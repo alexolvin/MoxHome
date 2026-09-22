@@ -120,10 +120,17 @@ def _not_found_ctx(request: Request) -> dict[str, object]:
     }
 
 
-def create_app(settings: Settings, db: Database | None = None) -> FastAPI:
+def create_app(
+    settings: Settings,
+    db: Database | None = None,
+    config_path: Path | None = None,
+    env_path: Path | None = None,
+) -> FastAPI:
     """App-фабрика U1. ``db`` — существующая база (тесты); иначе —
     ``settings.jobs_db_path`` (та же, что у воркера — единое состояние,
-    E3.1: API пишет только создание задания и управляющие команды)."""
+    E3.1: API пишет только создание задания и управляющие команды).
+    ``config_path``/``env_path`` (R8) — пути config.yaml/.env для
+    записи LLM-настроек и релоада `app.state.settings` после сохранения."""
     app = FastAPI(title="EpubTranslator", docs_url=None, redoc_url=None)
     if db is None:
         db = Database(settings.jobs_db_path, settings.storage.busy_timeout_ms)
@@ -131,6 +138,8 @@ def create_app(settings: Settings, db: Database | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.db = db
     app.state.repo = repo
+    app.state.config_path = config_path
+    app.state.env_path = env_path
     # R6 (ТЗ §8): осиротевшие <name>.source.* (рестарт посреди
     # конвертации) — sweep при старте веб-процесса.
     sweep_orphans(settings)

@@ -30,10 +30,11 @@ from urllib.parse import quote, urlencode
 from fastapi import APIRouter, Form, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
+from starlette.datastructures import FormData
 from starlette.responses import Response
 
 from app.adapters.convert import probe as converter_probe
-from app.core.config import Settings
+from app.core.config import PROFILE_NAMES, Settings
 from app.core.errors import AppError
 from app.core.worker_signal import worker_alive
 from app.domain.job import TERMINAL_STATES, Job, JobStatus
@@ -49,8 +50,15 @@ from app.services.export_artifacts import (
 )
 from app.services.import_book import get_import
 from app.services.jobs import JOB_MODES, confirm_job, create_job
+from app.services.llm_config import (
+    clear_app_log,
+    probe_profile,
+    probe_request,
+    update_llm_config,
+)
 from app.storage.jobs_repo import JobRepository, TransitionRecord
 from app.web import views
+from app.web.auth import LOGIN_COOKIE
 from app.web.strings import UI_STRINGS
 
 _S = UI_STRINGS
@@ -307,6 +315,23 @@ def _jobs_href(  # noqa: PLR0917 — параметры href: group/sort/status/
     if sheet_name:
         pairs.append(("sheet", sheet_name))
     return "/jobs?" + urlencode(pairs) if pairs else "/jobs"
+
+
+def _parse_purge_days(raw: str, default: int | float) -> int | float | str:
+    """R8 (no-JS purge): пустое — default; нечисло/отрицательное —
+    строка ошибки (err_purge_bad_days)."""
+    if not raw:
+        return default
+    try:
+        value: int | float = int(raw)
+    except ValueError:
+        try:
+            value = float(raw)
+        except ValueError:
+            return _S["err_purge_bad_days"]
+    if value < 0:
+        return _S["err_purge_bad_days"]
+    return value
 
 
 def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршруты в одном замыкании (R1–R5)
@@ -910,6 +935,9 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
                 # R4: «Ещё» — глоссарий read-only из конфига (per-job — вне
                 # границ ТЗ §1: изменение pipeline.py)
                 "glossary_enabled": settings.glossary.enabled,
+                # R8 (ТЗ §13): «Ещё» — LLM-профиль read-only (одна модель,
+                # если у всех профилей одинаковая; правится на /settings/llm)
+                "llm_model": views.llm_model_summary(_live(request)),
                 # Серия R §12: FAB «Новое задание» → лист создания
                 # (JS — <dialog>, без JS — страница-форма ?sheet=create).
                 "fab_href": _jobs_href(
@@ -1176,23 +1204,222 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
             )
         return RedirectResponse(f"/books/{quote(filename)}/export", status_code=303)
 
-    # ------------------------------------------------------------- Settings (серия R §5)
+    # ------------------------------------------------------------- Settings (серия R §5, R8)
+
+    def _live(request: Request) -> Settings:
+        """R8 (ТЗ §13): живые настройки из app.state — после сохранения
+        LLM-настроек процесс подменяет ``app.state.settings``, а замыкание
+        ``build_router`` хранит стартовую копию."""
+        return cast("Settings", request.app.state.settings)
+
     @router.get("/settings")
     def settings_page(request: Request) -> Response:
         return templates.TemplateResponse(
             request, "settings.html", ctx(request, _page_title("title_settings"), "settings")
         )
 
+    # --- R8: LLM-профили ---------------------------------------------------
+
+    def _llm_form_ctx(
+        request: Request,
+        form: FormData | None,
+        *,
+        error: str | None = None,
+        probe: dict[str, Any] | None = None,
+    ) -> dict[str, object]:
+        """Контекст /settings/llm. ``form`` — при отказе валидации: данные
+        из формы (ввод пользователя сохраняется); иначе — из настроек."""
+        st = _live(request)
+        if form is None:
+            data: dict[str, Any] = views.llm_form_view(st)
+        else:
+            data = {
+                "profiles": [
+                    {
+                        "name": name,
+                        "base_url": str(form.get(f"base_url_{name}") or ""),
+                        "model": str(form.get(f"model_{name}") or ""),
+                        "api_key_set": bool(str(form.get(f"api_key_{name}") or "")),
+                        "temperature": str(form.get(f"temperature_{name}") or ""),
+                        "retry_times": str(form.get(f"retry_times_{name}") or ""),
+                        "concurrency": str(form.get(f"concurrency_{name}") or ""),
+                        "extra_body": str(form.get(f"extra_body_{name}") or ""),
+                    }
+                    for name in PROFILE_NAMES
+                ],
+                "shared": form.get("shared_endpoint") is not None,
+                "base_url": str(form.get("base_url") or ""),
+                "bounds": views.llm_form_view(st)["bounds"],
+            }
+        out: dict[str, object] = {"back_href": "/settings", "form": data}
+        if error is not None:
+            out["error"] = error
+        if probe is not None:
+            out["probe"] = probe
+        return ctx(request, _page_title("title_settings_llm"), "settings") | out
+
+    def _llm_save_fields(
+        form: FormData,
+    ) -> tuple[dict[str, Any] | None, str | None]:
+        """no-JS-форма → тело PUT /api/config/llm (тот же контракт, тот же
+        сервис — Rule 8). Возврат (body, строка-ошибка)."""
+        profile_fields: dict[str, dict[str, Any]] = {}
+        for name in PROFILE_NAMES:
+            fields: dict[str, Any] = {}
+            for field in ("temperature", "retry_times", "concurrency"):
+                raw = str(form.get(f"{field}_{name}") or "").strip()
+                if field == "temperature":
+                    try:
+                        fields[field] = float(raw)
+                    except ValueError:
+                        return None, _S["err_llm_bad_temperature"]
+                else:
+                    try:
+                        fields[field] = int(raw)
+                    except ValueError:
+                        key = (
+                            "err_llm_bad_retries"
+                            if field == "retry_times"
+                            else "err_llm_bad_concurrency"
+                        )
+                        return None, _S[key]
+            profile_fields[name] = {
+                "base_url": str(form.get(f"base_url_{name}") or "").strip(),
+                "model": str(form.get(f"model_{name}") or "").strip(),
+                "api_key": str(form.get(f"api_key_{name}") or "").strip(),
+                "extra_body": str(form.get(f"extra_body_{name}") or "").strip(),
+                **fields,
+            }
+        return (
+            {
+                "shared_endpoint": form.get("shared_endpoint") is not None,
+                "base_url": str(form.get("base_url") or "").strip(),
+                "profiles": profile_fields,
+            },
+            None,
+        )
+
+    def _llm_apply(
+        request: Request, shared: bool, shared_url: str, profile_fields: dict[str, Any]
+    ) -> tuple[Settings | None, str | None]:
+        """Общая запись LLM-настроек (JS-API и no-JS — Rule 8): сервис
+        + подмена app.state. Возврат (новые Settings, строка-ошибка)."""
+        config_path = request.app.state.config_path
+        env_path = request.app.state.env_path
+        if config_path is None or env_path is None:
+            return None, _S["err_llm_paths_missing"]
+        try:
+            new_settings = update_llm_config(
+                shared=shared,
+                shared_url=shared_url or None,
+                profile_fields=profile_fields,
+                config_path=config_path,
+                env_path=env_path,
+            )
+        except AppError as exc:
+            return None, exc.message
+        request.app.state.settings = new_settings
+        return new_settings, None
+
     @router.get("/settings/llm")
     def settings_llm_page(request: Request) -> Response:
         return templates.TemplateResponse(
+            request, "settings_llm.html", _llm_form_ctx(request, None)
+        )
+
+    @router.post("/settings/llm")
+    async def settings_llm_save(request: Request) -> Response:
+        """R8 no-JS: сохранение — тот же сервис, что PUT /api/config/llm
+        (Rule 8). Успех — 303; отказ валидации — 400, форма с вводом."""
+        form = await request.form()
+        body, form_error = _llm_save_fields(form)
+        if body is None:
+            return templates.TemplateResponse(
+                request,
+                "settings_llm.html",
+                _llm_form_ctx(request, form, error=form_error),
+                status_code=400,
+            )
+        _new, error = _llm_apply(
+            request,
+            bool(body["shared_endpoint"]),
+            str(body["base_url"]),
+            cast(dict[str, Any], body["profiles"]),
+        )
+        if _new is None:
+            return templates.TemplateResponse(
+                request,
+                "settings_llm.html",
+                _llm_form_ctx(request, form, error=error),
+                status_code=400,
+            )
+        logger.info(
+            "llm_save(no-js): user=%s shared=%s",
+            _basic_user(request),
+            bool(body["shared_endpoint"]),
+        )
+        return RedirectResponse("/settings/llm", status_code=303)
+
+    @router.post("/settings/llm/probe")
+    async def settings_llm_probe(request: Request) -> Response:
+        """R8 no-JS: проба профиля — кнопка формы (submit + formaction,
+        ``name="profile"``) отправляет всю форму на этот маршрут;
+        результат — баннер на странице (200). Конфиг НЕ пишет (тот же
+        сервис, что POST /api/llm/probe)."""
+        form = await request.form()
+        st = _live(request)
+        profile = str(form.get("profile") or "")
+        if profile not in PROFILE_NAMES:
+            return templates.TemplateResponse(
+                request,
+                "settings_llm.html",
+                _llm_form_ctx(
+                    request,
+                    form,
+                    error=_S["err_llm_unknown_profile"].format(profile=profile or "—"),
+                ),
+                status_code=400,
+            )
+        shared = form.get("shared_endpoint") is not None
+        base_url = (
+            str(form.get("base_url") or "")
+            if shared
+            else str(form.get(f"base_url_{profile}") or "")
+        )
+        try:
+            temperature: float | None = float(
+                str(form.get(f"temperature_{profile}") or "").strip()
+            )
+        except ValueError:
+            temperature = None
+        if temperature is None:
+            result: dict[str, Any] = {"ok": False, "message": _S["err_llm_bad_temperature"]}
+        else:
+            probe_body = {
+                "profile": profile,
+                "base_url": base_url,
+                "model": str(form.get(f"model_{profile}") or ""),
+                "api_key": str(form.get(f"api_key_{profile}") or ""),
+                "temperature": temperature,
+                "extra_body": str(form.get(f"extra_body_{profile}") or ""),
+            }
+            try:
+                (
+                    probed_url,
+                    model,
+                    api_key,
+                    probe_temp,
+                    extra_body,
+                ) = probe_request(probe_body, st)
+            except AppError as exc:
+                result = {"ok": False, "message": exc.message}
+            else:
+                result = probe_profile(probed_url, model, api_key, probe_temp, extra_body)
+        result["profile"] = profile
+        return templates.TemplateResponse(
             request,
             "settings_llm.html",
-            ctx(request, _page_title("title_models"), "settings")
-            | {
-                "back_href": "/settings",
-                "models": views.models_view(settings),
-            },
+            _llm_form_ctx(request, form, probe=result),
         )
 
     @router.get("/settings/languages")
@@ -1203,23 +1430,209 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
             ctx(request, _page_title("title_languages"), "settings")
             | {
                 "back_href": "/settings",
-                "data": views.languages_view(settings),
+                "data": views.languages_view(_live(request)),
             },
         )
 
     @router.get("/settings/prompts")
     def settings_prompts_page(request: Request) -> Response:
+        st = _live(request)
         return templates.TemplateResponse(
             request,
             "settings_prompts.html",
             ctx(request, _page_title("title_prompts"), "settings")
             | {
                 "back_href": "/settings",
-                "rows": views.prompts_view(settings),
-                "tasks": views.prompts_tasks_view(settings),
+                "rows": views.prompts_view(st),
+                "tasks": views.prompts_tasks_view(st),
                 "registry_codes": registry_codes(),
             },
         )
+
+    # --- R8: внешний вид -----------------------------------------------------
+
+    @router.get("/settings/appearance")
+    def settings_appearance_page(request: Request) -> Response:
+        """Тема/плотность — cookies u3-theme/u3-density (отсутствуют =
+        системная/обычная; читает inline-скрипт base.html)."""
+        theme = request.cookies.get("u3-theme", "")
+        density = request.cookies.get("u3-density", "")
+        return templates.TemplateResponse(
+            request,
+            "settings_appearance.html",
+            ctx(request, _page_title("title_settings_appearance"), "settings")
+            | {
+                "back_href": "/settings",
+                "theme": theme if theme in ("light", "dark") else "",
+                "density": density if density in ("compact",) else "",
+            },
+        )
+
+    @router.post("/settings/appearance")
+    async def settings_appearance_save(request: Request) -> Response:
+        form = await request.form()
+        theme = str(form.get("theme") or "")
+        density = str(form.get("density") or "")
+        response = RedirectResponse("/settings/appearance", status_code=303)
+        if theme in ("light", "dark"):
+            response.set_cookie("u3-theme", theme, max_age=365 * 24 * 3600, samesite="strict")
+        else:
+            response.delete_cookie("u3-theme")
+        if density == "compact":
+            response.set_cookie("u3-density", density, max_age=365 * 24 * 3600, samesite="strict")
+        else:
+            response.delete_cookie("u3-density")
+        return response
+
+    # --- R8: обслуживание ----------------------------------------------------
+
+    def _maintenance_ctx(
+        request: Request, *, error: str | None = None
+    ) -> dict[str, object]:
+        st = _live(request)
+        out: dict[str, object] = {
+            "back_href": "/settings",
+            "data": views.maintenance_view(st, repo),
+        }
+        if error is not None:
+            out["error"] = error
+        return ctx(request, _page_title("title_settings_maintenance"), "settings") | out
+
+    @router.get("/settings/maintenance")
+    def settings_maintenance_page(request: Request) -> Response:
+        return templates.TemplateResponse(
+            request, "settings_maintenance.html", _maintenance_ctx(request)
+        )
+
+    @router.post("/settings/maintenance/logs-clear")
+    def settings_maintenance_logs_clear(request: Request) -> Response:
+        """no-JS «Очистить логи» — тот же механизм, что POST /api/logs/clear."""
+        st = _live(request)
+        clear_app_log(st, _basic_user(request))
+        return RedirectResponse("/settings/maintenance", status_code=303)
+
+    @router.post("/settings/maintenance/purge")
+    async def settings_maintenance_purge(
+        request: Request,
+        days: str = Form(default=""),
+        confirm_token: str = Form(default=""),
+    ) -> Response:
+        """R8 no-JS purge — два шага (механизм общий с /api/jobs/purge —
+        views.jobs_purge_*): шаг 1 — страница подтверждения с токеном,
+        шаг 2 — удаление ровно перечисленного. Дней: пусто =
+        ui.purge_min_age_days, иначе число ≥ 0."""
+        st = _live(request)
+        parsed = _parse_purge_days(days.strip(), st.ui.purge_min_age_days)
+        if isinstance(parsed, str):
+            return templates.TemplateResponse(
+                request,
+                "settings_maintenance.html",
+                _maintenance_ctx(request, error=parsed),
+                status_code=400,
+            )
+        min_age_days: int | float = parsed
+        dry = views.jobs_purge_resolve(
+            st,
+            repo,
+            statuses=sorted(s.value for s in TERMINAL_STATES),
+            book=None,
+            source=None,
+            target=None,
+            min_age_days=min_age_days,
+        )
+        if not confirm_token:
+            if not dry["job_ids"]:
+                return templates.TemplateResponse(
+                    request,
+                    "settings_maintenance.html",
+                    _maintenance_ctx(
+                        request,
+                        error=_S["err_purge_no_match"].format(days=min_age_days),
+                    ),
+                    status_code=409,
+                )
+            return templates.TemplateResponse(
+                request,
+                "settings_maintenance_purge.html",
+                ctx(request, _page_title("maint_purge_confirm_title"), "settings")
+                | {
+                    "back_href": "/settings/maintenance",
+                    "days": min_age_days,
+                    "dry": dry,
+                    "purge_info": _S["maint_purge_confirm_info"].format(
+                        count=dry["count"], bytes=views.human_size(dry["total_bytes"])
+                    ),
+                },
+            )
+        if not hmac.compare_digest(confirm_token, dry["confirm_token"]):
+            return templates.TemplateResponse(
+                request,
+                "settings_maintenance_purge.html",
+                ctx(request, _page_title("maint_purge_confirm_title"), "settings")
+                | {
+                    "back_href": "/settings/maintenance",
+                    "days": min_age_days,
+                    "dry": dry,
+                    "purge_info": _S["maint_purge_confirm_info"].format(
+                        count=dry["count"], bytes=views.human_size(dry["total_bytes"])
+                    ),
+                    "error": _S["err_purge_token"],
+                },
+                status_code=409,
+            )
+        try:
+            rows = views.jobs_purge_execute(st, repo, dry["job_ids"])
+        except AppError as exc:
+            return templates.TemplateResponse(
+                request,
+                "settings_maintenance.html",
+                _maintenance_ctx(request, error=exc.message),
+                status_code=409,
+            )
+        logger.info(
+            "maintenance_purge(no-js): user=%s ids=%s rows=%d",
+            _basic_user(request),
+            dry["job_ids"],
+            rows,
+        )
+        return RedirectResponse("/settings/maintenance", status_code=303)
+
+    # --- R8: о системе -------------------------------------------------------
+
+    @router.get("/settings/about")
+    def settings_about_page(request: Request) -> Response:
+        return templates.TemplateResponse(
+            request,
+            "settings_about.html",
+            ctx(request, _page_title("title_settings_about"), "settings")
+            | {
+                "back_href": "/settings",
+                "about": views.about_view(_live(request)),
+            },
+        )
+
+    @router.get("/readme")
+    def readme_page(request: Request) -> Response:
+        st = _live(request)
+        path = st.storage.root / "README.md"
+        content = path.read_text(encoding="utf-8") if path.is_file() else ""
+        return templates.TemplateResponse(
+            request,
+            "readme.html",
+            ctx(request, _page_title("title_readme"), "settings")
+            | {
+                "back_href": "/settings/about",
+                "content": content,
+                "missing": not content,
+            },
+        )
+
+    @router.post("/logout")
+    def logout_post(request: Request) -> Response:
+        """Выйти (ТЗ §13 «О системе»): cookie-логин удаляется, 303 /login."""
+        response = RedirectResponse("/login", status_code=303)
+        response.delete_cookie(LOGIN_COOKIE)
+        return response
 
     # --- старые пути: 301 (серия R §5) ------------------------------------
     @router.get("/languages", include_in_schema=False)

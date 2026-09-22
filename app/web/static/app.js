@@ -256,73 +256,9 @@ function bookRowHtml(b) {
  );
 }
 /* renderers (R2: u1-jobs/u1-books lists are owned by their engines —
-   startJobsList/startBooksList; table+cards renderers left for settings) */
+   startJobsList/startBooksList; R8: settings pages are fully server-
+   rendered — languages/models/health/config renderers removed) */
 const RENDERERS = {
- languages(el, data) {
-  const M = "u3-mono";
-  const L = [S.languages_col_code, S.languages_col_name, S.languages_col_spacy, S.languages_col_cefr];
-  const langF = data.languages.map((l) => [
-   [S.languages_col_code, esc(l.code), M],
-   [S.languages_col_name, esc(l.name)],
-   [S.languages_col_spacy, esc(l.spacy_model || NS), M],
-   [S.languages_col_cefr, esc(l.cefr_label || NS)],
-  ]);
-  const P = [S.pairs_col_source, S.pairs_col_target, S.pairs_col_status, S.pairs_col_creatable, S.pairs_col_missing];
-  const pairF = data.pairs.map((p) => [
-   [S.pairs_col_source, esc(p.source), M],
-   [S.pairs_col_target, esc(p.target), M],
-   [S.pairs_col_status, esc(p.status)],
-   [S.pairs_col_creatable, p.creatable ? esc(S.pairs_creatable_yes) : esc(S.pairs_creatable_no)],
-   [S.pairs_col_missing, esc((p.missing || []).join("; ") || NS), M],
-  ]);
-  el.innerHTML =
-   "<h2>" + esc(S.languages_h2) + "</h2>" + tableHtml(L, fieldsRows(langF)) + cardsHtml(langF.map((f) => cardHtml(f))) + "<h2>" + esc(S.pairs_h2) + "</h2>" + tableHtml(P, fieldsRows(pairF)) + cardsHtml(pairF.map((f) => cardHtml(f)));
- },
- models(el, models) {
-  const M = "u3-mono";
-  const C = [S.models_col_profile, S.models_col_endpoint, S.models_col_model, S.models_col_key, S.models_col_timeout, S.models_col_retry, S.models_col_concurrency, S.models_col_cost];
-  const F = models.map((m) => [
-   [S.models_col_profile, esc(m.name), M],
-   [S.models_col_endpoint, esc(m.base_url), M],
-   [S.models_col_model, esc(m.model), M],
-   [S.models_col_key, m.api_key_set ? esc(S.models_key_set) : esc(S.models_key_unset)],
-   [S.models_col_timeout, esc(m.timeout_seconds)],
-   [S.models_col_retry, esc(m.retry_times)],
-   [S.models_col_concurrency, esc(m.concurrency)],
-   [S.models_col_cost, esc(m.cost)],
-  ]);
-  el.innerHTML = tableHtml(C, fieldsRows(F)) + cardsHtml(F.map((f) => cardHtml(f)));
- },
- health(el, data) {
-  const entries = [];
-  for (const [name, value] of Object.entries(data)) {
-   if (name === "detail") continue;
-   if (value && typeof value === "object" && !Array.isArray(value)) {
-    for (const [sub, status] of Object.entries(value)) {
-     entries.push([name + "/" + sub, status]);
-    }
-   } else {
-    entries.push([name, value]);
-   }
-  }
-  let html =
-   "<table class='u3-static'><thead><tr><th scope='col'>" + esc(S.settings_health_col_component) + "</th><th scope='col'>" + esc(S.settings_health_col_status) + "</th></tr></thead><tbody>";
-  for (const [name, status] of entries) {
-   const text = String(status);
-   const cls = text.startsWith("ok") ? "ok" : text.startsWith("error") ? "err" : "";
-   html +=
-    "<tr><td>" + esc(name) + "</td><td" + (cls ? " class='" + cls + "'" : "") + ">" + esc(status) + "</td></tr>";
-  }
-  html += "</tbody></table>";
-  const detail = data.detail;
-  if (detail && Object.keys(detail).length) {
-   html += "<pre>" + esc(JSON.stringify(detail, null, 2)) + "</pre>";
-  }
-  el.innerHTML = html;
- },
- config(el, data) {
-  el.innerHTML = "<pre>" + esc(JSON.stringify(data)) + "</pre>";
- },
  quality(el, data) {
   let html = "";
   if (data.qc && Object.keys(data.qc).length) {
@@ -2407,6 +2343,7 @@ function bindPrompts() {
  const dcon = $("u3-prompt-view-content");
  const resetForm = () => {
   form.reset();
+  form.dataset.mode = "create";
   titleEl.textContent = S.prompts_create_title;
   sub.textContent = S.prompts_create_btn;
   msg.textContent = "";
@@ -2434,6 +2371,7 @@ function bindPrompts() {
    fe.source.value = b.getAttribute("data-source") || "";
    fe.target.value = b.getAttribute("data-target") || "";
    fe.content.value = data.content;
+   form.dataset.mode = "edit"; /* R8: the create-mode "Create v(N+1)" label is not touched */
    const version = parseInt(b.getAttribute("data-version"), 10) || 0;
    if (titleEl) titleEl.textContent = fmt(S.prompts_edit_title, { file: path });
    sub.textContent = fmt(S.prompts_save_btn, { next: "v" + (version + 1) + ".yaml" });
@@ -2494,6 +2432,220 @@ function bindPrompts() {
   };
   runDelete();
  });
+ /* R8 (TZ s13): "Create v(N+1)" button — from #u3-prompt-versions
+    (the same rows as in the table — single source, Rule 8); edit mode
+    labels the button itself (prompts_save_btn) — not touched. */
+ const versionsEl = $("u3-prompt-versions");
+ const versions = versionsEl ? JSON.parse(versionsEl.textContent) : [];
+ const updateCreateLabel = () => {
+  if (form.dataset.mode !== "create") return;
+  const task = fe.task.value;
+  if (!task) {
+   sub.textContent = S.prompts_create_btn;
+   return;
+  }
+  const level = fe.level.value;
+  const source = fe.source.value.trim();
+  const target = fe.target.value.trim();
+  const maxV = versions
+   .filter(
+    (r) =>
+     r.task === task &&
+     r.level === level &&
+     (level === "generic" || (r.source || "") === source) &&
+     (level === "pair" || (r.target || "") === target)
+   )
+   .reduce((mx, r) => Math.max(mx, r.version || 0), 0);
+  sub.textContent = fmt(S.prompts_create_btn_v, { next: maxV + 1 });
+ };
+ for (const field of ["task", "level", "source", "target"]) {
+  fe[field].addEventListener("change", updateCreateLabel);
+ }
+ updateCreateLabel();
+}
+/* R8 (TZ s13): LLM profiles — form #u3-llm-form. no-JS — POST forms
+   (pages /settings/llm[/probe]); JS — PUT /api/config/llm,
+   POST /api/llm/probe, datalist GET /api/llm/models (debounce 500 ms).
+   Profile names — PROFILE_NAMES (app.core.config). */
+const LLM_PROFILES = ["translation", "fill", "analysis"];
+function bindSettingsLLM() {
+ const form = $("u3-llm-form");
+ if (!form) return;
+ const fe = form.elements;
+ const msg = $("u3-llm-msg");
+ const probeMsg = $("u3-llm-probe-msg");
+ const saveBtn = $("u3-llm-save");
+ const sharedEl = fe.shared_endpoint;
+ const numOr = (v) => (v === "" ? null : Number(v));
+ const profileData = (name) => ({
+  base_url: fe["base_url_" + name].value.trim(),
+  model: fe["model_" + name].value.trim(),
+  api_key: fe["api_key_" + name].value,
+  temperature: numOr(fe["temperature_" + name].value),
+  retry_times: numOr(fe["retry_times_" + name].value),
+  concurrency: numOr(fe["concurrency_" + name].value),
+  extra_body: fe["extra_body_" + name].value.trim(),
+ });
+ const syncShared = () => form.classList.toggle("u3-llm-shared-on", sharedEl.checked);
+ sharedEl.addEventListener("change", syncShared);
+ syncShared();
+ const setProbeBanner = (name, ok, text) => {
+  if (!probeMsg) return;
+  probeMsg.hidden = !text;
+  probeMsg.classList.toggle("u3-ok", Boolean(ok));
+  probeMsg.classList.toggle("u3-warn", !ok);
+  probeMsg.textContent = text ? fmt(S.llm_profile_title, { profile: name }) + ": " + text : "";
+ };
+ const runProbe = async (name) => {
+  setProbeBanner(name, null, S.common_sending);
+  const data = Object.assign({ profile: name }, profileData(name));
+  if (sharedEl.checked) data.base_url = fe.base_url.value.trim();
+  try {
+   const result = await fetchJSON("/api/llm/probe", {
+    method: "POST",
+    headers: JH,
+    body: JSON.stringify(data),
+   });
+   setProbeBanner(name, result.ok, result.message);
+  } catch (e) {
+   setProbeBanner(name, false, e.message);
+  }
+ };
+ const runSave = async () => {
+  msg.textContent = S.common_sending;
+  saveBtn.disabled = true;
+  const data = {
+   shared_endpoint: sharedEl.checked,
+   base_url: fe.base_url.value.trim(),
+   profiles: {},
+  };
+  for (const name of LLM_PROFILES) data.profiles[name] = profileData(name);
+  try {
+   await fetchJSON("/api/config/llm", {
+    method: "PUT",
+    headers: JH,
+    body: JSON.stringify(data),
+   });
+   msg.textContent = S.llm_saved;
+   setTimeout(() => window.location.reload(), 1000);
+  } catch (e) {
+   saveBtn.disabled = false;
+   failWithRetry(msg, apiErr(e), runSave);
+  }
+ };
+ /* models datalist: shared for all 3 profiles, URL — from the edited
+    field (shared — the common one) */
+ let modelsTimer = null;
+ const loadModels = (url) => {
+  if (modelsTimer) clearTimeout(modelsTimer);
+  if (!url) return;
+  modelsTimer = setTimeout(async () => {
+   try {
+    const data = await fetchJSON("/api/llm/models?base_url=" + enc(url));
+    const list = $("u3-llm-models-list");
+    if (list) list.innerHTML = (data.models || []).map((m) => "<option value='" + esc(m) + "'>").join("");
+   } catch (e) {
+    msg.textContent = fmt(S.llm_models_unavailable, { reason: e.message });
+   }
+  }, 500);
+ };
+ fe.base_url.addEventListener("input", () => {
+  if (sharedEl.checked) loadModels(fe.base_url.value.trim());
+ });
+ for (const name of LLM_PROFILES) {
+  fe["base_url_" + name].addEventListener("input", () => {
+   if (!sharedEl.checked) loadModels(fe["base_url_" + name].value.trim());
+  });
+ }
+ /* extra_body: "Reset" — restore the saved value (data-saved) */
+ document.addEventListener("click", (e) => {
+  const target = e.target;
+  if (!target || !target.getAttribute) return;
+  const name = target.getAttribute("data-u3-llm-extra-reset");
+  if (!name) return;
+  fe["extra_body_" + name].value = target.getAttribute("data-saved") || "";
+ });
+ if (sharedEl.checked) loadModels(fe.base_url.value.trim());
+ form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const btn = e.submitter;
+  if (btn && btn.getAttribute("data-u3-llm-probe")) runProbe(btn.getAttribute("data-u3-llm-probe"));
+  else runSave();
+ });
+}
+/* R8 (TZ s13): Appearance — radio change -> form.submit()
+   (Set-Cookie u3-theme/u3-density; the base.html inline script reads
+   them on the next render). */
+function bindAppearance() {
+ const form = $("u3-appearance-form");
+ if (!form) return;
+ form.addEventListener("change", (e) => {
+  if (e.target && e.target.hasAttribute("data-u3-appearance")) form.submit();
+ });
+}
+/* R8 (TZ s13): Maintenance — JS: "Clear logs" POST /api/logs/
+   clear; purge — 2 steps /api/jobs/purge (dry-run -> confirm_token,
+   the same mechanism as the no-JS confirmation page). */
+function bindMaintenance() {
+ const clearForm = document.querySelector("[data-u3-logs-clear]");
+ if (clearForm) {
+  const msg = $("u3-logs-clear-msg");
+  clearForm.addEventListener("submit", (e) => {
+   e.preventDefault();
+   (async () => {
+    try {
+     const data = await fetchJSON("/api/logs/clear", {
+      method: "POST",
+      headers: JH,
+      body: "{}",
+     });
+     if (msg) msg.textContent = fmt(S.maint_clear_logs_done, { bytes: data.bytes });
+    } catch (e2) {
+     if (msg) msg.textContent = apiErr(e2);
+    }
+   })();
+  });
+ }
+ const purgeForm = document.querySelector("[data-u3-purge]");
+ if (purgeForm) {
+  const fe = purgeForm.elements;
+  const msg = $("u3-purge-msg");
+  purgeForm.addEventListener("submit", (e) => {
+   e.preventDefault();
+   (async () => {
+    const raw = fe.days.value.trim();
+    const days = raw === "" ? null : Number(raw);
+    if (days != null && (!Number.isFinite(days) || days < 0)) {
+     msg.textContent = S.err_purge_bad_days;
+     return;
+    }
+    msg.textContent = S.common_sending;
+    try {
+     const dry = await fetchJSON("/api/jobs/purge", {
+      method: "POST",
+      headers: JH,
+      body: JSON.stringify(days == null ? {} : { days: days }),
+     });
+     if (
+      !confirm(
+       fmt(S.maint_purge_confirm_info, { count: dry.count, bytes: humanSize(dry.total_bytes) })
+      )
+     ) {
+      msg.textContent = "";
+      return;
+     }
+     const result = await fetchJSON("/api/jobs/purge", {
+      method: "POST",
+      headers: JH,
+      body: JSON.stringify({ days: days, confirm_token: dry.confirm_token }),
+     });
+     msg.textContent = fmt(S.maint_purge_done, { count: result.count, bytes: humanSize(result.total_bytes) });
+    } catch (e2) {
+     msg.textContent = apiErr(e2);
+    }
+   })();
+  });
+ }
 }
 /* R2 §14: bottom sheets (<dialog>) — open 180 ms, close on backdrop/
    Esc/back-button; pushState keeps the back button in contract.
@@ -2573,6 +2725,10 @@ document.addEventListener("DOMContentLoaded", () => {
  bindBookMeta();
  bindPurge();
  bindPrompts();
+ /* R8: settings */
+ bindSettingsLLM();
+ bindAppearance();
+ bindMaintenance();
  /* R3: job control */
  initRowActions();
  initSwipe();

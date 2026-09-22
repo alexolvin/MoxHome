@@ -43,7 +43,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(describe_profiles(settings))
     with Database(settings.jobs_db_path, settings.storage.busy_timeout_ms) as db:
         repo = JobRepository(db)
-        worker = Worker(settings, repo)
+        # R8: релоад конфигурации перед каждым новым заданием (ТЗ §13:
+        # «сохранено в UI применяется к следующему заданию»).
+        worker = Worker(settings, repo, config_path=args.config, env_path=args.env)
         if args.loop:
             worker.run_forever()
             return 0

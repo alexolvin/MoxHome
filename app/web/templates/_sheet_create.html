@@ -114,8 +114,9 @@
   {% endif %}
   {# «Ещё»: объём = learning_level (единственный per-job механизм движка,
      SUBSTAGE_LEVELS гейтит S1–S5); глоссарий — read-only из конфига
-     (per-job = изменение pipeline.py, вне границ ТЗ §1); LLM-профиль — R8
-     (один набор); EPUBCheck — не в списке (пропуск запрещён, ТЗ §12). #}
+     (per-job = изменение pipeline.py, вне границ ТЗ §1); LLM-профиль —
+     read-only (R8, ТЗ §13: один набор на все стадии, правится на
+     /settings/llm); EPUBCheck — не в списке (пропуск запрещён, ТЗ §12). #}
   <details class="u3-wiz-more">
     <summary>{{ s["create_more"] }}</summary>
     <label class="u3-filter u3-wiz-field">
@@ -129,6 +130,7 @@
     </label>
     <p class="u3-sum-hint" id="u3-vol-hint">{{ vol_hint }}</p>
     <p class="u3-filter u3-wiz-readonly">{{ s["create_more_glossary"] }}: {{ s["create_glossary_on"] if glossary_enabled else s["create_glossary_off"] }}</p>
+    <p class="u3-filter u3-wiz-readonly">{{ s["create_more_llm"] }}: <span class="u3-mono">{{ llm_model }}</span></p>
   </details>
   <input type="hidden" name="u3_csrf" value="{{ csrf }}">
   <button type="submit" class="u3-btn u3-primary u3-sheet-action">{{ s["jobs_create_btn"] }}</button>

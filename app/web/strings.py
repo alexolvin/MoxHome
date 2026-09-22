@@ -46,6 +46,11 @@ UI_STRINGS: dict[str, str] = {
     "title_models": "Модели",
     "title_prompts": "Промпты",
     "title_settings": "Настройки",
+    "title_settings_llm": "LLM и модели",
+    "title_settings_appearance": "Внешний вид",
+    "title_settings_maintenance": "Обслуживание",
+    "title_settings_about": "О системе",
+    "title_readme": "README",
     "title_not_found": "Не найдено",
     "footer_auth_on": "доступ: привязка к Tailscale + общий секрет (HTTP Basic)",
     "footer_auth_off": (
@@ -400,6 +405,8 @@ UI_STRINGS: dict[str, str] = {
     "create_more_glossary": "Глоссарий",
     "create_glossary_on": "включён (конфиг)",
     "create_glossary_off": "выключен (конфиг)",
+    "create_more_llm": "LLM-профиль",
+    "create_llm_mixed": "разные (одна настройка на все стадии)",
     "create_level_none": "Не задан",
     "create_level_none_hint": "Learning выключен — только перевод",
     # R4: подстадии S1–S5 (объём материалов; источник SUBSTAGE_LEVELS)
@@ -567,6 +574,7 @@ UI_STRINGS: dict[str, str] = {
     "prompts_create_target": "Целевой язык",
     "prompts_create_yaml": "Содержимое (YAML: system + user_template)",
     "prompts_create_btn": "Создать",
+    "prompts_create_btn_v": "Создать v{next}",
     "prompts_edit_title": "Новая версия: {file}",
     "prompts_save_btn": "Сохранить как {next}",
     "prompts_created": "Создана версия {file}.",
@@ -578,14 +586,99 @@ UI_STRINGS: dict[str, str] = {
     "settings_row_languages": "Языки",
     "settings_row_prompts": "Промпты",
     "settings_row_maintenance": "Обслуживание",
-    "settings_h2_health": "Компоненты (health)",
+    "settings_row_appearance": "Внешний вид",
+    "settings_row_about": "О системе",
     "settings_h2_config": "Конфигурация",
-    "settings_hint": (
-        "Секреты (API-ключи, общий секрет доступа) не отображаются — "
-        "только признак «задан»."
-    ),
     "settings_health_col_component": "компонент",
     "settings_health_col_status": "состояние",
+    "common_save": "Сохранить",
+    # ------------------------------------------------------------- R8: LLM-профили
+    # /settings/llm — форма правки llm.profiles.* (ТЗ §13): ключи
+    # редактируются, но НИКОГДА не отображаются (U1-8).
+    "llm_hint": (
+        "LLM-профили (translation / fill / analysis). API-ключи не "
+        "отображаются — только признак «задан». Проба не пишет конфиг "
+        "и не создаёт задание."
+    ),
+    "llm_shared_label": "Все профили используют один эндпоинт",
+    "llm_base_url_label": "Эндпоинт (base_url)",
+    "llm_base_url_hint": "http(s)://127.0.0.1:8004/v1",
+    "llm_model_label": "Модель",
+    "llm_key_label": "Ключ API",
+    "llm_key_keep_hint": "пусто — оставить текущий",
+    "llm_temperature_label": "Температура",
+    "llm_retries_label": "Повторы",
+    "llm_parallelism_label": "Параллелизм",
+    "llm_extra_body_label": "extra_body (JSON)",
+    "llm_extra_body_hint": "дополнительные поля тела запроса; пусто — без изменений",
+    "llm_extra_reset": "Сброс",
+    "llm_probe_btn": "Проверить",
+    "llm_probe_ok": "Ответ {ms} мс · модель {model} · {tokens} токенов",
+    "llm_probe_unreachable": "недоступно: {reason}",
+    "llm_probe_http_401": "HTTP 401 (неверный ключ)",
+    "llm_probe_http_404": "HTTP 404 (эндпоинт не найден)",
+    "llm_probe_bad_json": "неверный JSON ответа",
+    "llm_probe_http": "HTTP {code}",
+    "llm_models_unavailable": "список моделей недоступен: {reason}",
+    "llm_save_note": (
+        "Новые значения применяются к следующему заданию. Текущее задание "
+        "продолжает на стартовом профиле — идемпотентные ключи стадий "
+        "включают конфиг."
+    ),
+    "llm_saved": "Сохранено — применится к следующему заданию.",
+    "llm_probe_back": "Назад к LLM-настройкам",
+    "llm_profile_title": "Проверка профиля {profile}",
+    # ------------------------------------------------------------- R8: внешний вид
+    "app_theme_label": "Тема",
+    "app_theme_system": "Системная",
+    "app_theme_light": "Светлая",
+    "app_theme_dark": "Тёмная",
+    "app_density_label": "Плотность списка",
+    "app_density_normal": "Обычная",
+    "app_density_compact": "Плотная",
+    # ------------------------------------------------------------- R8: обслуживание
+    "maint_h2_components": "Компоненты",
+    "maint_jobs_size": "Размер jobs/",
+    "maint_clear_logs_btn": "Очистить логи",
+    "maint_clear_logs_done": "Логи очищены: {bytes} Б.",
+    "maint_purge_title": "Удалить задания старше N дней",
+    "maint_purge_days_label": "Дней",
+    "maint_purge_btn": "Удалить",
+    "maint_purge_confirm_title": "Подтверждение очистки",
+    "maint_purge_confirm_info": "Заданий: {count} · {bytes}",
+    "maint_purge_done": "Удалено: {count} · {bytes}",
+    "maint_status_epubcheck": "EPUBCheck",
+    "maint_status_converter": "Calibre (конвертер)",
+    "maint_status_worker": "Воркер",
+    "maint_status_llm": "LLM",
+    "maint_config_hint": "Чтение только: правится через файлы конфигурации.",
+    # ------------------------------------------------------------- R8: о системе
+    "about_version": "Версия",
+    "about_commit": "Коммит",
+    "about_unknown": "неизвестно",
+    "about_readme": "README",
+    "about_readme_missing": "README.md не найден в корне проекта.",
+    "about_readme_to_settings": "К настройкам",
+    "about_logout_btn": "Выйти",
+    # ------------------------------------------------------------- R8: ошибки
+    "err_llm_bad_base_url": (
+        "некорректный эндпоинт: {url} (схема http/https, путь до /v1)"
+    ),
+    "err_llm_bad_model": "модель: непустая строка",
+    "err_llm_bad_temperature": "температура: число 0–2",
+    "err_llm_bad_retries": "повторы: целое ≥ 0",
+    "err_llm_bad_concurrency": "параллелизм: целое ≥ 1",
+    "err_llm_bad_extra_body": "extra_body: JSON-объект ({reason})",
+    "err_llm_unknown_profile": "неизвестный профиль: {profile}",
+    "err_llm_key_conflict": (
+        "один ключ API для translation и fill (LLM_API_KEY) — значения различаются"
+    ),
+    "err_llm_config_invalid": "новая конфигурация не валидирована: {reason}",
+    "err_llm_paths_missing": "пути конфигурации не заданы",
+    "err_purge_bad_days": "дни: число ≥ 0",
+    "logs_cleared_fact_global": (
+        "{time}: логи очищены пользователем {user}: app.log — {bytes} Б"
+    ),
     # ------------------------------------------------------------- health (покомпонентные детали)
     "health_read_write_mismatch": "чтение/запись не совпала",
     "health_na_target": "n/a (целевой язык)",

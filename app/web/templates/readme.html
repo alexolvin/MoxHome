@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+{# R8 (ТЗ §13): README.md из корня проекта (read-only). #}
+{% if missing %}
+<p class="u3-empty">{{ s["about_readme_missing"] }}</p>
+<p><a class="btn" href="/settings/about">{{ s["about_readme_to_settings"] }}</a></p>
+{% else %}
+<pre class="u3-pre u3-overflow">{{ content }}</pre>
+{% endif %}
+{% endblock %}

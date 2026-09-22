@@ -1,51 +1,91 @@
 {% extends "base.html" %}
 {% block content %}
-<p class="hint">{{ s["models_hint"] }}</p>
+{# R8 (ТЗ §13): правка llm.profiles.* — одна форма #u3-llm-form.
+   no-JS: POST /settings/llm (сохранение), кнопки «Проверить» — submit +
+   formaction /settings/llm/probe (name="profile" = профиль кнопки).
+   JS: fetch PUT /api/config/llm + POST /api/llm/probe (app.js),
+   datalist моделей — GET /api/llm/models?base_url=… (дебаунс 500 мс).
+   Ключ — только «задан/не задан» (U1-8); extra_body пусто = без
+   изменений; «Сброс» (JS) — вернуть сохранённое (data-saved). #}
+<p class="hint">{{ s["llm_hint"] }}</p>
+{% if error is defined and error %}
+<p class="hint u3-warn" role="alert">{{ error }}</p>
+{% endif %}
+{# Баннер пробы: no-JS — серверный результат (200), JS — fill-in через
+   fetch POST /api/llm/probe (атрибут hidden снимает JS). #}
+<p class="hint{% if probe is defined and probe %} {{ "u3-ok" if probe.ok else "u3-warn" }}{% endif %}"
+   id="u3-llm-probe-msg" role="status"{% if not (probe is defined and probe) %} hidden{% endif %}>
+  {% if probe is defined and probe %}<strong>{{ s["llm_profile_title"].format(profile=probe.profile) }}:</strong> {{ probe.message }}{% endif %}
+</p>
 
-<div id="u1-models" data-u1-fetch="/api/models" data-u1-render="models">
-  <table class="u3-table">
-    <thead>
-      <tr>
-        <th scope="col">{{ s["models_col_profile"] }}</th>
-        <th scope="col">{{ s["models_col_endpoint"] }}</th>
-        <th scope="col">{{ s["models_col_model"] }}</th>
-        <th scope="col">{{ s["models_col_key"] }}</th>
-        <th scope="col">{{ s["models_col_timeout"] }}</th>
-        <th scope="col">{{ s["models_col_retry"] }}</th>
-        <th scope="col">{{ s["models_col_concurrency"] }}</th>
-        <th scope="col">{{ s["models_col_cost"] }}</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for m in models %}
-      <tr>
-        <td class="u3-mono">{{ m.name }}</td>
-        <td class="u3-mono u3-nowrap">{{ m.base_url }}</td>
-        <td class="u3-mono">{{ m.model }}</td>
-        <td>{{ s["models_key_set"] if m.api_key_set else s["models_key_unset"] }}</td>
-        <td>{{ m.timeout_seconds }}</td>
-        <td>{{ m.retry_times }}</td>
-        <td>{{ m.concurrency }}</td>
-        <td>{{ m.cost }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  <div class="u3-cards">
-    {% for m in models %}
-    <article class="u3-card">
-      <dl class="u3-card-fields">
-        <div class="u3-field"><dt>{{ s["models_col_profile"] }}</dt><dd class="u3-mono">{{ m.name }}</dd></div>
-        <div class="u3-field"><dt>{{ s["models_col_endpoint"] }}</dt><dd class="u3-mono">{{ m.base_url }}</dd></div>
-        <div class="u3-field"><dt>{{ s["models_col_model"] }}</dt><dd class="u3-mono">{{ m.model }}</dd></div>
-        <div class="u3-field"><dt>{{ s["models_col_key"] }}</dt><dd>{{ s["models_key_set"] if m.api_key_set else s["models_key_unset"] }}</dd></div>
-        <div class="u3-field"><dt>{{ s["models_col_timeout"] }}</dt><dd>{{ m.timeout_seconds }}</dd></div>
-        <div class="u3-field"><dt>{{ s["models_col_retry"] }}</dt><dd>{{ m.retry_times }}</dd></div>
-        <div class="u3-field"><dt>{{ s["models_col_concurrency"] }}</dt><dd>{{ m.concurrency }}</dd></div>
-        <div class="u3-field"><dt>{{ s["models_col_cost"] }}</dt><dd>{{ m.cost }}</dd></div>
-      </dl>
-    </article>
-    {% endfor %}
+<form id="u3-llm-form" class="u3-llm-form" method="post" action="/settings/llm">
+  <label class="u3-check">
+    <input type="checkbox" name="shared_endpoint" value="1"{% if form.shared %} checked{% endif %}>
+    {{ s["llm_shared_label"] }}
+  </label>
+  <div class="u3-fld u3-llm-shared">
+    <label class="u3-fld-label" for="u3-llm-base-url">{{ s["llm_base_url_label"] }}</label>
+    <input type="url" id="u3-llm-base-url" name="base_url" value="{{ form.base_url }}"
+           placeholder="{{ s["llm_base_url_hint"] }}">
   </div>
-</div>
+  <datalist id="u3-llm-models-list"></datalist>
+  {% for p in form.profiles %}
+  <details class="u3-llm-profile"{% if loop.first %} open{% endif %}>
+    <summary>{{ p.name }}</summary>
+    <div class="u3-fld u3-llm-profile-url">
+      <label class="u3-fld-label" for="u3-llm-url-{{ p.name }}">{{ s["llm_base_url_label"] }}</label>
+      <input type="url" id="u3-llm-url-{{ p.name }}" name="base_url_{{ p.name }}"
+             value="{{ p.base_url }}" placeholder="{{ s["llm_base_url_hint"] }}">
+    </div>
+    <div class="u3-fld">
+      <label class="u3-fld-label" for="u3-llm-model-{{ p.name }}">{{ s["llm_model_label"] }}</label>
+      <input type="text" id="u3-llm-model-{{ p.name }}" name="model_{{ p.name }}"
+             value="{{ p.model }}" list="u3-llm-models-list" required>
+    </div>
+    <div class="u3-fld">
+      <label class="u3-fld-label" for="u3-llm-key-{{ p.name }}">{{ s["llm_key_label"] }}</label>
+      <input type="password" id="u3-llm-key-{{ p.name }}" name="api_key_{{ p.name }}"
+             autocomplete="off" placeholder="{{ s["models_key_set"] if p.api_key_set else s["models_key_unset"] }}">
+      <p class="u3-fld-hint">{{ s["llm_key_keep_hint"] }}</p>
+    </div>
+    <div class="u3-fld">
+      <label class="u3-fld-label" for="u3-llm-temp-{{ p.name }}">{{ s["llm_temperature_label"] }}</label>
+      <input type="number" id="u3-llm-temp-{{ p.name }}" name="temperature_{{ p.name }}"
+             value="{{ p.temperature }}" min="{{ form.bounds.temperature_min }}"
+             max="{{ form.bounds.temperature_max }}" step="0.1" required>
+    </div>
+    <div class="u3-fld">
+      <label class="u3-fld-label" for="u3-llm-retry-{{ p.name }}">{{ s["llm_retries_label"] }}</label>
+      <input type="number" id="u3-llm-retry-{{ p.name }}" name="retry_times_{{ p.name }}"
+             value="{{ p.retry_times }}" min="{{ form.bounds.retries_min }}" step="1" required>
+    </div>
+    <div class="u3-fld">
+      <label class="u3-fld-label" for="u3-llm-conc-{{ p.name }}">{{ s["llm_parallelism_label"] }}</label>
+      <input type="number" id="u3-llm-conc-{{ p.name }}" name="concurrency_{{ p.name }}"
+             value="{{ p.concurrency }}" min="{{ form.bounds.parallelism_min }}" step="1" required>
+    </div>
+    <details class="u3-llm-extra">
+      <summary>{{ s["llm_extra_body_label"] }}</summary>
+      <textarea name="extra_body_{{ p.name }}" rows="4" class="u3-mono"
+                aria-label="{{ s["llm_extra_body_label"] }}"
+                placeholder="{{ s["llm_extra_body_hint"] }}">{{ p.extra_body }}</textarea>
+      <p class="u3-fld-hint">{{ s["llm_extra_body_hint"] }}</p>
+      <span class="u3-filter-actions">
+        <button type="button" class="btn" data-u3-llm-extra-reset="{{ p.name }}"
+                data-saved="{{ p.extra_body }}">{{ s["llm_extra_reset"] }}</button>
+      </span>
+    </details>
+    <span class="u3-filter-actions">
+      <button type="submit" class="btn" formaction="/settings/llm/probe"
+              name="profile" value="{{ p.name }}" data-u3-llm-probe="{{ p.name }}">
+        {{ s["llm_probe_btn"] }}
+      </button>
+    </span>
+  </details>
+  {% endfor %}
+  <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+  <button type="submit" id="u3-llm-save" class="u3-btn u3-primary u3-sheet-action">{{ s["common_save"] }}</button>
+  <p class="hint">{{ s["llm_save_note"] }}</p>
+  <span id="u3-llm-msg" role="status"></span>
+</form>
 {% endblock %}
