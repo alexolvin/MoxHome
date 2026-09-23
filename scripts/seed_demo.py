@@ -22,6 +22,10 @@ data/demo/), на которой снимаются 15 экранов. Скри�
 Запуск (из корня репозитория):
     .venv/bin/python scripts/seed_demo.py
     .venv/bin/python scripts/seed_demo.py --reset   # сначала очистить
+    .venv/bin/python scripts/seed_demo.py --wipe    # только очистить (без посева)
+
+Пустые состояния (S03 /books пусто, S07 /jobs пусто): ``--wipe`` → съёмка
+S03/S07 → повторный посев без флагов.
 """
 
 from __future__ import annotations
@@ -269,10 +273,25 @@ def main() -> None:
         action="store_true",
         help="сначала очистить каталоги данных демо-стенда",
     )
+    parser.add_argument(
+        "--wipe",
+        action="store_true",
+        help=(
+            "только очистить каталоги данных (без посева) — для пустых "
+            "состояний S03/S07"
+        ),
+    )
     args = parser.parse_args()
+
+    if args.reset and args.wipe:
+        raise SystemExit("ОТКАЗ: --reset и --wipe несовместимы")
 
     demo, prod = load_pair(Path(args.demo_config), Path(args.prod_config))
     guard(demo.storage.root, prod.storage.root)
+    if args.wipe:
+        reset_data(demo)
+        print("стёрто (без посева): S03/S07; для посева — без флагов")
+        return
     if args.reset:
         reset_data(demo)
 

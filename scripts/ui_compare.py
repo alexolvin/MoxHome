@@ -29,18 +29,18 @@ SCREEN_FRAGMENTS: dict[str, tuple[str, ...]] = {
     "S01": ("login",),
     "S02": ("library", "dashboard-cards"),
     "S03": ("library",),
-    "S04": ("kit-1",),
-    "S05": ("kit-1",),
-    "S06": ("library",),
-    "S07": ("library",),
-    "S08": ("status-colors", "kit-1"),
-    "S09": ("create-wizard", "chips-buttons"),
-    "S10": ("export-sheet-cover",),
-    "S11": ("export-sheet",),
-    "S12": ("settings-menu",),
-    "S13": ("settings-toggles",),
+    "S04": ("export-sheet-cover",),
+    "S05": ("export-sheet-cover",),
+    "S06": ("dashboard-cards", "status-colors"),
+    "S07": ("kit-2",),
+    "S08": ("dashboard-cards",),
+    "S09": ("create-wizard", "create-wizard-wide"),
+    "S10": ("export-sheet",),
+    "S11": ("export-sheet", "export-sheet-cover"),
+    "S12": ("settings-menu", "settings-toggles"),
+    "S13": ("settings-toggles", "kit-2"),
     "S14": ("kit-1", "kit-2", "kit-3", "chips-buttons"),
-    "S15": ("dashboard-cards",),
+    "S15": ("settings-menu",),
 }
 
 #: Имена экранов (совпадает со SCREENS в ui_shots.py) — для имени снимка.
@@ -105,9 +105,14 @@ def main() -> None:
     parser.add_argument("--theme", default="dark", choices=("dark", "light"))
     args = parser.parse_args()
 
-    shots_dir = Path(args.shots) if args.shots else sorted(
-        (SHOTS_ROOT / args.stage).iterdir()
-    )[-1]
+    if args.shots:
+        shots_dir = Path(args.shots)
+    else:
+        candidates = [p for p in (SHOTS_ROOT / args.stage).iterdir() if p.is_dir()]
+        if not candidates:
+            raise SystemExit(f"нет каталогов снимков: {SHOTS_ROOT / args.stage}")
+        # Не по имени (short-sha не упорядочен во времени), а по mtime.
+        shots_dir = max(candidates, key=lambda p: p.stat().st_mtime)
     if not shots_dir.is_dir():
         raise SystemExit(f"каталог снимков не найден: {shots_dir}")
     crops = json.loads((REF_DIR / "crops.json").read_text(encoding="utf-8"))
