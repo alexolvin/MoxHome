@@ -2394,3 +2394,54 @@ T19: цитируется (решение 4).
   j-20260922T192228Z-d71363 на стенде (терминальное, COMPLETED_WITH_WARNINGS).
 
   Дефекты: не найдено (прогон 1 — все четыре точки PASS).
+
+---
+
+## V0 — инфраструктура серии TZ-UI-V (2026-09-23)
+
+Серия **V0–V4**: визуальная переработка интерфейса по эталону
+(LinguaTales-style) — TZ `.a/tasks/TZ-UI-V-EpubTranslator-2026-09-22.md`.
+Эталон размещён в `docs/design/ref/` (ref-1/2.jpg, 14 фрагментов,
+crops.json) и коммитится вместе с V0. Серия R0–R9 завершена
+(main 7f9b120, T1–T20 20/20) — V строится на ней; пометка ТЗ
+«R6 на паузе» устарела. Бюджеты V-T12: CSS ≤ 24 576 Б, JS ≤ 65 536 Б
+(против 44 596 / 96 446 в R9 — полная перепись; план V0–V4 одобрен
+владельцем 2026-09-23).
+
+### Scope V0 (критерии V-T1, V-T15)
+
+- **D111** (`docs/DECISIONS.md`): поправки T1/T3/T13 (TZ V §10) —
+  записаны ДО первого замера.
+- `scripts/ui_shots.py` — съёмка 15 экранов (TZ §2): Playwright из
+  `.a/tasks/ui-audit/.venv` (Chromium), 384×715 dsf 2.25, is_mobile +
+  has_touch, color_scheme dark, locale ru-RU; готовность — networkidle +
+  `document.fonts.ready` + все видимые img complete; при грязном дереве
+  (ненулевой `git status --porcelain`) — отказ; два снимка на экран
+  (`-viewport.png` ровно 384×715 CSS px, `-full.png` вся страница);
+  `metrics.json` (max_font_px, first_item_y, full_items, colors,
+  colors_off_token, long_text_blocks, min_target, saturated_share
+  HSV S≥0.40 V≥0.35).
+- `scripts/ui_compare.py` — compare-листы `compare-S<nn>.png`:
+  эталонный фрагмент (слева) + viewport-снимок (справа), одинаковая
+  высота; соответствие экранов фрагментам — таблица TZ §2.8,
+  геометрия фрагментов — `docs/design/ref/crops.json`.
+- Демо-стенд (TZ §11): `config/demo.yaml` — 127.0.0.1:8421, данные
+  `data/demo/`, LLM-профили offline (127.0.0.1:9 — боевой vLLM не
+  затрагивается), общие read-only ресурсы (prompts, языковые пакеты,
+  epubcheck-jar) — абсолютными путями; `scripts/seed_demo.py` —
+  12 книг (8 Gutenberg `epub3.images` + 4 EPUB-фикстуры репозитория,
+  4 без обложек), 6 заданий во всех 5 группах статусов (через
+  `services.jobs.create_job` + `JobRepository.transition`,
+  actor `seed-demo`, reason `demo-fixture`), отказ при совпадении
+  каталога данных с боевым; `.env.demo` со случайным секретом
+  (не коммитится — в .gitignore).
+- Фикстуры V-T8: `tests/fixtures/covers/` — SVG-обложка, элемент с
+  объявленным размером 1 ГБ, битый JPEG; генератор `build.py`
+  (повторно воспроизводим) + тесты.
+- Съёмка «до» всех 15 экранов текущего интерфейса на демо-стенде +
+  протоколы §2.4 (`inspection.md`: что открыто, видимое сверху вниз,
+  чек-лист §7, три слабых места, отклонения, вердикт).
+
+### CONTROL V0
+
+(заполняется после замера)

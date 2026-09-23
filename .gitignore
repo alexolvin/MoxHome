@@ -4,6 +4,7 @@
 
 # Секреты (E0.9)
 .env
+.env.demo
 
 # Сигнал «воркер жив» (D87): runtime-файл heartbeat в корне storage.root
 .worker-heartbeat
@@ -15,6 +16,9 @@ config/config.yaml
 cache/
 input/
 jobs/
+
+# Демо-стенд TZ-UI-V (локальные данные, TZ §11)
+data/demo/
 books/
 logs/
 data/lexicons/

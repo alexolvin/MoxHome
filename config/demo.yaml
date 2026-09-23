@@ -1,0 +1,73 @@
+# ДЕМО-СТЕНД серии TZ-UI-V (TZ §11) — НЕ для боевого использования.
+#
+# Отдельная веб-инстанс для съёмки 15 экранов: свой каталог данных
+# data/demo/, бинд 127.0.0.1, LLM-профили offline (боевой vLLM на
+# 127.0.0.1:8004 не затрагивается — воркера на демо-стенде нет,
+# задания сидятся скриптом сразу в целевых статусах).
+#
+# Секреты — в .env.demo (не коммитится; создаёт scripts/seed_demo.py):
+#   SERVER_BIND_ADDRESS=127.0.0.1
+#   SERVER_AUTH_SECRET=<случайный>
+#
+# Запуск:
+#   .venv/bin/python -m app --config config/demo.yaml --env .env.demo
+# Посев:
+#   .venv/bin/python scripts/seed_demo.py
+#
+# Общие read-only ресурсы боевого репозитория — абсолютными путями
+# (TZ §11: «своими каталогами данных, заданными отдельным конфигом»).
+
+server:
+  port: 8421
+  heartbeat_seconds: 15.0
+  lease_seconds: 30.0
+
+storage:
+  root: /mdisk/EpubTranslator/data/demo
+  busy_timeout_ms: 5000
+
+llm:
+  profiles:
+    translation:
+      base_url: http://127.0.0.1:9/v1
+      model: demo-offline
+    fill:
+      base_url: http://127.0.0.1:9/v1
+      model: demo-offline
+    analysis:
+      base_url: http://127.0.0.1:9/v1
+      model: demo-offline
+  prompts_root: /mdisk/EpubTranslator/prompts
+
+# Общие read-only ресурсы (реестр языков, матрица пар, epubcheck-jar).
+languages:
+  root: /mdisk/EpubTranslator/config/languages
+  matrix: /mdisk/EpubTranslator/config/language_matrix.yaml
+
+epubcheck:
+  jar_path: /mdisk/EpubTranslator/data/tools/epubcheck.jar
+  timeout_seconds: 120.0
+
+# Конвертер calibre на демо-стенде не нужен: книги сидятся через
+# сервисы проекта, а не через форму импорта.
+converter:
+  binary: ""
+
+limits:
+  upload_max_mb: 50
+
+# Зеркало боевой секции (в V1+ новые ключи появятся в схеме
+# app/core/config.py с дефолтами; дублировать сюда всё не нужно).
+ui:
+  page_size: 20
+  refresh_seconds: 3.0
+  refresh_seconds_max: 15.0
+  log_tail_lines: 200
+  purge_min_age_days: 1.0
+  mobile_breakpoint_px: 641
+  tap_target_px: 44
+  tap_gap_px: 8
+  row_height_px: 64
+  tabbar_height_px: 56
+  input_font_px: 16
+  export_ttl_hours: 48.0
