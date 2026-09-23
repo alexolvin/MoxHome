@@ -1,0 +1,128 @@
+{
+ "login": {
+  "source": "ref-2.jpg",
+  "box": [
+   26,
+   193,
+   224,
+   630
+  ]
+ },
+ "library": {
+  "source": "ref-1.jpg",
+  "box": [
+   737,
+   25,
+   969,
+   456
+  ]
+ },
+ "dashboard-cards": {
+  "source": "ref-2.jpg",
+  "box": [
+   243,
+   295,
+   758,
+   658
+  ]
+ },
+ "create-wizard": {
+  "source": "ref-2.jpg",
+  "box": [
+   777,
+   195,
+   983,
+   642
+  ]
+ },
+ "create-wizard-wide": {
+  "source": "ref-1.jpg",
+  "box": [
+   253,
+   103,
+   722,
+   473
+  ]
+ },
+ "export-sheet": {
+  "source": "ref-1.jpg",
+  "box": [
+   46,
+   993,
+   281,
+   1464
+  ]
+ },
+ "export-sheet-cover": {
+  "source": "ref-2.jpg",
+  "box": [
+   337,
+   1183,
+   561,
+   1608
+  ]
+ },
+ "settings-menu": {
+  "source": "ref-1.jpg",
+  "box": [
+   657,
+   1202,
+   899,
+   1494
+  ]
+ },
+ "settings-toggles": {
+  "source": "ref-1.jpg",
+  "box": [
+   56,
+   1484,
+   478,
+   1721
+  ]
+ },
+ "kit-1": {
+  "source": "ref-1.jpg",
+  "box": [
+   501,
+   1499,
+   934,
+   1721
+  ]
+ },
+ "kit-2": {
+  "source": "ref-2.jpg",
+  "box": [
+   609,
+   1398,
+   893,
+   1632
+  ]
+ },
+ "kit-3": {
+  "source": "ref-2.jpg",
+  "box": [
+   41,
+   1647,
+   966,
+   1716
+  ]
+ },
+ "status-colors": {
+  "source": "ref-1.jpg",
+  "box": [
+   676,
+   855,
+   912,
+   1192
+  ]
+ },
+ "chips-buttons": {
+  "source": "ref-2.jpg",
+  "box": [
+   19,
+   705,
+   212,
+   1136
+  ]
+ }
+}
