@@ -15,12 +15,16 @@
   ``-full.png`` (вся страница);
 * размещение: ``.a/tasks/ui-audit/shots/<stage>/<short-sha>/`` +
   ``metrics.json`` (поля TZ §2.6);
-* якорь A3 (Д112, Поправка A к ТЗ V): случайный код ``[A-Z0-9]{6}`` в
-  правом нижнем углу каждого снимка (оба — viewport и full), тот же код —
-  в ``metrics.json`` (``stamp_code``); рядом со снимками — ``S<nn>.dom.txt``
-  (``document.body.innerText`` на момент съёмки). Протокол §2.4 обязан
-  процитировать код с картинки и три точные строки видимого текста;
-  сверка — ``scripts/ui_verify.py``;
+* якорь A3/B (D112/D113, Поправки A/B к ТЗ V): случайный код
+  ``[A-Z0-9]{6}`` в правом нижнем углу каждого снимка (оба — viewport и
+  full). Код нигде не пишется в читаемом виде (B1): в ``metrics.json`` —
+  только ``stamp_sha256 = sha256("<screen>:<commit>:<code>")`` и
+  прямоугольник штампа ``stamp_rect`` (исключается из saturated_share и
+  пиксельных диффов, B4). Рядом со снимками — ``S<nn>.dom.txt``
+  (``document.body.innerText``) и ``S<nn>.viewport.txt`` (текст узлов,
+  пересекающих 384×715) — цитаты A3 сверяются с ``viewport.txt`` (B3).
+  Протокол §2.4 обязан процитировать код с картинки и три точные строки
+  видимого текста; сверка — ``scripts/ui_verify.py``;
 * контекст подстановки ``{book:...}`` / ``{job:...}`` — из манифеста
   демо-стенда ``data/demo/.seed-manifest.json`` (seed_demo.py).
 """
@@ -28,6 +32,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import secrets
 import string
@@ -103,9 +108,10 @@ def new_stamp_code(used: set[str]) -> str:
             return code
 
 
-def stamp_image(path: Path, code: str) -> None:
-    """A3 (D112): код в правом нижнем углу снимка (тёмная плашка + белый
-    текст) — якорь, который протокол обязан процитировать."""
+def stamp_image(path: Path, code: str) -> tuple[int, int, int, int]:
+    """A3/B (D112/D113): код в правом нижнем углу снимка (тёмная плашка +
+    белый текст) — якорь, который протокол обязан процитировать. Возвращает
+    прямоугольник штампа (device px) для исключения из замеров (B4)."""
     font = None
     for candidate in STAMP_FONT_CANDIDATES:
         if Path(candidate).exists():
@@ -127,6 +133,7 @@ def stamp_image(path: Path, code: str) -> None:
     draw.rectangle([x - pad, y - pad, x + tw + pad, y + th + pad], fill=(0, 0, 0, 170))
     draw.text((x - x0, y - y0), code, font=font, fill=(255, 255, 255, 255))
     Image.alpha_composite(img, overlay).convert("RGB").save(path)
+    return x - pad, y - pad, x + tw + pad, y + th + pad
 
 
 def shoot_screen(
@@ -135,21 +142,29 @@ def shoot_screen(
     out_dir: Path,
     theme: str,
     used_codes: set[str],
-) -> tuple[Path, Path, str]:
-    """A3 (D112): два снимка + код в углу каждого + дамп видимого текста."""
+) -> tuple[Path, Path, str, tuple[int, int, int, int], float]:
+    """A3/B (D112/D113): два снимка + код в углу каждого (код нигде не
+    пишется, B1) + дампы видимого текста + saturated_share по несшитому
+    снимку (B4)."""
     vp = out_dir / f"{screen.sid}-{screen.name}-{theme}-viewport.png"
     fp = out_dir / f"{screen.sid}-{screen.name}-{theme}-full.png"
     page.screenshot(path=str(vp), clip={"x": 0, "y": 0, "width": WIDTH, "height": HEIGHT})
     page.screenshot(path=str(fp), full_page=True)
+    # B4 (D113): saturated_share — по несшитому снимку; штамп в замер не
+    # входит, прямоугольник — в metrics.json (stamp_rect).
+    share = saturated_share(vp)
     code = new_stamp_code(used_codes)
-    stamp_image(vp, code)
+    rect = stamp_image(vp, code)
     stamp_image(fp, code)
-    # A3 (D112): видимый текст на момент съёмки — основа цитат протокола,
-    # которые сверяет ui_verify.py.
+    # A3/B3 (D112/D113): видимый текст на момент съёмки — основа цитат
+    # протокола, которые ui_verify.py сверяет по S<nn>.viewport.txt.
     (out_dir / f"{screen.sid}.dom.txt").write_text(
         page.evaluate("() => document.body.innerText"), encoding="utf-8"
     )
-    return vp, fp, code
+    (out_dir / f"{screen.sid}.viewport.txt").write_text(
+        page.evaluate(VIEWPORT_DUMP_JS), encoding="utf-8"
+    )
+    return vp, fp, code, rect, share
 
 
 def git_state() -> tuple[str, str]:
@@ -268,6 +283,30 @@ METRICS_JS = r"""
 """
 
 
+#: B3 (D113): текст узлов, пересекающих область 384×715 при скролле 0 —
+#: по нему ui_verify.py сверяет цитаты строки A3 (полный дамп — dom.txt).
+VIEWPORT_DUMP_JS = r"""
+() => {
+  const W = 384, H = 715;
+  const out = [];
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  let n;
+  while ((n = walker.nextNode())) {
+    const t = n.textContent.trim();
+    if (!t) continue;
+    const range = document.createRange();
+    range.setStart(n, 0);
+    range.setEnd(n, n.length);
+    const r = range.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) continue;
+    if (r.right < 0 || r.left >= W || r.bottom < 0 || r.top >= H) continue;
+    out.push(t);
+  }
+  return out.join("\n");
+}
+"""
+
+
 def _rgb_to_hex(color: str) -> str | None:
     c = color.strip().lower()
     if c.startswith("rgba"):
@@ -377,7 +416,9 @@ def shoot(
             page.goto(url, wait_until="domcontentloaded", timeout=30_000)
             wait_ready(page)
 
-            vp, fp, code = shoot_screen(page, screen, out_dir, theme, used_codes)
+            vp, fp, code, rect, share = shoot_screen(
+                page, screen, out_dir, theme, used_codes
+            )
 
             data = page.evaluate(METRICS_JS, screen.item_selector)
             colors = [c for c, _ in sorted(data["colors"].items(), key=lambda kv: -kv[1])]
@@ -404,9 +445,14 @@ def shoot(
                 "colors_off_token": off_tokens(colors, token_file),
                 "long_text_blocks": list(dict.fromkeys(data["long_text_blocks"]))[:20],
                 "min_target": targets,
-                "saturated_share": round(saturated_share(vp), 4),
-                "stamp_code": code,
+                "saturated_share": round(share, 4),
+                # B1 (D113): код в читаемом виде не пишется — только hash.
+                "stamp_sha256": hashlib.sha256(
+                    f"{screen.sid}:{short_sha}:{code}".encode()
+                ).hexdigest(),
+                "stamp_rect": list(rect),
                 "dom_dump": f"{screen.sid}.dom.txt",
+                "viewport_dump": f"{screen.sid}.viewport.txt",
                 "files": {
                     "viewport": vp.name,
                     "full": fp.name,

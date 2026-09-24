@@ -6,12 +6,16 @@
   ``**A3:** код ``XXXXXX``; цитаты: «строка 1»; «строка 2»; «строка 3»`` —
   код с картинки (правый нижний угол снимка) и ровно три точные цитаты
   видимого текста;
-* код сверяется с ``stamp_code`` в metrics.json (несовпадение = чтение
-  с другой картинки или выдуманное);
-* каждая цитата ищется в ``S<nn>.dom.txt`` (нормализация — только
-  схлопывание пробельных);
-* расхождение — чтение недействительно, экран FAIL, запись в
-  ``.a/tasks/ui-audit/confabulations.md`` (журнал конфабуляций).
+* код хешируется и сверяется с ``stamp_sha256`` в metrics.json (B1: код
+  в читаемом виде в metrics.json не существует; несовпадение = чтение с
+  другой картинки или выдуманное);
+* каждая цитата ищется в ``S<nn>.viewport.txt`` — текст узлов,
+  пересекающих 384×715 (B3; нормализация — только схлопывание
+  пробельных). Полный дамп ``S<nn>.dom.txt`` — только для полноты.
+  Дампы агент НЕ открывает до написания протокола — открытие до
+  протокола, нарушение A3.
+* расхождение — чтение недействительно, экран FAIL, запись в журнал
+  конфабуляций (B6: только дозапись; тесты — ``--journal <tmp>``).
 
 Запуск (из корня репозитория, только stdlib):
     .venv/bin/python scripts/ui_verify.py --shots-dir .a/tasks/ui-audit/shots/V1/<sha>
@@ -22,6 +26,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import time
@@ -58,11 +63,13 @@ def split_sections(text: str) -> dict[str, str]:
 
 def check_screen(
     sid: str,
+    commit: str,
     screens_meta: dict[str, Any],
     sections: dict[str, str],
     shots_dir: Path,
 ) -> tuple[str | None, list[str]]:
-    """A3-сверка одного экрана; возвращает (код, список расхождений)."""
+    """A3/B-сверка одного экрана (B1: hash кода, B3: цитаты по viewport-
+    дампу); возвращает (код, список расхождений)."""
     meta = screens_meta.get(sid)
     if meta is None:
         return None, ["нет в metrics.json"]
@@ -71,21 +78,23 @@ def check_screen(
     if parsed is None:
         return None, ["нет строки A3 в протоколе"]
     code, quotes = parsed
-    stamp_code = meta.get("stamp_code")
-    dom_path = shots_dir / meta.get("dom_dump", f"{sid}.dom.txt")
+    expected = meta.get("stamp_sha256")
+    cited = hashlib.sha256(f"{sid}:{commit}:{code}".encode()).hexdigest()
+    vp_path = shots_dir / meta.get("viewport_dump", f"{sid}.viewport.txt")
     problems: list[str] = []
-    if stamp_code is None:
-        problems.append("в metrics.json нет stamp_code (съёмка без A3-якоря)")
-    elif code != stamp_code:
-        problems.append(f"код {code} ≠ {stamp_code} из metrics.json")
+    if expected is None:
+        problems.append("в metrics.json нет stamp_sha256 (съёмка до B1)")
+    elif cited != expected:
+        problems.append("hash кода ≠ stamp_sha256 из metrics.json")
     if len(quotes) != 3:
         problems.append(f"цитат {len(quotes)} (нужно ровно 3)")
-    if not dom_path.exists():
-        problems.append(f"нет дампа {dom_path.name}")
+    if not vp_path.exists():
+        problems.append(f"нет viewport-дампа {vp_path.name} (B3)")
     else:
-        dom = normalize(dom_path.read_text(encoding="utf-8"))
+        dom = normalize(vp_path.read_text(encoding="utf-8"))
         problems.extend(
-            f"цитата не в дампе: «{q}»" for q in quotes if normalize(q) not in dom
+            f"цитата не в viewport-дампе: «{q}»"
+            for q in quotes if normalize(q) not in dom
         )
     return code, problems
 
@@ -106,6 +115,9 @@ def main() -> None:
                         help="дефолт <shots-dir>/inspection.md")
     parser.add_argument("--screens", nargs="*", default=None,
                         help="подмножество S01…S15 (дефолт — все из metrics.json)")
+    parser.add_argument("--journal", default=str(JOURNAL),
+                        help="B6: путь журнала (только дозапись; тесты — "
+                             "временный путь)")
     args = parser.parse_args()
 
     shots_dir = Path(args.shots_dir)
@@ -114,8 +126,8 @@ def main() -> None:
         raise SystemExit(f"нет metrics.json: {metrics_path}")
     metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
     screens_meta = metrics.get("screens", {})
-    run = (f"{metrics.get('run', {}).get('stage', '?')}/"
-           f"{metrics.get('run', {}).get('commit', '?')}")
+    run_commit = metrics.get("run", {}).get("commit", "")
+    run = f"{metrics.get('run', {}).get('stage', '?')}/{run_commit}"
 
     inspection_path = Path(args.inspection) if args.inspection else shots_dir / "inspection.md"
     if not inspection_path.exists():
@@ -124,10 +136,13 @@ def main() -> None:
             "строками A3 (код с картинки + три цитаты)"
         )
     sections = split_sections(inspection_path.read_text(encoding="utf-8"))
+    journal_path = Path(args.journal)
 
     failures: list[str] = []
     for sid in args.screens or list(screens_meta):
-        code, problems = check_screen(sid, screens_meta, sections, shots_dir)
+        code, problems = check_screen(
+            sid, run_commit, screens_meta, sections, shots_dir
+        )
         if problems:
             print(f"{sid}: FAIL — " + "; ".join(problems))
             failures.append(f"{sid}: " + "; ".join(problems))
@@ -135,16 +150,16 @@ def main() -> None:
             print(f"{sid}: PASS (код {code}, 3 цитаты в дампе)")
 
     if failures:
-        JOURNAL.parent.mkdir(parents=True, exist_ok=True)
-        is_new = not JOURNAL.exists()
-        with JOURNAL.open("a", encoding="utf-8") as f:
+        journal_path.parent.mkdir(parents=True, exist_ok=True)
+        is_new = not journal_path.exists()
+        with journal_path.open("a", encoding="utf-8") as f:
             if is_new:
                 f.write(journal_header())
             f.write(f"\n## {time.strftime('%Y-%m-%d %H:%M:%S %z')} — {run}\n")
             for line in failures:
                 f.write(f"- {line}\n")
         print(f"\nFAIL — экранов с расхождениями: {len(failures)}; "
-              f"запись в {JOURNAL}")
+              f"запись в {journal_path}")
         raise SystemExit(1)
     print(f"\nPASS — все экраны сверены ({run})")
 
