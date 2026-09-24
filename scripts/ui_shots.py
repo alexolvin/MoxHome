@@ -15,6 +15,12 @@
   ``-full.png`` (вся страница);
 * размещение: ``.a/tasks/ui-audit/shots/<stage>/<short-sha>/`` +
   ``metrics.json`` (поля TZ §2.6);
+* якорь A3 (Д112, Поправка A к ТЗ V): случайный код ``[A-Z0-9]{6}`` в
+  правом нижнем углу каждого снимка (оба — viewport и full), тот же код —
+  в ``metrics.json`` (``stamp_code``); рядом со снимками — ``S<nn>.dom.txt``
+  (``document.body.innerText`` на момент съёмки). Протокол §2.4 обязан
+  процитировать код с картинки и три точные строки видимого текста;
+  сверка — ``scripts/ui_verify.py``;
 * контекст подстановки ``{book:...}`` / ``{job:...}`` — из манифеста
   демо-стенда ``data/demo/.seed-manifest.json`` (seed_demo.py).
 """
@@ -23,13 +29,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import secrets
+import string
 import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageDraw, ImageFont
 from playwright.sync_api import sync_playwright
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -39,6 +47,15 @@ ENV_DEMO = REPO_ROOT / ".env.demo"
 
 WIDTH, HEIGHT, DSF = 384, 715, 2.25
 TABBAR = 56  # px: нижняя граница первого экрана (full_items, TZ §2.6)
+
+STAMP_ALPHABET = string.ascii_uppercase + string.digits
+STAMP_FONT_CANDIDATES = (
+    "/usr/share/fonts/dejavu-sans-fonts/DejaVuSans-Bold.ttf",  # Alma
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",  # Debian/Ubuntu
+    "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/liberation-sans/LiberationSans-Bold.ttf",  # Alma
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+)
 
 ANDROID_UA = (
     "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 "
@@ -75,6 +92,64 @@ SCREENS: tuple[Screen, ...] = (
     Screen("S14", "dev-kit", "/dev/kit"),
     Screen("S15", "book-delete", "/books/{book:11}/delete", needs_manifest=True),
 )
+
+
+def new_stamp_code(used: set[str]) -> str:
+    """A3 (D112): случайный код [A-Z0-9]{6} на экран, уникален в прогоне."""
+    while True:
+        code = "".join(secrets.choice(STAMP_ALPHABET) for _ in range(6))
+        if code not in used:
+            used.add(code)
+            return code
+
+
+def stamp_image(path: Path, code: str) -> None:
+    """A3 (D112): код в правом нижнем углу снимка (тёмная плашка + белый
+    текст) — якорь, который протокол обязан процитировать."""
+    font = None
+    for candidate in STAMP_FONT_CANDIDATES:
+        if Path(candidate).exists():
+            font = ImageFont.truetype(candidate, 36)
+            break
+    if font is None:
+        raise SystemExit(
+            "ОТКАЗ: нет TTF-шрифта для штампа (DejaVu/Liberation Bold) — "
+            "нечитаемый код хуже его отсутствия (A3, D112)"
+        )
+    img = Image.open(path).convert("RGBA")
+    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    x0, y0, x1, y1 = draw.textbbox((0, 0), code, font=font)
+    tw, th = x1 - x0, y1 - y0
+    margin, pad = 14, 8
+    x = img.width - tw - margin * 2
+    y = img.height - th - margin * 2
+    draw.rectangle([x - pad, y - pad, x + tw + pad, y + th + pad], fill=(0, 0, 0, 170))
+    draw.text((x - x0, y - y0), code, font=font, fill=(255, 255, 255, 255))
+    Image.alpha_composite(img, overlay).convert("RGB").save(path)
+
+
+def shoot_screen(
+    page: Any,
+    screen: Screen,
+    out_dir: Path,
+    theme: str,
+    used_codes: set[str],
+) -> tuple[Path, Path, str]:
+    """A3 (D112): два снимка + код в углу каждого + дамп видимого текста."""
+    vp = out_dir / f"{screen.sid}-{screen.name}-{theme}-viewport.png"
+    fp = out_dir / f"{screen.sid}-{screen.name}-{theme}-full.png"
+    page.screenshot(path=str(vp), clip={"x": 0, "y": 0, "width": WIDTH, "height": HEIGHT})
+    page.screenshot(path=str(fp), full_page=True)
+    code = new_stamp_code(used_codes)
+    stamp_image(vp, code)
+    stamp_image(fp, code)
+    # A3 (D112): видимый текст на момент съёмки — основа цитат протокола,
+    # которые сверяет ui_verify.py.
+    (out_dir / f"{screen.sid}.dom.txt").write_text(
+        page.evaluate("() => document.body.innerText"), encoding="utf-8"
+    )
+    return vp, fp, code
 
 
 def git_state() -> tuple[str, str]:
@@ -265,6 +340,7 @@ def shoot(
         merged = dict(previous.get("screens", {}))
 
     screens = [s for s in SCREENS if s.sid in screen_ids]
+    used_codes: set[str] = set()
     run_screens = list(dict.fromkeys(list(merged) + [s.sid for s in screens]))
     metrics: dict[str, Any] = {
         "run": {
@@ -301,10 +377,7 @@ def shoot(
             page.goto(url, wait_until="domcontentloaded", timeout=30_000)
             wait_ready(page)
 
-            vp = out_dir / f"{screen.sid}-{screen.name}-{theme}-viewport.png"
-            fp = out_dir / f"{screen.sid}-{screen.name}-{theme}-full.png"
-            page.screenshot(path=str(vp), clip={"x": 0, "y": 0, "width": WIDTH, "height": HEIGHT})
-            page.screenshot(path=str(fp), full_page=True)
+            vp, fp, code = shoot_screen(page, screen, out_dir, theme, used_codes)
 
             data = page.evaluate(METRICS_JS, screen.item_selector)
             colors = [c for c, _ in sorted(data["colors"].items(), key=lambda kv: -kv[1])]
@@ -332,6 +405,8 @@ def shoot(
                 "long_text_blocks": list(dict.fromkeys(data["long_text_blocks"]))[:20],
                 "min_target": targets,
                 "saturated_share": round(saturated_share(vp), 4),
+                "stamp_code": code,
+                "dom_dump": f"{screen.sid}.dom.txt",
                 "files": {
                     "viewport": vp.name,
                     "full": fp.name,
