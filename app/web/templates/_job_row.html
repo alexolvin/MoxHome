@@ -28,7 +28,7 @@
     <a class="u3-row-body" href="/jobs/{{ j.id }}">
       <span class="u3-row-line1" title="{{ row.book_name }}">{{ row.book_name }}</span>
       <span class="u3-row-line2">{{ src }}→{{ tgt }} · {{ j.mode }}{% if j.learning_cefr %} · {{ j.learning_cefr }}{% endif %}</span>
-      <span class="u3-row-line3"><span class="u3-status status-{{ row.status_group }}"><span class="u3-status-ico" aria-hidden="true">{{ row.status_glyph }}</span>{{ st }}</span>{% if row.progress_pct is not none %}<span class="u3-row-sep"> · </span>{{ row.progress_pct }}%{% endif %}<span class="u3-row-sep"> · </span>{{ row.elapsed_human }}</span>
+      <span class="u3-row-line3"><span class="u3-status status-{{ row.status_group }}"><span class="u3-status-ico" aria-hidden="true"><svg class="u3-ico u3-ico-14"><use href="/static/icons.svg#{{ {'wait':'pause','run':'play','ok':'check','warn':'triangle-alert','err':'x'}[row.status_group] }}"></use></svg></span>{{ st }}</span>{% if row.progress_pct is not none %}<span class="u3-row-sep"> · </span>{{ row.progress_pct }}%{% endif %}<span class="u3-row-sep"> · </span>{{ row.elapsed_human }}</span>
     </a>
     <span class="u3-row-action">
       {% if st == "NEEDS_CONFIRMATION" %}
@@ -36,27 +36,27 @@
          перехват submit и fetch /api/jobs/{id}/confirm. #}
       <form class="u3-row-form" method="post" action="/jobs/{{ j.id }}/confirm">
         <input type="hidden" name="u3_csrf" value="{{ csrf }}">
-        <button type="submit" class="u3-row-btn" data-row-action="confirm" aria-label="{{ s["job_row_confirm"] }}"><span aria-hidden="true">&#9654;</span></button>
+        <button type="submit" class="u3-row-btn" data-row-action="confirm" aria-label="{{ s["job_row_confirm"] }}"><span aria-hidden="true"><svg class="u3-ico u3-ico-18"><use href="/static/icons.svg#play"></use></svg></span></button>
       </form>
       {% elif st == "CREATED" %}
       <form class="u3-row-form" method="post" action="/api/jobs/{{ j.id }}/pause">
         <input type="hidden" name="u3_csrf" value="{{ csrf }}">
-        <button type="submit" class="u3-row-btn" data-row-action="pause" aria-label="{{ s["job_row_postpone"] }}"><span aria-hidden="true">&#9208;</span></button>
+        <button type="submit" class="u3-row-btn" data-row-action="pause" aria-label="{{ s["job_row_postpone"] }}"><span aria-hidden="true"><svg class="u3-ico u3-ico-18"><use href="/static/icons.svg#pause"></use></svg></span></button>
       </form>
       {% elif is_run %}
       <form class="u3-row-form" method="post" action="/api/jobs/{{ j.id }}/pause">
         <input type="hidden" name="u3_csrf" value="{{ csrf }}">
-        <button type="submit" class="u3-row-btn" data-row-action="pause" aria-label="{{ s["job_row_pause"] }}"><span aria-hidden="true">&#9208;</span></button>
+        <button type="submit" class="u3-row-btn" data-row-action="pause" aria-label="{{ s["job_row_pause"] }}"><span aria-hidden="true"><svg class="u3-ico u3-ico-18"><use href="/static/icons.svg#pause"></use></svg></span></button>
       </form>
       {% elif st in ("PAUSED", "INTERRUPTED") %}
       <form class="u3-row-form" method="post" action="/api/jobs/{{ j.id }}/resume">
         <input type="hidden" name="u3_csrf" value="{{ csrf }}">
-        <button type="submit" class="u3-row-btn" data-row-action="resume" aria-label="{{ s["job_row_resume"] }}"><span aria-hidden="true">&#9654;</span></button>
+        <button type="submit" class="u3-row-btn" data-row-action="resume" aria-label="{{ s["job_row_resume"] }}"><span aria-hidden="true"><svg class="u3-ico u3-ico-18"><use href="/static/icons.svg#play"></use></svg></span></button>
       </form>
       {% elif st in ("COMPLETED", "COMPLETED_WITH_WARNINGS") %}
-      <a class="u3-row-btn" href="/jobs?sheet=export&job={{ j.id }}" data-sheet-open="u3-sheet-export" data-job="{{ j.id }}" data-book-name="{{ row.book_name }}" aria-label="{{ s["job_row_export"] }}"><span aria-hidden="true">&#8681;</span></a>
+      <a class="u3-row-btn" href="/jobs?sheet=export&job={{ j.id }}" data-sheet-open="u3-sheet-export" data-job="{{ j.id }}" data-book-name="{{ row.book_name }}" aria-label="{{ s["job_row_export"] }}"><span aria-hidden="true"><svg class="u3-ico u3-ico-18"><use href="/static/icons.svg#download"></use></svg></span></a>
       {% else %}
-      <a class="u3-row-btn" data-row-retry="{{ j.id }}" href="/jobs?sheet=create&retry_of={{ j.id }}" aria-label="{{ s["job_row_retry"] }}"><span aria-hidden="true">&#8635;</span></a>
+      <a class="u3-row-btn" data-row-retry="{{ j.id }}" href="/jobs?sheet=create&retry_of={{ j.id }}" aria-label="{{ s["job_row_retry"] }}"><span aria-hidden="true"><svg class="u3-ico u3-ico-18"><use href="/static/icons.svg#rotate-ccw"></use></svg></span></a>
       {% endif %}
     </span>
   </div>

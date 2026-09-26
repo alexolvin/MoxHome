@@ -6,14 +6,14 @@
    (data-sheet-open), без JS — переход на no-JS-форму (href ?sheet=). #}
 <header class="u3-appbar">
   {% if back_href is defined and back_href %}
-  <a class="u3-appbar-back" href="{{ back_href }}" aria-label="{{ s["appbar_back"] }}">&larr;</a>
+  <a class="u3-appbar-back" href="{{ back_href }}" aria-label="{{ s["appbar_back"] }}"><svg class="u3-ico" aria-hidden="true"><use href="/static/icons.svg#arrow-left"></use></svg></a>
   {% endif %}
   <h1 class="u3-appbar-title">{{ title }}</h1>
   <div class="u3-appbar-actions">
     {% include "_fab.html" %}
     {% if appbar_menu is defined and appbar_menu %}
     <details class="u3-appbar-menu">
-      <summary class="u3-appbar-more" aria-label="{{ s["appbar_more"] }}">&#8943;</summary>
+      <summary class="u3-appbar-more" aria-label="{{ s["appbar_more"] }}"><svg class="u3-ico" aria-hidden="true"><use href="/static/icons.svg#ellipsis"></use></svg></summary>
       <menu>
         {% for item in appbar_menu %}
         {% if item.href is defined %}

@@ -1,0 +1,18 @@
+
+#u3-prompt-view{border:1px solid var(--ln);border-radius:var(--r12);padding:var(--p);width:100%;max-width:90vw;background:var(--s1)}
+#u3-prompt-view::backdrop{background:var(--scr)}
+.u3-fld{margin:0 0 var(--g)}
+.u3-fld input,.u3-fld textarea{width:100%;font-size:var(--u3-input-fs)}
+.u3-fld-label{display:block;margin:0 0 var(--gx);font-size:var(--fx);font-weight:600;color:var(--fgm)}
+.u3-fld-hint{margin:var(--gx) 0 0;font-size:var(--fx);color:var(--fgm)}
+.u3-fld-group{margin:0 0 var(--g);padding:var(--gx) var(--p) var(--gs);border:1px solid var(--ln);border-radius:var(--r12);background:var(--s1)}
+.u3-fld-group legend{padding:0 var(--gx);font-weight:600;font-size:var(--fsm)}
+html.js #u3-appearance-submit{display:none}
+.u3-llm-profile{margin:0 0 var(--g);padding:0 var(--gs) var(--gs);border:1px solid var(--ln);border-radius:var(--r12);background:var(--s1)}
+html.js .u3-llm-form.u3-llm-shared-on .u3-llm-profile-url{display:none}
+html.js .u3-llm-form:not(.u3-llm-shared-on) .u3-llm-shared{display:none}
+.u3-llm-extra{margin:0 0 var(--gs)}
+.u3-maint-row{justify-content:space-between}
+.u3-maint-detail{margin:var(--gx) var(--p) 0;font-size:var(--fx);color:var(--fgm)}
+.u3-maint-section{margin:var(--g) 0 var(--gx);font-size:var(--fmd);font-weight:600}
+.u3-maint-purge-label{display:inline-flex;align-items:center;gap:var(--gs)}

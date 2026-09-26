@@ -1,4 +1,9 @@
 {% extends "base.html" %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/css-books.css">
+<link rel="stylesheet" href="/static/css-import.css">
+{% endblock %}
 {% block content %}
 {# Серия R §6: строки книг (64 px: обложка 40×56, две строки текста,
    точка run-задания + «⋯»; R5: тап по строке → карточка). Список
@@ -28,13 +33,13 @@
       {% if not books %}
       {% if q %}
       <div class="u3-state" data-state="empty-filter">
-        <span class="u3-state-ico" aria-hidden="true">&#9675;</span>
+        <span class="u3-state-ico" aria-hidden="true"><svg class="u3-ico u3-ico-22"><use href="/static/icons.svg#book-open"></use></svg></span>
         <p class="u3-state-line">{{ s["books_empty_filtered"] }}</p>
         <a class="u3-btn u3-primary" href="/books">{{ s["state_reset_filter"] }}</a>
       </div>
       {% else %}
       <div class="u3-state" data-state="empty">
-        <span class="u3-state-ico" aria-hidden="true">&#9675;</span>
+        <span class="u3-state-ico" aria-hidden="true"><svg class="u3-ico u3-ico-22"><use href="/static/icons.svg#book-open"></use></svg></span>
         <p class="u3-state-line">{{ s["books_empty_line"] }}</p>
         <a class="u3-btn u3-primary" href="/books/upload">{{ s["fab_add_book"] }}</a>
       </div>

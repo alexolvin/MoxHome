@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import hmac
 import logging
+import re
 from pathlib import Path
 from typing import Annotated, Any, cast
 from urllib.parse import quote, urlencode
@@ -76,6 +77,26 @@ _RUN_STATUS_VALUES = tuple(
 
 def _page_title(key: str, **kwargs: object) -> str:
     return _S[key].format(**kwargs) if kwargs else _S[key]
+
+
+# V1 §6: dev-kit (S14) — токены читаются из :root style.css, чтобы свотчи
+# не дублировали палитру литералами в шаблоне (T17: строки UI — только
+# strings.py; hex-значения токенов — данные, не строки UI).
+_STYLE_CSS = Path(__file__).with_name("static") / "style.css"
+_TOKEN_RE = re.compile(r"([A-Za-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8})")
+
+
+def _kit_tokens() -> list[dict[str, str]]:
+    out: list[dict[str, str]] = []
+    seen: set[str] = set()
+    m = re.search(r":root\s*\{([^}]*)\}", _STYLE_CSS.read_text(encoding="utf-8"))
+    if not m:
+        return out
+    for name, hex_ in _TOKEN_RE.findall(m.group(1)):
+        if name not in seen:
+            seen.add(name)
+            out.append({"name": name, "hex": hex_.upper()})
+    return out
 
 
 # Серия R §10: сегментный фильтр — 5 пилюль на 5 статусных групп (§4).
@@ -1625,6 +1646,20 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
                 "content": content,
                 "missing": not content,
             },
+        )
+
+    # V1 §6: dev-kit (S14) — витрина компонентов; строки — strings.py
+    # (kit_*), токены — :root style.css (сервером, см. _kit_tokens).
+    # §7.9: доступна только при ui.dev_kit=true, иначе 404 (по умолчанию false).
+    @router.get("/dev/kit", include_in_schema=False)
+    def dev_kit_page(request: Request) -> Response:
+        if not _live(request).ui.dev_kit:
+            raise HTTPException(status_code=404)
+        return templates.TemplateResponse(
+            request,
+            "dev_kit.html",
+            ctx(request, _page_title("title_dev_kit"), "")
+            | {"swatches": _kit_tokens()},
         )
 
     @router.post("/logout")

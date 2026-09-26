@@ -1,4 +1,8 @@
 {% extends "base.html" %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/css-import.css">
+{% endblock %}
 {% block content %}
 {# R6 no-JS (ТЗ §8): прогресс импорта — страница /imports/{id}
    (no-JS-ответ 303 после POST /api/books для не-EPUB). Состояния:
@@ -7,26 +11,26 @@
    missing — 404 (неизвестный id, в т.ч. после рестарта). #}
 {% if state == "missing" %}
 <div class="u3-state">
-  <span class="u3-state-ico" aria-hidden="true">&#9675;</span>
+  <span class="u3-state-ico" aria-hidden="true"><svg class="u3-ico u3-ico-22"><use href="/static/icons.svg#book-open"></use></svg></span>
   <p class="u3-state-line">{{ reason }}</p>
   <a class="u3-btn u3-primary" href="/books">{{ s["import_status_to_books"] }}</a>
 </div>
 {% elif state == "done" %}
 <div class="u3-state">
-  <span class="u3-state-ico" aria-hidden="true">&#10003;</span>
+  <span class="u3-state-ico" aria-hidden="true"><svg class="u3-ico u3-ico-22"><use href="/static/icons.svg#check"></use></svg></span>
   <p class="u3-state-line">{{ s["import_status_done_line"].format(name=name) }}</p>
   <a class="u3-btn u3-primary" href="/books/{{ name }}">{{ s["import_status_to_book"] }}</a>
 </div>
 {% elif state == "error" %}
 <div class="u3-state">
-  <span class="u3-state-ico" aria-hidden="true">&#9675;</span>
+  <span class="u3-state-ico" aria-hidden="true"><svg class="u3-ico u3-ico-22"><use href="/static/icons.svg#triangle-alert"></use></svg></span>
   <p class="u3-state-line">{{ s["import_status_error_line"].format(reason=reason) }}</p>
   <a class="u3-btn u3-primary" href="/books">{{ s["import_status_to_books"] }}</a>
 </div>
 {% else %}
 <meta http-equiv="refresh" content="1">
 <div class="u3-state" aria-busy="true">
-  <span class="u3-state-ico" aria-hidden="true">&#8635;</span>
+  <span class="u3-state-ico" aria-hidden="true"><svg class="u3-ico u3-ico-22"><use href="/static/icons.svg#rotate-ccw"></use></svg></span>
   <p class="u3-state-line">{{ s["import_status_active"] }} — {{ step_label }}</p>
 </div>
 {% endif %}

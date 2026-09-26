@@ -1,4 +1,8 @@
 {% extends "base.html" %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/css-settings.css">
+{% endblock %}
 {% block content %}
 {# R8 (ТЗ §13): no-JS purge — страница подтверждения (шаг 1).
    Состав + confirm_token — views.jobs_purge_resolve (тот же механизм,

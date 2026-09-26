@@ -15,6 +15,16 @@
   ``-full.png`` (вся страница);
 * размещение: ``.a/tasks/ui-audit/shots/<stage>/<short-sha>/`` +
   ``metrics.json`` (поля TZ §2.6);
+* якорь A3/B (D112/D113, Поправки A/B к ТЗ V): случайный код
+  ``[A-Z0-9]{6}`` в правом нижнем углу каждого снимка (оба — viewport и
+  full). Код нигде не пишется в читаемом виде (B1): в ``metrics.json`` —
+  только ``stamp_sha256 = sha256("<screen>:<commit>:<code>")`` и
+  прямоугольник штампа ``stamp_rect`` (исключается из saturated_share и
+  пиксельных диффов, B4). Рядом со снимками — ``S<nn>.dom.txt``
+  (``document.body.innerText``) и ``S<nn>.viewport.txt`` (текст узлов,
+  пересекающих 384×715) — цитаты A3 сверяются с ``viewport.txt`` (B3).
+  Протокол §2.4 обязан процитировать код с картинки и три точные строки
+  видимого текста; сверка — ``scripts/ui_verify.py``;
 * контекст подстановки ``{book:...}`` / ``{job:...}`` — из манифеста
   демо-стенда ``data/demo/.seed-manifest.json`` (seed_demo.py).
 """
@@ -22,14 +32,18 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import re
+import secrets
+import string
 import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageDraw, ImageFont
 from playwright.sync_api import sync_playwright
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -39,6 +53,15 @@ ENV_DEMO = REPO_ROOT / ".env.demo"
 
 WIDTH, HEIGHT, DSF = 384, 715, 2.25
 TABBAR = 56  # px: нижняя граница первого экрана (full_items, TZ §2.6)
+
+STAMP_ALPHABET = string.ascii_uppercase + string.digits
+STAMP_FONT_CANDIDATES = (
+    "/usr/share/fonts/dejavu-sans-fonts/DejaVuSans-Bold.ttf",  # Alma
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",  # Debian/Ubuntu
+    "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/liberation-sans/LiberationSans-Bold.ttf",  # Alma
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+)
 
 ANDROID_UA = (
     "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 "
@@ -75,6 +98,74 @@ SCREENS: tuple[Screen, ...] = (
     Screen("S14", "dev-kit", "/dev/kit"),
     Screen("S15", "book-delete", "/books/{book:11}/delete", needs_manifest=True),
 )
+
+
+def new_stamp_code(used: set[str]) -> str:
+    """A3 (D112): случайный код [A-Z0-9]{6} на экран, уникален в прогоне."""
+    while True:
+        code = "".join(secrets.choice(STAMP_ALPHABET) for _ in range(6))
+        if code not in used:
+            used.add(code)
+            return code
+
+
+def stamp_image(path: Path, code: str) -> tuple[int, int, int, int]:
+    """A3/B (D112/D113): код в правом нижнем углу снимка (тёмная плашка +
+    белый текст) — якорь, который протокол обязан процитировать. Возвращает
+    прямоугольник штампа (device px) для исключения из замеров (B4)."""
+    font = None
+    for candidate in STAMP_FONT_CANDIDATES:
+        if Path(candidate).exists():
+            font = ImageFont.truetype(candidate, 36)
+            break
+    if font is None:
+        raise SystemExit(
+            "ОТКАЗ: нет TTF-шрифта для штампа (DejaVu/Liberation Bold) — "
+            "нечитаемый код хуже его отсутствия (A3, D112)"
+        )
+    img = Image.open(path).convert("RGBA")
+    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    x0, y0, x1, y1 = draw.textbbox((0, 0), code, font=font)
+    tw, th = x1 - x0, y1 - y0
+    margin, pad = 14, 8
+    x = img.width - tw - margin * 2
+    y = img.height - th - margin * 2
+    draw.rectangle([x - pad, y - pad, x + tw + pad, y + th + pad], fill=(0, 0, 0, 170))
+    draw.text((x - x0, y - y0), code, font=font, fill=(255, 255, 255, 255))
+    Image.alpha_composite(img, overlay).convert("RGB").save(path)
+    return x - pad, y - pad, x + tw + pad, y + th + pad
+
+
+def shoot_screen(
+    page: Any,
+    screen: Screen,
+    out_dir: Path,
+    theme: str,
+    used_codes: set[str],
+) -> tuple[Path, Path, str, tuple[int, int, int, int], float]:
+    """A3/B (D112/D113): два снимка + код в углу каждого (код нигде не
+    пишется, B1) + дампы видимого текста + saturated_share по несшитому
+    снимку (B4)."""
+    vp = out_dir / f"{screen.sid}-{screen.name}-{theme}-viewport.png"
+    fp = out_dir / f"{screen.sid}-{screen.name}-{theme}-full.png"
+    page.screenshot(path=str(vp), clip={"x": 0, "y": 0, "width": WIDTH, "height": HEIGHT})
+    page.screenshot(path=str(fp), full_page=True)
+    # B4 (D113): saturated_share — по несшитому снимку; штамп в замер не
+    # входит, прямоугольник — в metrics.json (stamp_rect).
+    share = saturated_share(vp)
+    code = new_stamp_code(used_codes)
+    rect = stamp_image(vp, code)
+    stamp_image(fp, code)
+    # A3/B3 (D112/D113): видимый текст на момент съёмки — основа цитат
+    # протокола, которые ui_verify.py сверяет по S<nn>.viewport.txt.
+    (out_dir / f"{screen.sid}.dom.txt").write_text(
+        page.evaluate("() => document.body.innerText"), encoding="utf-8"
+    )
+    (out_dir / f"{screen.sid}.viewport.txt").write_text(
+        page.evaluate(VIEWPORT_DUMP_JS), encoding="utf-8"
+    )
+    return vp, fp, code, rect, share
 
 
 def git_state() -> tuple[str, str]:
@@ -152,7 +243,11 @@ METRICS_JS = r"""
     const st = getComputedStyle(el);
     const fs = parseFloat(st.fontSize);
     if (fs > out.max_font_px) out.max_font_px = fs;
-    for (const c of [st.backgroundColor, st.color, st.borderColor]) {
+    // border-color по сторонам (не shorthand): shorthand — строка из
+    // 1–4 rgb(), которая никогда не совпадёт с одним токеном.
+    for (const c of [st.backgroundColor, st.color, st.borderTopColor,
+                     st.borderRightColor, st.borderBottomColor,
+                     st.borderLeftColor]) {
       if (c && c !== "rgba(0, 0, 0, 0)") out.colors[c] = (out.colors[c] || 0) + 1;
     }
     let own = "";
@@ -193,14 +288,38 @@ METRICS_JS = r"""
 """
 
 
+#: B3 (D113): текст узлов, пересекающих область 384×715 при скролле 0 —
+#: по нему ui_verify.py сверяет цитаты строки A3 (полный дамп — dom.txt).
+VIEWPORT_DUMP_JS = r"""
+() => {
+  const W = 384, H = 715;
+  const out = [];
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  let n;
+  while ((n = walker.nextNode())) {
+    const t = n.textContent.trim();
+    if (!t) continue;
+    const range = document.createRange();
+    range.setStart(n, 0);
+    range.setEnd(n, n.length);
+    const r = range.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) continue;
+    if (r.right < 0 || r.left >= W || r.bottom < 0 || r.top >= H) continue;
+    out.push(t);
+  }
+  return out.join("\n");
+}
+"""
+
+
 def _rgb_to_hex(color: str) -> str | None:
     c = color.strip().lower()
     if c.startswith("rgba"):
-        parts = [p.strip() for p in c[4:-1].split(",")]
+        parts = [p.strip() for p in c[5:-1].split(",")]
         if len(parts) == 4 and parts[3] in ("0", "0.0"):
             return None
     elif c.startswith("rgb"):
-        parts = [p.strip() for p in c[3:-1].split(",")]
+        parts = [p.strip() for p in c[4:-1].split(",")]
     else:
         return c.lstrip("#")
     if len(parts) != 3:
@@ -224,13 +343,18 @@ def saturated_share(viewport_path: Path) -> float:
 def off_tokens(colors: list[str], token_file: Path) -> list[str]:
     if not token_file.exists():
         return []
-    allowed = {line.strip().lower() for line in token_file.read_text().splitlines()
+    allowed = {line.strip().lower().lstrip("#") for line in token_file.read_text().splitlines()
                if line.startswith("#") and len(line) in (7, 9)}
     out: list[str] = []
     for color in colors:
-        hex6 = _rgb_to_hex(color)
-        if hex6 is None or hex6 not in allowed:
-            out.append(color)
+        # border-color (и редкие многозначные) могут нести несколько rgb();
+        # сверяем каждый компонент отдельно, иначе честные токены-компоненты
+        # ложно отмечались бы как «вне токенов».
+        parts = re.findall(r"rgba?\([^)]*\)", color) or [color]
+        for part in parts:
+            hex6 = _rgb_to_hex(part)
+            if hex6 is None or hex6 not in allowed:
+                out.append(part)
     return out
 
 
@@ -265,6 +389,7 @@ def shoot(
         merged = dict(previous.get("screens", {}))
 
     screens = [s for s in SCREENS if s.sid in screen_ids]
+    used_codes: set[str] = set()
     run_screens = list(dict.fromkeys(list(merged) + [s.sid for s in screens]))
     metrics: dict[str, Any] = {
         "run": {
@@ -301,10 +426,9 @@ def shoot(
             page.goto(url, wait_until="domcontentloaded", timeout=30_000)
             wait_ready(page)
 
-            vp = out_dir / f"{screen.sid}-{screen.name}-{theme}-viewport.png"
-            fp = out_dir / f"{screen.sid}-{screen.name}-{theme}-full.png"
-            page.screenshot(path=str(vp), clip={"x": 0, "y": 0, "width": WIDTH, "height": HEIGHT})
-            page.screenshot(path=str(fp), full_page=True)
+            vp, fp, code, rect, share = shoot_screen(
+                page, screen, out_dir, theme, used_codes
+            )
 
             data = page.evaluate(METRICS_JS, screen.item_selector)
             colors = [c for c, _ in sorted(data["colors"].items(), key=lambda kv: -kv[1])]
@@ -331,7 +455,14 @@ def shoot(
                 "colors_off_token": off_tokens(colors, token_file),
                 "long_text_blocks": list(dict.fromkeys(data["long_text_blocks"]))[:20],
                 "min_target": targets,
-                "saturated_share": round(saturated_share(vp), 4),
+                "saturated_share": round(share, 4),
+                # B1 (D113): код в читаемом виде не пишется — только hash.
+                "stamp_sha256": hashlib.sha256(
+                    f"{screen.sid}:{short_sha}:{code}".encode()
+                ).hexdigest(),
+                "stamp_rect": list(rect),
+                "dom_dump": f"{screen.sid}.dom.txt",
+                "viewport_dump": f"{screen.sid}.viewport.txt",
                 "files": {
                     "viewport": vp.name,
                     "full": fp.name,

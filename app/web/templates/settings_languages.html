@@ -1,4 +1,8 @@
 {% extends "base.html" %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/css-settings.css">
+{% endblock %}
 {% block content %}
 {# R8 (ТЗ §13): данные сервером (views.languages_view) — data-u1-fetch
    и JS-рендерер удалены: страница и так была полностью серверной. #}

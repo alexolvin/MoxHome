@@ -1,4 +1,8 @@
 {% extends "base.html" %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/css-settings.css">
+{% endblock %}
 {% block content %}
 <p class="hint">{{ s["prompts_hint"] }}</p>
 <p class="hint u3-warn">{{ s["prompts_warning"] }}</p>

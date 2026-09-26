@@ -23,7 +23,7 @@
   </a>
   {% if b.has_active_job %}<span class="u3-row-dot" aria-hidden="true"></span>{% endif %}
   <details class="u3-row-menu">
-    <summary class="u3-row-more" aria-label="{{ s["row_actions_label"] }}">&#8943;</summary>
+    <summary class="u3-row-more" aria-label="{{ s["row_actions_label"] }}"><svg class="u3-ico"><use href="/static/icons.svg#ellipsis"></use></svg></summary>
     <menu>
       <a class="u3-row-menu-item u3-danger" href="/books/{{ b.name }}/delete" data-book-delete="{{ b.name }}">{{ s["book_delete_btn"] }}</a>
     </menu>
