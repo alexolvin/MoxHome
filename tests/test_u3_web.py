@@ -174,11 +174,11 @@ def test_u3_2_table_card_parity(u1_env: U1Env) -> None:
 
 
 def _strip_root_blocks(css: str) -> str:
-    """R1: вырезать ВСЕ токеновые блоки — базовый :root, :root внутри
-    @media (prefers-color-scheme: dark) и :root[data-theme="light|dark"]
-    (4 блока; литералы цвета разрешены только в них — T18)."""
+    """V1: вырезать ВСЕ токеновые блоки — :root (тёмная по умолчанию) и
+    :root[data-theme="light|dark|system"] (литералы цвета разрешены только
+    в них — T18). Файл без токеновых блоков возвращается как есть."""
     spans: list[tuple[int, int]] = []
-    for m in re.finditer(r":root(?:\[data-theme=\"(?:light|dark)\"\])?\s*\{", css):
+    for m in re.finditer(r":root(?:\[data-theme=\"(?:light|dark|system)\"\])?\s*\{", css):
         start = m.end() - 1
         depth, i = 1, start + 1
         while i < len(css) and depth:
@@ -188,7 +188,6 @@ def _strip_root_blocks(css: str) -> str:
                 depth -= 1
             i += 1
         spans.append((m.start(), i))
-    assert spans, "токеновые блоки :root не найдены"
     for start, end in reversed(spans):
         css = css[:start] + css[end:]
     return css
@@ -196,15 +195,20 @@ def _strip_root_blocks(css: str) -> str:
 
 def test_u3_3_css_invariants() -> None:
     """U3-3: числовые цвета вне токеновых блоков — 0; width/min-width >
-    360 px — 0. R1: блоков :root стало 4 (светлая + тёмная темы, T18)."""
-    css = (ROOT / "app" / "web" / "static" / "style.css").read_text(encoding="utf-8")
-    assert re.search(r":root\s*\{", css), "нет блока :root"
-    outside = _strip_root_blocks(css)
-    for match in re.finditer(r"#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(", outside):
-        pytest.fail(f"числовой цвет вне токеновых блоков: {match.group(0)!r}")
-    for match in re.finditer(r"(?:^|[\s,{;])(?:min-)?width\s*:\s*(\d+(?:\.\d+)?)px", outside):
-        value = float(match.group(1))
-        assert value <= 360, f"ширина {value} px > 360 px: {match.group(0)!r}"
+    360 px — 0. V1: проверка каждого CSS-файла (style.css ядро +
+    css-jobs/books/settings/import/kit; Д114)."""
+    static = ROOT / "app" / "web" / "static"
+    files = sorted(static.glob("*.css"))
+    assert files, "нет CSS-файлов в app/web/static"
+    core = (static / "style.css").read_text(encoding="utf-8")
+    assert re.search(r":root\s*\{", core), "нет блока :root в style.css"
+    for f in files:
+        outside = _strip_root_blocks(f.read_text(encoding="utf-8"))
+        for match in re.finditer(r"#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(", outside):
+            pytest.fail(f"{f.name}: числовой цвет вне токеновых блоков: {match.group(0)!r}")
+        for match in re.finditer(r"(?:^|[\s,{;])(?:min-)?width\s*:\s*(\d+(?:\.\d+)?)px", outside):
+            value = float(match.group(1))
+            assert value <= 360, f"{f.name}: ширина {value} px > 360 px: {match.group(0)!r}"
 
 
 # ------------------------------------------------------------------ T-U3-4
@@ -708,6 +712,29 @@ def test_u3_14_a11y_and_honesty(u1_env: U1Env) -> None:
         allowed.add(str(row[0]))
     for url, text in pages.items():
         _u3_14_check_honesty(url, text, allowed)
+
+
+# ------------------------------------------------------------------ T-U3-16
+
+
+def test_u3_16_dev_kit_gating(u1_env: U1Env) -> None:
+    """ТЗ V §7.9: /dev/kit — 404 при ui.dev_kit=false (дефолт), 200 при true."""
+    profile = u1_env.profiles["main"]
+    # Дефолт: dev_kit=false (не в YAML профилей теста) → 404.
+    assert profile.settings.ui.dev_kit is False
+    assert profile.client.get("/dev/kit").status_code == 404
+    # Включено: живой конфиг из app.state подменяется копией с dev_kit=true.
+    new_ui = profile.settings.ui.model_copy(update={"dev_kit": True})
+    new_settings = profile.settings.model_copy(update={"ui": new_ui})
+    profile.app.state.settings = new_settings
+    try:
+        response = profile.client.get("/dev/kit")
+        assert response.status_code == 200, response.status_code
+        # Витрина рендерится: свотчи токенов (сервером из :root style.css).
+        assert "u3-swatch" in response.text
+    finally:
+        # Профиль module-scoped — вернуть исходный конфиг.
+        profile.app.state.settings = profile.settings
 
 
 # ------------------------------------------------------------------ T-U3-15

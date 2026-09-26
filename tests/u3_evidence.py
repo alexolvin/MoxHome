@@ -788,61 +788,67 @@ def ev_u3_11(main: U1Profile, tiny: Path) -> str:
         lines.append(detail)
     lines.append(f"контролов без label/aria-label: {no_label}")
     lines.append(f"<th> без scope: {no_scope}")
-    # контраст токенов (T13: расчёт по §6.1 в светлой и тёмной теме:
-    # текст >= 7, статусные >= 5, границы >= 3, 0 нарушений)
+    # контраст токенов (V1 V-T10, порог Д111: основной текст >= 7,
+    # вторичный/статусные >= 4.5, границы/ввод >= 3; критерий — 0
+    # нарушений в тёмной теме; светлая — справочно)
     css = (ROOT / "app" / "web" / "static" / "style.css").read_text(encoding="utf-8")
 
     def _tokens_of(block: str) -> dict[str, str]:
-        return {
-            k.strip(): v.strip().rstrip(";")
-            for k, v in (
-                line.split(":", 1) for line in block.splitlines() if ":" in line
-            )
-        }
+        out: dict[str, str] = {}
+        for decl in block.split(";"):
+            if ":" in decl:
+                k, v = decl.split(":", 1)
+                out[k.strip()] = v.strip()
+        return out
 
+    # V1 §4: тёмная тема — :root по умолчанию; светлая —
+    # :root[data-theme="light"] (переопределения поверх тёмного набора).
     root_match = re.search(r":root\s*\{([^}]*)\}", css, flags=re.DOTALL)
-    assert root_match is not None, "нет блока :root в style.css"
-    light = _tokens_of(root_match.group(1))
-    dark_match = re.search(
-        r"@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*:root\s*\{([^}]*)\}",
-        css,
-        flags=re.DOTALL,
+    assert root_match is not None, "нет блока :root в style.css (тёмная тема)"
+    dark = _tokens_of(root_match.group(1))
+    light_match = re.search(
+        r":root\[data-theme=\"light\"\]\s*\{([^}]*)\}", css, flags=re.DOTALL
     )
-    assert dark_match is not None, "нет тёмной темы (:root внутри @media)"
-    dark = _tokens_of(dark_match.group(1))
-    # R1 §4: пять статусных групп, поверхности 0-3; имена токенов — TZ-R
-    # (D1: --u3-cancelled/--u3-head-bg/--u3-pre-bg объединены в --fg-muted/
-    # --surface-1, единый механизм ТЗ UI §3.4/§8.1.1)
+    assert light_match is not None, "нет :root[data-theme=light] в style.css"
+    light = {**dark, **_tokens_of(light_match.group(1))}
+    # V1 §4 токены (Д111): основной текст 7, вторичный/статусные 4.5,
+    # границы/ввод 3; статусные пары — на собственном фоне и на карточке
     pairs = (
-        ("--u3-text", "--surface-0", 7.0),
-        ("--u3-text", "--surface-1", 7.0),
-        ("--fg-muted", "--surface-0", 4.5),
-        ("--fg-muted", "--surface-1", 4.5),
-        ("--accent-fg", "--surface-0", 4.5),
-        ("--accent-fg", "--surface-1", 4.5),
-        ("--status-wait-fg", "--surface-0", 5.0),
-        ("--status-wait-fg", "--surface-1", 5.0),
-        ("--status-run-fg", "--surface-0", 5.0),
-        ("--status-run-fg", "--surface-1", 5.0),
-        ("--status-ok-fg", "--surface-0", 5.0),
-        ("--status-ok-fg", "--surface-1", 5.0),
-        ("--status-warn-fg", "--surface-0", 5.0),
-        ("--status-warn-fg", "--surface-1", 5.0),
-        ("--status-err-fg", "--surface-0", 5.0),
-        ("--status-err-fg", "--surface-1", 5.0),
-        ("--u3-border", "--surface-0", 3.0),
-        ("--u3-border", "--surface-1", 3.0),
-        ("--focus-ring", "--surface-0", 3.0),
-        ("--focus-ring", "--surface-1", 3.0),
+        ("--fg", "--bg", 7.0),
+        ("--fg", "--s1", 7.0),
+        ("--fg", "--s2", 7.0),
+        ("--fg", "--s3", 7.0),
+        ("--fgm", "--bg", 4.5),
+        ("--fgm", "--s1", 4.5),
+        ("--fgm", "--s2", 4.5),
+        ("--fgs", "--s1", 4.5),
+        ("--acf", "--bg", 4.5),
+        ("--acf", "--s1", 4.5),
+        ("--st-w", "--st-wb", 4.5),
+        ("--st-r", "--st-rb", 4.5),
+        ("--st-o", "--st-ob", 4.5),
+        ("--st-a", "--st-ab", 4.5),
+        ("--st-e", "--st-eb", 4.5),
+        ("--st-w", "--s1", 4.5),
+        ("--st-r", "--s1", 4.5),
+        ("--st-o", "--s1", 4.5),
+        ("--st-a", "--s1", 4.5),
+        ("--st-e", "--s1", 4.5),
+        ("--lns", "--bg", 3.0),
+        ("--lns", "--s1", 3.0),
+        ("--lns", "--s2", 3.0),
+        ("--oac", "--ac", 4.5),
+        ("--os", "--acs", 4.5),
+        ("--oct", "--cta", 4.5),
     )
     low_contrast = 0
-    for theme_name, tokens in (("светлая", light), ("тёмная", dark)):
+    for theme_name, tokens in (("тёмная", dark), ("светлая", light)):
         lines.append("")
         lines.append(f"| пара | контраст | порог | {theme_name} |")
         lines.append("|---|---|---|---|")
         for fg, bg, threshold in pairs:
             ratio = _wcag_contrast(tokens[fg], tokens[bg])
-            if ratio < threshold:
+            if theme_name == "тёмная" and ratio < threshold:
                 low_contrast += 1
             lines.append(
                 f"| {fg} / {bg} | {ratio:.2f} | >= {threshold:g} "
@@ -870,7 +876,7 @@ def ev_u3_11(main: U1Profile, tiny: Path) -> str:
         base
         for base in bases
         if not any(
-            "min-height: var(--u3-tap)" in body
+            "min-height: var(--u3-tap)" in body.replace("min-height:var(", "min-height: var(")
             and any(_applies(p.strip(), base) for p in selector.split(","))
             for selector, body in rules
         )

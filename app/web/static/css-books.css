@@ -1,0 +1,33 @@
+.u3-row-menu menu{position:absolute;right:0;top:100%;margin:var(--gx) 0 0;padding:var(--gx);min-width:180px;display:flex;flex-direction:column;background:var(--s3);border:1px solid var(--ln);border-radius:var(--r12);box-shadow:var(--sh2);z-index:40}.u3-row-menu-item{display:flex;align-items:center;min-height:var(--u3-tap);padding:0 var(--gs);color:var(--fg);font-size:var(--fsm);border:0;background:none;text-align:left;cursor:pointer;border-radius:var(--r8);text-decoration:none}.u3-row-menu-item:hover{background:var(--s2)}.u3-book-k{color:var(--fgm);align-self:start;font-size:var(--fsm)}
+.u3-row-cover{flex:0 0 var(--crw);width:var(--crw);height:var(--crh);display:flex;align-items:center;justify-content:center;border-radius:var(--r6);background:var(--s2);color:var(--fgm);object-fit:cover;font-size:var(--fmd)}
+.u3-row-dot{flex:0 0 auto;width:var(--dot);height:var(--dot);border-radius:var(--r50);background:var(--st-r)}
+.u3-row-menu{position:relative;flex:0 0 auto;margin:0}
+.u3-row-more{display:inline-flex;align-items:center;justify-content:center;min-width:var(--u3-tap);min-height:var(--u3-tap);color:var(--fgm);border-radius:var(--r8)}
+.u3-search{display:flex;gap:var(--gs);margin:var(--gs) 0}
+.u3-search-input{flex:1 1 auto;min-width:0}
+.u3-search-btn{flex:0 0 auto}
+.u3-row-link{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:var(--gs);min-height:var(--u3-tap);text-decoration:none;color:inherit}.u3-book-del-jobs{display:flex;flex-direction:column;gap:var(--gx);margin:0 0 var(--g);padding:0;list-style:none}.u3-book-del-jobs li{display:flex;align-items:center;gap:var(--gs);min-width:0}.u3-book-del-jobs .u3-mono{min-width:0;overflow:hidden;text-overflow:ellipsis}
+#u3-sheet-book-delete .u3-filter-actions{flex-direction:column;align-items:stretch;gap:var(--gs);margin-top:var(--gs)}
+#u3-sheet-book-delete .u3-filter-actions .u3-btn{width:100%}
+.u3-book-del-btn,.u3-book-action{width:100%}
+.u3-book-del-q{margin:0 0 var(--gs);font-size:var(--fmd);font-weight:600}
+.u3-book-delete{display:flex;align-items:center;justify-content:center;min-height:var(--u3-tap);margin:var(--g) 0 calc(var(--p) + env(safe-area-inset-bottom));color:var(--st-e);font-weight:600;text-decoration:none}
+.u3-book-delete:hover{text-decoration:underline}
+.u3-book-head{display:flex;gap:var(--p);margin:var(--gs) 0}
+.u3-book-cover{flex:0 0 var(--cpw);width:var(--cpw);height:var(--cph);display:flex;align-items:center;justify-content:center;border-radius:var(--r10);background:var(--s2);color:var(--fgm);font-size:var(--fxl);object-fit:cover}
+.u3-book-id{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:var(--gx)}
+.u3-book-title{margin:0;font-size:var(--fxl);line-height:var(--lxl);font-weight:700}
+.u3-book-author,.u3-book-note,.u3-book-none{margin:0;font-size:var(--fsm);color:var(--fgm)}
+.u3-book-none{padding:var(--gs)}
+.u3-book-val,.u3-book-v{display:block;flex:1 1 auto;min-width:0;min-height:var(--u3-tap);padding:0 var(--gs);border-radius:var(--r8);color:inherit;text-decoration:none;font-size:var(--fmd);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.u3-book-val:hover,.u3-book-v:hover{background:var(--s2)}
+.u3-book-actions{display:flex;flex-direction:column;gap:var(--gs);margin:var(--gs) 0 var(--g)}
+.u3-book-block{border:1px solid var(--ln);border-radius:var(--r12);background:var(--s1);padding:var(--gs);margin:0 0 var(--g)}
+.u3-book-block-title{margin:0 0 var(--gx);padding:0 var(--gs);font-size:var(--fmd);font-weight:600;color:var(--fgm)}
+.u3-book-row{display:flex;align-items:center;gap:var(--gs);padding:0 var(--gs)}
+.u3-book-all{display:inline-flex;align-items:center;min-height:var(--u3-tap);margin:0 var(--gs);padding:0 var(--gs);border-radius:var(--r8);color:var(--acf);font-size:var(--fsm);font-weight:600;text-decoration:none}
+.u3-book-tech{border:1px solid var(--ln);border-radius:var(--r12);background:var(--s1)}
+.u3-book-tech summary{min-height:var(--u3-tap);padding:0 var(--g);border-radius:var(--r12);font-size:var(--fmd);font-weight:600;cursor:pointer}
+.u3-book-tech-list{display:flex;flex-direction:column;gap:var(--gs);margin:0;padding:0 var(--g) var(--g)}
+.u3-book-tech-list dt{font-size:var(--fsm);color:var(--fgm)}
+.u3-book-tech-list dd{margin:0;font-size:var(--fsm)}

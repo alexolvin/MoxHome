@@ -1,4 +1,8 @@
 {% extends "base.html" %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/css-jobs.css">
+{% endblock %}
 {% block content %}
 {# Серия R §10: вертикальный порядок — (1) строка состояния воркера
    (только если воркер молчит), (2) сегментный фильтр, (3) список строк
@@ -53,13 +57,13 @@
       {% if not total %}
       {% if group != 'all' or f_status or book %}
       <div class="u3-state" data-state="empty-filter">
-        <span class="u3-state-ico" aria-hidden="true">&#9675;</span>
+        <span class="u3-state-ico" aria-hidden="true"><svg class="u3-ico u3-ico-22"><use href="/static/icons.svg#list-checks"></use></svg></span>
         <p class="u3-state-line">{{ s["state_not_found"] }}</p>
         <a class="u3-btn u3-primary" href="/jobs">{{ s["state_reset_filter"] }}</a>
       </div>
       {% else %}
       <div class="u3-state" data-state="empty">
-        <span class="u3-state-ico" aria-hidden="true">&#9675;</span>
+        <span class="u3-state-ico" aria-hidden="true"><svg class="u3-ico u3-ico-22"><use href="/static/icons.svg#list-checks"></use></svg></span>
         <p class="u3-state-line">{{ s["jobs_empty_line"] }}</p>
         <a class="u3-btn u3-primary" href="/books">{{ s["jobs_empty_btn"] }}</a>
       </div>

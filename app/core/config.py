@@ -423,6 +423,9 @@ class UiSection(BaseModel):
     input_font_px: int = Field(default=16, ge=1)
     #: Время жизни экспорт-артефактов, ч (ТЗ-R §9; плановая очистка).
     export_ttl_hours: float = Field(default=48.0, gt=0.0)
+    #: Витрина компонентов /dev/kit (ТЗ V §7.9): доступна только при true,
+    #: иначе 404. По умолчанию false (не боевая страница).
+    dev_kit: bool = Field(default=False)
 
     @model_validator(mode="after")
     def _check_refresh_bounds(self) -> UiSection:

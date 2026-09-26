@@ -310,11 +310,11 @@ VIEWPORT_DUMP_JS = r"""
 def _rgb_to_hex(color: str) -> str | None:
     c = color.strip().lower()
     if c.startswith("rgba"):
-        parts = [p.strip() for p in c[4:-1].split(",")]
+        parts = [p.strip() for p in c[5:-1].split(",")]
         if len(parts) == 4 and parts[3] in ("0", "0.0"):
             return None
     elif c.startswith("rgb"):
-        parts = [p.strip() for p in c[3:-1].split(",")]
+        parts = [p.strip() for p in c[4:-1].split(",")]
     else:
         return c.lstrip("#")
     if len(parts) != 3:
@@ -338,7 +338,7 @@ def saturated_share(viewport_path: Path) -> float:
 def off_tokens(colors: list[str], token_file: Path) -> list[str]:
     if not token_file.exists():
         return []
-    allowed = {line.strip().lower() for line in token_file.read_text().splitlines()
+    allowed = {line.strip().lower().lstrip("#") for line in token_file.read_text().splitlines()
                if line.startswith("#") and len(line) in (7, 9)}
     out: list[str] = []
     for color in colors:

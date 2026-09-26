@@ -4,5 +4,5 @@
    Серия R §12: fab_sheet — лист, который FAB открывает с JS
    (data-sheet-open); без JS — переход на no-JS-форму (fab_href ?sheet=). #}
 {% if fab_href is defined and fab_href %}
-<a class="u3-fab" href="{{ fab_href }}" aria-label="{{ s[fab_label] }}"{% if fab_sheet is defined and fab_sheet %} data-sheet-open="{{ fab_sheet }}"{% endif %}>+</a>
+<a class="u3-fab" href="{{ fab_href }}" aria-label="{{ s[fab_label] }}"{% if fab_sheet is defined and fab_sheet %} data-sheet-open="{{ fab_sheet }}"{% endif %}><svg class="u3-ico u3-ico-18" aria-hidden="true"><use href="/static/icons.svg#plus"></use></svg><span>{{ s[fab_label] }}</span></a>
 {% endif %}
