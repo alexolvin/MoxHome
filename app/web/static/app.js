@@ -142,9 +142,18 @@ function jobRowHtml(j,group){
 const strip=j.progress_pct==null?"<span class='u3-row-strip is-ind' aria-hidden='true'></span>":"<span class='u3-row-strip' aria-hidden='true'"+(j.progress_pct>0?" style='width: "+j.progress_pct+"%'":"")+"></span>";
 return "<article class='u3-row u3-row-job status-"+esc(j.status_group)+"' data-id='"+esc(j.id)+"' data-group='"+esc(group)+"' data-status='"+esc(j.status)+"' data-status-group='"+esc(j.status_group)+"' data-rev='"+esc(j.updated_at)+"' data-book='"+esc(j.book_name)+"' data-queue-rank='"+esc(j.queue_rank)+"'><div class='u3-row-slide'><a class='u3-row-body' href='/jobs/"+esc(j.id)+"'><span class='u3-row-line1' title='"+esc(j.book_title||j.book_name)+"'>"+esc(j.book_title||j.book_name)+"</span><span class='u3-row-line2'>"+esc(jobLine2(j))+"</span><span class='u3-row-line3'>"+jobLine3(j)+"</span></a><span class='u3-row-acts'>"+rowActionHtml(j)+rowActsTail(j)+"</span></div>"+rowSwipeHtml(j)+strip+"</article>";
 }
-function bookCardHtml(b){
+function bookCoverHtml(b,eager){
+if(b.has_cover&&b.cover_v){
+const base="/books/"+enc(b.name)+"/cover?v="+encodeURIComponent(b.cover_v);
+return "<span class='u3-book-cover-img'><img srcset='"+base+"&w=256 256w, "+base+"&w=512 512w' sizes='(max-width: 640px) 33vw, 160px' width='256' height='384' loading='"+(eager?"eager":"lazy")+"' decoding='async' alt=''></span>";
+}
+const grad=(b.cover_grad||0)+1;
+const author=b.author?"<span class='u3-book-ph-author'>"+esc(b.author)+"</span>":"";
+return "<span class='u3-book-ph' style='background:var(--cover-g"+grad+")'><svg class='u3-book-ph-ico' aria-hidden='true'><use href='/static/icons.svg#book-open'></use></svg><span class='u3-book-ph-title'>"+esc(b.title||b.name)+"</span>"+author+"</span>";
+}
+function bookCardHtml(b,eager){
 const title=b.title||b.name;
-const cover=b.cover_path?"<span class='u3-book-cover-img'><img src='/api/books/covers/"+enc(b.name)+"' alt='' loading='lazy' decoding='async'></span>":"<span class='u3-book-ph' style='background:var(--cover-g"+((b.cover_grad||0)+1)+")'><svg class='u3-ico' aria-hidden='true'><use href='/static/icons.svg#book-open'></use></svg></span>";
+const cover=bookCoverHtml(b,eager);
 const g=b.book_status_group||"none";
 const stl={wait:S.book_st_wait,run:S.book_st_run,ok:S.book_st_ok,warn:S.book_st_warn,err:S.book_st_err,none:S.book_st_none}[g]||S.book_st_none;
 return "<article class='u3-book-card' data-name='"+esc(b.name)+"'><a class='u3-book-card-link' href='/books/"+enc(b.name)+"'>"+cover+"<span class='u3-book-card-title' title='"+esc(title)+"'>"+esc(title)+"</span><span class='u3-book-card-st u3-st-"+g+"'>"+esc(stl)+"</span></a></article>";
@@ -496,7 +505,7 @@ hasData=true;
 if(!books.length)showEmpty();
 else{
 body.setAttribute("data-state","ok");
-body.innerHTML="<div class='u3-book-grid'>"+books.map(bookCardHtml).join("")+"</div>";
+body.innerHTML="<div class='u3-book-grid'>"+books.map((b,i)=>bookCardHtml(b,i<9)).join("")+"</div>";
 }
 }catch(e){
 if(isNetErr(e)){

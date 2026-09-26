@@ -591,7 +591,13 @@ BOOK_META_FIELDS: dict[str, tuple[str, ...]] = {
 }
 # Серия R §15: зарезервированные поля (заполняет R6-импорт; в R5 не
 # редактируются, но читаются и переносятся миграцией).
-BOOK_META_RESERVED: tuple[str, ...] = ("source_format", "cover_path", "imported_at")
+BOOK_META_RESERVED: tuple[str, ...] = (
+    "source_format",
+    "cover_path",
+    "cover",
+    "cover_sha256",
+    "imported_at",
+)
 # Серия R §7: ключи строк UI по полям (strings.py — единый источник).
 BOOK_META_FIELD_KEYS = {
     "title": "book_field_title",
@@ -614,21 +620,42 @@ def book_epub_path(settings: Settings, filename: str) -> Path | None:
     return dest if dest.is_file() else None
 
 
-def book_cover_path(settings: Settings, filename: str) -> Path | None:
-    """R6: файл обложки по sidecar-метаданным. Guard имени (паттерн
-    ``book_epub_path``): только ``<stem>.cover.<ext>`` внутри ``input/``;
-    обложки нет или файла нет — ``None``."""
-    dest = book_epub_path(settings, filename)
-    if dest is None:
-        return None
-    cover_name = read_book_meta(dest).get("cover_path")
-    if not cover_name or Path(cover_name).name != cover_name:
-        return None
-    stem = filename[: -len(".epub")]
-    if not cover_name.startswith(stem + ".cover."):
-        return None
-    cover = settings.input_dir / cover_name
-    return cover if cover.is_file() else None
+def book_cover_facts(settings: Settings, dest: Path, meta: dict[str, Any]) -> dict[str, Any]:
+    """V2 (§8): факты выдачи обложки для строки/карточки книги.
+
+    Поддерживает legacy-мета (без ``cover``/``cover_sha256`` — до V2):
+    статус и sha256 вычисляются по исходному файлу. Возврат —
+    ``cover_status`` (extracted/none/failed:…), ``has_cover``, ``cover_v``
+    (sha8 для cache-bust endpoint'а), ``cover_grad`` (§8.4: полный
+    ``sha256(filename) mod 6``)."""
+    stem = dest.name[: -len(".epub")] if dest.name.endswith(".epub") else dest.stem
+    cover_name = meta.get("cover_path")
+    cover_file: Path | None = None
+    if (
+        cover_name
+        and Path(cover_name).name == cover_name
+        and cover_name.startswith(stem + ".cover.")
+    ):
+        cand = settings.input_dir / cover_name
+        if cand.is_file():
+            cover_file = cand
+    status = meta.get("cover")
+    sha = meta.get("cover_sha256")
+    if status is None:  # legacy (до V2) — выводим по файлу
+        status = "extracted" if cover_file is not None else "none"
+    if cover_file is not None and not sha:
+        try:
+            sha = hashlib.sha256(cover_file.read_bytes()).hexdigest()
+        except OSError:
+            sha = None
+    has = status == "extracted" and cover_file is not None and sha is not None
+    grad = int(hashlib.sha256(dest.name.encode("utf-8")).hexdigest(), 16) % 6
+    return {
+        "cover_status": status,
+        "has_cover": has,
+        "cover_v": (sha or "")[:8] or None,
+        "cover_grad": grad,
+    }
 
 
 def book_meta_path(path: Path) -> Path:
@@ -683,6 +710,8 @@ def book_meta_defaults() -> dict[str, Any]:
         "note": None,
         "source_format": None,
         "cover_path": None,
+        "cover": "none",
+        "cover_sha256": None,
         "epubcheck": None,
     }
 
@@ -777,11 +806,11 @@ def list_books(
             "target_default": meta.get("target_default"),
             "cefr_default": meta.get("cefr_default"),
             "note": meta.get("note"),
-            # R6: исходный формат импорта + обложка (решение R5 №8)
+            # R6: исходный формат импорта + обложка (решение R5 №8);
+            # V2 §8: факты выдачи (has_cover, cover_v, cover_status, cover_grad).
             "source_format": meta.get("source_format"),
             "cover_path": meta.get("cover_path"),
-            # §8.4: градиент заглушки по имени (детерминированно, 0–5).
-            "cover_grad": int(hashlib.sha256(path.name.encode("utf-8")).hexdigest()[:8], 16) % 6,
+            **book_cover_facts(settings, path, meta),
             "chapters": stats.get("chapter_count"),
             "segments": stats.get("segment_count"),
             "words": stats.get("word_count"),
@@ -841,6 +870,8 @@ def book_detail(
         "sha256": sha256,
         "uploaded_at_human": human_ts(st.st_mtime),
         "meta": meta,
+        # V2 §8: факты выдачи обложки (has_cover/cover_v/cover_status/cover_grad).
+        **book_cover_facts(settings, dest, meta),
         "chapters": stats.get("chapter_count"),
         "segments": stats.get("segment_count"),
         "words": stats.get("word_count"),

@@ -40,7 +40,6 @@ from test_u1_web import AUTH_SECRET, U1Env, _auth_header, _make_u1_storage
 
 from app.adapters.convert import reset_probe_cache
 from app.services.import_book import sweep_orphans
-from app.web import views
 from app.web.auth import csrf_token
 from app.web.strings import UI_STRINGS
 
@@ -306,7 +305,8 @@ def test_r6_1_native_epub_sync(r6_env: U1Env, tmp_path: Path) -> None:
 
 def test_r6_2_epub_cover_extracted(r6_env: U1Env, tmp_path: Path) -> None:
     """Обложка: EPUB3 ``cover-image`` → ``<name>.cover.png`` рядом с
-    книгой + ``cover_path`` в meta + GET /api/books/covers (200)."""
+    книгой + ``cover_path`` в meta + выдача V2 (``GET /books/{f}/cover``
+    — WebP-миниатюра, TZ §8.3)."""
     profile = r6_env.profiles["r6"]
     source = tmp_path / "r6_cover.epub"
     _build_cover_epub(source)
@@ -318,10 +318,10 @@ def test_r6_2_epub_cover_extracted(r6_env: U1Env, tmp_path: Path) -> None:
     cover_name = str(meta["cover_path"])
     assert cover_name.startswith(name[: -len(".epub")] + ".cover.")
     assert (input_dir / cover_name).is_file()
-    cover = profile.client.get(f"/api/books/covers/{name}")
-    assert cover.status_code == 200
-    assert cover.headers["content-type"].startswith("image/png")
-    assert cover.content == PNG_1X1
+    cover = profile.client.get(f"/books/{name}/cover", params={"w": 256})
+    assert cover.status_code == 200, cover.text
+    assert cover.headers["content-type"].startswith("image/webp")
+    assert "immutable" in cover.headers.get("cache-control", "")
 
 
 def test_r6_3_epub_drm_rejected(r6_env: U1Env) -> None:
@@ -573,30 +573,27 @@ def test_r6_17_health_converter(r6_env: U1Env) -> None:
 
 
 def test_r6_18_cover_404s(r6_env: U1Env, tmp_path: Path) -> None:
-    """GET /api/books/covers: 404 (книги нет / обложки нет); traversal —
-    ``book_cover_path`` → None."""
+    """V2 ``GET /books/{f}/cover``: 404 (книги нет / обложки нет), 200 WebP —
+    у книги с обложкой (TZ §8.3/§8.4)."""
     profile = r6_env.profiles["r6"]
-    assert profile.client.get("/api/books/covers/nope.epub").status_code == 404
+    # нет книги — 404
+    assert profile.client.get("/books/nope.epub/cover").status_code == 404
     # книга С обложкой — 200
     source = tmp_path / "r6_cov.epub"
     _build_cover_epub(source)
     response = _post_file(profile.client, source)
     assert response.status_code == 200, response.text
     name = str(response.json()["name"])
-    assert profile.client.get(f"/api/books/covers/{name}").status_code == 200
+    assert (
+        profile.client.get(f"/books/{name}/cover", params={"w": 256}).status_code == 200
+    )
     # книга без обложки — 404
     simple = tmp_path / "r6_simple.epub"
     _build_simple_epub(simple)
     response = _post_file(profile.client, simple)
     assert response.status_code == 200, response.text
     simple_name = str(response.json()["name"])
-    assert (
-        profile.client.get(f"/api/books/covers/{simple_name}").status_code == 404
-    )
-    settings = profile.settings
-    assert views.book_cover_path(settings, "../secret.epub") is None
-    assert views.book_cover_path(settings, "nope.epub") is None
-    assert views.book_cover_path(settings, simple_name) is None
+    assert profile.client.get(f"/books/{simple_name}/cover").status_code == 404
 
 
 def _build_simple_epub(out: Path) -> None:
@@ -795,6 +792,7 @@ def test_r6_25_t17_guard_and_js_wiring() -> None:
     assert 'id="u3-sheet-import"' in books
     assert "data-sheet-open" in books
     assert "_book_import_sheet.html" in books
-    # rework 2026-09-26: обложка в списке — в карточке (сетка §7.2)
+    # rework 2026-09-26: обложка в списке — в карточке (сетка §7.2);
+    # V2 §8.3: выдача — /books/{f}/cover WebP srcset 256/512 (не /api/books/covers)
     card = (templates / "_book_card.html").read_text(encoding="utf-8")
-    assert "/api/books/covers/" in card
+    assert "/cover?v=" in card and "&w=256" in card and "&w=512" in card

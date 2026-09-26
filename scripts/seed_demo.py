@@ -54,7 +54,7 @@ from app.core.config import ALL_ENV_KEYS, Settings, load_settings  # noqa: E402
 from app.domain.job import Job, JobStatus  # noqa: E402
 from app.services import jobs as jobs_svc  # noqa: E402
 from app.services.analyze import scan_book  # noqa: E402
-from app.services.covers import extract_cover  # noqa: E402
+from app.services.covers import process_cover  # noqa: E402
 from app.storage.database import Database  # noqa: E402
 from app.storage.jobs_repo import JobRepository  # noqa: E402
 from app.web import views  # noqa: E402
@@ -188,14 +188,16 @@ def import_book(settings: Settings, src: Path, name: str) -> Path:
                 + " ".join((*outcome.fatals, *outcome.errors)[:3])
             )
         meta = scan_book(settings, dest)
-        cover_path = extract_cover(dest)
+        cover = process_cover(dest, settings.input_dir / ".covers")
         meta = {
             **views.book_meta_defaults(),
             **meta,
             "imported_at": time.time(),
             "source_format": "epub",
             "epubcheck": epubcheck_facts(outcome),
-            "cover_path": cover_path,
+            "cover_path": cover.cover_path,
+            "cover": cover.status,
+            "cover_sha256": cover.sha256,
         }
         views.write_book_meta(dest, meta)
     except Exception:

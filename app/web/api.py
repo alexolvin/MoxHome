@@ -26,7 +26,6 @@ import hashlib
 import hmac
 import json
 import logging
-import mimetypes
 import os
 import re
 import shutil
@@ -56,7 +55,7 @@ from app.llm.prompts import (
 )
 from app.llm.tasks import task as task_lookup
 from app.services.analyze import scan_book
-from app.services.covers import extract_cover
+from app.services.covers import process_cover
 from app.services.export_artifacts import (
     BookFileMissing,
     ExportInProgress,
@@ -346,17 +345,20 @@ async def _import_epub_sync(
                 ),
             )
         meta = scan_book(settings, dest)
-        cover_path = extract_cover(dest)
+        cover = process_cover(dest, settings.input_dir / ".covers")
         # Серия R §15: новые загрузки пишут сразу .meta.json (старый формат
         # .detect.json — только миграция при первом обращении, R5).
-        # R6: + source_format / epubcheck / cover_path (ТЗ §15).
+        # R6: + source_format / epubcheck / cover_path (ТЗ §15);
+        # V2 (§8): + cover (extracted/none/failed) / cover_sha256.
         meta = {
             **views.book_meta_defaults(),
             **meta,
             "imported_at": time.time(),
             "source_format": "epub",
             "epubcheck": epubcheck_facts(outcome),
-            "cover_path": cover_path,
+            "cover_path": cover.cover_path,
+            "cover": cover.status,
+            "cover_sha256": cover.sha256,
         }
         views.write_book_meta(dest, meta)
     except HTTPException:
@@ -380,24 +382,6 @@ def import_status(import_id: str) -> dict[str, Any]:
             status_code=404, detail=_S["err_import_not_found"].format(id=import_id)
         )
     return rec
-
-
-@router.get("/books/covers/{filename}")
-def book_cover(
-    filename: str,
-    deps: tuple[Settings, JobRepository] = Depends(get_deps),
-) -> FileResponse:
-    """R6 (ТЗ §8): обложка — файл ``<name>.cover.<ext>``; путь
-    валидирует ``views.book_cover_path`` (только ``input/``, имя —
-    по книге), traversal отклоняется."""
-    settings, _repo = deps
-    path = views.book_cover_path(settings, filename)
-    if path is None:
-        raise HTTPException(
-            status_code=404, detail=_S["err_cover_not_found"].format(filename=filename)
-        )
-    media_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
-    return FileResponse(path, media_type=media_type)
 
 
 @router.delete("/books/{filename}")

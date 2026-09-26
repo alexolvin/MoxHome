@@ -15,6 +15,7 @@
 .u3-book-delete:hover{text-decoration:underline}
 .u3-book-head{display:flex;gap:var(--p);margin:var(--gs) 0}
 .u3-book-cover{flex:0 0 var(--cpw);width:var(--cpw);height:var(--cph);display:flex;align-items:center;justify-content:center;border-radius:var(--r10);background:var(--s2);color:var(--fgm);font-size:var(--fxl);object-fit:cover}
+.u3-book-cover-ph{position:relative;color:var(--fg)}
 .u3-book-id{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:var(--gx)}
 .u3-book-title{margin:0;font-size:var(--fxl);line-height:var(--lxl);font-weight:700}
 .u3-book-author,.u3-book-note,.u3-book-none{margin:0;font-size:var(--fsm);color:var(--fgm)}
@@ -42,8 +43,10 @@
 .u3-book-card-link{display:block;text-decoration:none;color:inherit}
 .u3-book-cover-img,.u3-book-ph{display:block;width:100%;aspect-ratio:2/3;border-radius:var(--r8);overflow:hidden;background:var(--s2)}
 .u3-book-cover-img img{width:100%;height:100%;object-fit:cover;display:block}
-.u3-book-ph{display:flex;align-items:center;justify-content:center;color:var(--cover-ph)}
-.u3-book-ph .u3-ico{width:var(--i20);height:var(--i20)}
+.u3-book-ph{position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:var(--gx);color:var(--fg);text-align:left}
+.u3-book-ph-ico{position:absolute;top:var(--gx);right:var(--gx);width:16px;height:16px;opacity:.5;color:var(--fg)}
+.u3-book-ph-title{font-size:var(--fsm);font-weight:700;line-height:1.25;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.u3-book-ph-author{margin-top:auto;font-size:var(--f2);color:var(--fgm)}
 .u3-book-card-title{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:var(--gx);font-size:var(--fsm);font-weight:600;line-height:var(--lsm)}
 .u3-book-card-st{display:flex;align-items:center;gap:var(--gx);margin-top:2px;font-size:var(--fx);font-weight:600;color:var(--fgs)}
 .u3-book-card-st::before{content:"";width:var(--dot);height:var(--dot);border-radius:var(--r50);background:currentColor;flex:0 0 auto}

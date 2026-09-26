@@ -136,9 +136,11 @@ def test_r5_3_card_render(u1_env: U1Env) -> None:
     assert page.status_code == 200, page.text
     doc = _card(page)
 
-    # (2) шапка: обложка-буква + название (meta.title) + автор
-    cover = doc.xpath('//span[@class="u3-book-cover"]')
-    assert len(cover) == 1 and cover[0].text_content() == "К"
+    # (2) шапка: заглушка обложки (обложки нет → §8.4 градиент + иконка)
+    # + название (meta.title) + автор
+    cover = doc.xpath('//span[contains(@class,"u3-book-cover")]')
+    assert len(cover) == 1
+    assert "u3-book-cover-ph" in (cover[0].get("class") or "")
     title = doc.xpath('//h2[@class="u3-book-title"]')
     assert len(title) == 1 and title[0].text_content() == "Карточка"
     # 6 полей — тап открывает лист одного поля (единый механизм)

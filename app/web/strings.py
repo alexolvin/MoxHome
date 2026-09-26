@@ -740,7 +740,6 @@ UI_STRINGS: dict[str, str] = {
     "err_import_scan": "определение языка не выполнено: {reason}",
     "err_import_internal": "импорт не выполнен: {reason}",
     "err_import_not_found": "импорт не найден: {id}",
-    "err_cover_not_found": "обложка не найдена: {filename}",
     "err_book_required": "не выбран файл книги (book)",
     "err_result_pending": "результат не готов (статус: {status})",
     "err_artifact_not_found": "файл не найден: {name}",

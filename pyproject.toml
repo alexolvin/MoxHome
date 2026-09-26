@@ -12,6 +12,7 @@ dependencies = [
     "langdetect>=1.0.9",
     "lxml>=6.1.3",
     "pydantic>=2.13.5",
+    "pillow>=10.4.0",
     "pydantic-settings>=2.15.0",
     "python-multipart>=0.0.32",
     "pyyaml>=6.0.3",

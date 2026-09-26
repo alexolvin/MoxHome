@@ -545,11 +545,6 @@ _CONSUMERS: dict[str, tuple[tuple[str, str], ...]] = {
     "/api/imports/{import_id}": (
         ("app/web/static/app.js", 'fetchJSON("/api/imports/" + enc(id))'),  # GET
     ),
-    # R6 (ТЗ §8): обложка — строка (JS) и no-JS-строка/карточка
-    "/api/books/covers/{filename}": (
-        ("app/web/static/app.js", "'/api/books/covers/\"+enc(b.name)"),  # GET (JS, карточка)
-        ("app/web/templates/_book_card.html", 'src="/api/books/covers/{{ b.name }}"'),
-    ),
     "/api/jobs": (
         ("app/web/templates/jobs.html", 'data-u1-fetch="/api/jobs"'),  # GET
         # POST (R3): создание в листе + «Повторить» (повтор из FAILED/CANCELLED)
