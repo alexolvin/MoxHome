@@ -34,6 +34,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import secrets
 import string
 import subprocess
@@ -242,7 +243,11 @@ METRICS_JS = r"""
     const st = getComputedStyle(el);
     const fs = parseFloat(st.fontSize);
     if (fs > out.max_font_px) out.max_font_px = fs;
-    for (const c of [st.backgroundColor, st.color, st.borderColor]) {
+    // border-color по сторонам (не shorthand): shorthand — строка из
+    // 1–4 rgb(), которая никогда не совпадёт с одним токеном.
+    for (const c of [st.backgroundColor, st.color, st.borderTopColor,
+                     st.borderRightColor, st.borderBottomColor,
+                     st.borderLeftColor]) {
       if (c && c !== "rgba(0, 0, 0, 0)") out.colors[c] = (out.colors[c] || 0) + 1;
     }
     let own = "";
@@ -342,9 +347,14 @@ def off_tokens(colors: list[str], token_file: Path) -> list[str]:
                if line.startswith("#") and len(line) in (7, 9)}
     out: list[str] = []
     for color in colors:
-        hex6 = _rgb_to_hex(color)
-        if hex6 is None or hex6 not in allowed:
-            out.append(color)
+        # border-color (и редкие многозначные) могут нести несколько rgb();
+        # сверяем каждый компонент отдельно, иначе честные токены-компоненты
+        # ложно отмечались бы как «вне токенов».
+        parts = re.findall(r"rgba?\([^)]*\)", color) or [color]
+        for part in parts:
+            hex6 = _rgb_to_hex(part)
+            if hex6 is None or hex6 not in allowed:
+                out.append(part)
     return out
 
 
