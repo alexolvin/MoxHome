@@ -236,11 +236,39 @@ def cover_thumbnail_path(covers_dir: Path, sha256_hex: str, width: int) -> Path:
     return covers_dir / f"{sha256_hex[:16]}-{width}.webp"
 
 
+#: V-T9: жёсткий потолок миниатюры 256w (30 КБ). q80 — номинал; если обложка
+#: сложнее и q80 не вписывается, качество ступенью снижается до вписывания
+#: (не ниже последней ступени). 512w — без бюджета TZ (q80).
+MAX_THUMB_256_BYTES = 30 * 1024
+_QUALITY_STEPS = (80, 75, 70, 65, 60, 55, 50)
+
+
+def _encode_webp(resized: Image.Image, quality: int) -> bytes:
+    buf = io.BytesIO()
+    resized.save(buf, "WEBP", quality=quality, method=6)
+    return buf.getvalue()
+
+
+def _save_webp(resized: Image.Image, path: Path, width: int) -> None:
+    """WebP method=6 (максимальное сжатие при том же q): 256w — q80 с
+    адаптивным снижением до ≤ V-T9 (30 КБ); 512w — q80."""
+    data = _encode_webp(resized, _QUALITY_STEPS[0])
+    if width == 256:
+        for q in _QUALITY_STEPS[1:]:
+            if len(data) <= MAX_THUMB_256_BYTES:
+                break
+            data = _encode_webp(resized, q)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_bytes(data)
+    tmp.replace(path)
+
+
 def ensure_thumbnails(
     source: Path, sha256_hex: str, covers_dir: Path
 ) -> dict[int, Path]:
-    """§8.3: создаёт недостающие миниатюры 256/512 WebP q80. Ошибка —
-    WARNING (процесс жив); существующие файлы не пересоздаёт."""
+    """§8.3: создаёт недостающие миниатюры 256/512 WebP (256w — адаптивное
+    q до ≤ V-T9 30 КБ; 512w — q80). Ошибка — WARNING (процесс жив);
+    существующие файлы не пересоздаёт."""
     covers_dir.mkdir(parents=True, exist_ok=True)
     out: dict[int, Path] = {}
     for width in THUMB_WIDTHS:
@@ -254,9 +282,7 @@ def ensure_thumbnails(
             rgb = opened.convert("RGB")
             height = max(1, int(width * rgb.height / rgb.width))
             resized = rgb.resize((width, height), Image.Resampling.LANCZOS)
-            tmp = path.with_name(path.name + ".tmp")
-            resized.save(tmp, "WEBP", quality=80)
-            tmp.replace(path)
+            _save_webp(resized, path, width)
         except Exception as exc:  # любая ошибка → WARNING (§8.3)
             logger.warning(
                 "cover_thumb_failed: file=%s width=%d reason=%s",

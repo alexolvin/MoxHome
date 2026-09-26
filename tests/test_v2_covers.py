@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from PIL import Image
+from PIL import Image, ImageDraw
 from test_u1_web import _make_u1_storage
 
 from app.services.covers import (
@@ -76,14 +76,43 @@ def _jpeg_bytes() -> bytes:
     return buf.getvalue()
 
 
-def _make_epub(dest: Path, *, with_cover: bool) -> None:
+def _detailed_cover_bytes() -> bytes:
+    """«Книжная» обложка с деталью (градиент + растровые точки + полосы):
+    сложнее плоского цвета — WebP q80 256w не вписывается в 30 КБ, поэтому
+    тест проходит путь адаптивного снижения качества (V-T9)."""
+    w, h = 300, 400
+    img = Image.new("RGB", (w, h))
+    d = ImageDraw.Draw(img)
+    for y in range(h):
+        t = y / h
+        d.line(
+            [(0, y), (w, y)],
+            fill=(int(180 - 120 * t), int(40 + 80 * t), int(90 - 60 * t)),
+        )
+    for y in range(0, h, 6):
+        for x in range(0, w, 6):
+            r = 2 if ((x // 6 + y // 6) % 2) else 1
+            d.ellipse([x, y, x + r, y + r], fill=(255, 240, 220))
+    for i in range(5):
+        d.rectangle([20, 60 + i * 50, w - 20, 80 + i * 50], fill=(20, 20, 30))
+    buf = io.BytesIO()
+    img.save(buf, "JPEG")
+    return buf.getvalue()
+
+
+def _make_epub(
+    dest: Path, *, with_cover: bool, cover_bytes: bytes | None = None
+) -> None:
     with zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("mimetype", "application/epub+zip", compress_type=zipfile.ZIP_STORED)
         z.writestr("META-INF/container.xml", _CONTAINER)
         z.writestr("OEBPS/content.opf", _opf(with_cover))
         z.writestr("OEBPS/chapter1.xhtml", _XHTML)
         if with_cover:
-            z.writestr("OEBPS/cover.jpg", _jpeg_bytes())
+            z.writestr(
+                "OEBPS/cover.jpg",
+                cover_bytes if cover_bytes is not None else _jpeg_bytes(),
+            )
 
 
 def _covers_for(epub: Path) -> Path:
@@ -152,6 +181,26 @@ def test_v2_extract_valid_cover_and_thumbnails(tmp_path: Path) -> None:
         assert img.width == 512
     # V-T9: миниатюра 256w ≤ 30 КБ
     assert t256.stat().st_size <= 30 * 1024, t256.stat().st_size
+
+
+def test_v2_t9_adaptive_quality_keeps_256_under_budget(tmp_path: Path) -> None:
+    """V-T9 (адаптивное качество): детальная обложка, которую WebP q80 256w
+    не вписывает в 30 КБ, — код снижает качество, и итог ≤ 30 КБ при ширине
+    256. (q80 — номинал; жёсткий потолок — 30 КБ, TZ §8.3 + V-T9.)"""
+    dest = tmp_path / "detailed.epub"
+    _make_epub(dest, with_cover=True, cover_bytes=_detailed_cover_bytes())
+    covers_dir = _covers_for(dest)
+    result = process_cover(dest, covers_dir)
+    assert result.status == "extracted" and result.sha256
+    t256 = covers_dir / f"{result.sha256[:16]}-256.webp"
+    assert t256.is_file()
+    assert t256.stat().st_size <= 30 * 1024, t256.stat().st_size
+    with Image.open(t256) as img:
+        assert img.width == 256
+    # 512w не имеет бюджета TZ — просто создается с правильной шириной
+    t512 = covers_dir / f"{result.sha256[:16]}-512.webp"
+    with Image.open(t512) as img:
+        assert img.width == 512
 
 
 def test_v2_ensure_thumbnails_lazy(tmp_path: Path) -> None:
