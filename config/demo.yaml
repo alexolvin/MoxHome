@@ -68,7 +68,7 @@ ui:
   tap_target_px: 44
   tap_gap_px: 8
   row_height_px: 64
-  tabbar_height_px: 56
+  tabbar_height_px: 44
   input_font_px: 16
   export_ttl_hours: 48.0
   dev_kit: true

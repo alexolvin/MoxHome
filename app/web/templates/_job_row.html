@@ -18,7 +18,7 @@
    elapsed_human, status_group, status_glyph, queue_rank, created_at),
    gname (now|today|earlier). #}
 {% set j = row.job %}
-{% set src = j.source_language or s["common_not_set"] %}
+{% set src = row.source_display or s["common_not_set"] %}
 {% set tgt = j.target_language or s["common_not_set"] %}
 {% set st = j.status.value %}
 {% set is_run = row.status_group == "run" %}
@@ -26,11 +26,11 @@
 <article class="u3-row u3-row-job status-{{ row.status_group }}" data-id="{{ j.id }}" data-group="{{ gname }}" data-status="{{ st }}" data-status-group="{{ row.status_group }}" data-rev="{{ j.updated_at }}" data-book="{{ row.book_name }}" data-queue-rank="{{ row.queue_rank }}">
   <div class="u3-row-slide">
     <a class="u3-row-body" href="/jobs/{{ j.id }}">
-      <span class="u3-row-line1" title="{{ row.book_name }}">{{ row.book_name }}</span>
+      <span class="u3-row-line1" title="{{ row.book_title }}">{{ row.book_title }}</span>
       <span class="u3-row-line2">{{ src }}→{{ tgt }} · {{ j.mode }}{% if j.learning_cefr %} · {{ j.learning_cefr }}{% endif %}</span>
-      <span class="u3-row-line3"><span class="u3-status status-{{ row.status_group }}"><span class="u3-status-ico" aria-hidden="true"><svg class="u3-ico u3-ico-14"><use href="/static/icons.svg#{{ {'wait':'pause','run':'play','ok':'check','warn':'triangle-alert','err':'x'}[row.status_group] }}"></use></svg></span>{{ st }}</span>{% if row.progress_pct is not none %}<span class="u3-row-sep"> · </span>{{ row.progress_pct }}%{% endif %}<span class="u3-row-sep"> · </span>{{ row.elapsed_human }}</span>
+      <span class="u3-row-line3"><span class="u3-status status-{{ row.status_group }}" title="{{ st }}"><span class="u3-status-ico" aria-hidden="true"><svg class="u3-ico u3-ico-14"><use href="/static/icons.svg#{{ {'wait':'pause','run':'play','ok':'check','warn':'triangle-alert','err':'x'}[row.status_group] }}"></use></svg></span></span>{% if row.progress_pct is not none %}<span class="u3-row-sep"> · </span>{{ row.progress_pct }}%{% endif %}<span class="u3-row-sep"> · </span>{{ row.time_label or s["common_not_set"] }}</span>
     </a>
-    <span class="u3-row-action">
+    <span class="u3-row-acts">
       {% if st == "NEEDS_CONFIRMATION" %}
       {# no-JS — страница-маршрут (тот же confirm_job, 303); JS —
          перехват submit и fetch /api/jobs/{id}/confirm. #}
@@ -58,22 +58,16 @@
       {% else %}
       <a class="u3-row-btn" data-row-retry="{{ j.id }}" href="/jobs?sheet=create&retry_of={{ j.id }}" aria-label="{{ s["job_row_retry"] }}"><span aria-hidden="true"><svg class="u3-ico u3-ico-18"><use href="/static/icons.svg#rotate-ccw"></use></svg></span></a>
       {% endif %}
+      {# реворк 2026-09-26 (п.9): вторичные действия — видимые пиктограммы
+         (отмена — не-терминальные; логи — всегда); свайп — только удаление #}
+      {% if not terminal %}
+      <button type="button" class="u3-row-btn" data-swap="cancel" data-job="{{ j.id }}" aria-label="{{ s["job_swipe_cancel"] }}"><span aria-hidden="true"><svg class="u3-ico u3-ico-18"><use href="/static/icons.svg#x"></use></svg></span></button>
+      {% endif %}
+      <a class="u3-row-btn" href="/jobs/{{ j.id }}#logs" aria-label="{{ s["job_swipe_logs"] }}"><span aria-hidden="true"><svg class="u3-ico u3-ico-18"><use href="/static/icons.svg#file-text"></use></svg></span></a>
     </span>
   </div>
   <span class="u3-row-swipe" aria-hidden="true">
-    {% if st == "CREATED" or st == "NEEDS_CONFIRMATION" or is_run %}
-    <button type="button" class="u3-swipe-btn" data-swap="pause" data-job="{{ j.id }}">{{ s["job_swipe_pause"] }}</button>
-    {% endif %}
-    {% if not terminal %}
-    <button type="button" class="u3-swipe-btn u3-danger" data-swap="cancel" data-job="{{ j.id }}">{{ s["job_swipe_cancel"] }}</button>
-    {% endif %}
-    <a class="u3-swipe-btn" href="/jobs/{{ j.id }}#logs">{{ s["job_swipe_logs"] }}</a>
-    {% if terminal %}
     <button type="button" class="u3-swipe-btn u3-danger" data-swap="delete" data-job="{{ j.id }}" data-book-name="{{ row.book_name }}">{{ s["job_swipe_delete"] }}</button>
-    {% endif %}
-    {% if st == "CREATED" %}
-    <button type="button" class="u3-swipe-btn" data-swap="queue" data-job="{{ j.id }}">{{ s["job_swipe_queue"] }}</button>
-    {% endif %}
   </span>
   <span class="u3-row-strip{% if row.progress_pct is none %} is-ind{% endif %}"{% if row.progress_pct is not none and row.progress_pct > 0 %} style="width: {{ row.progress_pct }}%"{% endif %} aria-hidden="true"></span>
 </article>

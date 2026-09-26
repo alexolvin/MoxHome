@@ -418,7 +418,7 @@ class UiSection(BaseModel):
     #: Высота строки списка, px (ТЗ-R §3).
     row_height_px: int = Field(default=64, ge=1)
     #: Высота таб-бара, px, плюс env(safe-area-inset-bottom) (ТЗ-R §3).
-    tabbar_height_px: int = Field(default=56, ge=1)
+    tabbar_height_px: int = Field(default=44, ge=1)
     #: Кегль полей ввода, px (ТЗ-R §3: 16 — запрет зума iOS/Android).
     input_font_px: int = Field(default=16, ge=1)
     #: Время жизни экспорт-артефактов, ч (ТЗ-R §9; плановая очистка).

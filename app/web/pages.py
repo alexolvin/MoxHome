@@ -136,10 +136,11 @@ def _build_job_rows(
     """Серия R §10: строки списка с группировкой (единый источник
     views.job_list_group); время работы — E7/M7 (bulk-переходы, без N+1)."""
     group_rows: dict[str, list[dict[str, object]]] = {
-        "now": [],
-        "today": [],
-        "earlier": [],
+        "active": [],
+        "queue": [],
+        "done": [],
     }
+    title_map = views.book_title_map([Path(j.source_path) for j in jobs])
     for job in jobs:
         elapsed, _eta = views.elapsed_and_eta(job, transitions.get(job.id, []))
         indeterminate = job.status in (JobStatus.PLANNING, JobStatus.VALIDATING_OUTPUT)
@@ -149,6 +150,8 @@ def _build_job_rows(
             {
                 "job": job,
                 "book_name": Path(job.source_path).name,
+                "book_title": title_map.get(Path(job.source_path).name)
+                or Path(job.source_path).name,
                 "progress_display": views.progress_facts(
                     job, views.read_json(settings.job_dir(job.id) / "validation.json")
                 )["display"],
@@ -156,26 +159,43 @@ def _build_job_rows(
                 if indeterminate
                 else round((job.progress or 0.0) * 100),
                 "elapsed_human": views.human_duration(elapsed),
+                "time_label": views.job_time_label(job, elapsed, _eta),
                 "status_group": views.status_group(job.status.value),
                 "status_glyph": views.status_glyph(job.status.value),
+                # реворк 2026-09-26 (п.10): исходный язык строки — как у книги
+                "source_display": views.job_source_display(settings, job),
                 # Серия R §11: место в очереди (свайп «Вперёд очереди»)
                 # и время создания (порядок wait-группы).
                 "queue_rank": job.queue_rank,
                 "created_at": job.created_at,
             }
         )
-    return group_rows
+    return _sort_job_groups(group_rows)
 
 
-def _sort_waiting_rows(rows: list[dict[str, object]]) -> None:
-    """Серия R §11: группа «Ожидание» — queue_rank DESC, created_at ASC
-    (значения int/float ставит ``_build_job_rows``)."""
-    rows.sort(
+def _sort_job_groups(
+    group_rows: dict[str, list[dict[str, object]]],
+) -> dict[str, list[dict[str, object]]]:
+    """Очередь (реворк 2026-09-26 §10): active — выполняемое сверху
+    (run-статусы, затем пауза/подтверждение; по обновлению desc); queue —
+    queue_rank DESC, created_at ASC (порядок drag); done — по обновлению desc."""
+    def _upd(row: dict[str, object]) -> float:
+        return float(cast(Job, row["job"]).updated_at)
+
+    group_rows["active"].sort(
+        key=lambda row: (
+            0 if row["status_group"] == "run" else 1,
+            -_upd(row),
+        )
+    )
+    group_rows["queue"].sort(
         key=lambda row: (
             -int(cast("int", row["queue_rank"])),
             float(cast("float", row["created_at"])),
         )
     )
+    group_rows["done"].sort(key=lambda row: -_upd(row))
+    return group_rows
 
 
 def _jobs_sheet_prep(  # noqa: PLR0917 — параметры листов: sheet + job/retry/book
@@ -494,9 +514,10 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
         transitions = repo.list_transitions_bulk([job.id for job in jobs])
         today_start = views.today_start_epoch()
         grouped = _build_job_rows(jobs, settings, transitions, today_start)
-        # до 3 последних — плоским списком (row, gname) для шаблона
+        # до 3 последних — плоским списком (row, gname) для шаблона;
+        # порядок — очередь (active/queue/done), как в списке заданий
         job_rows: list[tuple[dict[str, object], str]] = []
-        for gname in ("now", "today", "earlier"):
+        for gname in ("active", "queue", "done"):
             for row in grouped.get(gname, []):
                 job_rows.append((row, gname))
         title = meta.get("title") or detail["name"]
@@ -830,12 +851,6 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
         today_start = views.today_start_epoch()
         transitions = repo.list_transitions_bulk([job.id for job in jobs])
         group_rows = _build_job_rows(jobs, settings, transitions, today_start)
-
-        # Серия R §11: порядок группы «Ожидание» отражает queue_rank
-        # (queue_rank DESC, created_at ASC); остальные строки — по §10.
-        if group_norm == "waiting":
-            for rows in group_rows.values():
-                _sort_waiting_rows(rows)
 
         sheet_norm = sheet if sheet in ("filter", "purge", "create", "export") else ""
         export_data, create_data, export_missing = _jobs_sheet_prep(

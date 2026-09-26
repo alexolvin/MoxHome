@@ -17,18 +17,18 @@
   <input type="hidden" name="u3_csrf" value="{{ csrf }}">
   <fieldset class="u3-exp-section">
     <legend>{{ s["job_export_section_objects"] }}</legend>
-    <label class="u3-exp-item"><input type="checkbox" name="objects" value="translation"{% if export.export.objects.translation %} checked{% else %} disabled{% endif %}> {{ s["job_export_obj_translation"] }}{% if not export.export.objects.translation %} <span class="hint">{{ s["job_export_obj_missing"] }}</span>{% endif %}</label>
-    <label class="u3-exp-item"><input type="checkbox" name="objects" value="learning"{% if export.export.objects.learning %} checked{% else %} disabled{% endif %}> {{ s["job_export_obj_learning"] }}{% if not export.export.objects.learning %} <span class="hint">{{ s["job_export_obj_missing"] }}</span>{% endif %}</label>
-    <label class="u3-exp-item"><input type="checkbox" name="objects" value="cards"{% if export.export.objects.cards %} checked{% else %} disabled{% endif %}> {{ s["job_export_obj_cards"] }}{% if not export.export.objects.cards %} <span class="hint">{{ s["job_export_obj_missing"] }}</span>{% endif %}</label>
-    <label class="u3-exp-item"><input type="checkbox" name="objects" value="reports"{% if export.export.objects.reports %} checked{% else %} disabled{% endif %}> {{ s["job_export_obj_reports"] }}{% if not export.export.objects.reports %} <span class="hint">{{ s["job_export_obj_missing"] }}</span>{% endif %}</label>
+    <label class="u3-exp-item"><input type="checkbox" class="u3-switch" name="objects" value="translation"{% if export.export.objects.translation %} checked{% else %} disabled{% endif %}> {{ s["job_export_obj_translation"] }}{% if not export.export.objects.translation %} <span class="hint">{{ s["job_export_obj_missing"] }}</span>{% endif %}</label>
+    <label class="u3-exp-item"><input type="checkbox" class="u3-switch" name="objects" value="learning"{% if export.export.objects.learning %} checked{% else %} disabled{% endif %}> {{ s["job_export_obj_learning"] }}{% if not export.export.objects.learning %} <span class="hint">{{ s["job_export_obj_missing"] }}</span>{% endif %}</label>
+    <label class="u3-exp-item"><input type="checkbox" class="u3-switch" name="objects" value="cards"{% if export.export.objects.cards %} checked{% else %} disabled{% endif %}> {{ s["job_export_obj_cards"] }}{% if not export.export.objects.cards %} <span class="hint">{{ s["job_export_obj_missing"] }}</span>{% endif %}</label>
+    <label class="u3-exp-item"><input type="checkbox" class="u3-switch" name="objects" value="reports"{% if export.export.objects.reports %} checked{% else %} disabled{% endif %}> {{ s["job_export_obj_reports"] }}{% if not export.export.objects.reports %} <span class="hint">{{ s["job_export_obj_missing"] }}</span>{% endif %}</label>
   </fieldset>
   <fieldset class="u3-exp-section">
     <legend>{{ s["job_export_section_formats"] }}</legend>
     <div class="u3-exp-grid">
-      <label class="u3-exp-item"><input type="checkbox" name="formats" value="epub" checked> {{ s["job_export_fmt_epub"] }}</label>
+      <label class="u3-exp-item"><input type="radio" name="formats" value="epub" checked> {{ s["job_export_fmt_epub"] }}</label>
       {% for fmt in export.formats %}
       {% if fmt != "epub" %}
-      <label class="u3-exp-item"><input type="checkbox" name="formats" value="{{ fmt }}"{% if not export.converter_ok %} disabled{% endif %}> {{ s["job_export_fmt_" ~ fmt] }}</label>
+      <label class="u3-exp-item"><input type="radio" name="formats" value="{{ fmt }}"{% if not export.converter_ok %} disabled{% endif %}> {{ s["job_export_fmt_" ~ fmt] }}</label>
       {% endif %}
       {% endfor %}
     </div>
@@ -63,18 +63,18 @@
   </fieldset>
   <fieldset class="u3-exp-section">
     <legend>{{ s["job_export_section_objects"] }}</legend>
-    <label class="u3-exp-item"><input type="checkbox" name="objects" value="translation" checked> {{ s["job_export_obj_translation"] }}</label>
-    <label class="u3-exp-item"><input type="checkbox" name="objects" value="learning"> {{ s["job_export_obj_learning"] }}</label>
-    <label class="u3-exp-item"><input type="checkbox" name="objects" value="cards"> {{ s["job_export_obj_cards"] }}</label>
-    <label class="u3-exp-item"><input type="checkbox" name="objects" value="reports"> {{ s["job_export_obj_reports"] }}</label>
+    <label class="u3-exp-item"><input type="checkbox" class="u3-switch" name="objects" value="translation" checked> {{ s["job_export_obj_translation"] }}</label>
+    <label class="u3-exp-item"><input type="checkbox" class="u3-switch" name="objects" value="learning"> {{ s["job_export_obj_learning"] }}</label>
+    <label class="u3-exp-item"><input type="checkbox" class="u3-switch" name="objects" value="cards"> {{ s["job_export_obj_cards"] }}</label>
+    <label class="u3-exp-item"><input type="checkbox" class="u3-switch" name="objects" value="reports"> {{ s["job_export_obj_reports"] }}</label>
   </fieldset>
   <fieldset class="u3-exp-section">
     <legend>{{ s["job_export_section_formats"] }}</legend>
     <div class="u3-exp-grid">
-      <label class="u3-exp-item"><input type="checkbox" name="formats" value="epub" checked> {{ s["job_export_fmt_epub"] }}</label>
+      <label class="u3-exp-item"><input type="radio" name="formats" value="epub" checked> {{ s["job_export_fmt_epub"] }}</label>
       {% for fmt in export.formats %}
       {% if fmt != "epub" %}
-      <label class="u3-exp-item"><input type="checkbox" name="formats" value="{{ fmt }}"{% if not export.converter_ok %} disabled{% endif %}> {{ s["job_export_fmt_" ~ fmt] }}</label>
+      <label class="u3-exp-item"><input type="radio" name="formats" value="{{ fmt }}"{% if not export.converter_ok %} disabled{% endif %}> {{ s["job_export_fmt_" ~ fmt] }}</label>
       {% endif %}
       {% endfor %}
     </div>

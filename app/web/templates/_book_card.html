@@ -1,0 +1,21 @@
+{# Карточка книги в сетке (TZ V §7.2, rework 2026-09-26): обложка 2:3
+   (настоящая /api/books/covers или заглушка §8.4 — градиент + иконка),
+   название --fs-sm 600 в две строки с обрезкой, строка статуса --fs-xs
+   с цветной точкой. Технические поля (детекция, размер) — удалены (§9.5):
+   на карточке только главное. Переменная: b (views.list_books). #}
+{% set btitle = b.title or b.name %}
+{% set stlabel = {
+  "wait": s["book_st_wait"], "run": s["book_st_run"], "ok": s["book_st_ok"],
+  "warn": s["book_st_warn"], "err": s["book_st_err"], "none": s["book_st_none"],
+}[b.book_status_group or "none"] %}
+<article class="u3-book-card" data-name="{{ b.name }}">
+  <a class="u3-book-card-link" href="/books/{{ b.name }}">
+    {% if b.cover_path %}
+    <span class="u3-book-cover-img"><img src="/api/books/covers/{{ b.name }}" alt="" loading="lazy" decoding="async"></span>
+    {% else %}
+    <span class="u3-book-ph" style="background:var(--cover-g{{ b.cover_grad + 1 }})"><svg class="u3-ico" aria-hidden="true"><use href="/static/icons.svg#book-open"></use></svg></span>
+    {% endif %}
+    <span class="u3-book-card-title" title="{{ btitle }}">{{ btitle }}</span>
+    <span class="u3-book-card-st u3-st-{{ b.book_status_group or "none" }}">{{ stlabel }}</span>
+  </a>
+</article>

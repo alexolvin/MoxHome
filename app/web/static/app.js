@@ -93,7 +93,7 @@ function jobMode(j){
 return esc(j.mode)+(j.learning_level?" / "+esc(j.learning_level)+(j.learning_cefr?" ("+esc(j.learning_cefr)+")":""):"");
 }
 function jobPair(j){
-return esc(j.source_language||NS)+" → "+esc(j.target_language);
+return esc(j.source_display||j.source_language||NS)+" → "+esc(j.target_language);
 }
 const TERMINAL_JOB_STATUSES=new Set(["COMPLETED","COMPLETED_WITH_WARNINGS","FAILED","CANCELLED"]);
 function rowActionHtml(j){
@@ -108,21 +108,26 @@ if(st==="COMPLETED"||st==="COMPLETED_WITH_WARNINGS")return "<a class='u3-row-btn
 return "<a class='u3-row-btn' data-row-retry='"+id+"' href='/jobs?sheet=create&retry_of="+id+"' aria-label='"+esc(S.job_row_retry)+"'><span aria-hidden='true'>"+ICO("rotate-ccw",18)+"</span></a>";
 }
 function rowSwipeHtml(j){
+const id=esc(j.id);
+return "<span class='u3-row-swipe' aria-hidden='true'><button type='button' class='u3-swipe-btn u3-danger' data-swap='delete' data-job='"+id+"' data-book-name='"+esc(j.book_name)+"'>"+esc(S.job_swipe_delete)+"</button></span>";
+}
+function rowActsTail(j){
 const st=j.status;
 const id=esc(j.id);
-const B=(swap,cls,extra,label)=>"<button type='button' class='u3-swipe-btn"+(cls?" "+cls:"")+"' data-swap='"+swap+"' data-job='"+id+"'"+(extra||"")+">"+esc(label)+"</button>";
-let h="<span class='u3-row-swipe' aria-hidden='true'>";
-if(st==="CREATED"||st==="NEEDS_CONFIRMATION"||j.status_group==="run")h+=B("pause","","",S.job_swipe_pause);
-if(!TERMINAL_JOB_STATUSES.has(st))h+=B("cancel","u3-danger","",S.job_swipe_cancel);
-h+="<a class='u3-swipe-btn' href='/jobs/"+id+"#logs'>"+esc(S.job_swipe_logs)+"</a>";
-if(TERMINAL_JOB_STATUSES.has(st))h+=B("delete","u3-danger"," data-book-name='"+esc(j.book_name)+"'",S.job_swipe_delete);
-if(st==="CREATED")h+=B("queue","","",S.job_swipe_queue);
-return h+"</span>";
+let h="";
+if(!TERMINAL_JOB_STATUSES.has(st))h+="<button type='button' class='u3-row-btn' data-swap='cancel' data-job='"+id+"' aria-label='"+esc(S.job_swipe_cancel)+"'><span aria-hidden='true'>"+ICO("x",18)+"</span></button>";
+h+="<a class='u3-row-btn' href='/jobs/"+id+"#logs' aria-label='"+esc(S.job_swipe_logs)+"'><span aria-hidden='true'>"+ICO("file-text",18)+"</span></a>";
+return h;
 }
-const GROUP_KEYS=["now","today","earlier"];
-const GROUP_LABELS={now:"jobs_group_now",today:"jobs_group_today",earlier:"jobs_group_earlier"};
+const GROUP_KEYS=["active","queue","done"];
+const GROUP_LABELS={active:"jobs_group_active",queue:"jobs_group_queue",done:"jobs_group_done"};
+const GROUP_SORT={
+active:(a,b)=>((a.status_group==="run"?0:1)-(b.status_group==="run"?0:1))||b.updated_at-a.updated_at,
+queue:(a,b)=>(b.queue_rank||0)-(a.queue_rank||0)||a.created_at-b.created_at||(a.id<b.id?-1:1),
+done:(a,b)=>b.updated_at-a.updated_at,
+};
 function jobLine2(j){
-return (j.source_language||NS)+"→"+j.target_language+" · "+j.mode+(j.learning_cefr?" · "+j.learning_cefr:"");
+return (j.source_display||j.source_language||NS)+"→"+j.target_language+" · "+j.mode+(j.learning_cefr?" · "+j.learning_cefr:"");
 }
 function fmtDuration(totalSeconds){
 const m=Math.max(0,Math.floor((totalSeconds||0)/60));
@@ -131,17 +136,18 @@ return fmt(S.time_hm,{h:Math.floor(m/60),m:m%60});
 }
 function jobLine3(j){
 const pct=j.progress_pct==null?"":"<span class='u3-row-sep'> · </span>"+j.progress_pct+"%";
-return "<span class='u3-status status-"+esc(j.status_group)+"'><span class='u3-status-ico' aria-hidden='true'>"+ICO(ST_ICO[j.status_group],14)+"</span>"+esc(j.status)+"</span>"+pct+"<span class='u3-row-sep'> · </span>"+fmtDuration(j.elapsed_seconds);
+return "<span class='u3-status status-"+esc(j.status_group)+"' title='"+esc(j.status)+"'><span class='u3-status-ico' aria-hidden='true'>"+ICO(ST_ICO[j.status_group],14)+"</span></span>"+pct+"<span class='u3-row-sep'> · </span>"+esc(j.time_label||NS);
 }
 function jobRowHtml(j,group){
 const strip=j.progress_pct==null?"<span class='u3-row-strip is-ind' aria-hidden='true'></span>":"<span class='u3-row-strip' aria-hidden='true'"+(j.progress_pct>0?" style='width: "+j.progress_pct+"%'":"")+"></span>";
-return "<article class='u3-row u3-row-job status-"+esc(j.status_group)+"' data-id='"+esc(j.id)+"' data-group='"+esc(group)+"' data-status='"+esc(j.status)+"' data-status-group='"+esc(j.status_group)+"' data-rev='"+esc(j.updated_at)+"' data-book='"+esc(j.book_name)+"' data-queue-rank='"+esc(j.queue_rank)+"'><div class='u3-row-slide'><a class='u3-row-body' href='/jobs/"+esc(j.id)+"'><span class='u3-row-line1' title='"+esc(j.book_name)+"'>"+esc(j.book_name)+"</span><span class='u3-row-line2'>"+esc(jobLine2(j))+"</span><span class='u3-row-line3'>"+jobLine3(j)+"</span></a><span class='u3-row-action'>"+rowActionHtml(j)+"</span></div>"+rowSwipeHtml(j)+strip+"</article>";
+return "<article class='u3-row u3-row-job status-"+esc(j.status_group)+"' data-id='"+esc(j.id)+"' data-group='"+esc(group)+"' data-status='"+esc(j.status)+"' data-status-group='"+esc(j.status_group)+"' data-rev='"+esc(j.updated_at)+"' data-book='"+esc(j.book_name)+"' data-queue-rank='"+esc(j.queue_rank)+"'><div class='u3-row-slide'><a class='u3-row-body' href='/jobs/"+esc(j.id)+"'><span class='u3-row-line1' title='"+esc(j.book_title||j.book_name)+"'>"+esc(j.book_title||j.book_name)+"</span><span class='u3-row-line2'>"+esc(jobLine2(j))+"</span><span class='u3-row-line3'>"+jobLine3(j)+"</span></a><span class='u3-row-acts'>"+rowActionHtml(j)+rowActsTail(j)+"</span></div>"+rowSwipeHtml(j)+strip+"</article>";
 }
-function bookRowHtml(b){
+function bookCardHtml(b){
 const title=b.title||b.name;
-const dot=b.has_active_job?"<span class='u3-row-dot' aria-hidden='true'></span>":"";
-const cover=b.cover_path?"<img class='u3-row-cover' src='/api/books/covers/" + enc(b.name)+"' alt='' loading='lazy'>":"<span class='u3-row-cover' aria-hidden='true'>"+esc(title.charAt(0).toUpperCase())+"</span>";
-return "<article class='u3-row u3-row-book' data-name='"+esc(b.name)+"'><a class='u3-row-link' href='/books/"+enc(b.name)+"'>"+cover+"<span class='u3-row-body'><span class='u3-row-line1' title='"+esc(title)+"'>"+esc(title)+"</span><span class='u3-row-line2'>"+esc(b.detected||b.dc_language||NS)+"→? · "+esc(b.size_human||NS)+"</span></span></a>"+dot+"<details class='u3-row-menu'><summary class='u3-row-more' aria-label='"+esc(S.row_actions_label)+"'>"+ICO("ellipsis")+"</summary><menu><a class='u3-row-menu-item u3-danger' href='/books/"+enc(b.name)+"/delete' data-book-delete='"+esc(b.name)+"'>"+esc(S.book_delete_btn)+"</a></menu></details></article>";
+const cover=b.cover_path?"<span class='u3-book-cover-img'><img src='/api/books/covers/"+enc(b.name)+"' alt='' loading='lazy' decoding='async'></span>":"<span class='u3-book-ph' style='background:var(--cover-g"+((b.cover_grad||0)+1)+")'><svg class='u3-ico' aria-hidden='true'><use href='/static/icons.svg#book-open'></use></svg></span>";
+const g=b.book_status_group||"none";
+const stl={wait:S.book_st_wait,run:S.book_st_run,ok:S.book_st_ok,warn:S.book_st_warn,err:S.book_st_err,none:S.book_st_none}[g]||S.book_st_none;
+return "<article class='u3-book-card' data-name='"+esc(b.name)+"'><a class='u3-book-card-link' href='/books/"+enc(b.name)+"'>"+cover+"<span class='u3-book-card-title' title='"+esc(title)+"'>"+esc(title)+"</span><span class='u3-book-card-st u3-st-"+g+"'>"+esc(stl)+"</span></a></article>";
 }
 const RENDERERS={
 quality(el,data){
@@ -303,7 +309,7 @@ if(announceEl)announceEl.textContent=fmt(S.jobs_announce_status,{id:j.id,status:
 };
 const resortSection=gname=>{
 const list=[...rowsEls[gname].children].map(n=>rowsById.get(n.dataset.id)).filter(Boolean);
-for(const j of sorted(list))rowsEls[gname].appendChild(nodesById.get(j.id));
+for(const j of list.sort(GROUP_SORT[gname]))rowsEls[gname].appendChild(nodesById.get(j.id));
 };
 const applyFull=rows=>{
 hasData=true;
@@ -318,11 +324,14 @@ showEmpty();
 return;
 }
 ensureSections();
-for(const j of sorted(rows.filter(matches))){
+const matched=rows.filter(matches);
+for(const gname of GROUP_KEYS){
+for(const j of matched.filter(x=>x.group===gname).sort(GROUP_SORT[gname])){
 const node=fromHtml(jobRowHtml(j,j.group));
-rowsEls[j.group].appendChild(node);
+rowsEls[gname].appendChild(node);
 rowsById.set(j.id,j);
 nodesById.set(j.id,node);
+}
 }
 for(const gname of GROUP_KEYS)touchSection(gname);
 };
@@ -335,15 +344,15 @@ node.dataset.book=j.book_name;
 node.dataset.queueRank=String(j.queue_rank);
 const l1=node.querySelector(".u3-row-line1");
 if(l1){
-l1.textContent=j.book_name;
-l1.title=j.book_name;
+l1.textContent=j.book_title||j.book_name;
+l1.title=j.book_title||j.book_name;
 }
 const l2=node.querySelector(".u3-row-line2");
 if(l2)l2.textContent=jobLine2(j);
 const l3=node.querySelector(".u3-row-line3");
 if(l3)l3.innerHTML=jobLine3(j);
-const action=node.querySelector(".u3-row-action");
-if(action)action.innerHTML=rowActionHtml(j);
+const acts=node.querySelector(".u3-row-acts");
+if(acts)acts.innerHTML=rowActionHtml(j)+rowActsTail(j);
 const oldSwipe=node.querySelector(".u3-row-swipe");
 if(oldSwipe)oldSwipe.remove();
 const strip=node.querySelector(".u3-row-strip");
@@ -487,7 +496,7 @@ hasData=true;
 if(!books.length)showEmpty();
 else{
 body.setAttribute("data-state","ok");
-body.innerHTML=books.map(bookRowHtml).join("");
+body.innerHTML="<div class='u3-book-grid'>"+books.map(bookCardHtml).join("")+"</div>";
 }
 }catch(e){
 if(isNetErr(e)){
@@ -976,7 +985,8 @@ fetchJSON("/api/books/" + enc(bookName), { method: "PATCH",headers:JH,body:JSON.
 const node=document.querySelector("[data-book-field='"+field+"']");
 if(node){
 node.setAttribute("data-book-value",value);
-node.textContent=value||NS;
+const vv=node.querySelector(".u3-book-pill-v");
+if(vv){vv.textContent=value||NS;}else{node.textContent=value||NS;}
 }
 dialog.close();
 toast(S.book_meta_saved);
@@ -1140,13 +1150,13 @@ function exportOptsHtml(objects,layouts,converterOk){
 let h="<fieldset class='u3-exp-section'><legend>"+esc(S.job_export_section_objects)+"</legend>";
 for(const o of EXPORT_OBJECTS){
 const ok=!!objects[o];
-h+="<label class='u3-exp-item'><input type='checkbox' name='objects' value='"+o+"'"+(ok?" checked":" disabled")+"> "+esc(S["job_export_obj_"+o])+(ok?"":" <span class='hint'>"+esc(S.job_export_obj_missing)+"</span>")+"</label>";
+h+="<label class='u3-exp-item'><input type='checkbox' class='u3-switch' name='objects' value='"+o+"'"+(ok?" checked":" disabled")+"> "+esc(S["job_export_obj_"+o])+(ok?"":" <span class='hint'>"+esc(S.job_export_obj_missing)+"</span>")+"</label>";
 }
 h+="</fieldset>";
 h+="<fieldset class='u3-exp-section'><legend>"+esc(S.job_export_section_formats)+"</legend><div class='u3-exp-grid'>";
 for(const f of EXPORT_FORMATS){
 const dis=f!=="epub"&&!converterOk;
-h+="<label class='u3-exp-item'><input type='checkbox' name='formats' value='"+f+"'"+(f==="epub"?" checked":dis?" disabled":"")+"> "+esc(S["job_export_fmt_"+f])+"</label>";
+h+="<label class='u3-exp-item'><input type='radio' name='formats' value='"+f+"'"+(f==="epub"?" checked":dis?" disabled":"")+"> "+esc(S["job_export_fmt_"+f])+"</label>";
 }
 h+="</div>"+(converterOk?"":"<p class='hint'>"+esc(S.err_converter_unavailable)+"</p>")+"</fieldset>";
 if(layouts){
@@ -1301,6 +1311,74 @@ if(t.name==="formats")syncExportTwo(body);
 else if(t.name==="xjob")exportBookOpts(t.value);
 });
 let swipeClose;
+let queueDragActive=false;
+function initQueueDrag(){
+const list=$("u1-jobs");
+if(!list)return;
+const HOLD_MS=450,CANCEL_PX=12;
+let pending=null,timer=null,drag=null;
+const qbody=()=>list.querySelector('.u3-group[data-group="queue"] .u3-group-rows');
+const clearPending=()=>{if(timer){clearTimeout(timer);timer=null;}pending=null;};
+const lift=article=>{
+const body=qbody();
+if(!body||!body.contains(article)){clearPending();return;}
+const items=[...body.children].filter(n=>n.classList.contains("u3-row-job")&&n!==article);
+drag={article,items,target:0};
+article.classList.add("is-dragging");
+queueDragActive=true;
+if(navigator.vibrate)try{navigator.vibrate(12);}catch{}
+};
+const drop=commit=>{
+if(!drag){clearPending();return;}
+drag.article.classList.remove("is-dragging");
+drag=null;clearPending();queueDragActive=false;
+if(commit){
+const body=qbody();
+if(!body)return;
+const order=[...body.children].filter(n=>n.classList.contains("u3-row-job"));
+const n=order.length;let changed=false;
+order.forEach((row,i)=>{
+const rank=n-i;
+if(parseInt(row.dataset.queueRank||"0",10)!==rank){
+row.dataset.queueRank=String(rank);changed=true;
+fetchJSON("/api/jobs/"+enc(row.dataset.id),{method:"PATCH",headers:JH,body:JSON.stringify({queue_rank:rank})}).catch(()=>{});
+}
+});
+if(changed&&jobsRefresh)jobsRefresh();
+}
+};
+list.addEventListener("touchstart",e=>{
+if(e.touches.length!==1)return;
+const article=e.target.closest(".u3-row-job");
+if(!article||article.dataset.group!=="queue")return;
+if(e.target.closest(".u3-row-btn,form,a,button,input,select,textarea"))return;
+const t=e.touches[0];
+clearPending();
+pending={article,ty:t.clientY};
+timer=setTimeout(()=>{timer=null;lift(article);},HOLD_MS);
+},{passive:true});
+list.addEventListener("touchmove",e=>{
+const t=e.touches[0];
+if(pending&&Math.abs(t.clientY-pending.ty)>CANCEL_PX)clearPending();
+if(!drag)return;
+e.preventDefault();
+const y=t.clientY;
+let target=0;
+for(const it of drag.items){
+const r=it.getBoundingClientRect();
+if(y<r.top+r.height/2)break;
+target++;
+}
+if(target!==drag.target){
+drag.target=target;
+const body=qbody();
+if(target<drag.items.length)body.insertBefore(drag.article,drag.items[target]);
+else body.appendChild(drag.article);
+}
+},{passive:false});
+list.addEventListener("touchend",()=>{if(drag)drop(true);else clearPending();});
+list.addEventListener("touchcancel",()=>{if(drag)drop(false);else clearPending();});
+}
 function initSwipe(){
 const list=$("u1-jobs");
 if(!list)return;
@@ -1356,7 +1434,7 @@ const t=e.touches[0];
 start={article,x:t.clientX,y:t.clientY,horizontal:null};
 },{passive:true});
 list.addEventListener("touchmove",e=>{
-if(!start)return;
+if(!start||queueDragActive)return;
 const t=e.touches[0];
 const dx=t.clientX-start.x;
 const dy=t.clientY-start.y;
@@ -2049,6 +2127,7 @@ bindAppearance();
 bindMaintenance();
 initRowActions();
 initSwipe();
+initQueueDrag();
 initSelection();
 bindCreateForm();
 bindBulkDelete();

@@ -33,38 +33,20 @@
   </div>
 </section>
 <div class="u3-book-actions">
-  <a class="u3-btn u3-primary u3-book-action" href="{{ translate_href }}">{{ s["book_translate_btn"] }}</a>
+  <a class="u3-btn u3-primary u3-book-action" href="{{ translate_href }}"><svg class="u3-ico u3-ico-18" aria-hidden="true"><use href="/static/icons.svg#languages"></use></svg>{{ s["book_translate_btn"] }}</a>
   {# R7 (ТЗ §9): карточка книги — точка входа в лист экспорта (тот же
      лист/эндпоинт, что строка и экран задания; no-JS — ?sheet=export&book=). #}
-  <a class="u3-btn u3-book-action" href="{{ export_href }}" data-sheet-open="u3-sheet-export" data-book="{{ detail.name }}">{{ s["book_export_btn"] }}</a>
+  <a class="u3-btn u3-book-action" href="{{ export_href }}" data-sheet-open="u3-sheet-export" data-book="{{ detail.name }}"><svg class="u3-ico u3-ico-18" aria-hidden="true"><use href="/static/icons.svg#download"></use></svg>{{ s["book_export_btn"] }}</a>
 </div>
 
 <section class="u3-book-block" aria-label="{{ s["book_block_languages"] }}">
-  <h3 class="u3-book-block-title">{{ s["book_block_languages"] }}</h3>
-  <div class="u3-book-rows">
-    <div class="u3-book-row">
-      <span class="u3-book-k">{{ s["book_src_lang"] }}</span>
-      <a class="u3-book-v" href="/books/{{ detail.name }}/meta?field=source_language"
-         data-book-field="source_language" data-book-value="{{ meta.source_language or '' }}">{{ src_val }}</a>
-    </div>
-    <div class="u3-book-row">
-      <span class="u3-book-k">{{ s["book_detection_confidence"] }}</span>
-      {% if meta.confidence is not none %}
-      <span class="u3-book-v">{{ meta.confidence | round(2) }}{% if meta.decision %} · {{ s["book_decision_" ~ meta.decision] }}{% endif %}</span>
-      {% else %}
-      <span class="u3-book-v">{{ s["common_not_set"] }}</span>
-      {% endif %}
-    </div>
-    <div class="u3-book-row">
-      <span class="u3-book-k">{{ s["book_target_default"] }}</span>
-      <a class="u3-book-v" href="/books/{{ detail.name }}/meta?field=target_default"
-         data-book-field="target_default" data-book-value="{{ meta.target_default or '' }}">{{ tgt_val }}</a>
-    </div>
-    <div class="u3-book-row">
-      <span class="u3-book-k">{{ s["book_field_cefr"] }}</span>
-      <a class="u3-book-v" href="/books/{{ detail.name }}/meta?field=cefr_default"
-         data-book-field="cefr_default" data-book-value="{{ meta.cefr_default or '' }}">{{ cefr_val }}</a>
-    </div>
+  <div class="u3-book-pills">
+    <a class="u3-book-pill" href="/books/{{ detail.name }}/meta?field=source_language"
+       data-book-field="source_language" data-book-value="{{ meta.source_language or '' }}"><span class="u3-book-pill-k">{{ s["book_pill_src"] }}</span><span class="u3-book-pill-v">{{ src_val }}</span><svg class="u3-ico" aria-hidden="true"><use href="/static/icons.svg#chevron-right"></use></svg></a>
+    <a class="u3-book-pill" href="/books/{{ detail.name }}/meta?field=target_default"
+       data-book-field="target_default" data-book-value="{{ meta.target_default or '' }}"><span class="u3-book-pill-k">{{ s["book_pill_tgt"] }}</span><span class="u3-book-pill-v">{{ tgt_val }}</span><svg class="u3-ico" aria-hidden="true"><use href="/static/icons.svg#chevron-right"></use></svg></a>
+    <a class="u3-book-pill" href="/books/{{ detail.name }}/meta?field=cefr_default"
+       data-book-field="cefr_default" data-book-value="{{ meta.cefr_default or '' }}"><span class="u3-book-pill-k">{{ s["book_pill_cefr"] }}</span><span class="u3-book-pill-v">{{ cefr_val }}</span><svg class="u3-ico" aria-hidden="true"><use href="/static/icons.svg#chevron-right"></use></svg></a>
   </div>
 </section>
 
@@ -91,6 +73,9 @@
     <div><dt>{{ s["book_tech_size"] }}</dt><dd>{{ detail.size_human }}</dd></div>
     <div><dt>{{ s["book_tech_sha256"] }}</dt><dd class="u3-mono u3-wrap">{{ detail.sha256 }}</dd></div>
     <div><dt>{{ s["books_col_dc_lang"] }}</dt><dd class="u3-mono">{{ meta.dc_language or s["common_not_set"] }}</dd></div>
+    {% if meta.confidence is not none %}
+    <div><dt>{{ s["book_detection_confidence"] }}</dt><dd class="u3-mono">{{ meta.confidence | round(2) }}{% if meta.decision %} · {{ s["book_decision_" ~ meta.decision] }}{% endif %}</dd></div>
+    {% endif %}
     <div><dt>{{ s["books_col_chapters"] }}</dt><dd>{{ detail.chapters if detail.chapters is not none else s["common_not_set"] }}</dd></div>
     <div><dt>{{ s["books_col_segments"] }}</dt><dd>{{ detail.segments if detail.segments is not none else s["common_not_set"] }}</dd></div>
     <div><dt>{{ s["book_tech_added"] }}</dt><dd>{{ detail.uploaded_at_human }}</dd></div>

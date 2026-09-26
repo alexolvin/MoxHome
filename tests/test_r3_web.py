@@ -480,20 +480,32 @@ def test_r3_10_sheet_pages(u1_env: U1Env) -> None:
 
 
 def _assert_swipe(row: Any, status: JobStatus, job_id: str) -> None:
-    """R3 §11: панель свайпа строки — только допустимые действия + logs
-    (queue — только CREATED; delete — только терминальные)."""
+    """Реворк 2026-09-26 (п.9/10): свайп строки — только красное «Удалить»
+    (все статусы). Вторичные (отмена/логи) — видимые в .u3-row-acts."""
     swipe = row.xpath('.//span[@class="u3-row-swipe"]')
     assert len(swipe) == 1, job_id
     swaps = {b.get("data-swap") for b in swipe[0].xpath('.//button[@data-swap]')}
-    logs = swipe[0].xpath(f'.//a[@href="/jobs/{job_id}#logs"]')
+    assert swaps == {"delete"}, job_id
+    del_btn = swipe[0].xpath('.//button[@data-swap="delete"]')
+    assert len(del_btn) == 1 and del_btn[0].get("data-job") == job_id, job_id
+
+
+def _assert_row_acts(row: Any, status: JobStatus, job_id: str) -> None:
+    """Реворк 2026-09-26 (п.9): видимые пиктограммы — отмена (не-терминальные)
+    + логи (все статусы) в .u3-row-acts рядом с первичным действием."""
+    acts = row.xpath('.//span[@class="u3-row-acts"]')
+    assert len(acts) == 1, job_id
+    acts = acts[0]
+    logs = acts.xpath(f'.//a[@href="/jobs/{job_id}#logs"]')
     assert len(logs) == 1, job_id
-    if status in (JobStatus.CREATED, JobStatus.NEEDS_CONFIRMATION, JobStatus.TRANSLATING):
-        assert "pause" in swaps, job_id
-    if status in (JobStatus.COMPLETED, JobStatus.FAILED):
-        assert "delete" in swaps and "cancel" not in swaps, job_id
-    else:
-        assert "cancel" in swaps and "delete" not in swaps, job_id
-    assert ("queue" in swaps) == (status is JobStatus.CREATED), job_id
+    cancels = acts.xpath('.//button[@data-swap="cancel"]')
+    terminal = status in (
+        JobStatus.COMPLETED,
+        JobStatus.COMPLETED_WITH_WARNINGS,
+        JobStatus.FAILED,
+        JobStatus.CANCELLED,
+    )
+    assert len(cancels) == (0 if terminal else 1), job_id
 
 
 def test_r3_11_row_actions_per_status(u1_env: U1Env) -> None:
@@ -527,9 +539,10 @@ def test_r3_11_row_actions_per_status(u1_env: U1Env) -> None:
         row = rows[0]
         assert row.get("data-status") == status.value
 
-        action_el = row.xpath('.//span[@class="u3-row-action"]')
+        action_el = row.xpath('.//span[@class="u3-row-acts"]')
         assert len(action_el) == 1, job_id
         action_el = action_el[0]
+        _assert_row_acts(row, status, job_id)
         if status is JobStatus.NEEDS_CONFIRMATION:
             form = action_el.xpath('.//form')
             assert len(form) == 1

@@ -383,20 +383,20 @@ def test_v2_4_stage_timeline_from_db(v2_env: V2Env) -> None:
 
 
 def test_v2_5_worker_status_on_jobs_page(v2_env: V2Env) -> None:
-    """Страница Jobs показывает статус воркера: error без heartbeat, ok после."""
+    """Страница Jobs: без heartbeat — баннер «Воркер не отвечает…», после —
+    баннера нет (реворк 2026-09-26 п.8: строка сокращена, деталь «ok (pid N)»
+    убрана — видна только проверка воркера, а не её подпись на странице)."""
     client, settings = v2_env.client, v2_env.settings
     hb = heartbeat_path(settings)
     hb.unlink(missing_ok=True)
 
     page = client.get("/jobs").text
-    assert "heartbeat не найден" in page
+    assert "Воркер не отвечает или не запущен" in page
 
     write_heartbeat(settings, os.getpid())
-    assert (
-        worker_alive(settings)[0] == f"ok (pid {os.getpid()})"
-    )
+    assert worker_alive(settings)[0] == f"ok (pid {os.getpid()})"
     page = client.get("/jobs").text
-    assert f"ok (pid {os.getpid()})" in page
+    assert "Воркер не отвечает или не запущен" not in page
 
     # Имя файла — единая константа (тот же путь, что у воркера, Rule 8).
     assert hb.name == HEARTBEAT_FILE

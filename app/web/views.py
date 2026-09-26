@@ -98,12 +98,20 @@ def status_glyph(status: str) -> str:
     return STATUS_GLYPH[STATUS_GROUP[status]]
 
 
-# Серия R §10: группы строк списка заданий. Единственная точка расчёта —
-# здесь: сервер кладёт готовое значение в поле ``group`` API-строки и в
-# no-JS разметку; JS раскладывания по группам читает поле, не пересчитывает.
-#: run/wait-статусы всегда «сейчас»; остальные — по времени последнего
-#: обновления: сегодня (с локальной полуночи) / раньше.
-RUN_WAIT_GROUPS = ("run", "wait")
+# Реактор 2026-09-26 (§10): список заданий — очередь. Единственная точка
+# расчёта группы строки — здесь: сервер кладёт готовое значение в поле
+# ``group`` API-строки и в no-JS разметку; JS читает поле, не пересчитывает.
+#:   active — в работе (выполняется + на паузе / на подтверждении);
+#:   queue  — ожидает запуска (CREATED); порядок — queue_rank (drag);
+#:   done   — терминальные (готово / с оговорками / ошибка / отменено).
+ACTIVE_JOB_STATUSES = frozenset(
+    {
+        "VALIDATING", "PLANNING", "TRANSLATING", "ANALYZING", "GENERATING",
+        "VALIDATING_OUTPUT", "GLOSSARY_FIX", "LEARNING",
+        "PAUSED", "INTERRUPTED", "NEEDS_CONFIRMATION",
+    }
+)
+QUEUED_JOB_STATUS = "CREATED"
 
 
 def today_start_epoch() -> float:
@@ -115,12 +123,12 @@ def today_start_epoch() -> float:
 def job_list_group(
     status: str, updated_at: float, today_start: float | None = None
 ) -> str:
-    """Группа строки списка: ``now`` / ``today`` / ``earlier`` (§10)."""
-    if status_group(status) in RUN_WAIT_GROUPS:
-        return "now"
-    if today_start is None:
-        today_start = today_start_epoch()
-    return "today" if updated_at >= today_start else "earlier"
+    """Группа строки списка (очередь, §10): ``active`` / ``queue`` / ``done``."""
+    if status in ACTIVE_JOB_STATUSES:
+        return "active"
+    if status == QUEUED_JOB_STATUS:
+        return "queue"
+    return "done"
 
 
 def human_duration(total_seconds: float) -> str:
@@ -319,6 +327,43 @@ def elapsed_and_eta(job: Job, transitions: list[Any]) -> tuple[float, float | No
     return elapsed, eta
 
 
+_TERMINAL_STATUSES = frozenset(
+    {JobStatus.COMPLETED, JobStatus.COMPLETED_WITH_WARNINGS, JobStatus.FAILED, JobStatus.CANCELLED}
+)
+
+
+def job_time_label(job: Job, elapsed: float, eta: float | None) -> str | None:
+    """Метка времени в строке списка (реворк 2026-09-26, п.9): место статуса
+    отдаём оценке времени. Выполняемое (run) с eta → «осталось ~X»;
+    остановленное с прогрессом (пауза/прервано) → «требуется ~X» (оценка
+    полного времени); CREATED без прогресса и терминальные → None (UI: «—»).
+    Оценка модельная (из elapsed/progress), помечена тильдой."""
+    if job.status in _TERMINAL_STATUSES:
+        return None
+    if status_group(job.status.value) == "run" and eta is not None:
+        return _S["job_time_left"].format(n=human_duration(eta))
+    progress = job.progress or 0.0
+    if 0.0 < progress < 1.0 and elapsed > 0:
+        total = elapsed / progress
+        return _S["job_time_required"].format(n=human_duration(total))
+    return None
+
+
+def job_source_display(settings: Settings, job: Job) -> str | None:
+    """Отображаемый исходный язык строки/карточки задания (реворк 2026-09-26,
+    п.10). Подтверждённый языком задания (L0.5, после validating) — в
+    приоритете; иначе — язык книги из sidecar-метаданных (та же цепочка, что
+    мастер создания: пользовательский → детекция → dc:language). Устраняет
+    «несоответствие»: книга показывает «Язык en», а строка задания «—→ru»."""
+    if job.source_language:
+        return job.source_language
+    dest = book_epub_path(settings, Path(job.source_path).name)
+    if dest is None:
+        return None
+    meta = read_book_meta(dest)
+    return meta.get("source_language") or meta.get("detected") or meta.get("dc_language")
+
+
 def job_facts(
     settings: Settings,
     repo: JobRepository,
@@ -403,6 +448,7 @@ def job_facts(
         "status_glyph": status_glyph(job.status.value),
         "status_terminal": job.status in TERMINAL_STATES,
         "source_language": job.source_language,
+        "source_display": job_source_display(settings, job),
         "target_language": job.target_language,
         "mode": job.mode,
         "learning_level": job.learning_level,
@@ -609,6 +655,21 @@ def read_book_meta(path: Path) -> dict[str, Any]:
     return meta
 
 
+def book_title_map(paths: list[Path]) -> dict[str, str]:
+    """name → название книги (справочник) для строк списка заданий.
+
+    Реактор 2026-09-26 (§7): строка задания показывает название книги,
+    а не имя файла преобразования. Читает ``.meta.json`` только для
+    distinct-имён (без N+1 на дубли). Нет title — имя файла."""
+    m: dict[str, str] = {}
+    for p in paths:
+        name = p.name
+        if name in m:
+            continue
+        m[name] = read_book_meta(p).get("title") or name
+    return m
+
+
 def book_meta_defaults() -> dict[str, Any]:
     """Новые поля sidecar с дефолтами (ТЗ §15: title, author,
     target_default, cefr_default, note; R5 — source_language;
@@ -719,6 +780,8 @@ def list_books(
             # R6: исходный формат импорта + обложка (решение R5 №8)
             "source_format": meta.get("source_format"),
             "cover_path": meta.get("cover_path"),
+            # §8.4: градиент заглушки по имени (детерминированно, 0–5).
+            "cover_grad": int(hashlib.sha256(path.name.encode("utf-8")).hexdigest()[:8], 16) % 6,
             "chapters": stats.get("chapter_count"),
             "segments": stats.get("segment_count"),
             "words": stats.get("word_count"),
@@ -743,6 +806,15 @@ def list_books(
             b["has_active_job"] = bool(
                 repo.list_jobs(1, 0, statuses=run_statuses, book=b["name"])
             )
+            # Ревизия 2026-09-26: статус последней задачи книги → точка+подпись
+            # на карточке (вместо технических полей в строке).
+            latest = repo.list_jobs(
+                1, 0, book=b["name"], sort="updated_at", direction="desc"
+            )
+            b["book_status_group"] = status_group(latest[0].status.value) if latest else None
+    else:
+        for b in books:
+            b["book_status_group"] = None
     return books
 
 

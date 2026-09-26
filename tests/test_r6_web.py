@@ -795,5 +795,6 @@ def test_r6_25_t17_guard_and_js_wiring() -> None:
     assert 'id="u3-sheet-import"' in books
     assert "data-sheet-open" in books
     assert "_book_import_sheet.html" in books
-    row = (templates / "_book_row.html").read_text(encoding="utf-8")
-    assert "/api/books/covers/" in row
+    # rework 2026-09-26: обложка в списке — в карточке (сетка §7.2)
+    card = (templates / "_book_card.html").read_text(encoding="utf-8")
+    assert "/api/books/covers/" in card

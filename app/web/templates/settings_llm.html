@@ -24,7 +24,7 @@
 
 <form id="u3-llm-form" class="u3-llm-form" method="post" action="/settings/llm">
   <label class="u3-check">
-    <input type="checkbox" name="shared_endpoint" value="1"{% if form.shared %} checked{% endif %}>
+    <input type="checkbox" class="u3-switch" name="shared_endpoint" value="1"{% if form.shared %} checked{% endif %}>
     {{ s["llm_shared_label"] }}
   </label>
   <div class="u3-fld u3-llm-shared">

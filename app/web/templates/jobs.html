@@ -15,7 +15,7 @@
    no-JS — полный список в <noscript> + meta refresh 15.
    5 состояний §14 — data-state на .u3-list-body. #}
 {% if worker_down %}
-<p class="u3-worker-band" role="status">{{ s["jobs_worker_band"] }}{% if worker_detail %} · {{ worker_detail }}{% endif %}</p>
+<p class="u3-worker-band" role="status">{{ s["jobs_worker_band"] }}</p>
 {% endif %}
 <nav class="u3-seg" aria-label="{{ s["jobs_seg_label"] }}">
   {% for gkey, glabel in pills %}
@@ -42,7 +42,7 @@
   <noscript>
     <meta http-equiv="refresh" content="15">
     <div class="u3-list-body" data-state="{{ 'ok' if total else ('empty-filter' if (group != 'all' or f_status or book) else 'empty') }}">
-      {% for gname in ("now", "today", "earlier") %}
+      {% for gname in ("active", "queue", "done") %}
       {% if group_rows[gname] %}
       <section class="u3-group" data-group="{{ gname }}">
         <h2 class="u3-group-head">{{ s["jobs_group_" ~ gname] }}</h2>

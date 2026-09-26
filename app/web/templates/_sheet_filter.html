@@ -19,7 +19,7 @@
     <legend>{{ s["jobs_f_status"] }}</legend>
     {% for st in all_statuses %}
     <label class="u3-check">
-      <input type="checkbox" name="status" value="{{ st }}"{% if st in f_status %} checked{% endif %}>
+      <input type="checkbox" class="u3-switch" name="status" value="{{ st }}"{% if st in f_status %} checked{% endif %}>
       {{ st }}
     </label>
     {% endfor %}

@@ -15,7 +15,7 @@
   <table class="u3-facts">
     {# Серия R §4: группа+глиф — из единой таблицы views.STATUS_GROUP #}
     <tr><th scope="row">{{ s["job_row_status"] }}</th><td class="u3-status status-{{ facts.status | status_group }}"><span class="u3-status-ico" aria-hidden="true"><svg class="u3-ico u3-ico-14"><use href="/static/icons.svg#{{ {'wait':'pause','run':'play','ok':'check','warn':'triangle-alert','err':'x'}[facts.status | status_group] }}"></use></svg></span>{{ facts.status }}{% if facts.error %} — <span class="err">{{ facts.error }}</span>{% endif %}</td></tr>
-    <tr><th scope="row">{{ s["job_row_pair"] }}</th><td>{{ facts.source_language or s["common_not_set"] }} → {{ facts.target_language }}</td></tr>
+    <tr><th scope="row">{{ s["job_row_pair"] }}</th><td>{{ facts.source_display or facts.source_language or s["common_not_set"] }} → {{ facts.target_language }}</td></tr>
     <tr><th scope="row">{{ s["job_row_mode"] }}</th><td>{{ facts.mode }}{% if facts.learning_level %} / {{ facts.learning_level }}{% if facts.learning_cefr %} ({{ facts.learning_cefr }}){% endif %}{% endif %}</td></tr>
     {# Серия R §12: чипы «параметры, отличающиеся от умолчания»
        (считаны в create_job против базовой линии; '' — строки нет). #}

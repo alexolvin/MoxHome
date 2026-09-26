@@ -163,9 +163,13 @@ def test_r5_3_card_render(u1_env: U1Env) -> None:
     labels = [a.text_content() for a in translate]
     assert labels == [S["book_translate_btn"], S["book_export_btn"]]
 
-    # (3) блок «Языки»: 4 строки (исходный/уверенность/цель/CEFR)
-    lang_rows = doc.xpath('//section[contains(@class,"u3-book-block")]//div[@class="u3-book-row"]')
-    assert len(lang_rows) == 4
+    # (3) блок «Языки»: 3 компактные «пилюли» (исходный/цель/CEFR) — тап
+    # открывает лист поля (единый механизм, как в карточке книги).
+    lang_pills = doc.xpath('//a[@class="u3-book-pill"]')
+    assert len(lang_pills) == 3
+    assert {p.get("data-book-field") for p in lang_pills} == {
+        "source_language", "target_default", "cefr_default"
+    }
 
     # (4) задания: 3 последние строки + «Все (4)»
     rows = doc.xpath('//article[contains(@class,"u3-row-job")]')
@@ -520,7 +524,7 @@ def test_r5_19_books_search(u1_env: U1Env) -> None:
     assert book in api and len(api) < len(client.get("/api/books").json())
 
     doc = _card(client.get("/books", params={"q": marker}))
-    rows = doc.xpath('//noscript//article[contains(@class,"u3-row-book")]')
+    rows = doc.xpath('//noscript//article[contains(@class,"u3-book-card")]')
     assert [r.get("data-name") for r in rows] == api
     # форма поиска — с текущим q (no-JS — GET)
     form = doc.xpath('//form[@id="u1-books-search"]')
@@ -698,20 +702,16 @@ def test_r5_23_nojs_meta_page(u1_env: U1Env) -> None:
 
 
 def test_r5_24_book_row_links_and_js_wiring(u1_env: U1Env) -> None:
-    """R5 §6/§7: строка книги — ссылка на карточку (тап по строке); меню
-    «⋯» — «Удалить книгу» (data-book-delete, href — no-JS-сценарий).
-    app.js: потоки удаления и мета (единые обработчики), строка
-    строится как ссылка, литералов русского в JS нет (u3_1 — r5_25)."""
+    """R5 §6/§7: карточка книги — ссылка на карточку (тап по карточке).
+    rework 2026-09-26: список книг — сетка карточек (§7.2); меню «⋯» с
+    удалением из списка убрано (удаление — только на странице книги).
+    app.js: потоки удаления и мета страницы книги (единые обработчики),
+    карточка строится как ссылка, литералов русского в JS нет (r5_25)."""
     profile = u1_env.profiles["main"]
     book = _upload_book(profile.client, u1_env.books["tiny"])
     doc = _card(profile.client.get("/books"))
-    links = doc.xpath('//a[@class="u3-row-link"]')
+    links = doc.xpath('//a[@class="u3-book-card-link"]')
     assert any(a.get("href") == f"/books/{book}" for a in links)
-    menus = doc.xpath(
-        f'//a[@data-book-delete="{book}"][@class="u3-row-menu-item u3-danger"]'
-    )
-    assert len(menus) == 1
-    assert menus[0].get("href") == f"/books/{book}/delete"
 
     js = (Path(__file__).resolve().parents[1] / "app/web/static/app.js").read_text(
         encoding="utf-8"
@@ -726,8 +726,8 @@ def test_r5_24_book_row_links_and_js_wiring(u1_env: U1Env) -> None:
         "confirm_token",
     ):
         assert marker in js, marker
-    # строка книги в JS — ссылка на карточку (построитель #2 = #1)
-    assert "u3-row-link' href='/books/" in js
+    # карточка книги в JS — ссылка (построитель #2 = #1)
+    assert "u3-book-card-link' href='/books/" in js
 
 
 def test_r5_25_t17_no_literals_outside_strings() -> None:

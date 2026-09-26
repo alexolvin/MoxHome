@@ -140,6 +140,8 @@ def _job_row(
     settings: Settings,
     job: Job,
     elapsed_seconds: float = 0.0,
+    book_title: str | None = None,
+    eta_seconds: float | None = None,
 ) -> dict[str, Any]:
     validation = views.read_json(settings.job_dir(job.id) / "validation.json")
     # Серия R §10: строка списка — группа (единый источник
@@ -160,6 +162,7 @@ def _job_row(
         "group": views.job_list_group(status, job.updated_at),
         "source_language": job.source_language,
         "target_language": job.target_language,
+        "source_display": views.job_source_display(settings, job),
         "mode": job.mode,
         "learning_level": job.learning_level,
         "learning_cefr": job.learning_cefr,
@@ -170,10 +173,12 @@ def _job_row(
         "progress_display": views.progress_facts(job, validation)["display"],
         "progress_pct": progress_pct,
         "elapsed_seconds": elapsed_seconds,
+        "time_label": views.job_time_label(job, elapsed_seconds, eta_seconds),
         "alignment_coverage": job.alignment_coverage,
         "tokens_total": job.tokens_total,
         "error": job.error_message,
         "book_name": Path(job.source_path).name,
+        "book_title": book_title or Path(job.source_path).name,
         "created_at": job.created_at,
         "updated_at": job.updated_at,
         "created_at_human": views.human_ts(job.created_at),
@@ -185,10 +190,19 @@ def _job_rows(settings: Settings, repo: JobRepository, jobs: list[Job]) -> list[
     """Строки списка заданий: переходы — одним запросом (без N+1),
     время работы — views.elapsed_and_eta (E7/M7, единый механизм)."""
     transitions = repo.list_transitions_bulk([job.id for job in jobs])
+    title_map = views.book_title_map([Path(j.source_path) for j in jobs])
     rows: list[dict[str, Any]] = []
     for job in jobs:
         elapsed, _eta = views.elapsed_and_eta(job, transitions.get(job.id, []))
-        rows.append(_job_row(settings, job, elapsed_seconds=elapsed))
+        rows.append(
+            _job_row(
+                settings,
+                job,
+                elapsed_seconds=elapsed,
+                book_title=title_map.get(Path(job.source_path).name),
+                eta_seconds=_eta,
+            )
+        )
     return rows
 
 

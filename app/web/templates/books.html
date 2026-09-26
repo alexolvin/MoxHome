@@ -27,9 +27,13 @@
   </div>
   <noscript>
     <div class="u3-list-body" data-state="{{ 'ok' if books else ('empty-filter' if q else 'empty') }}">
-      {% for b in books %}
-      {% include "_book_row.html" %}
-      {% endfor %}
+      {% if books %}
+      <div class="u3-book-grid">
+        {% for b in books %}
+        {% include "_book_card.html" %}
+        {% endfor %}
+      </div>
+      {% endif %}
       {% if not books %}
       {% if q %}
       <div class="u3-state" data-state="empty-filter">

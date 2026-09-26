@@ -547,8 +547,8 @@ _CONSUMERS: dict[str, tuple[tuple[str, str], ...]] = {
     ),
     # R6 (ТЗ §8): обложка — строка (JS) и no-JS-строка/карточка
     "/api/books/covers/{filename}": (
-        ("app/web/static/app.js", "'/api/books/covers/\" + enc(b.name)"),  # GET (JS)
-        ("app/web/templates/_book_row.html", 'src="/api/books/covers/{{ b.name }}"'),
+        ("app/web/static/app.js", "'/api/books/covers/\"+enc(b.name)"),  # GET (JS, карточка)
+        ("app/web/templates/_book_card.html", 'src="/api/books/covers/{{ b.name }}"'),
     ),
     "/api/jobs": (
         ("app/web/templates/jobs.html", 'data-u1-fetch="/api/jobs"'),  # GET
