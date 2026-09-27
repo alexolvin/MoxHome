@@ -686,9 +686,8 @@ if(done<total)text=fmt(S.import_progress_of,{done:done,total:total});
 else text=fmt(S.import_summary_line,{ok:okCount,err:errLines.length});
 }
 line.textContent=text;
-cap.textContent=activeStep==="language"?S.import_detecting:"";
-cap.hidden=activeStep!=="language";
-sumEl.hidden=!text&&activeStep!=="language";
+cap.hidden=true;
+sumEl.hidden=!text;
 };
 const pollImport=(id,li)=>new Promise(resolve=>{
 const tick=()=>{

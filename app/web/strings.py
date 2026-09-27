@@ -106,7 +106,6 @@ UI_STRINGS: dict[str, str] = {
     "import_step_convert": "Конвертация",
     "import_step_validate": "Валидация",
     "import_step_language": "Язык",
-    "import_detecting": "Определение языка при загрузке…",
     "import_progress_of": "{done} из {total}",
     "import_summary_line": "{ok} добавлено, {err} с ошибкой",
     "import_toast_added": "Книга добавлена",
