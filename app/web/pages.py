@@ -21,6 +21,7 @@ U3:
 
 from __future__ import annotations
 
+import hashlib
 import hmac
 import logging
 import re
@@ -29,7 +30,7 @@ from typing import Annotated, Any, cast
 from urllib.parse import quote, urlencode
 
 from fastapi import APIRouter, Form, HTTPException, Query, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.datastructures import FormData
 from starlette.responses import Response
@@ -41,6 +42,7 @@ from app.core.worker_signal import worker_alive
 from app.domain.job import TERMINAL_STATES, Job, JobStatus
 from app.languages.cefr import CEFR_ORDER
 from app.languages.registry import load_registry
+from app.services import covers
 from app.services.export_artifacts import (
     EXPORT_FORMATS,
     ExportInProgress,
@@ -375,6 +377,42 @@ def _parse_purge_days(raw: str, default: int | float) -> int | float | str:
     return value
 
 
+def _resolve_cover_thumb(
+    settings: Settings, filename: str, w: int
+) -> Path | None:
+    """V2 §8.3: путь миниатюры обложки (ленивое создание 256/512) или
+    ``None`` (нет книги / обложки / файла / decode — UI покажет заглушку)."""
+    dest = views.book_epub_path(settings, filename)
+    if dest is None:
+        return None
+    meta = views.read_book_meta(dest)
+    if meta.get("cover") is not None and meta.get("cover") != "extracted":
+        return None  # none / failed:<reason> → заглушка §8.4
+    stem = filename[: -len(".epub")]
+    cover_name = meta.get("cover_path")
+    if not (
+        cover_name
+        and Path(cover_name).name == cover_name
+        and cover_name.startswith(stem + ".cover.")
+    ):
+        return None
+    source = settings.input_dir / cover_name
+    if not source.is_file():
+        return None
+    try:
+        sha_full = meta.get("cover_sha256") or hashlib.sha256(
+            source.read_bytes()
+        ).hexdigest()
+    except OSError:
+        return None
+    width = w if w in covers.THUMB_WIDTHS else (256 if w <= 256 else 512)
+    covers_dir = settings.input_dir / ".covers"
+    thumb = covers.cover_thumbnail_path(covers_dir, sha_full, width)
+    if not thumb.exists():
+        covers.ensure_thumbnails(source, sha_full, covers_dir)
+    return thumb if thumb.exists() else None
+
+
 def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршруты в одном замыкании (R1–R5)
     settings: Settings, repo: JobRepository, templates: Jinja2Templates
 ) -> APIRouter:
@@ -551,6 +589,27 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
                     },
                 ],
             },
+        )
+
+    @router.get("/books/{filename}/cover", include_in_schema=False)
+    def book_cover_thumb(
+        request: Request,
+        filename: str,
+        w: Annotated[int, Query(ge=1, le=4096)] = 256,
+        v: Annotated[str | None, Query()] = None,  # cache-bust (sha8); не проверяем
+    ) -> Response:
+        """V2 §8.3: миниатюра обложки WebP. Лениво создаёт 256/512 при
+        первом запросе; ``Cache-Control: … immutable`` (кеш браузера, V-T9).
+        Обложки нет (none/failed/нет файла) — 404 (UI показывает заглушку
+        §8.4). ``v`` — hint для клиента; сервер отдаёт актуальную миниатюру."""
+        del request, v
+        thumb = _resolve_cover_thumb(settings, filename, w)
+        if thumb is None:
+            return Response(status_code=404)
+        return FileResponse(
+            thumb,
+            media_type="image/webp",
+            headers={"Cache-Control": "private, max-age=31536000, immutable"},
         )
 
     # ------------------------------------------------------------- удаление (no-JS, R5)

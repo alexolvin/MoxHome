@@ -25,7 +25,7 @@ from app.adapters.epub_engine.epubcheck import run_epubcheck
 from app.core.config import Settings
 from app.core.errors import AppError
 from app.services.analyze import scan_book
-from app.services.covers import extract_cover
+from app.services.covers import process_cover
 from app.web import views
 from app.web.strings import UI_STRINGS
 
@@ -126,7 +126,8 @@ def _run_import(
             meta = scan_book(settings, dest)
         except AppError as exc:
             raise AppError(_S["err_import_scan"].format(reason=exc.message)) from exc
-        cover_path = extract_cover(dest)
+        cover = process_cover(dest, settings.input_dir / ".covers")
+        cover_path = cover.cover_path
         meta = {
             **views.book_meta_defaults(),
             **meta,
@@ -134,6 +135,8 @@ def _run_import(
             "source_format": fmt,
             "epubcheck": epubcheck_facts(outcome),
             "cover_path": cover_path,
+            "cover": cover.status,
+            "cover_sha256": cover.sha256,
         }
         views.write_book_meta(dest, meta)
         _set(import_id, status=STATUS_DONE, step=STATUS_DONE, name=dest.name)

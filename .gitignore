@@ -15,6 +15,7 @@ config/config.yaml
 # Данные и рабочие области (E0.9)
 cache/
 input/
+**/.covers/
 jobs/
 
 # Демо-стенд TZ-UI-V (локальные данные, TZ §11)

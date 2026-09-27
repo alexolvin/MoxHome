@@ -30,6 +30,9 @@
       {% if books %}
       <div class="u3-book-grid">
         {% for b in books %}
+        {# Jinja2 не передаёт `loop` внутрь {% include %} — флаг
+           «первые 9 — eager» считаем здесь, где loop доступен (§8.3). #}
+        {% set cover_eager = loop.index0 < 9 %}
         {% include "_book_card.html" %}
         {% endfor %}
       </div>

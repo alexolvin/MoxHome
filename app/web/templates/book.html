@@ -21,10 +21,13 @@
 {% set tgt_val = meta.target_default or s["common_not_set"] %}
 {% set cefr_val = meta.cefr_default or s["common_not_set"] %}
 <section class="u3-book-head">
-  {% if meta.cover_path %}
-  <img class="u3-book-cover" src="/api/books/covers/{{ detail.name }}" alt="">
+  {% if detail.has_cover and detail.cover_v %}
+  {# V2 §8.3: настоящая обложка — WebP srcset 256/512, фикс. 120×180. #}
+  <img class="u3-book-cover" srcset="/books/{{ detail.name }}/cover?v={{ detail.cover_v }}&w=256 256w, /books/{{ detail.name }}/cover?v={{ detail.cover_v }}&w=512 512w" sizes="160px" width="256" height="384" loading="eager" decoding="async" alt="">
   {% else %}
-  <span class="u3-book-cover" aria-hidden="true">{{ title[:1] | upper }}</span>
+  {# V2 §8.4: заглушка — градиент (sha256(filename) mod 6) + иконка-книга
+     (признак заглушки); название/автор — в правой колонке. #}
+  <span class="u3-book-cover u3-book-cover-ph" style="background:var(--cover-g{{ detail.cover_grad + 1 }})" aria-hidden="true"><svg class="u3-book-ph-ico"><use href="/static/icons.svg#book-open"></use></svg></span>
   {% endif %}
   <div class="u3-book-id">
     <h2 class="u3-book-title" title="{{ title }}"><a class="u3-book-val" href="/books/{{ detail.name }}/meta?field=title" data-book-field="title" data-book-value="{{ meta.title or '' }}">{{ title }}</a></h2>
