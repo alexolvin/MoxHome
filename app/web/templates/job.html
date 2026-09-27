@@ -12,6 +12,32 @@
   {% elif facts.pause_requested %}
   <p id="u3-job-requested" role="status" class="u3-warn">{{ s["job_pause_requested"] }}</p>
   {% endif %}
+  {# ===== V3 §7.5: топ-блок — обложка 64×96 + название + чип статуса +
+     крупная полоса прогресса 6 px (% + время). Инлайн-стили (бюджет CSS
+     не затрагивается); чип — существующий .u3-status, анимация — u3-ind. #}
+  {% set st_group = facts.status | status_group %}
+  {% set st_tok = {'wait':'--st-w','run':'--st-r','ok':'--st-o','warn':'--st-a','err':'--st-e'}[st_group] %}
+  <div style="display:flex;gap:var(--g);align-items:flex-start">
+    {% if book_cover.has_cover and book_cover.cover_v %}
+    <img src="/books/{{ book_name }}/cover?v={{ book_cover.cover_v }}&w=256" width="64" height="96" alt="" loading="eager" decoding="async" aria-hidden="true" style="flex:0 0 auto;border-radius:var(--r8);object-fit:cover;background:var(--s2)">
+    {% else %}
+    <span aria-hidden="true" style="flex:0 0 auto;width:64px;height:96px;border-radius:var(--r8);background:var(--s2);color:var(--fgm);display:flex;align-items:center;justify-content:center;font-size:var(--flg)">{{ book_title[:1] | upper }}</span>
+    {% endif %}
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:var(--gx);flex-wrap:wrap">
+        <div style="flex:1 1 auto;min-width:0;font-size:var(--flg);line-height:1.2;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ book_title }}">{{ book_title }}</div>
+        <span class="u3-status status-{{ st_group }}" style="flex:0 0 auto"><span class="u3-status-ico" aria-hidden="true"><svg class="u3-ico u3-ico-14"><use href="/static/icons.svg#{{ {'wait':'pause','run':'play','ok':'check','warn':'triangle-alert','err':'x'}[st_group] }}"></use></svg></span>{{ facts.status }}</span>
+      </div>
+      <div style="margin-top:var(--gs);height:6px;border-radius:var(--r50);background:var(--s2);overflow:hidden">
+        {% if indeterminate %}
+        <div style="width:40%;height:100%;background:var({{ st_tok }});border-radius:var(--r50);animation:u3-ind 1.2s linear infinite"></div>
+        {% else %}
+        <div style="width:{{ progress_pct }}%;height:100%;background:var({{ st_tok }});border-radius:var(--r50)"></div>
+        {% endif %}
+      </div>
+      <p style="margin:var(--gx) 0 0;font-size:var(--fx);color:var(--fgm)">{% if indeterminate %}{{ facts.progress_display }}{% else %}{{ progress_pct }}%{% endif %} · {{ s["job_time_elapsed"].format(n=facts.elapsed_seconds) }}{% if facts.eta_seconds is not none %} · {{ s["job_time_eta"].format(n=facts.eta_seconds) }}{% endif %}</p>
+    </div>
+  </div>
   <table class="u3-facts">
     {# Серия R §4: группа+глиф — из единой таблицы views.STATUS_GROUP #}
     <tr><th scope="row">{{ s["job_row_status"] }}</th><td class="u3-status status-{{ facts.status | status_group }}"><span class="u3-status-ico" aria-hidden="true"><svg class="u3-ico u3-ico-14"><use href="/static/icons.svg#{{ {'wait':'pause','run':'play','ok':'check','warn':'triangle-alert','err':'x'}[facts.status | status_group] }}"></use></svg></span>{{ facts.status }}{% if facts.error %} — <span class="err">{{ facts.error }}</span>{% endif %}</td></tr>
@@ -123,28 +149,22 @@
   {% endif %}
   <span id="u3-job-msg" role="status"></span>
   {% if facts.result_ready %}
-  {# R7 (ТЗ §9): экран задания — точка входа в лист экспорта (тот же
-     лист, что у строки; no-JS — полная страница /jobs?sheet=export&job=). #}
+  {# R7 (ТЗ §9): точка входа в лист экспорта (действия — под топ-блоком).
+     Скачивание файлов — во вкладке «Артефакты» ниже (V3 §7.5). #}
   <a class="btn" href="/jobs?sheet=export&job={{ facts.id }}" data-sheet-open="u3-sheet-export" data-job="{{ facts.id }}" data-book-name="{{ book_name }}">{{ s["job_export_btn"] }}</a>
-  <a class="btn" href="/api/jobs/{{ facts.id }}/result">{{ s["job_download_result"] }}</a>
-  {% if facts.files['target.epub'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=target.epub">{{ s["job_download_target"] }}</a>{% endif %}
-  {% if facts.files['learning.epub'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=learning.epub">{{ s["job_download_learning"] }}</a>{% endif %}
-  {% if facts.files['cards.csv'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=cards.csv">{{ s["job_download_cards_csv"] }}</a>{% endif %}
-  {% if facts.files['cards.anki.tsv'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=cards.anki.tsv">{{ s["job_download_cards_anki"] }}</a>{% endif %}
-  {% if facts.files['cards.json'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=cards.json">{{ s["job_download_cards_json"] }}</a>{% endif %}
-  {% if facts.files['quality.json'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=quality.json">{{ s["job_download_quality"] }}</a>{% endif %}
-  {% else %}
-  <span class="hint">{{ s["job_result_pending"] }}</span>
   {% endif %}
 </div>
 
-<details class="u3-panel">
-  <summary>{{ s["job_details_quality"] }}</summary>
-  <div id="u1-quality" data-u1-fetch="/api/jobs/{{ facts.id }}/quality" data-u1-render="quality">{{ s["common_loading"] }}</div>
-</details>
-
-<details class="u3-panel">
-  <summary>{{ s["job_details_logs"] }}</summary>
+{# ===== V3 §7.5: вкладки Логи · Артефакты · Качество (пилюли .u3-seg).
+   no-JS — все три секции видны (stacked); JS — одна на время
+   (initJobTabs: hidden + is-current). Логи — моноширинные 12 px
+   на --surface-1 (существующий .u3-logs). #}
+<nav class="u3-seg" aria-label="{{ s["job_tabs_label"] }}">
+  <a href="#u1-logs" class="u3-seg-pill is-current" data-tab="logs"><span class="u3-seg-vis">{{ s["job_tab_logs"] }}</span></a>
+  <a href="#u3-artifacts" class="u3-seg-pill" data-tab="artifacts"><span class="u3-seg-vis">{{ s["job_tab_artifacts"] }}</span></a>
+  <a href="#u1-quality" class="u3-seg-pill" data-tab="quality"><span class="u3-seg-vis">{{ s["job_tab_quality"] }}</span></a>
+</nav>
+<section class="u3-tab" data-tab="logs">
   <p class="u3-logs-controls">
     <label>{{ s["job_logs_lines"] }}:
       <select id="u3-logs-lines">
@@ -154,7 +174,26 @@
     <button type="button" id="u3-logs-more" class="btn">{{ s["job_logs_more"] }}</button>
   </p>
   <div id="u1-logs" data-u1-fetch="/api/jobs/{{ facts.id }}/logs" data-u1-render="logs">{{ s["common_loading"] }}</div>
-</details>
+</section>
+<section class="u3-tab" data-tab="artifacts">
+  {% if facts.result_ready %}
+  <p class="u3-export-book">{{ book_title }}</p>
+  <div class="u3-export-files">
+    <a class="btn" href="/api/jobs/{{ facts.id }}/result">{{ s["job_download_result"] }}</a>
+    {% if facts.files['target.epub'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=target.epub">{{ s["job_download_target"] }}</a>{% endif %}
+    {% if facts.files['learning.epub'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=learning.epub">{{ s["job_download_learning"] }}</a>{% endif %}
+    {% if facts.files['cards.csv'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=cards.csv">{{ s["job_download_cards_csv"] }}</a>{% endif %}
+    {% if facts.files['cards.anki.tsv'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=cards.anki.tsv">{{ s["job_download_cards_anki"] }}</a>{% endif %}
+    {% if facts.files['cards.json'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=cards.json">{{ s["job_download_cards_json"] }}</a>{% endif %}
+    {% if facts.files['quality.json'] %}<a class="btn" href="/api/jobs/{{ facts.id }}/result?artifact=quality.json">{{ s["job_download_quality"] }}</a>{% endif %}
+  </div>
+  {% else %}
+  <span class="hint">{{ s["job_result_pending"] }}</span>
+  {% endif %}
+</section>
+<section class="u3-tab" data-tab="quality">
+  <div id="u1-quality" data-u1-fetch="/api/jobs/{{ facts.id }}/quality" data-u1-render="quality">{{ s["common_loading"] }}</div>
+</section>
 {# Серия R §11: лист удаления (JS — <dialog>; no-JS — ?sheet=delete,
    та же форма-страница; id не дублируются). #}
 {% if sheet != "delete" %}

@@ -14,17 +14,16 @@
   <input type="file" id="u3-import-files" name="file"
          accept="{{ import_accept }}" multiple hidden
          aria-label="{{ s["import_files_label"] }}">
-  <span class="u3-import-drop-ico" aria-hidden="true"><svg class="u3-ico u3-ico-22"><use href="/static/icons.svg#upload"></use></svg></span>
+  <span class="u3-import-drop-ico" aria-hidden="true"><svg class="u3-ico" style="width:28px;height:28px"><use href="/static/icons.svg#upload"></use></svg></span>
   <span class="u3-import-drop-line">{{ s["import_drop_line"] }}</span>
 </div>
-<p class="u3-sum-hint">{{ s["import_formats_line"] }} —
-  <details class="u3-inline">
-    <summary>{{ s["import_formats_link"] }}</summary>
-    <ul class="u3-import-formats">
-      {% for fmt in import_accept_list %}<li>.{{ fmt }}</li>{% endfor %}
-    </ul>
-  </details>
-  {{ s["import_formats_note"] }}</p>
+{# V3 §7.7: строка тегов форматов (24 px чипы), без поясняющего предложения.
+   Инлайн-стили (бюджет CSS books.html на пределе — не влезает в файл). #}
+{% set _chip = "display:inline-flex;align-items:center;min-height:var(--chs);padding:0 var(--gs);border-radius:var(--r8);background:var(--s2);color:var(--fgm);font-size:var(--fx);font-weight:600;white-space:nowrap" %}
+<ul style="display:flex;flex-wrap:wrap;gap:var(--gx);margin:var(--gs) 0 0;padding:0;list-style:none" aria-label="{{ s["import_formats_line"] }}">
+  {% for fmt in import_accept_list[:7] %}<li style="{{ _chip }}">{{ fmt | upper }}</li>{% endfor %}
+  {% if import_accept_list | length > 7 %}<li style="{{ _chip }}">+{{ import_accept_list | length - 7 }}</li>{% endif %}
+</ul>
 <ul id="u3-import-list" class="u3-import-list" hidden></ul>
 <div id="u3-import-summary" role="status" hidden>
   <p id="u3-import-summary-line" class="u3-import-summary-line"></p>

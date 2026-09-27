@@ -1,22 +1,15 @@
-{# Тело листа «Создать задание» (серия R §12, R4: мастер).
-   Одна форма #u3-create-form — прогрессивное улучшение (единый механизм):
-   no-JS — радио книг + селекты 4 полей (нативно, POST /jobs/new → 303);
-   JS — те же элементы + поведение (поиск, сворачивание книги, живая
-   сводка, POST /api/jobs, закрытие листа, скролл к новой строке).
+{# Тело листа «Создать задание» (V3 §7.6, эталон create-wizard).
+   Один экран, параметры — чипами. Прогрессивное улучшение:
+   no-JS — радио книг + радио-чипы (нативно, POST /jobs/new → 303);
+   JS — те же элементы + поведение (поиск книг, сворачивание в карточку,
+   живая сводка CEFR/объём, POST /api/jobs, закрытие листа).
    Рендерится в <dialog id=u3-sheet-create> (JS) ИЛИ в no-JS-секции
    (?sheet=create) — не одновременно (id не дублируются).
-   Переменные: books (views.list_books), lang_codes, job_modes,
-   create ({} — умолчания; {retry_of, book, target, mode,
-   learning_level, learning_cefr} — повтор; {book} — ?book=<name>,
-   кнопка «Перевести» R5), create_defaults (views.create_defaults),
-   create_err (строка причины отказа, no-JS), csrf, glossary_enabled. #}
+   Переменные: books, lang_codes, job_modes, create, create_defaults,
+   create_err, csrf, glossary_enabled. #}
 {% set retry = create and create.retry_of %}
 {% set sel_book = create.book if create else none %}
 {% set pick_book = (books | selectattr("name", "equalto", sel_book) | first) if sel_book else (books[0] if books and books | length == 1 else none) %}
-{# R5 (ТЗ §7): источник в сводке — подтверждённый пользователем язык
-   книги (meta.source_language), иначе — машинная детекция; умолчания
-   target/cefr — из create_defaults (на сервере — книга ?book=, в JS —
-   data-* радио при смене выбора). #}
 {% set src_lang = (pick_book.source_language or pick_book.detected or pick_book.dc_language) if pick_book else none %}
 {% set sel_target = create.target if retry else create_defaults.target %}
 {% set sel_mode = create.mode if retry else create_defaults.mode %}
@@ -27,24 +20,19 @@
 <form id="u3-create-form" class="u3-sheet-form u3-wiz" method="post" action="/jobs/new"
       data-cefr-labels='{{ create_defaults.cefr_labels | tojson }}'
       data-vol-hints='{{ create_defaults.level_hints | tojson }}'>
-{% if create_err %}
-<p class="u3-warn" role="alert">{{ create_err }}</p>
-{% endif %}
-{# Шаг 1 — книга (ТЗ: тот же список строк, что в §6, с поиском).
-   Предвыбор (retry / ?book= / единственная книга) — список сворачивается
-   в выбранную строку (JS; no-JS — список с отмеченным радио). #}
+{% if create_err %}<p class="u3-warn" role="alert">{{ create_err }}</p>{% endif %}
+{# Книга: поиск + список строк; предвыбор сворачивается в карточку (JS).
+   Карточка = обложка 40×60 (буква/миниатюра) + название + «Сменить». #}
 <section class="u3-wiz-step" id="u3-wiz-books">
-  <h3 class="u3-wiz-step-title">{{ s["create_step_book"] }}</h3>
   <input type="search" id="u3-wiz-book-q" class="u3-wiz-search" placeholder="{{ s["create_book_search"] }}" aria-label="{{ s["create_book_search"] }}">
   <div class="u3-wiz-pick" id="u3-wiz-book-pick" hidden>
+    <span class="u3-row-cover" aria-hidden="true" id="u3-wiz-pick-cover"></span>
     <span class="u3-wiz-pick-name" id="u3-wiz-pick-name"></span>
     <span class="u3-wiz-pick-sub" id="u3-wiz-pick-sub"></span>
     <button type="button" class="u3-wiz-link" id="u3-wiz-book-change">{{ s["create_change"] }}</button>
   </div>
   <div id="u3-wiz-book-list" role="radiogroup" aria-label="{{ s["create_step_book"] }}">
-    {% if not books %}
-    <p class="u3-warn">{{ s["jobs_create_books_empty"] }}</p>
-    {% endif %}
+    {% if not books %}<p class="u3-warn">{{ s["jobs_create_books_empty"] }}</p>{% endif %}
     {% for b in books %}
     {% set btitle = b.title or b.name %}
     <label class="u3-row u3-row-book u3-wiz-row">
@@ -61,79 +49,63 @@
     {% endfor %}
   </div>
 </section>
-{# Шаг 2 — сводка: 4 строки (значение — нативный select: тап по строке
-   открывает picker; «лист с одним полем») + «Запустить». #}
-<section class="u3-wiz-step" id="u3-wiz-params">
-  <h3 class="u3-wiz-step-title">{{ s["create_step_params"] }}</h3>
-  <div class="u3-sum">
-    <div class="u3-sum-row">
-      <span class="u3-sum-label">{{ s["create_row_languages"] }}</span>
-      <span class="u3-sum-value">
-        <span class="u3-sum-src" id="u3-lang-src">{{ src_lang or "—" }}</span>
-        <span class="u3-sum-arrow" aria-hidden="true">→</span>
-        <select name="target_language" class="u3-sum-select" required aria-label="{{ s["create_row_languages"] }}">
-          {% for code in lang_codes %}
-          <option value="{{ code }}"{% if sel_target == code %} selected{% endif %}>{{ code }}</option>
-          {% endfor %}
-        </select>
-      </span>
-    </div>
-    <div class="u3-sum-row">
-      <span class="u3-sum-label">{{ s["create_row_mode"] }}</span>
-      <span class="u3-sum-value">
-        <select name="mode" class="u3-sum-select" aria-label="{{ s["create_row_mode"] }}">
-          {% for m in job_modes %}
-          <option value="{{ m }}"{% if sel_mode == m %} selected{% endif %}>{{ m }}</option>
-          {% endfor %}
-        </select>
-      </span>
-    </div>
-    <div class="u3-sum-row">
-      <span class="u3-sum-label">{{ s["create_row_level"] }}</span>
-      <span class="u3-sum-value u3-sum-col">
-        <select name="learning_cefr" class="u3-sum-select" aria-label="{{ s["create_row_level"] }}">
-          <option value=""{% if sel_cefr == "" %} selected{% endif %}>{{ s["create_level_none"] }}</option>
-          {% for lvl in create_defaults.cefr_levels %}
-          <option value="{{ lvl }}"{% if sel_cefr == lvl %} selected{% endif %}>{{ lvl }}</option>
-          {% endfor %}
-        </select>
-        <span class="u3-sum-hint" id="u3-cefr-label">{{ cefr_label }}</span>
-      </span>
-    </div>
-    <div class="u3-sum-row">
-      <span class="u3-sum-label">{{ s["create_row_materials"] }}</span>
-      <span class="u3-sum-value" id="u3-materials-value">{{ s["create_materials_cards"] if sel_level else s["create_materials_translation"] }}</span>
-    </div>
-  </div>
-  {% if retry %}
-  <p class="u3-wiz-source">{{ s["jobs_create_retry_of"].format(id=create.retry_of) }}</p>
-  {% elif create_defaults.from_last_job %}
-  <p class="u3-wiz-source">{{ s["create_last_time"] }} · {{ s["create_change"] }}</p>
-  {% else %}
-  <p class="u3-wiz-source">{{ s["create_default"] }}</p>
-  {% endif %}
-  {# «Ещё»: объём = learning_level (единственный per-job механизм движка,
-     SUBSTAGE_LEVELS гейтит S1–S5); глоссарий — read-only из конфига
-     (per-job = изменение pipeline.py, вне границ ТЗ §1); LLM-профиль —
-     read-only (R8, ТЗ §13: один набор на все стадии, правится на
-     /settings/llm); EPUBCheck — не в списке (пропуск запрещён, ТЗ §12). #}
-  <details class="u3-wiz-more">
-    <summary>{{ s["create_more"] }}</summary>
-    <label class="u3-filter u3-wiz-field">
-      {{ s["create_more_volume"] }}:
-      <select name="learning_level" class="u3-sum-select">
-        <option value=""{% if sel_level == "" %} selected{% endif %}>{{ s["create_level_none"] }}</option>
-        {% for lvl in create_defaults.learning_levels %}
-        <option value="{{ lvl }}"{% if sel_level == lvl %} selected{% endif %}>{{ lvl }}</option>
-        {% endfor %}
-      </select>
-    </label>
+{# Параметры — чипы прямо на экране (V3 §7.6). Выбор — радио (no-JS-нативно);
+   выбранный чип — заливка --accent-strong (:has(input:checked)). #}
+<div class="u3-param">
+  <span class="u3-param-l">{{ s["create_row_languages"] }}</span>
+  <span class="u3-chipset" role="radiogroup" aria-label="{{ s["create_row_languages"] }}">
+    <span class="u3-sum-src" id="u3-lang-src">{{ src_lang or "—" }}</span><span class="u3-sum-arrow" aria-hidden="true">→</span>
+    {% for code in lang_codes %}
+    <label class="u3-rchip"><input type="radio" name="target_language" value="{{ code }}" required{% if sel_target == code %} checked{% endif %}><span>{{ code }}</span></label>
+    {% endfor %}
+  </span>
+</div>
+<div class="u3-param">
+  <span class="u3-param-l">{{ s["create_row_mode"] }}</span>
+  <span class="u3-chipset" role="radiogroup" aria-label="{{ s["create_row_mode"] }}">
+    {% for m in job_modes %}
+    <label class="u3-rchip"><input type="radio" name="mode" value="{{ m }}"{% if sel_mode == m %} checked{% endif %}><span>{{ m }}</span></label>
+    {% endfor %}
+  </span>
+</div>
+<div class="u3-param">
+  <span class="u3-param-l">{{ s["create_row_cefr"] }}</span>
+  <span class="u3-chipset" role="radiogroup" aria-label="{{ s["create_row_cefr"] }}">
+    <label class="u3-rchip"><input type="radio" name="learning_cefr" value=""{% if sel_cefr == "" %} checked{% endif %}><span>{{ s["create_level_none"] }}</span></label>
+    {% for lvl in create_defaults.cefr_levels %}
+    <label class="u3-rchip"><input type="radio" name="learning_cefr" value="{{ lvl }}"{% if sel_cefr == lvl %} checked{% endif %}><span>{{ lvl }}</span></label>
+    {% endfor %}
+  </span>
+  <span class="u3-sum-hint" id="u3-cefr-label">{{ cefr_label }}</span>
+</div>
+<div class="u3-param">
+  <span class="u3-param-l">{{ s["create_row_materials"] }}</span>
+  <span class="u3-chipset"><span class="u3-chip u3-chip-st" id="u3-materials-value">{{ s["create_materials_cards"] if sel_level else s["create_materials_translation"] }}</span></span>
+</div>
+{% if retry %}
+<p class="u3-wiz-source">{{ s["jobs_create_retry_of"].format(id=create.retry_of) }}</p>
+{% elif create_defaults.from_last_job %}
+<p class="u3-wiz-source">{{ s["create_last_time"] }} · {{ s["create_change"] }}</p>
+{% else %}
+<p class="u3-wiz-source">{{ s["create_default"] }}</p>
+{% endif %}
+{# «Ещё»: объём (learning_level) + глоссарий/LLM read-only. #}
+<details class="u3-wiz-more">
+  <summary>{{ s["create_more"] }}</summary>
+  <div class="u3-param">
+    <span class="u3-param-l">{{ s["create_more_volume"] }}</span>
+    <span class="u3-chipset" role="radiogroup" aria-label="{{ s["create_more_volume"] }}">
+      <label class="u3-rchip"><input type="radio" name="learning_level" value=""{% if sel_level == "" %} checked{% endif %}><span>{{ s["create_level_none"] }}</span></label>
+      {% for lvl in create_defaults.learning_levels %}
+      <label class="u3-rchip"><input type="radio" name="learning_level" value="{{ lvl }}"{% if sel_level == lvl %} checked{% endif %}><span>{{ lvl }}</span></label>
+      {% endfor %}
+    </span>
     <p class="u3-sum-hint" id="u3-vol-hint">{{ vol_hint }}</p>
-    <p class="u3-filter u3-wiz-readonly">{{ s["create_more_glossary"] }}: {{ s["create_glossary_on"] if glossary_enabled else s["create_glossary_off"] }}</p>
-    <p class="u3-filter u3-wiz-readonly">{{ s["create_more_llm"] }}: <span class="u3-mono">{{ llm_model }}</span></p>
-  </details>
-  <input type="hidden" name="u3_csrf" value="{{ csrf }}">
-  <button type="submit" class="u3-btn u3-primary u3-sheet-action">{{ s["jobs_create_btn"] }}</button>
-  <span id="u3-create-msg" role="status"></span>
-</section>
+  </div>
+  <p class="u3-filter u3-wiz-readonly">{{ s["create_more_glossary"] }}: {{ s["create_glossary_on"] if glossary_enabled else s["create_glossary_off"] }}</p>
+  <p class="u3-filter u3-wiz-readonly">{{ s["create_more_llm"] }}: <span class="u3-mono">{{ llm_model }}</span></p>
+</details>
+<input type="hidden" name="u3_csrf" value="{{ csrf }}">
+<button type="submit" class="u3-btn u3-primary u3-sheet-action">{{ s["jobs_create_btn"] }}</button>
+<span id="u3-create-msg" role="status"></span>
 </form>

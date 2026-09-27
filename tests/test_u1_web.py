@@ -395,6 +395,10 @@ def test_u1_2_no_fake_percentages(u1_env: U1Env) -> None:
     for other in repo.list_jobs():
         if other.alignment_coverage is not None:
             allowed_coverage.add(f"{other.alignment_coverage * 100:.1f}")
+    # V3 §7.5: топ-блок экрана задания показывает процент прогресса
+    # (progress_pct) — легитимное значение, не охват выравнивания.
+    if job.status.value not in ("PLANNING", "VALIDATING_OUTPUT"):
+        allowed_coverage.add(str(round((job.progress or 0.0) * 100)))
     # Список: проценты = прогресс сегментов (TZ §10: line3 и полоса width) —
     # реальный показатель выполнения, а не охват. Значения — progress_pct API.
     rows = client.get("/api/jobs").json()
@@ -754,6 +758,30 @@ def test_u1_7_auth_denies_without_secret(u1_env: U1Env) -> None:
         == 401
     )
     assert client.get("/api/health").headers.get("WWW-Authenticate", "").startswith("Basic")
+
+
+# ------------------------------------------------------------------ V3 §7.1
+
+
+def test_u3_1_login_centered_block(u1_env: U1Env) -> None:
+    """V3 §7.1: вход — центрированный блок: плитка (book-open), бренд
+    «EpubTranslator», поле пароля, кнопка «Войти»; appbar на входе скрыт
+    (css-auth.css линкуется только auth.html)."""
+    client = u1_env.profiles["auth"].client
+    response = client.get("/login")
+    assert response.status_code == 200, response.text
+    text = response.text
+    assert 'class="u3-auth"' in text
+    assert 'class="u3-auth-tile"' in text
+    assert "/static/icons.svg#book-open" in text
+    assert 'class="u3-auth-brand"' in text
+    assert ">EpubTranslator</h1>" in text
+    assert 'type="password" name="password"' in text
+    assert 'class="u3-btn u3-primary"' in text
+    assert ">Войти</button>" in text
+    assert 'href="/static/css-auth.css"' in text
+    css = (ROOT / "app" / "web" / "static" / "css-auth.css").read_text(encoding="utf-8")
+    assert ".u3-appbar{display:none}" in css
 
 
 # ------------------------------------------------------------------ T-U1-8

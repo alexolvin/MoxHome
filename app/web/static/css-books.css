@@ -10,6 +10,7 @@
 #u3-sheet-book-delete .u3-filter-actions{flex-direction:column;align-items:stretch;gap:var(--gs);margin-top:var(--gs)}
 #u3-sheet-book-delete .u3-filter-actions .u3-btn{width:100%}
 .u3-book-del-btn{width:100%}
+.u3-btn-danger{background:var(--st-e);color:var(--os)}
 .u3-book-del-q{margin:0 0 var(--gs);font-size:var(--fmd);font-weight:600}
 .u3-book-delete{display:flex;align-items:center;justify-content:center;min-height:var(--u3-tap);margin:var(--g) 0 calc(var(--p) + env(safe-area-inset-bottom));color:var(--st-e);font-weight:600;text-decoration:none}
 .u3-book-delete:hover{text-decoration:underline}

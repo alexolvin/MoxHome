@@ -43,9 +43,9 @@ def _create_form(doc: lhtml.HtmlElement) -> lhtml.HtmlElement:
 
 
 def _selected(form: lhtml.HtmlElement, name: str) -> str:
-    opts = form.xpath(f'//select[@name="{name}"]//option[@selected]')
-    assert len(opts) == 1, f"не выбран опция для {name}"
-    return str(opts[0].get("value"))
+    radios = form.xpath(f'//input[@name="{name}" and @type="radio" and @checked]')
+    assert len(radios) == 1, f"не выбрано значение для {name}"
+    return str(radios[0].get("value"))
 
 
 def _source_line(doc: lhtml.HtmlElement) -> str:
@@ -151,9 +151,10 @@ def test_r4_4_wizard_markup(u1_env: U1Env) -> None:
         assert radio.get("data-dc") is not None
     # поиск (no-JS — скрыт CSS, в разметке — есть)
     assert form.xpath('//input[@id="u3-wiz-book-q" and @type="search"]')
-    # шаг 2: четыре поля (target/mode/cefr в сводке, level в «Ещё»)
+    # шаг 2: четыре поля (target/mode/cefr в сводке, level в «Ещё») —
+    # V3 §7.6: выбор — радио-чипы (не <select>)
     for name in ("target_language", "mode", "learning_cefr", "learning_level"):
-        assert form.xpath(f'//select[@name="{name}"]'), name
+        assert form.xpath(f'//input[@name="{name}" and @type="radio"]'), name
     # CEFR-метка — единая точка (derived — «Estimated CEFR level»)
     label = doc.xpath('//span[@id="u3-cefr-label"]')
     assert label and "CEFR level" in label[0].text_content()

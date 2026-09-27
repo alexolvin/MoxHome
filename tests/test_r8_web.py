@@ -261,11 +261,12 @@ def _make_terminal_job(r8: R8Ctx, book: str, *, old_days: float | None) -> str:
 
 
 def test_r8_1_settings_root_six_rows_no_inputs(r8: R8Ctx) -> None:
-    """ТЗ §13: корень «Настроек» — 6 строк, без единого поля ввода."""
+    """ТЗ §13 + V3 §7.8: корень «Настроек» — 6 строк в 3 сгруппированных
+    карточках, иконка в каждой строке, без единого поля ввода."""
     response = r8.client.get("/settings")
     assert response.status_code == 200, response.text
     root = lhtml.fromstring(response.text)
-    links = [a.get("href") for a in root.xpath('//a[contains(@class, "u3-list-row")]')]
+    links = [a.get("href") for a in root.xpath('//a[contains(@class, "u3-grp-row")]')]
     assert links == [
         "/settings/llm",
         "/settings/languages",
@@ -274,6 +275,12 @@ def test_r8_1_settings_root_six_rows_no_inputs(r8: R8Ctx) -> None:
         "/settings/maintenance",
         "/settings/about",
     ]
+    # V3 §7.8: 3 сгруппированные карточки + иконка в каждой строке
+    assert len(root.xpath('//div[contains(@class, "u3-grp")]')) == 3
+    assert (
+        len(root.xpath('//a[contains(@class, "u3-grp-row")]//svg[contains(@class, "u3-grp-i")]'))
+        == 6
+    )
     # 0 input/select/textarea в контенте (no-JS — строки, нативные ссылки)
     assert not root.xpath("//input | //select | //textarea")
 
@@ -282,16 +289,17 @@ def test_r8_1_settings_root_six_rows_no_inputs(r8: R8Ctx) -> None:
 
 
 def test_r8_2_llm_form_render(r8: R8Ctx) -> None:
-    """ТЗ §13: 3 <details> (открыт ПЕРВЫЙ), поля профиля, ключ только
-    «задан/не задан», границы из схемы, data-saved у extra_body."""
+    """ТЗ §13 + V3 §7.8: 3 карточки (по одной на профиль), «Ещё» свёрнут,
+    поля профиля, ключ только «задан/не задан», границы из схемы,
+    data-saved у extra_body."""
     response = r8.client.get("/settings/llm")
     assert response.status_code == 200, response.text
     root = lhtml.fromstring(response.text)
-    details = root.xpath('//details[contains(@class, "u3-llm-profile")]')
-    assert len(details) == 3
-    assert "open" in details[0].attrib
-    assert "open" not in details[1].attrib
-    assert "open" not in details[2].attrib
+    cards = root.xpath('//div[contains(concat(" ",@class," "), " u3-llm-card ")]')
+    assert len(cards) == 3
+    more = root.xpath('//details[contains(@class, "u3-llm-more")]')
+    assert len(more) == 3
+    assert all("open" not in d.attrib for d in more)
     # переключатель: все три base_url равны — checked (вычисляет сервер)
     shared = root.xpath('//input[@name="shared_endpoint"]')[0]
     assert "checked" in shared.attrib

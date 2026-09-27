@@ -324,12 +324,12 @@ def test_r5_10_create_defaults_book_override(u1_env: U1Env) -> None:
     form_page = client.get(f"/jobs?sheet=create&book={book}")
     doc = lhtml.fromstring(form_page.text)
     form = doc.xpath('//form[@id="u3-create-form"]')[0]
+    # V3 §7.6: параметры — радио-чипы (не <select>); выбранное — @checked.
     # lxml: `//x` — абсолютный путь от корня документа (весь документ!),
     # для поддерева элемента — `.//x` / `./x`.
     selected = {
-        s.get("name"): str(o.get("value"))
-        for s in form.xpath('.//select')
-        for o in s.xpath('./option[@selected]')
+        r.get("name"): str(r.get("value"))
+        for r in form.xpath('.//input[@type="radio" and @checked]')
     }
     assert selected["target_language"] == "de"
     assert selected["learning_cefr"] == "B1"

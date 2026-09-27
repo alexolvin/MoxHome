@@ -17,6 +17,13 @@
 {% if worker_down %}
 <p class="u3-worker-band" role="status">{{ s["jobs_worker_band"] }}</p>
 {% endif %}
+{# V3 §7.4: полоса статистики — три карточки 1/3, число --fs-lg 700 +
+   подпись --fs-xs; числа — глобальные из БД (не зависят от фильтра). #}
+<div class="u3-stats" aria-label="{{ s["jobs_stats_label"] }}">
+  <div class="u3-stat u3-stat-run"><span class="u3-stat-n">{{ job_stats.run }}</span><span class="u3-stat-l">{{ s["jobs_stat_run"] }}</span></div>
+  <div class="u3-stat u3-stat-wait"><span class="u3-stat-n">{{ job_stats.wait }}</span><span class="u3-stat-l">{{ s["jobs_stat_wait"] }}</span></div>
+  <div class="u3-stat u3-stat-ok"><span class="u3-stat-n">{{ job_stats.done7 }}</span><span class="u3-stat-l">{{ s["jobs_stat_done7"] }}</span></div>
+</div>
 <nav class="u3-seg" aria-label="{{ s["jobs_seg_label"] }}">
   {% for gkey, glabel in pills %}
   <a class="u3-seg-pill{% if group == gkey %} is-current{% endif %}" href="{{ pill_href(gkey) }}"{% if group == gkey %} aria-current="true"{% endif %}><span class="u3-seg-vis">{{ glabel }}</span></a>

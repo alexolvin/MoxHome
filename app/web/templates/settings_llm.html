@@ -4,19 +4,15 @@
 <link rel="stylesheet" href="/static/css-settings.css">
 {% endblock %}
 {% block content %}
-{# R8 (ТЗ §13): правка llm.profiles.* — одна форма #u3-llm-form.
-   no-JS: POST /settings/llm (сохранение), кнопки «Проверить» — submit +
-   formaction /settings/llm/probe (name="profile" = профиль кнопки).
-   JS: fetch PUT /api/config/llm + POST /api/llm/probe (app.js),
-   datalist моделей — GET /api/llm/models?base_url=… (дебаунс 500 мс).
-   Ключ — только «задан/не задан» (U1-8); extra_body пусто = без
-   изменений; «Сброс» (JS) — вернуть сохранённое (data-saved). #}
-<p class="hint">{{ s["llm_hint"] }}</p>
+{# V3 (ТЗ §7.8, эталон settings-toggles): одна карточка на профиль — имя,
+   URL, модель, ключ («задан/не задан»), «Проверить». Числовые параметры
+   + extra_body — в свёрнутом «Ещё» (не в теле карточки).
+   no-JS: POST /settings/llm + formaction /settings/llm/probe (name=профиль).
+   JS: PUT /api/config/llm + POST /api/llm/probe, datalist моделей. #}
 {% if error is defined and error %}
 <p class="hint u3-warn" role="alert">{{ error }}</p>
 {% endif %}
-{# Баннер пробы: no-JS — серверный результат (200), JS — fill-in через
-   fetch POST /api/llm/probe (атрибут hidden снимает JS). #}
+{# Баннер пробы: no-JS — серверный (200), JS — fill-in через POST /api/llm/probe #}
 <p class="hint{% if probe is defined and probe %} {{ "u3-ok" if probe.ok else "u3-warn" }}{% endif %}"
    id="u3-llm-probe-msg" role="status"{% if not (probe is defined and probe) %} hidden{% endif %}>
   {% if probe is defined and probe %}<strong>{{ s["llm_profile_title"].format(profile=probe.profile) }}:</strong> {{ probe.message }}{% endif %}
@@ -34,8 +30,8 @@
   </div>
   <datalist id="u3-llm-models-list"></datalist>
   {% for p in form.profiles %}
-  <details class="u3-llm-profile"{% if loop.first %} open{% endif %}>
-    <summary>{{ p.name }}</summary>
+  <div class="u3-llm-card">
+    <div class="u3-llm-card-h">{{ p.name }}</div>
     <div class="u3-fld u3-llm-profile-url">
       <label class="u3-fld-label" for="u3-llm-url-{{ p.name }}">{{ s["llm_base_url_label"] }}</label>
       <input type="url" id="u3-llm-url-{{ p.name }}" name="base_url_{{ p.name }}"
@@ -52,32 +48,34 @@
              autocomplete="off" placeholder="{{ s["models_key_set"] if p.api_key_set else s["models_key_unset"] }}">
       <p class="u3-fld-hint">{{ s["llm_key_keep_hint"] }}</p>
     </div>
-    <div class="u3-fld">
-      <label class="u3-fld-label" for="u3-llm-temp-{{ p.name }}">{{ s["llm_temperature_label"] }}</label>
-      <input type="number" id="u3-llm-temp-{{ p.name }}" name="temperature_{{ p.name }}"
-             value="{{ p.temperature }}" min="{{ form.bounds.temperature_min }}"
-             max="{{ form.bounds.temperature_max }}" step="0.1" required>
-    </div>
-    <div class="u3-fld">
-      <label class="u3-fld-label" for="u3-llm-retry-{{ p.name }}">{{ s["llm_retries_label"] }}</label>
-      <input type="number" id="u3-llm-retry-{{ p.name }}" name="retry_times_{{ p.name }}"
-             value="{{ p.retry_times }}" min="{{ form.bounds.retries_min }}" step="1" required>
-    </div>
-    <div class="u3-fld">
-      <label class="u3-fld-label" for="u3-llm-conc-{{ p.name }}">{{ s["llm_parallelism_label"] }}</label>
-      <input type="number" id="u3-llm-conc-{{ p.name }}" name="concurrency_{{ p.name }}"
-             value="{{ p.concurrency }}" min="{{ form.bounds.parallelism_min }}" step="1" required>
-    </div>
-    <details class="u3-llm-extra">
-      <summary>{{ s["llm_extra_body_label"] }}</summary>
-      <textarea name="extra_body_{{ p.name }}" rows="4" class="u3-mono"
-                aria-label="{{ s["llm_extra_body_label"] }}"
-                placeholder="{{ s["llm_extra_body_hint"] }}">{{ p.extra_body }}</textarea>
-      <p class="u3-fld-hint">{{ s["llm_extra_body_hint"] }}</p>
-      <span class="u3-filter-actions">
-        <button type="button" class="btn" data-u3-llm-extra-reset="{{ p.name }}"
-                data-saved="{{ p.extra_body }}">{{ s["llm_extra_reset"] }}</button>
-      </span>
+    <details class="u3-llm-more">
+      <summary>{{ s["llm_more_label"] }}</summary>
+      <div class="u3-fld">
+        <label class="u3-fld-label" for="u3-llm-temp-{{ p.name }}">{{ s["llm_temperature_label"] }}</label>
+        <input type="number" id="u3-llm-temp-{{ p.name }}" name="temperature_{{ p.name }}"
+               value="{{ p.temperature }}" min="{{ form.bounds.temperature_min }}"
+               max="{{ form.bounds.temperature_max }}" step="0.1" required>
+      </div>
+      <div class="u3-fld">
+        <label class="u3-fld-label" for="u3-llm-retry-{{ p.name }}">{{ s["llm_retries_label"] }}</label>
+        <input type="number" id="u3-llm-retry-{{ p.name }}" name="retry_times_{{ p.name }}"
+               value="{{ p.retry_times }}" min="{{ form.bounds.retries_min }}" step="1" required>
+      </div>
+      <div class="u3-fld">
+        <label class="u3-fld-label" for="u3-llm-conc-{{ p.name }}">{{ s["llm_parallelism_label"] }}</label>
+        <input type="number" id="u3-llm-conc-{{ p.name }}" name="concurrency_{{ p.name }}"
+               value="{{ p.concurrency }}" min="{{ form.bounds.parallelism_min }}" step="1" required>
+      </div>
+      <div class="u3-fld">
+        <label class="u3-fld-label" for="u3-llm-extra-{{ p.name }}">{{ s["llm_extra_body_label"] }}</label>
+        <textarea id="u3-llm-extra-{{ p.name }}" name="extra_body_{{ p.name }}" rows="4" class="u3-mono"
+                  placeholder="{{ s["llm_extra_body_hint"] }}">{{ p.extra_body }}</textarea>
+        <p class="u3-fld-hint">{{ s["llm_extra_body_hint"] }}</p>
+        <span class="u3-filter-actions">
+          <button type="button" class="btn" data-u3-llm-extra-reset="{{ p.name }}"
+                  data-saved="{{ p.extra_body }}">{{ s["llm_extra_reset"] }}</button>
+        </span>
+      </div>
     </details>
     <span class="u3-filter-actions">
       <button type="submit" class="btn" formaction="/settings/llm/probe"
@@ -85,7 +83,7 @@
         {{ s["llm_probe_btn"] }}
       </button>
     </span>
-  </details>
+  </div>
   {% endfor %}
   <input type="hidden" name="u3_csrf" value="{{ csrf }}">
   <button type="submit" id="u3-llm-save" class="u3-btn u3-primary u3-sheet-action">{{ s["common_save"] }}</button>

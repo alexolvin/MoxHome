@@ -131,6 +131,26 @@ def job_list_group(
     return "done"
 
 
+#: §7.4: окно «Готово за 7 дней» полосе статистики — секунды.
+_DONE_WINDOW_S = 7 * 86400
+
+
+def job_stats(jobs: list[Job], *, now: float | None = None) -> dict[str, int]:
+    """Полоса статистики §7.4 (числа из БД): в работе (группа run),
+    в очереди (wait), готово за 7 дней (ok, обновлено в пределах окна)."""
+    now = time.time() if now is None else now
+    run = wait = done7 = 0
+    for job in jobs:
+        group = STATUS_GROUP.get(job.status.value, "wait")
+        if group == "run":
+            run += 1
+        elif group == "wait":
+            wait += 1
+        elif group == "ok" and (now - job.updated_at) < _DONE_WINDOW_S:
+            done7 += 1
+    return {"run": run, "wait": wait, "done7": done7}
+
+
 def human_duration(total_seconds: float) -> str:
     """§10: «12 мин», после часа — «1 ч 20 мин» (единая точка формата)."""
     minutes = int(max(0.0, total_seconds) // 60)
@@ -439,8 +459,14 @@ def job_facts(
         (r.at for r in reversed(transitions) if r.to_status is JobStatus.PAUSED),
         None,
     )
+    _cov = book_cover_facts(
+        settings, Path(job.source_path), read_book_meta(Path(job.source_path))
+    )
     return {
         "id": job.id,
+        "book_name": Path(job.source_path).name,
+        # V3 §7.7: шапка листа экспорта — обложка 48×72 + название.
+        "cover": _cov,
         "status": job.status.value,
         # Серия R §4: группа и глиф — из единой таблицы (выше); клиент
         # не содержит собственного соответствия статус→группа.
@@ -694,6 +720,21 @@ def book_title_map(paths: list[Path]) -> dict[str, str]:
         if name in m:
             continue
         m[name] = read_book_meta(p).get("title") or name
+    return m
+
+
+def book_cover_map(settings: Settings, paths: list[Path]) -> dict[str, dict[str, Any]]:
+    """name → ``{'has_cover', 'cover_v'}`` для строк списка заданий (V3 §7.4).
+
+    Читает ``.meta.json`` только для distinct-имён (без N+1 на дубли);
+    ``cover_v`` — sha8 для cache-bust endpoint'а ``/books/{name}/cover``."""
+    m: dict[str, dict[str, Any]] = {}
+    for p in paths:
+        name = p.name
+        if name in m:
+            continue
+        facts = book_cover_facts(settings, p, read_book_meta(p))
+        m[name] = {"has_cover": facts["has_cover"], "cover_v": facts["cover_v"]}
     return m
 
 

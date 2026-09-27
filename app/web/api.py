@@ -138,9 +138,11 @@ def _job_or_404(repo: JobRepository, job_id: str) -> Job:
 def _job_row(
     settings: Settings,
     job: Job,
+    *,
     elapsed_seconds: float = 0.0,
     book_title: str | None = None,
     eta_seconds: float | None = None,
+    cover: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     validation = views.read_json(settings.job_dir(job.id) / "validation.json")
     # Серия R §10: строка списка — группа (единый источник
@@ -178,6 +180,7 @@ def _job_row(
         "error": job.error_message,
         "book_name": Path(job.source_path).name,
         "book_title": book_title or Path(job.source_path).name,
+        "cover": cover or {},
         "created_at": job.created_at,
         "updated_at": job.updated_at,
         "created_at_human": views.human_ts(job.created_at),
@@ -190,6 +193,7 @@ def _job_rows(settings: Settings, repo: JobRepository, jobs: list[Job]) -> list[
     время работы — views.elapsed_and_eta (E7/M7, единый механизм)."""
     transitions = repo.list_transitions_bulk([job.id for job in jobs])
     title_map = views.book_title_map([Path(j.source_path) for j in jobs])
+    cover_map = views.book_cover_map(settings, [Path(j.source_path) for j in jobs])
     rows: list[dict[str, Any]] = []
     for job in jobs:
         elapsed, _eta = views.elapsed_and_eta(job, transitions.get(job.id, []))
@@ -200,6 +204,7 @@ def _job_rows(settings: Settings, repo: JobRepository, jobs: list[Job]) -> list[
                 elapsed_seconds=elapsed,
                 book_title=title_map.get(Path(job.source_path).name),
                 eta_seconds=_eta,
+                cover=cover_map.get(Path(job.source_path).name),
             )
         )
     return rows

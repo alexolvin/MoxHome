@@ -4,14 +4,31 @@
 <link rel="stylesheet" href="/static/css-settings.css">
 {% endblock %}
 {% block content %}
-{# R8 (ТЗ §13): корень /settings — 6 маршрутных строк, инпутов на
-   первом экране нет. Здоровье/конфиг — в «Обслуживание». #}
-<ul class="u3-list">
-  <li><a class="u3-list-row" href="/settings/llm">{{ s["settings_row_llm"] }}</a></li>
-  <li><a class="u3-list-row" href="/settings/languages">{{ s["settings_row_languages"] }}</a></li>
-  <li><a class="u3-list-row" href="/settings/prompts">{{ s["settings_row_prompts"] }}</a></li>
-  <li><a class="u3-list-row" href="/settings/appearance">{{ s["settings_row_appearance"] }}</a></li>
-  <li><a class="u3-list-row" href="/settings/maintenance">{{ s["settings_row_maintenance"] }}</a></li>
-  <li><a class="u3-list-row" href="/settings/about">{{ s["settings_row_about"] }}</a></li>
-</ul>
+{# V3 (ТЗ §7.8, эталон settings-menu): корень /settings — сгруппированные
+   карточки, строки 52 px: иконка 20 px --fg-muted, подпись --fs-btn,
+   chevron-right справа. Группы: Модели / Перевод / Приложение.
+   Инпутов на первом экране нет (R8). #}
+{% macro row(href, ico, label) %}
+<a class="u3-grp-row" href="{{ href }}">
+  <svg class="u3-grp-i" aria-hidden="true"><use href="/static/icons.svg#{{ ico }}"></use></svg>
+  <span class="u3-grp-l">{{ label }}</span>
+  <svg class="u3-grp-c" aria-hidden="true"><use href="/static/icons.svg#chevron-right"></use></svg>
+</a>
+{% endmacro %}
+
+<div class="u3-grp">
+  <p class="u3-grp-h">{{ s["settings_group_models"] }}</p>
+  {{ row("/settings/llm", "cpu", s["settings_row_llm"]) }}
+</div>
+<div class="u3-grp">
+  <p class="u3-grp-h">{{ s["settings_group_translation"] }}</p>
+  {{ row("/settings/languages", "languages", s["settings_row_languages"]) }}
+  {{ row("/settings/prompts", "message-square-text", s["settings_row_prompts"]) }}
+</div>
+<div class="u3-grp">
+  <p class="u3-grp-h">{{ s["settings_group_app"] }}</p>
+  {{ row("/settings/appearance", "palette", s["settings_row_appearance"]) }}
+  {{ row("/settings/maintenance", "wrench", s["settings_row_maintenance"]) }}
+  {{ row("/settings/about", "info", s["settings_row_about"]) }}
+</div>
 {% endblock %}
