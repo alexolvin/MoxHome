@@ -2954,3 +2954,85 @@ V-T2/V-T10), **V-T7 PASS**, **V-T14 PASS** (pytest/ruff/mypy/контраст),
 (`--no-ff`), **серия V (V0–V4) завершена**.
 
 Серия V закрыта (V0–V4 в main).
+
+---
+
+# CONTROL R6 (post-V main, 2026-09-27)
+
+Свежий CONTROL R6 (импорт, ТЗ R §8, T7/T8) на post-V main — по запросу
+владельца («Начни R6» → «Свежий CONTROL R6»). Стенд 127.0.0.1:8421 с
+конвертером Calibre ВКЛ (`.a/tasks/ui-audit/r6ctl.yaml`, D110, Podman-контейнер
+без сети; EPUBCheck 35 МБ). Замер — `.a/tasks/ui-audit/r6_measure.py`
+(`BASE`/`INPUT_DIR` переопределены под стенд; секрет = `.env`, чтобы
+`audit_ui.csrf_token` совпадал с веб-инстансом).
+
+## Найденное: V-серия осиротила мультифайловый лист импорта
+
+Первый прогон: **T7=FAIL, T8=FAIL** (NOJS/CLEAN/T17 валидны). Корень —
+**не бэкенд** (API-импорт 8/8 `done`, EPUBCheck 0 err, oversize 400, no-JS
+PASS), а UI-расхождение V с ТЗ V:
+
+- ТЗ V §7.2 (L372): «FAB „Книга" открывает лист импорта»; §7.7 (L430) — лист
+  (drop-зона, очередь, шаги); S10 = «Лист импорта».
+- Реализация V (скриншот V4 `S02-books`): FAB скрыт (`.u3-fab{display:none}`),
+  добавление — 4-я вкладка таб-бара «Добавить» → `/books/upload` (страница,
+  один файл). Мультифайловый лист `u3-sheet-import` осиротел: единственный
+  открыватель (скрытый FAB, `data-sheet-open`) невидим, вкладка ведёт на
+  `/books/upload`. JS листа на скрытом FAB (`app.js` `querySelector`).
+- Недостижимы: T7-queue («N из M») + T8-sheet (отказы в листе).
+
+**Владелец (2026-09-27, дословно):** «Восстановить лист (по ТЗ V)».
+
+### Фикс 1 — лист импорта (R6 скоуп)
+
+`_tabbar.html`: вкладка «Добавить» на `/books` получает
+`data-sheet-open="u3-sheet-import"`. JS — общий `initSheets` открывает лист
+(`preventDefault`), no-JS — `href=/books/upload` как fallback. Одна строка;
+T7/T8 JS-пути стали достижимы.
+
+## Найденное: буг формы создания задания (V3, вне R6 — выловлен CONTROL)
+
+`t7.js_single` (toast «Перевести» → create-form) + CLEAN по pageerror выловили
+серьёзный pre-existing буг (в main с V3): поля-чипы `target_language`, `mode`,
+`learning_level`, `learning_cefr` в V3 §7.6 стали radio-группами, но
+`bindCreateForm()` (app.js) читал их как select. `form.target_language` —
+RadioNodeList (нет `.value`/`.addEventListener`) → исключение на инициализации
+(функция без try/catch) → `form.addEventListener("submit", …)` **не
+привязывалась** → **JS-пользователь не мог создать задание** (только no-JS
+POST). Также не работали JS-обновления сводки (после места броска).
+
+**Владелец (2026-09-27, дословно):** «Исправить сейчас (рекомендую)».
+
+### Фикс 2 — create-form (app.js)
+
+`bindCreateForm()`: `chipVal(name)` / `chipChange(name,fn)` — значение
+галочки radio-группы + слушатели на галочках (defensive к отсутствию
+`form.elements`). Все 4 chip-поля через `chipVal`; submit-body:
+`target_language/mode/learning_level/learning_cefr` = `chipVal(…)` (mode:
+`||"bilingual"`). app.js: 0 кириллицы (T17), `node --check` OK.
+
+Регресс-тест: `tests/test_u3_web.py::test_u3_15_autorefresh_harness[create-chips]`
+(Node-харнесс: create-form с radio-group полями → `submitBound` + POST-body
+`target_language="ru"`, `mode="bilingual"`). Сценарий `restart` переведён на
+radio-group `f.elements` (модель V3-формы, не select-заглушка).
+
+## Результат CONTROL R6 (post-V main)
+
+Итог: **T7=PASS, T8=PASS, NOJS=PASS, CLEAN=PASS, T17=PASS** (0 ошибок).
+
+- **T7**: JS single (вкладка → лист → тост «Книга добавлена» + «Перевести» →
+  R4, книга предвыбрана), JS queue 3/3 («0/1/2 из 3» → «3 добавлено, 0 с
+  ошибкой»), API 8/8 `done`, meta 12/12 (EPUBCheck 0 err, `source_format` =
+  фикстура), cover (карточка `.u3-book-card` + `GET /books/{name}/cover` 200
+  `image/webp` + страница книги).
+- **T8**: sheet 3/3 (DRM «файл защищён DRM», скан-PDF «сканерный PDF (нет
+  текстового слоя); OCR не выполняется», CBZ «комиксы (.cbz/.cbr) не
+  поддерживаются» — 400, причина и в теле, и в строке, без Traceback), oversize
+  51 МБ > 50 → 400 «файл больше 50 МБ».
+- **no-JS**: `/books/upload` → 303 `/imports/{id}` → «Книга добавлена:».
+- **CLEAN**: 0 console/pageerror/5xx. **T17**: 0 литералов.
+
+Снимки: `.a/tasks/ui-audit/shots/R6/`. Замер: `results.json['r6']`.
+
+Полный прогон: **pytest 433/433 (0:21:43), ruff 0, mypy 0 (85), JS 81 091 Б
+≤ 81 920, CSS 24 494 Б ≤ 24 576, V-T16 0**. Стенд 8421 остановлен.
