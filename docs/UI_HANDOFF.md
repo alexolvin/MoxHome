@@ -3036,3 +3036,81 @@ radio-group `f.elements` (модель V3-формы, не select-заглушк
 
 Полный прогон: **pytest 433/433 (0:21:43), ruff 0, mypy 0 (85), JS 81 091 Б
 ≤ 81 920, CSS 24 494 Б ≤ 24 576, V-T16 0**. Стенд 8421 остановлен.
+
+# CONTROL R7 (post-V main, 2026-09-27)
+
+Свежий CONTROL R7 (экспорт 8 форматов, ТЗ R §9, T9) на post-V main — в серии
+«R7 → R8 → R9 насквозь» по решению владельца. Стенд 127.0.0.1:8422 с ЖИВЫМ
+LLM (vLLM 127.0.0.1:8004, `qwen3.8-27b`) + отдельным воркером + конвертером
+Calibre (D110, Podman read-only no-network) — `.a/tasks/ui-audit/r7ctl.yaml`
++ `.env.r7ctl` (секрет = `.env`). Живое задание j-20260927T145000Z-5a8c24
+(`probe.en.epub` → ru/bilingual, COMPLETED ~21 с). Замер —
+`.a/tasks/ui-audit/r7_measure.py` (`BASE`/`INPUT_DIR`/`JOBS_DIR` под стенд).
+
+## Найденное 1: V-серия сломала выбор объектов листа (T9, JS)
+
+`exportOptsHtml(b, …)` в V читал доступность объектов как `b.objects[o]`, а
+оба вызова передают `b = ex.objects` (плоская карта имя→bool) → `b.objects` =
+`undefined` → `ok=false` у ВСЕХ объектов → все чекбоксы `disabled` →
+**JS-пользователь не мог выбрать ни один объект** (JS-экспорт недостижим).
+В R7 (18f6e85) параметр назывался `objects`, индекс — `objects[o]`
+(корректно). Регрессия V.
+
+### Фикс 1 — доступность объектов (app.js)
+
+`exportOptsHtml`: `const ok=!!(b&&b[o]);` (+ комментарий: `b` =
+`facts.export.objects`, а не `b.objects[o]`).
+
+## Найденное 2: V-серия переключила форматы с чекбоксов на radio (T9)
+
+ТЗ R решение 8: «Форматы» = **8 чекбоксов** (множественный выбор); T9 —
+«8 форматов из одного задания → 8/8 файлов открываются». R7 (18f6e85):
+`type='checkbox' name='formats'` (и в app.js, и в `_sheet_export.html`), T9
+PASS (1 объект × 8 форматов → внешний ZIP с 8 записями). V-рескин переключил
+форматы на `type="radio"` (в ОБЕИХ местах) → в radio-группе отмечен ОДИН
+формат → `formats = [один]` → 1 файл, **внешнего ZIP нет** → 8 форматов из
+одного запуска недостижимы. Код сбора и так мульти:
+`Array.from(...[name='formats']:checked).map(c=>c.value)`.
+
+### Фикс 2 — форматы обратно в чекбоксы (app.js + `_sheet_export.html`)
+
+- app.js: тайл формата `type='radio'` → `type='checkbox'`; «книга-файл»
+  (`name='xformat'`) остаётся `radio` — там один формат по ТЗ §15.
+- `_sheet_export.html`: `name="formats"` (4 строки) → `checkbox`;
+  `name="format"` (книга-файл) остаётся `radio`.
+- V3-визуал тайлов не меняется; множественный выбор = несколько активных
+  тайлов одновременно (как в R7). `node --check` OK, T17 0.
+
+## Harness-заметки (не бэкенд, не app)
+
+Playwright-эмуляция mobile (384×715 DPR 2.25) НЕ скроллит длинный V3-экран
+задания (`scrollY=0`, `wheel`/`scrollIntoView`/`click` — no-op): кнопка
+«Экспорт» (y≈974) не достижима физическим кликом — это ограничение harness,
+НЕ app (desktop-контекст и реальный телефон скроллят). Скрытые инпуты листа
+(`position:absolute;opacity:0;pointer-events:none` внутри `<dialog>` showModal)
+— hit-test мимо backdrop → замер открывает лист и выбирает объекты/форматы
+через `element.click()` (delegated handler `initSheets`, без isTrusted-гейта),
+run — `el.click()`. Механика экспорта (API, Calibre, ZIP) дополнительно
+верифицирована no-JS и API-опросом напрямую.
+
+## Результат CONTROL R7 (post-V main)
+
+Итог: **T9=PASS, NOJS=PASS, CLEAN=PASS, T17=PASS** (0 ошибок).
+
+- **T9**: экран задания → «Экспорт» → лист (1 объект `translation` × 8
+  форматов) → run → done ~10 с (6 конвертаций Calibre через Podman + md
+  сервисом) → одна ссылка — внешний ZIP «Probe Book (ru).zip» с 8 записями
+  «Probe Book (ru).{fmt}»: epub 3186 Б, pdf 53792 Б, docx 6329 Б, fb2 2815 Б,
+  azw3 14435 Б, txt 1168 Б, md 1285 Б, htmlz 2510 Б — **8/8 открываются,
+  имена по шаблону** (сигнатуры: zip/%PDF/BOOKMOBI/`<FictionBook`/utf-8).
+- **NOJS (T15)**: `/jobs?sheet=export&job=` → форма (доступные объекты
+  предвыбраны — translation+reports; epub — единственный предвыбранный
+  формат; 8/8 в списке, теперь чекбоксы) → POST → 303 → статус (meta-refresh)
+  → 1 ссылка — внешний ZIP → epub внутри валиден.
+- **CLEAN**: 0 console/pageerror/5xx. **T17**: 0 литералов.
+
+Снимки: `.a/tasks/ui-audit/shots/R7/`. Замер: `results.json['r7']`.
+
+Полный прогон: **pytest 433/433 (0:21:29), ruff 0, mypy 0 (85), JS 81 227 Б
+≤ 81 920, CSS 24 494 Б ≤ 24 576, V-T16 0**. Стенд 8422 (живой LLM + Calibre
++ воркер) остаётся для R8/R9.

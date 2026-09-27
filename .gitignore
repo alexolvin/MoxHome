@@ -6,6 +6,7 @@
 .env
 .env.demo
 .env.r6ctl
+.env.r7ctl
 
 # Сигнал «воркер жив» (D87): runtime-файл heartbeat в корне storage.root
 .worker-heartbeat
