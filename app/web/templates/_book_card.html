@@ -13,7 +13,7 @@
     {% if b.has_cover and b.cover_v %}
     {# V2 §8.3: srcset 256/512 WebP, sizes, фикс. размеры (нет сдвига
        макета); первые 9 — eager, остальные — lazy. #}
-    <span class="u3-book-cover-img"><img srcset="/books/{{ b.name }}/cover?v={{ b.cover_v }}&w=256 256w, /books/{{ b.name }}/cover?v={{ b.cover_v }}&w=512 512w" sizes="(max-width: 640px) 33vw, 160px" width="256" height="384" loading="{{ 'eager' if loop.index0 < 9 else 'lazy' }}" decoding="async" alt=""></span>
+    <span class="u3-book-cover-img"><img srcset="/books/{{ b.name }}/cover?v={{ b.cover_v }}&w=256 256w, /books/{{ b.name }}/cover?v={{ b.cover_v }}&w=512 512w" sizes="(max-width: 640px) 33vw, 160px" width="256" height="384" loading="{{ 'eager' if cover_eager else 'lazy' }}" decoding="async" alt=""></span>
     {% else %}
     {# V2 §8.4: заглушка — градиент (sha256(filename) mod 6), название
        сверху, автор снизу, иконка-книга в углу (признак заглушки). #}

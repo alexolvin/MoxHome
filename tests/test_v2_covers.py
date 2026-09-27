@@ -313,3 +313,39 @@ def test_v2_png_1x1_still_rejected_as_source_format_ok(tmp_path: Path) -> None:
         z.writestr("OEBPS/cover.png", png)
     result = process_cover(dest, _covers_for(dest))
     assert result.status == "extracted", result
+
+
+def test_v2_grid_nojs_renders_with_and_without_cover(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> None:
+    """no-JS-сетка /books рендерится (200): карточки с обложкой (srcset) и
+    заглушка §8.4. Регрессия: Jinja2 НЕ передаёт ``loop`` в ``{% include %}``
+    — флаг «первые 9 — eager» вычисляется в books.html (``cover_eager``),
+    а не в _book_card.html (там ``loop.index0`` → UndefinedError → 500)."""
+    base = tmp_path_factory.mktemp("v2grid")
+    settings, db, _cfg, _env = _make_u1_storage(base, "storage_v2g", "http://127.0.0.1:9")
+    app = create_app(settings, db=db)
+    client = TestClient(app)
+    try:
+        input_dir = settings.input_dir
+        for i, has in enumerate((True, False, True)):
+            b = input_dir / f"v2grid{i}.epub"
+            _make_epub(b, with_cover=has)
+            meta = {**views.book_meta_defaults()}
+            if has:
+                cov = process_cover(b, input_dir / ".covers")
+                assert cov.status == "extracted" and cov.sha256
+                meta.update(
+                    cover_path=cov.cover_path, cover=cov.status, cover_sha256=cov.sha256
+                )
+            else:
+                meta["cover"] = "none"
+            views.write_book_meta(b, meta)
+        r = client.get("/books")
+        assert r.status_code == 200, r.text
+        assert "u3-book-grid" in r.text
+        assert r.text.count("u3-book-cover-img") == 2
+        assert "u3-book-ph" in r.text
+        assert 'loading="eager"' in r.text  # 3 позиции ≤ 9 → eager
+    finally:
+        db.close()
