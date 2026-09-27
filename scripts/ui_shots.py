@@ -83,8 +83,8 @@ class Screen:
 #   {book:11} — гутенберг-книга id 11 (с обложкой); {job:11} — её задание.
 SCREENS: tuple[Screen, ...] = (
     Screen("S01", "login", "/login", needs_auth=False),
-    Screen("S02", "books", "/books", item_selector=".u3-row-book"),
-    Screen("S03", "books-empty", "/books", item_selector=".u3-row-book"),
+    Screen("S02", "books", "/books", item_selector=".u3-book-card"),
+    Screen("S03", "books-empty", "/books", item_selector=".u3-book-card"),
     Screen("S04", "book-cover", "/books/{book:11}", needs_manifest=True),
     Screen("S05", "book-nocover", "/books/{book:fixture:probe.en.epub}", needs_manifest=True),
     Screen("S06", "jobs", "/jobs", item_selector=".u3-row-job"),
