@@ -131,6 +131,26 @@ def job_list_group(
     return "done"
 
 
+#: §7.4: окно «Готово за 7 дней» полосе статистики — секунды.
+_DONE_WINDOW_S = 7 * 86400
+
+
+def job_stats(jobs: list[Job], *, now: float | None = None) -> dict[str, int]:
+    """Полоса статистики §7.4 (числа из БД): в работе (группа run),
+    в очереди (wait), готово за 7 дней (ok, обновлено в пределах окна)."""
+    now = time.time() if now is None else now
+    run = wait = done7 = 0
+    for job in jobs:
+        group = STATUS_GROUP.get(job.status.value, "wait")
+        if group == "run":
+            run += 1
+        elif group == "wait":
+            wait += 1
+        elif group == "ok" and (now - job.updated_at) < _DONE_WINDOW_S:
+            done7 += 1
+    return {"run": run, "wait": wait, "done7": done7}
+
+
 def human_duration(total_seconds: float) -> str:
     """§10: «12 мин», после часа — «1 ч 20 мин» (единая точка формата)."""
     minutes = int(max(0.0, total_seconds) // 60)

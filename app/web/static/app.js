@@ -1704,6 +1704,7 @@ const list=$("u3-wiz-book-list");
 const pick=$("u3-wiz-book-pick");
 const pickName=$("u3-wiz-pick-name");
 const pickSub=$("u3-wiz-pick-sub");
+const pickCover=$("u3-wiz-pick-cover");
 const search=$("u3-wiz-book-q");
 const langSrc=$("u3-lang-src");
 const cefrLabel=$("u3-cefr-label");
@@ -1716,17 +1717,23 @@ const targetSel=form.target_language;
 const levelSel=form.learning_level;
 const cefrSel=form.learning_cefr;
 const selRadio=()=>radios.find(r=>r.checked)||null;
+const setRadio=(name,val)=>{
+if(!val)return;
+const grp=form.elements[name];
+if(!grp||!grp.length)return;
+const r=[...grp].find(i=>i.value===val);
+if(r)r.checked=true;
+};
 const applyBook=r=>{
 if(!r)return;
 pickName.textContent=r.dataset.title||r.value;
 pickSub.textContent=r.dataset.src||r.dataset.detected||r.dataset.dc||NS;
+if(pickCover)pickCover.textContent=(r.dataset.title||r.value).slice(0,1).toUpperCase();
 list.hidden=true;
 pick.hidden=false;
 if(langSrc)langSrc.textContent=r.dataset.src||r.dataset.detected||r.dataset.dc||"—";
-const bookTarget=r.dataset.targetDefault||"";
-if(bookTarget&&targetSel&&targetSel.querySelector("option[value='"+bookTarget+"']"))targetSel.value=bookTarget;
-const bookCefr=r.dataset.cefrDefault||"";
-if(bookCefr&&cefrSel&&cefrSel.querySelector("option[value='"+bookCefr+"']"))cefrSel.value=bookCefr;
+setRadio("target_language",r.dataset.targetDefault||"");
+setRadio("learning_cefr",r.dataset.cefrDefault||"");
 refreshSummary();
 };
 const showList=()=>{

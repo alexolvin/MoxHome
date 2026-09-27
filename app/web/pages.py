@@ -985,6 +985,9 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
             | {
                 "group_rows": group_rows,
                 "total": sum(len(rows) for rows in group_rows.values()),
+                # V3 §7.4: полоса статистики — глобальные числа из БД
+                # (не зависят от фильтра списка).
+                "job_stats": views.job_stats(repo.list_jobs(None, 0)),
                 "group": group_norm,
                 "pills": pills,
                 "pill_href": lambda g: _jobs_href(
