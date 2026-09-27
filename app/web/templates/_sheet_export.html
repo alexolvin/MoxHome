@@ -25,10 +25,10 @@
   <fieldset class="u3-exp-section">
     <legend>{{ s["job_export_section_formats"] }}</legend>
     <div class="u3-exp-grid">
-      <label class="u3-exp-item"><input type="radio" name="formats" value="epub" checked> {{ s["job_export_fmt_epub"] }}</label>
+      <label class="u3-exp-item"><input type="checkbox" name="formats" value="epub" checked> {{ s["job_export_fmt_epub"] }}</label>
       {% for fmt in export.formats %}
       {% if fmt != "epub" %}
-      <label class="u3-exp-item"><input type="radio" name="formats" value="{{ fmt }}"{% if not export.converter_ok %} disabled{% endif %}> {{ s["job_export_fmt_" ~ fmt] }}</label>
+      <label class="u3-exp-item"><input type="checkbox" name="formats" value="{{ fmt }}"{% if not export.converter_ok %} disabled{% endif %}> {{ s["job_export_fmt_" ~ fmt] }}</label>
       {% endif %}
       {% endfor %}
     </div>
@@ -71,10 +71,10 @@
   <fieldset class="u3-exp-section">
     <legend>{{ s["job_export_section_formats"] }}</legend>
     <div class="u3-exp-grid">
-      <label class="u3-exp-item"><input type="radio" name="formats" value="epub" checked> {{ s["job_export_fmt_epub"] }}</label>
+      <label class="u3-exp-item"><input type="checkbox" name="formats" value="epub" checked> {{ s["job_export_fmt_epub"] }}</label>
       {% for fmt in export.formats %}
       {% if fmt != "epub" %}
-      <label class="u3-exp-item"><input type="radio" name="formats" value="{{ fmt }}"{% if not export.converter_ok %} disabled{% endif %}> {{ s["job_export_fmt_" ~ fmt] }}</label>
+      <label class="u3-exp-item"><input type="checkbox" name="formats" value="{{ fmt }}"{% if not export.converter_ok %} disabled{% endif %}> {{ s["job_export_fmt_" ~ fmt] }}</label>
       {% endif %}
       {% endfor %}
     </div>

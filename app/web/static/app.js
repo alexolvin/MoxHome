@@ -1173,7 +1173,7 @@ for(const f of EXPORT_FORMATS){
 const dis=f!=="epub"&&!converterOk;
 const c=EXPORT_COLORS[f]||"var(--ac)";
 h+="<label data-exp-tile='"+f+"' style='position:relative;display:flex;flex-direction:column;align-items:center;gap:var(--gx);padding:var(--gs);border:1px solid var(--ln);border-radius:var(--r12);background:var(--s1);"+(dis?"opacity:.5":"")+"'>"
-+"<input type='radio' name='formats' value='"+f+"'"+(f==="epub"?" checked":"")+(dis?" disabled":"")+" style='position:absolute;opacity:0;pointer-events:none'>"
++"<input type='checkbox' name='formats' value='"+f+"'"+(f==="epub"?" checked":"")+(dis?" disabled":"")+" style='position:absolute;opacity:0;pointer-events:none'>"
 +"<span style='display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;background:"+(dis?"var(--s2)":c+"2E")+";color:"+(dis?"var(--fgs)":c)+"' aria-hidden='true'>"+ICO(FMT_ICO[f]||"file-text",20)+"</span>"
 +"<span style='font-size:var(--fx);font-weight:600;color:var(--fg);text-align:center'>"+esc(S["job_export_fmt_"+f])+"</span>"
 +"</label>";
@@ -1181,7 +1181,9 @@ h+="<label data-exp-tile='"+f+"' style='position:relative;display:flex;flex-dire
 h+="</div>"+(converterOk?"":"<p class='hint' style='margin:var(--gx) 0 0'>"+esc(S.err_converter_unavailable)+"</p>");
 h+="<div style='display:flex;flex-wrap:wrap;gap:var(--gx);margin-top:var(--gs)'>";
 for(const o of EXPORT_OBJECTS){
-const ok=!!(b&&b.objects&&b.objects[o]);
+// b = facts.export.objects (flat map name->bool, call sites pass ex.objects);
+// b[o], NOT b.objects[o] (that extra level made every object disabled).
+const ok=!!(b&&b[o]);
 h+="<label data-exp-obj='"+o+"' style='position:relative;display:inline-flex;align-items:center;min-height:var(--ch);padding:0 var(--cpx);border:1px solid var(--ln);border-radius:var(--r10);background:var(--s1);font-size:var(--fsm);font-weight:600;color:var(--fg);"+(ok?"cursor:pointer":"cursor:default;opacity:.6")+"'>"
 +"<input type='checkbox' name='objects' value='"+o+"'"+(ok?" checked":" disabled")+" style='position:absolute;opacity:0;pointer-events:none'>"
 +esc(S["job_export_obj_"+o])
