@@ -27,6 +27,7 @@ JS_LIMIT = 81920
 
 # страница (шаблон) -> доп. css-*.css (style.css всегда входит).
 PAGE_CSS: dict[str, list[str]] = {
+    "auth.html": ["css-auth.css"],
     "book.html": ["css-books.css"],
     "book_delete.html": ["css-books.css"],
     "book_meta.html": ["css-books.css"],
@@ -82,7 +83,8 @@ def main() -> int:
     inline = _inline_style_bytes()
     css_files = {n: _file(n) for n in
                  ("style.css", "css-jobs.css", "css-books.css",
-                  "css-settings.css", "css-import.css", "css-kit.css")}
+                  "css-settings.css", "css-import.css", "css-kit.css",
+                  "css-auth.css")}
 
     print(f"ядро style.css : {core} Б")
     print(f"app.js         : {js} Б (лимит {JS_LIMIT})")

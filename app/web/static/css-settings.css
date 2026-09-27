@@ -8,11 +8,24 @@
 .u3-fld-group{margin:0 0 var(--g);padding:var(--gx) var(--p) var(--gs);border:1px solid var(--ln);border-radius:var(--r12);background:var(--s1)}
 .u3-fld-group legend{padding:0 var(--gx);font-weight:600;font-size:var(--fsm)}
 html.js #u3-appearance-submit{display:none}
-.u3-llm-profile{margin:0 0 var(--g);padding:0 var(--gs) var(--gs);border:1px solid var(--ln);border-radius:var(--r12);background:var(--s1)}
+.u3-llm-card{margin:0 0 var(--g);padding:var(--gs) var(--gs) var(--gs);border:1px solid var(--ln);border-radius:var(--r12);background:var(--s1)}
+.u3-llm-card-h{margin:0 0 var(--gs);padding:0 var(--gx);font-size:var(--fsm);font-weight:600;color:var(--fgm)}
 html.js .u3-llm-form.u3-llm-shared-on .u3-llm-profile-url{display:none}
 html.js .u3-llm-form:not(.u3-llm-shared-on) .u3-llm-shared{display:none}
-.u3-llm-extra{margin:0 0 var(--gs)}
+.u3-llm-more{margin:0 0 var(--gs)}
+#u3-llm-probe-msg{margin:0 0 var(--g);padding:var(--gs) var(--gs);border-radius:var(--r12);font-size:var(--fsm);font-weight:600}
+#u3-llm-probe-msg[hidden]{display:none}
+#u3-llm-probe-msg.u3-ok{background:var(--st-ob);color:var(--st-o);border:1px solid var(--st-o)}
+#u3-llm-probe-msg.u3-warn{background:var(--st-eb);color:var(--st-e);border:1px solid var(--st-e)}
 .u3-maint-row{justify-content:space-between}
 .u3-maint-detail{margin:var(--gx) var(--p) 0;font-size:var(--fx);color:var(--fgm)}
 .u3-maint-section{margin:var(--g) 0 var(--gx);font-size:var(--fmd);font-weight:600}
 .u3-maint-purge-label{display:inline-flex;align-items:center;gap:var(--gs)}
+.u3-grp{margin:0 0 var(--g);border:1px solid var(--ln);border-radius:var(--r12);background:var(--s1);overflow:hidden}
+.u3-grp-h{margin:0;padding:var(--gs) var(--p) var(--gx);font-size:var(--fx);font-weight:600;color:var(--fgm)}
+.u3-grp-row{display:flex;align-items:center;gap:var(--gs);min-height:var(--srt);padding:0 var(--p);color:var(--fg);text-decoration:none;border-top:1px solid var(--ln)}
+.u3-grp-h+.u3-grp-row{border-top:0}
+.u3-grp-row:hover{background:var(--s2)}
+.u3-grp-i{flex:0 0 auto;width:var(--i20);height:var(--i20);color:var(--fgm)}
+.u3-grp-l{flex:1 1 auto;min-width:0;font-size:var(--fb);font-weight:600}
+.u3-grp-c{flex:0 0 auto;width:var(--i20);height:var(--i20);color:var(--fgs)}

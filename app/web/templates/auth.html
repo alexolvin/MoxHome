@@ -1,14 +1,22 @@
 {% extends "base.html" %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/css-auth.css">
+{% endblock %}
 {% block content %}
-{% if error %}
-<p class="err" role="alert">{{ s["auth_wrong"] }}</p>
-{% endif %}
-<p>{{ s["auth_body"] }}</p>
-<form method="post" action="/login" class="u3-panel">
-  <input type="hidden" name="next" value="{{ next_path }}">
-  <label>{{ s["auth_label"] }}:
-    <input type="password" name="password" autocomplete="current-password" required autofocus>
-  </label>
-  <button type="submit">{{ s["auth_btn"] }}</button>
-</form>
+{# V3 (ТЗ §7.1): вход — центрированный блок, ровно пять видимых элементов:
+   плитка 56 px --accent-strong (book-open белая), «EpubTranslator» --fs-brand,
+   подпись поля, поле, кнопка «Войти» во всю ширину. Больше ничего. #}
+<div class="u3-auth">
+  <div class="u3-auth-tile" aria-hidden="true"><svg><use href="/static/icons.svg#book-open"></use></svg></div>
+  <h1 class="u3-auth-brand">{{ s["auth_brand"] }}</h1>
+  {% if error %}<p class="err" role="alert">{{ s["auth_wrong"] }}</p>{% endif %}
+  <form method="post" action="/login">
+    <input type="hidden" name="next" value="{{ next_path }}">
+    <label for="u3-auth-pass">{{ s["auth_label"] }}</label>
+    <input id="u3-auth-pass" type="password" name="password"
+           autocomplete="current-password" required autofocus>
+    <button type="submit" class="u3-btn u3-primary">{{ s["auth_btn"] }}</button>
+  </form>
+</div>
 {% endblock %}
