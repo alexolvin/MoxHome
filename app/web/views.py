@@ -459,8 +459,14 @@ def job_facts(
         (r.at for r in reversed(transitions) if r.to_status is JobStatus.PAUSED),
         None,
     )
+    _cov = book_cover_facts(
+        settings, Path(job.source_path), read_book_meta(Path(job.source_path))
+    )
     return {
         "id": job.id,
+        "book_name": Path(job.source_path).name,
+        # V3 §7.7: шапка листа экспорта — обложка 48×72 + название.
+        "cover": _cov,
         "status": job.status.value,
         # Серия R §4: группа и глиф — из единой таблицы (выше); клиент
         # не содержит собственного соответствия статус→группа.

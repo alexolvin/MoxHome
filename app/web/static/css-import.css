@@ -1,12 +1,10 @@
 
-.u3-import-drop{margin:var(--g) auto;width:var(--cpw);min-height:var(--cph);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--gs);padding:var(--gs);border:2px dashed var(--lns);border-radius:var(--r12);background:var(--s1);cursor:pointer;text-align:center}
+.u3-import-drop{margin:var(--g) 0;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--gs);padding:var(--gs);border:1.5px dashed var(--lns);border-radius:var(--r12);background:var(--s1);cursor:pointer;text-align:center}
 .u3-import-drop-over{border-color:var(--ac);background:var(--s2)}
 .u3-import-drop.is-busy{opacity:.5;pointer-events:none}
-.u3-import-drop-ico{display:inline-flex;color:var(--fgm)}
+.u3-import-drop-ico{display:inline-flex;color:var(--acf)}
 .u3-import-drop-line,.u3-import-row-status{font-size:var(--fx);color:var(--fgm)}
-.u3-inline{display:inline}
-.u3-inline summary{color:var(--acf);cursor:pointer}
-.u3-import-formats{margin:var(--gx) 0 0;padding-left:var(--p);font-size:var(--fx);columns:2}
+.u3-import-drop-line{font-size:var(--fb);font-weight:600;color:var(--fg)}
 .u3-import-list{margin:var(--g) 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:var(--gs)}
 .u3-import-row{display:grid;grid-template-columns:1fr auto;gap:var(--gx) var(--gs);align-items:center}
 .u3-import-row-name{font-size:var(--fx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

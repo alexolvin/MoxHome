@@ -869,11 +869,11 @@ else if(booksRefresh)booksRefresh();
 };
 const btn=(name,data,cls,label)=>"<button type='button' class='"+cls+"' data-name='"+esc(name)+"' "+data+">"+esc(label)+"</button>";
 const jobLines=jobs=>"<ul class='u3-sheet-list'>"+jobs.map(j=>"<li><span class='u3-status status-"+esc(j.status_group)+"'>"+esc(j.status)+"</span><span class='u3-mono'>"+esc(j.id)+"</span></li>").join("")+"</ul>";
-const simpleHtml=name=>"<p class='u3-book-del-q'>"+esc(fmt(S.book_delete_simple_q,{name}))+"</p><span class='u3-filter-actions'>"+btn(name,"data-del-cancel","u3-btn",S.book_delete_cancel)+btn(name,"data-del-simple","u3-btn u3-primary",S.book_delete_yes)+"</span>";
+const simpleHtml=name=>"<p class='u3-book-del-q'>"+esc(fmt(S.book_delete_simple_q,{name}))+"</p><span class='u3-filter-actions'>"+btn(name,"data-del-cancel","u3-btn",S.book_delete_cancel)+btn(name,"data-del-simple","u3-btn u3-danger",S.book_delete_yes)+"</span>";
 const usageHtml=(name,usage)=>{
 const nonterminal=usage.jobs.filter(j=>!j.terminal);
-const cascade=nonterminal.length?"<button type='button' class='u3-btn u3-primary' disabled>"+esc(fmt(S.book_delete_cascade,{n:usage.count}))+"</button>":btn(name,"data-del-cascade","u3-btn u3-primary",fmt(S.book_delete_cascade,{n:usage.count}));
-return "<p class='u3-book-del-q'>"+esc(fmt(S.book_delete_referenced,{n:usage.count}))+"</p>"+jobLines(usage.jobs)+(nonterminal.length?"<p class='u3-warn'>"+esc(fmt(S.book_delete_nonterminal,{n:usage.count,ids:nonterminal.map(j=>j.id).join(", ")}))+"</p>":"")+"<span class='u3-filter-actions'>"+btn(name,"data-del-file","u3-btn",S.book_delete_file_only)+cascade+btn(name,"data-del-cancel","u3-btn",S.book_delete_cancel)+"</span>";
+const cascade=nonterminal.length?"<button type='button' class='u3-btn u3-danger' disabled>"+esc(fmt(S.book_delete_cascade,{n:usage.count}))+"</button>":btn(name,"data-del-cascade","u3-btn u3-danger",fmt(S.book_delete_cascade,{n:usage.count}));
+return "<p role='status' style='margin:0 0 var(--g);padding:var(--gs) var(--p);border:1px solid var(--st-a);border-left:3px solid var(--st-a);border-radius:var(--r8);background:var(--st-ab);color:var(--st-a);font-size:var(--fsm);font-weight:600'>"+esc(fmt(S.book_delete_referenced,{n:usage.count}))+"</p>"+jobLines(usage.jobs)+(nonterminal.length?"<p class='u3-warn'>"+esc(fmt(S.book_delete_nonterminal,{n:usage.count,ids:nonterminal.map(j=>j.id).join(", ")}))+"</p>":"")+"<span class='u3-filter-actions'>"+btn(name,"data-del-file","u3-btn",S.book_delete_file_only)+cascade+btn(name,"data-del-cancel","u3-btn",S.book_delete_cancel)+"</span>";
 };
 const openFor=async name=>{
 body.innerHTML="";
@@ -1152,6 +1152,9 @@ window.location.href=a.href;
 }
 const EXPORT_OBJECTS=["translation","learning","cards","reports"];
 const EXPORT_FORMATS=["epub","pdf","docx","fb2","azw3","txt","md","htmlz"];
+// V3 S7.7: per-format color + icon (inline, not a .css file).
+const EXPORT_COLORS={epub:"#F59E0B",pdf:"#EF4444",docx:"#3B82F6",fb2:"#EAB308",azw3:"#8B5CF6",txt:"#9CA3AF",md:"#14B8A6",htmlz:"#06B6D4"};
+const FMT_ICO={epub:"book-open",fb2:"book-open",azw3:"book-open",pdf:"file-text",docx:"file-text",txt:"file-text",md:"file-text",htmlz:"languages"};
 const EXPORT_LAYOUTS=["append_block","translation_only","two_columns"];
 const LAYOUT_KEY={append_block:"append",translation_only:"only",two_columns:"columns"};
 const dec=v=>{
@@ -1161,25 +1164,50 @@ return decodeURIComponent(v);
 return v;
 }
 };
-function exportOptsHtml(objects,layouts,converterOk){
-let h="<fieldset class='u3-exp-section'><legend>"+esc(S.job_export_section_objects)+"</legend>";
-for(const o of EXPORT_OBJECTS){
-const ok=!!objects[o];
-h+="<label class='u3-exp-item'><input type='checkbox' class='u3-switch' name='objects' value='"+o+"'"+(ok?" checked":" disabled")+"> "+esc(S["job_export_obj_"+o])+(ok?"":" <span class='hint'>"+esc(S.job_export_obj_missing)+"</span>")+"</label>";
+function exportCoverHtml(name,cover){
+if(cover&&cover.has_cover&&cover.cover_v)return "<span aria-hidden='true'><img src='/books/"+enc(name)+"/cover?v="+encodeURIComponent(cover.cover_v)+"&w=256' width='48' height='72' alt='' decoding='async' style='flex:0 0 auto;width:48px;height:72px;border-radius:var(--r8);object-fit:cover;background:var(--s2)'></span>";
+return "<span aria-hidden='true' style='flex:0 0 auto;width:48px;height:72px;border-radius:var(--r8);background:var(--s2);color:var(--fgm);display:flex;align-items:center;justify-content:center;font-size:var(--flg)'>"+esc((name||"?").slice(0,1).toUpperCase())+"</span>";
 }
-h+="</fieldset>";
-h+="<fieldset class='u3-exp-section'><legend>"+esc(S.job_export_section_formats)+"</legend><div class='u3-exp-grid'>";
+function exportOptsHtml(b,layouts,converterOk){
+let h="<div style='display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--gs)'>";
 for(const f of EXPORT_FORMATS){
 const dis=f!=="epub"&&!converterOk;
-h+="<label class='u3-exp-item'><input type='radio' name='formats' value='"+f+"'"+(f==="epub"?" checked":dis?" disabled":"")+"> "+esc(S["job_export_fmt_"+f])+"</label>";
+const c=EXPORT_COLORS[f]||"var(--ac)";
+h+="<label data-exp-tile='"+f+"' style='position:relative;display:flex;flex-direction:column;align-items:center;gap:var(--gx);padding:var(--gs);border:1px solid var(--ln);border-radius:var(--r12);background:var(--s1);"+(dis?"opacity:.5":"")+"'>"
++"<input type='radio' name='formats' value='"+f+"'"+(f==="epub"?" checked":"")+(dis?" disabled":"")+" style='position:absolute;opacity:0;pointer-events:none'>"
++"<span style='display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;background:"+(dis?"var(--s2)":c+"2E")+";color:"+(dis?"var(--fgs)":c)+"' aria-hidden='true'>"+ICO(FMT_ICO[f]||"file-text",20)+"</span>"
++"<span style='font-size:var(--fx);font-weight:600;color:var(--fg);text-align:center'>"+esc(S["job_export_fmt_"+f])+"</span>"
++"</label>";
 }
-h+="</div>"+(converterOk?"":"<p class='hint'>"+esc(S.err_converter_unavailable)+"</p>")+"</fieldset>";
+h+="</div>"+(converterOk?"":"<p class='hint' style='margin:var(--gx) 0 0'>"+esc(S.err_converter_unavailable)+"</p>");
+h+="<div style='display:flex;flex-wrap:wrap;gap:var(--gx);margin-top:var(--gs)'>";
+for(const o of EXPORT_OBJECTS){
+const ok=!!(b&&b.objects&&b.objects[o]);
+h+="<label data-exp-obj='"+o+"' style='position:relative;display:inline-flex;align-items:center;min-height:var(--ch);padding:0 var(--cpx);border:1px solid var(--ln);border-radius:var(--r10);background:var(--s1);font-size:var(--fsm);font-weight:600;color:var(--fg);"+(ok?"cursor:pointer":"cursor:default;opacity:.6")+"'>"
++"<input type='checkbox' name='objects' value='"+o+"'"+(ok?" checked":" disabled")+" style='position:absolute;opacity:0;pointer-events:none'>"
++esc(S["job_export_obj_"+o])
++"</label>";
+}
+h+="</div>";
 if(layouts){
-h+="<fieldset class='u3-exp-section'><legend>"+esc(S.job_export_section_layout)+"</legend>";
-for(const l of EXPORT_LAYOUTS)h+="<label class='u3-exp-item'><input type='radio' name='layout' value='"+l+"'"+(l==="append_block"?" checked":"")+(l==="two_columns"?" data-u3-exp-two":"")+"> "+esc(S["job_export_layout_"+LAYOUT_KEY[l]])+"</label>";
-h+="</fieldset>";
+h+="<details style='margin-top:var(--gs)'><summary style='font-size:var(--fsm);font-weight:600;cursor:pointer'>"+esc(S.job_export_section_layout)+"</summary><div style='display:flex;flex-direction:column;gap:var(--gx);margin-top:var(--gs);padding:var(--gx) var(--gs);border:1px solid var(--ln);border-radius:var(--r12);background:var(--s2)'>";
+for(const l of EXPORT_LAYOUTS)h+="<label style='display:flex;align-items:center;gap:var(--gx);min-height:var(--u3-tap);font-size:var(--fsm)'><input type='radio' name='layout' value='"+l+"'"+(l==="append_block"?" checked":"")+(l==="two_columns"?" data-u3-exp-two":"")+"> "+esc(S["job_export_layout_"+LAYOUT_KEY[l]])+"</label>";
+h+="</div></details>";
 }
 return h;
+}
+function syncExportSel(body){
+for(const t of body.querySelectorAll("[data-exp-tile]")){
+const on=!!t.querySelector("input").checked;
+t.style.borderColor=on?"var(--ac)":"var(--ln)";
+t.style.background=on?"var(--acs)":"var(--s1)";
+}
+for(const c of body.querySelectorAll("[data-exp-obj]")){
+const on=!!c.querySelector("input").checked;
+c.style.background=on?"var(--acs)":"var(--s1)";
+c.style.color=on?"var(--os)":"var(--fg)";
+c.style.borderColor=on?"var(--acs)":"var(--ln)";
+}
 }
 function syncExportTwo(body){
 const two=body.querySelector("[data-u3-exp-two]");
@@ -1266,12 +1294,14 @@ if(!body)return;
 body.textContent=S.common_loading;
 Promise.all([fetchJSON("/api/jobs/"+enc(jobId)),fetchJSON("/api/health")]).then(([facts,health])=>{
 const ex=facts.export||{objects:{},layouts:false};
-let h="<p class='u3-export-book'>"+esc(dec(bookName)||facts.book_name||NS)+"</p>";
+const _bn=dec(bookName)||facts.book_name||NS;
+let h="<div style='display:flex;align-items:center;gap:var(--gs)'>"+exportCoverHtml(facts.book_name||dec(bookName)||"",facts.cover)+"<span style='font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>"+esc(_bn)+"</span></div>";
 if(!facts.result_ready)h+="<p class='hint'>"+esc(S.job_result_pending)+"</p>";
 h+=exportOptsHtml(ex.objects||{},!!ex.layouts,health.converter==="ok");
 h+="<button type='button' class='u3-btn u3-primary u3-sheet-action' data-u3-exp-run data-exp-mode='job' data-exp-arg='"+enc(jobId)+"'>"+esc(S.job_export_btn)+"</button>";
 h+="<div id='u3-exp-result' role='status'></div>";
 body.innerHTML=h;
+syncExportSel(body);
 syncExportTwo(body);
 }).catch(e=>exportFail(body,e,"job",jobId));
 }
@@ -1286,6 +1316,7 @@ if(opts.parentNode!==body)return;
 const ex=facts.export||{objects:{},layouts:false};
 opts.innerHTML=exportOptsHtml(ex.objects||{},!!ex.layouts,ok);
 syncExportTwo(body);
+syncExportSel(body);
 }).catch(e=>{
 opts.innerHTML="";
 opts.textContent=apiErr(e);
@@ -1299,7 +1330,7 @@ const q="/api/jobs?book="+enc(bookName)+"&status=COMPLETED&status=COMPLETED_WITH
 Promise.all([fetchJSON(q),fetchJSON("/api/health")]).then(([jobs,health])=>{
 const ok=health.converter==="ok";
 body.dataset.expOk=ok?"1":"0";
-let h="<p class='u3-export-book'>"+esc(bookName)+"</p>";
+let h="<div style='display:flex;align-items:center;gap:var(--gs)'>"+exportCoverHtml(bookName,null)+"<span style='font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>"+esc(bookName)+"</span></div>";
 if(!jobs.length){
 h+="<p class='hint'>"+esc(S.job_export_book_hint)+"</p><fieldset class='u3-exp-section'><legend>"+esc(S.job_export_book_block)+"</legend><div class='u3-exp-grid'>";
 for(const f of EXPORT_FORMATS){
@@ -1314,6 +1345,7 @@ h+="</fieldset><div id='u3-exp-job-opts'></div><button type='button' class='u3-b
 }
 h+="<div id='u3-exp-result' role='status'></div>";
 body.innerHTML=h;
+syncExportSel(body);
 if(jobs.length)exportBookOpts(jobs[0].id);
 }).catch(e=>exportFail(body,e,"book",bookName));
 }
@@ -1322,8 +1354,9 @@ const t=e&&e.target;
 if(!t||!t.name)return;
 const body=$("u3-export-body");
 if(!body)return;
-if(t.name==="formats")syncExportTwo(body);
+if(t.name==="formats"){syncExportTwo(body);syncExportSel(body);}
 else if(t.name==="xjob")exportBookOpts(t.value);
+else if(t.name==="objects")syncExportSel(body);
 });
 let swipeClose;
 let queueDragActive=false;

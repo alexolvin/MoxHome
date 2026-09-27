@@ -92,7 +92,7 @@ UI_STRINGS: dict[str, str] = {
     "books_empty": "Книг нет. Импортируйте книгу — это первый шаг к переводу.",
     # ------------------------------------------------------------- Импорт (R6, TZ §8)
     "import_sheet_title": "Импорт книги",
-    "import_drop_line": "Файл или перетащите сюда",
+    "import_drop_line": "Выбрать файлы",
     "import_files_label": "Файлы для импорта",
     "import_formats_line": (
         "Поддерживаются EPUB, FB2, MOBI, AZW3, DOCX, PDF, TXT и ещё 6 форматов"

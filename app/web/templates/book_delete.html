@@ -27,18 +27,18 @@
   <form method="post" action="/books/{{ book_name }}/purge">
     <input type="hidden" name="confirm_token" value="{{ dry_run.confirm_token }}">
     <input type="hidden" name="u3_csrf" value="{{ csrf }}">
-    <button type="submit" class="u3-btn u3-primary u3-book-del-btn">{{ s["book_delete_cascade_confirm"] }}</button>
+    <button type="submit" class="u3-btn u3-danger u3-book-del-btn">{{ s["book_delete_cascade_confirm"] }}</button>
     <a class="u3-btn u3-book-del-btn" href="/books/{{ book_name }}">{{ s["book_delete_cancel"] }}</a>
   </form>
   {% elif usage.count == 0 %}
   <p class="u3-book-del-q">{{ s["book_delete_simple_q"].format(name=book_name) }}</p>
   <form method="post" action="/books/{{ book_name }}/delete">
     <input type="hidden" name="u3_csrf" value="{{ csrf }}">
-    <button type="submit" class="u3-btn u3-primary u3-book-del-btn">{{ s["book_delete_yes"] }}</button>
+    <button type="submit" class="u3-btn u3-danger u3-book-del-btn">{{ s["book_delete_yes"] }}</button>
     <a class="u3-btn u3-book-del-btn" href="/books/{{ book_name }}">{{ s["book_delete_cancel"] }}</a>
   </form>
   {% else %}
-  <p class="u3-book-del-q">{{ s["book_delete_referenced"].format(n=usage.count) }}</p>
+  <p role="status" style="margin:0 0 var(--g);padding:var(--gs) var(--p);border:1px solid var(--st-a);border-left:3px solid var(--st-a);border-radius:var(--r8);background:var(--st-ab);color:var(--st-a);font-size:var(--fsm);font-weight:600">{{ s["book_delete_referenced"].format(n=usage.count) }}</p>
   <ul class="u3-book-del-jobs">
     {% for j in usage.jobs %}
     <li><span class="u3-status status-{{ j.status_group }}">{{ j.status }}</span> <span class="u3-mono">{{ j.id }}</span></li>
@@ -55,7 +55,7 @@
   {% if not nonterm %}
   <form method="post" action="/books/{{ book_name }}/purge">
     <input type="hidden" name="u3_csrf" value="{{ csrf }}">
-    <button type="submit" class="u3-btn u3-primary u3-book-del-btn">{{ s["book_delete_cascade"].format(n=usage.count) }}</button>
+    <button type="submit" class="u3-btn u3-danger u3-book-del-btn">{{ s["book_delete_cascade"].format(n=usage.count) }}</button>
     <p class="hint">{{ s["book_delete_cascade_hint"].format(n=usage.count) }}</p>
   </form>
   {% endif %}
