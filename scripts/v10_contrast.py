@@ -13,6 +13,7 @@
 """
 from __future__ import annotations
 
+import argparse
 import re
 import sys
 from pathlib import Path
@@ -82,7 +83,6 @@ PAIRS: list[tuple[str, str, list[str], float, str]] = [
 
 
 def main() -> int:
-    import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--theme", default="dark", choices=("dark", "light"))
     args = ap.parse_args()
