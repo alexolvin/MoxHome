@@ -414,6 +414,12 @@ def shoot(
             locale="ru-RU",
             user_agent=ANDROID_UA,
         )
+        # V4: светлая тема ведётся cookie u3-theme → data-theme (base.html),
+        # а не color_scheme; без cookie color_scheme=light остаётся тёмной.
+        if theme == "light":
+            context.add_cookies(
+                [{"name": "u3-theme", "value": "light", "url": base}]
+            )
         page = context.new_page()
 
         # Порядок: сначала неаутентифицированные экраны (S01 — страница
