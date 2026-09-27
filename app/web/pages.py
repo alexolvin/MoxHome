@@ -143,6 +143,7 @@ def _build_job_rows(
         "done": [],
     }
     title_map = views.book_title_map([Path(j.source_path) for j in jobs])
+    cover_map = views.book_cover_map(settings, [Path(j.source_path) for j in jobs])
     for job in jobs:
         elapsed, _eta = views.elapsed_and_eta(job, transitions.get(job.id, []))
         indeterminate = job.status in (JobStatus.PLANNING, JobStatus.VALIDATING_OUTPUT)
@@ -154,6 +155,7 @@ def _build_job_rows(
                 "book_name": Path(job.source_path).name,
                 "book_title": title_map.get(Path(job.source_path).name)
                 or Path(job.source_path).name,
+                "cover": cover_map.get(Path(job.source_path).name, {}),
                 "progress_display": views.progress_facts(
                     job, views.read_json(settings.job_dir(job.id) / "validation.json")
                 )["display"],
@@ -1117,6 +1119,15 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
         facts = views.job_facts(settings, repo, job)
         detection = facts.get("language_detection") or {}
         detected = detection.get("detected") or detection.get("accepted_language")
+        # V3 §7.5: топ-блок — обложка 64×96, название, чип статуса,
+        # крупная полоса прогресса 6 px (процент + время).
+        _bpath = Path(job.source_path)
+        _bmeta = views.read_book_meta(_bpath)
+        _bname = _bpath.name
+        _indeterminate = job.status in (
+            JobStatus.PLANNING,
+            JobStatus.VALIDATING_OUTPUT,
+        )
         return templates.TemplateResponse(
             request,
             "job.html",
@@ -1132,7 +1143,15 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
                 # Серия R §11: лист удаления — имя книги (no-JS ?sheet=
                 # delete: POST-форма — браузер не умеет DELETE из формы,
                 # API принимает POST как алиас; JS: <dialog>).
-                "book_name": Path(job.source_path).name,
+                "book_name": _bname,
+                "book_title": _bmeta.get("title") or _bname,
+                "book_cover": views.book_cover_facts(settings, _bpath, _bmeta),
+                "indeterminate": _indeterminate,
+                "progress_pct": (
+                    None
+                    if _indeterminate
+                    else round((job.progress or 0.0) * 100)
+                ),
                 "sheet": sheet if sheet == "delete" else "",
                 # no-JS-подтверждение: причина отказа (303 c ?confirm_err=)
                 "confirm_err": confirm_err,

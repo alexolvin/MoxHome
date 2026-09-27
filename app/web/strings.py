@@ -359,6 +359,11 @@ UI_STRINGS: dict[str, str] = {
     "job_result_pending": "Результат появится после завершения задания.",
     "job_details_quality": "Качество (QC, выравнивание, согласованность L2, правки L3)",
     "job_details_logs": "Логи (job / errors / quality)",
+    # V3 §7.5: вкладки экрана задания (пилюли).
+    "job_tabs_label": "Разделы задания",
+    "job_tab_logs": "Логи",
+    "job_tab_artifacts": "Артефакты",
+    "job_tab_quality": "Качество",
     "job_logs_lines": "Число строк:",
     "job_logs_more": "Докрутить",
     "job_logs_empty": "(пусто)",

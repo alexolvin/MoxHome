@@ -717,6 +717,21 @@ def book_title_map(paths: list[Path]) -> dict[str, str]:
     return m
 
 
+def book_cover_map(settings: Settings, paths: list[Path]) -> dict[str, dict[str, Any]]:
+    """name → ``{'has_cover', 'cover_v'}`` для строк списка заданий (V3 §7.4).
+
+    Читает ``.meta.json`` только для distinct-имён (без N+1 на дубли);
+    ``cover_v`` — sha8 для cache-bust endpoint'а ``/books/{name}/cover``."""
+    m: dict[str, dict[str, Any]] = {}
+    for p in paths:
+        name = p.name
+        if name in m:
+            continue
+        facts = book_cover_facts(settings, p, read_book_meta(p))
+        m[name] = {"has_cover": facts["has_cover"], "cover_v": facts["cover_v"]}
+    return m
+
+
 def book_meta_defaults() -> dict[str, Any]:
     """Новые поля sidecar с дефолтами (ТЗ §15: title, author,
     target_default, cefr_default, note; R5 — source_language;

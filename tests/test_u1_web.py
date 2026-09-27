@@ -395,6 +395,10 @@ def test_u1_2_no_fake_percentages(u1_env: U1Env) -> None:
     for other in repo.list_jobs():
         if other.alignment_coverage is not None:
             allowed_coverage.add(f"{other.alignment_coverage * 100:.1f}")
+    # V3 §7.5: топ-блок экрана задания показывает процент прогресса
+    # (progress_pct) — легитимное значение, не охват выравнивания.
+    if job.status.value not in ("PLANNING", "VALIDATING_OUTPUT"):
+        allowed_coverage.add(str(round((job.progress or 0.0) * 100)))
     # Список: проценты = прогресс сегментов (TZ §10: line3 и полоса width) —
     # реальный показатель выполнения, а не охват. Значения — progress_pct API.
     rows = client.get("/api/jobs").json()

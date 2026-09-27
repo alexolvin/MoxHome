@@ -25,6 +25,14 @@
 {% set terminal = st in ("COMPLETED", "COMPLETED_WITH_WARNINGS", "FAILED", "CANCELLED") %}
 <article class="u3-row u3-row-job status-{{ row.status_group }}" data-id="{{ j.id }}" data-group="{{ gname }}" data-status="{{ st }}" data-status-group="{{ row.status_group }}" data-rev="{{ j.updated_at }}" data-book="{{ row.book_name }}" data-queue-rank="{{ row.queue_rank }}">
   <div class="u3-row-slide">
+    {# V3 §7.4: обложка 40×60 — настоящая WebP (endpoint /books/{name}/cover)
+       или буква; инлайн-стили (бюджет CSS не затрагивается). Декоративная
+       (aria-hidden) — навигация на текстовую колонку. #}
+    {% if row.cover and row.cover.has_cover and row.cover.cover_v %}
+    <img src="/books/{{ row.book_name }}/cover?v={{ row.cover.cover_v }}&w=256" width="40" height="60" alt="" loading="lazy" decoding="async" aria-hidden="true" style="flex:0 0 auto;width:40px;height:60px;border-radius:var(--r6);object-fit:cover;background:var(--s2)">
+    {% else %}
+    <span aria-hidden="true" style="flex:0 0 auto;width:40px;height:60px;border-radius:var(--r6);background:var(--s2);color:var(--fgm);display:flex;align-items:center;justify-content:center;font-size:var(--fmd)">{{ (row.book_title or row.book_name)[:1] | upper }}</span>
+    {% endif %}
     <a class="u3-row-body" href="/jobs/{{ j.id }}">
       <span class="u3-row-line1" title="{{ row.book_title }}">{{ row.book_title }}</span>
       <span class="u3-row-line2">{{ src }}→{{ tgt }} · {{ j.mode }}{% if j.learning_cefr %} · {{ j.learning_cefr }}{% endif %}</span>

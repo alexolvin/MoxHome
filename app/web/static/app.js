@@ -138,9 +138,15 @@ function jobLine3(j){
 const pct=j.progress_pct==null?"":"<span class='u3-row-sep'> · </span>"+j.progress_pct+"%";
 return "<span class='u3-status status-"+esc(j.status_group)+"' title='"+esc(j.status)+"'><span class='u3-status-ico' aria-hidden='true'>"+ICO(ST_ICO[j.status_group],14)+"</span></span>"+pct+"<span class='u3-row-sep'> · </span>"+esc(j.time_label||NS);
 }
+function jobCoverHtml(j){
+const c=j.cover;
+const base="flex:0 0 auto;width:40px;height:60px;border-radius:var(--r6)";
+if(c&&c.has_cover&&c.cover_v)return "<img src='/books/"+enc(j.book_name)+"/cover?v="+encodeURIComponent(c.cover_v)+"&w=256' width='40' height='60' alt='' loading='lazy' decoding='async' aria-hidden='true' style='"+base+";object-fit:cover;background:var(--s2)'>";
+return "<span aria-hidden='true' style='"+base+";background:var(--s2);color:var(--fgm);display:flex;align-items:center;justify-content:center;font-size:var(--fmd)'>"+esc((j.book_title||j.book_name||"?").slice(0,1).toUpperCase())+"</span>";
+}
 function jobRowHtml(j,group){
 const strip=j.progress_pct==null?"<span class='u3-row-strip is-ind' aria-hidden='true'></span>":"<span class='u3-row-strip' aria-hidden='true'"+(j.progress_pct>0?" style='width: "+j.progress_pct+"%'":"")+"></span>";
-return "<article class='u3-row u3-row-job status-"+esc(j.status_group)+"' data-id='"+esc(j.id)+"' data-group='"+esc(group)+"' data-status='"+esc(j.status)+"' data-status-group='"+esc(j.status_group)+"' data-rev='"+esc(j.updated_at)+"' data-book='"+esc(j.book_name)+"' data-queue-rank='"+esc(j.queue_rank)+"'><div class='u3-row-slide'><a class='u3-row-body' href='/jobs/"+esc(j.id)+"'><span class='u3-row-line1' title='"+esc(j.book_title||j.book_name)+"'>"+esc(j.book_title||j.book_name)+"</span><span class='u3-row-line2'>"+esc(jobLine2(j))+"</span><span class='u3-row-line3'>"+jobLine3(j)+"</span></a><span class='u3-row-acts'>"+rowActionHtml(j)+rowActsTail(j)+"</span></div>"+rowSwipeHtml(j)+strip+"</article>";
+return "<article class='u3-row u3-row-job status-"+esc(j.status_group)+"' data-id='"+esc(j.id)+"' data-group='"+esc(group)+"' data-status='"+esc(j.status)+"' data-status-group='"+esc(j.status_group)+"' data-rev='"+esc(j.updated_at)+"' data-book='"+esc(j.book_name)+"' data-queue-rank='"+esc(j.queue_rank)+"'><div class='u3-row-slide'>"+jobCoverHtml(j)+"<a class='u3-row-body' href='/jobs/"+esc(j.id)+"'><span class='u3-row-line1' title='"+esc(j.book_title||j.book_name)+"'>"+esc(j.book_title||j.book_name)+"</span><span class='u3-row-line2'>"+esc(jobLine2(j))+"</span><span class='u3-row-line3'>"+jobLine3(j)+"</span></a><span class='u3-row-acts'>"+rowActionHtml(j)+rowActsTail(j)+"</span></div>"+rowSwipeHtml(j)+strip+"</article>";
 }
 function bookCoverHtml(b,eager){
 if(b.has_cover&&b.cover_v){
@@ -2125,7 +2131,20 @@ const container=target.closest("[data-u1-fetch]");
 if(container)loadContainer(container);
 }
 });
+function initJobTabs(){
+const pills=Array.from(document.querySelectorAll(".u3-seg-pill[data-tab]"));
+const tabs=Array.from(document.querySelectorAll(".u3-tab[data-tab]"));
+if(!pills.length||!tabs.length)return;
+const show=name=>{
+for(const t of tabs)t.hidden=t.dataset.tab!==name;
+for(const p of pills)p.classList.toggle("is-current",p.dataset.tab===name);
+};
+const cur=pills.find(p=>p.classList.contains("is-current"))||pills[0];
+show(cur.dataset.tab);
+for(const p of pills)p.addEventListener("click",e=>{e.preventDefault();show(p.dataset.tab);});
+}
 document.addEventListener("DOMContentLoaded",()=>{
+initJobTabs();
 initLogsControls();
 initFetchContainers();
 startJobPolling();
