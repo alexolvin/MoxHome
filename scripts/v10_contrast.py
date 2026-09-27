@@ -20,11 +20,29 @@ from pathlib import Path
 STYLE = Path("app/web/static/style.css")
 
 
-def _parse_dark(css: str) -> dict[str, str]:
-    m = re.search(r":root\{([^}]+)\}", css)
+def _parse_block(css: str, selector: str) -> dict[str, str]:
+    m = re.search(selector + r"\{([^}]+)\}", css)
     if not m:
-        raise SystemExit("не найден :root (dark) в style.css")
+        return {}
     return dict(re.findall(r"(--[a-z0-9-]+):#([0-9A-Fa-f]{6})", m.group(1)))
+
+
+def _parse_dark(css: str) -> dict[str, str]:
+    tok = _parse_block(css, r":root")
+    if not tok:
+        raise SystemExit("не найден :root (dark) в style.css")
+    return tok
+
+
+def _tokens_for(css: str, theme: str) -> dict[str, str]:
+    # base = :root (dark); light = base + [data-theme="light"] override.
+    tok = _parse_block(css, r":root")
+    if theme == "light":
+        ov = _parse_block(css, r':root\[data-theme="light"\]')
+        if not ov:
+            raise SystemExit('не найден :root[data-theme="light"] в style.css')
+        tok.update(ov)
+    return tok
 
 
 def _lum(h: str) -> float:
@@ -64,10 +82,17 @@ PAIRS: list[tuple[str, str, list[str], float, str]] = [
 
 
 def main() -> int:
-    tok = _parse_dark(STYLE.read_text(encoding="utf-8"))
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--theme", default="dark", choices=("dark", "light"))
+    args = ap.parse_args()
+    css = STYLE.read_text(encoding="utf-8")
+    tok = _tokens_for(css, args.theme)
+    theme_ru = "светлой" if args.theme == "light" else "тёмной"
+    src = ":root + light-override" if args.theme == "light" else ":root dark"
     hard_fail = 0
     decor_notes = 0
-    print("V-T10 — контраст тёмной темы (пары «текст на фоне» из :root dark)")
+    print(f"V-T10 — контраст {theme_ru} темы (пары «текст на фоне» из {src})")
     print()
     for label, fg, bgs, th, kind in PAIRS:
         if fg not in tok:
