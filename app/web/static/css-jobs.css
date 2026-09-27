@@ -60,9 +60,9 @@ html:not(.js) .u3-row-swipe{display:none}
 .u3-param{display:flex;flex-wrap:wrap;align-items:center;gap:var(--gx) var(--gs);margin:0 0 var(--gs)}
 .u3-param-l{flex-basis:100%;font-size:var(--fsm);color:var(--fgm)}
 .u3-chipset{display:flex;flex-wrap:wrap;align-items:center;gap:var(--gx)}
-.u3-chip{position:relative;display:inline-flex;align-items:center;min-height:var(--ch);padding:0 var(--cpx);border:1px solid var(--ln);border-radius:var(--r10);background:var(--s1);font-size:var(--fsm);font-weight:600;cursor:pointer}
-.u3-chip input{position:absolute;opacity:0;pointer-events:none}
-.u3-chip:has(input:checked){background:var(--acs);border-color:var(--acs);color:var(--os)}
+.u3-rchip{position:relative;display:inline-flex;align-items:center;min-height:var(--ch);padding:0 var(--cpx);border:1px solid var(--ln);border-radius:var(--r10);background:var(--s1);font-size:var(--fsm);font-weight:600;cursor:pointer}
+.u3-rchip input{position:absolute;opacity:0;pointer-events:none}
+.u3-rchip:has(input:checked){background:var(--acs);border-color:var(--acs);color:var(--os)}
 .u3-chip-st{cursor:default}
 .u3-sum-hint{margin:0}
 .u3-export-book{margin:0 0 var(--gs);font-weight:600}

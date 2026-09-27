@@ -21,11 +21,11 @@
     {% if book_cover.has_cover and book_cover.cover_v %}
     <img src="/books/{{ book_name }}/cover?v={{ book_cover.cover_v }}&w=256" width="64" height="96" alt="" loading="eager" decoding="async" aria-hidden="true" style="flex:0 0 auto;border-radius:var(--r8);object-fit:cover;background:var(--s2)">
     {% else %}
-    <span aria-hidden="true" style="flex:0 0 auto;width:64px;height:96px;border-radius:var(--r8);background:var(--s2);color:var(--fgm);display:flex;align-items:center;justify-content:center;font-size:var(--fbr)">{{ book_title[:1] | upper }}</span>
+    <span aria-hidden="true" style="flex:0 0 auto;width:64px;height:96px;border-radius:var(--r8);background:var(--s2);color:var(--fgm);display:flex;align-items:center;justify-content:center;font-size:var(--flg)">{{ book_title[:1] | upper }}</span>
     {% endif %}
     <div style="flex:1;min-width:0">
       <div style="display:flex;align-items:center;gap:var(--gx);flex-wrap:wrap">
-        <div style="flex:1 1 auto;min-width:0;font-size:var(--fxl);line-height:1.2;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ book_title }}">{{ book_title }}</div>
+        <div style="flex:1 1 auto;min-width:0;font-size:var(--flg);line-height:1.2;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ book_title }}">{{ book_title }}</div>
         <span class="u3-status status-{{ st_group }}" style="flex:0 0 auto"><span class="u3-status-ico" aria-hidden="true"><svg class="u3-ico u3-ico-14"><use href="/static/icons.svg#{{ {'wait':'pause','run':'play','ok':'check','warn':'triangle-alert','err':'x'}[st_group] }}"></use></svg></span>{{ facts.status }}</span>
       </div>
       <div style="margin-top:var(--gs);height:6px;border-radius:var(--r50);background:var(--s2);overflow:hidden">

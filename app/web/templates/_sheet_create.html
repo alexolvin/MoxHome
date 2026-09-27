@@ -56,7 +56,7 @@
   <span class="u3-chipset" role="radiogroup" aria-label="{{ s["create_row_languages"] }}">
     <span class="u3-sum-src" id="u3-lang-src">{{ src_lang or "—" }}</span><span class="u3-sum-arrow" aria-hidden="true">→</span>
     {% for code in lang_codes %}
-    <label class="u3-chip"><input type="radio" name="target_language" value="{{ code }}" required{% if sel_target == code %} checked{% endif %}><span>{{ code }}</span></label>
+    <label class="u3-rchip"><input type="radio" name="target_language" value="{{ code }}" required{% if sel_target == code %} checked{% endif %}><span>{{ code }}</span></label>
     {% endfor %}
   </span>
 </div>
@@ -64,16 +64,16 @@
   <span class="u3-param-l">{{ s["create_row_mode"] }}</span>
   <span class="u3-chipset" role="radiogroup" aria-label="{{ s["create_row_mode"] }}">
     {% for m in job_modes %}
-    <label class="u3-chip"><input type="radio" name="mode" value="{{ m }}"{% if sel_mode == m %} checked{% endif %}><span>{{ m }}</span></label>
+    <label class="u3-rchip"><input type="radio" name="mode" value="{{ m }}"{% if sel_mode == m %} checked{% endif %}><span>{{ m }}</span></label>
     {% endfor %}
   </span>
 </div>
 <div class="u3-param">
   <span class="u3-param-l">{{ s["create_row_cefr"] }}</span>
   <span class="u3-chipset" role="radiogroup" aria-label="{{ s["create_row_cefr"] }}">
-    <label class="u3-chip"><input type="radio" name="learning_cefr" value=""{% if sel_cefr == "" %} checked{% endif %}><span>{{ s["create_level_none"] }}</span></label>
+    <label class="u3-rchip"><input type="radio" name="learning_cefr" value=""{% if sel_cefr == "" %} checked{% endif %}><span>{{ s["create_level_none"] }}</span></label>
     {% for lvl in create_defaults.cefr_levels %}
-    <label class="u3-chip"><input type="radio" name="learning_cefr" value="{{ lvl }}"{% if sel_cefr == lvl %} checked{% endif %}><span>{{ lvl }}</span></label>
+    <label class="u3-rchip"><input type="radio" name="learning_cefr" value="{{ lvl }}"{% if sel_cefr == lvl %} checked{% endif %}><span>{{ lvl }}</span></label>
     {% endfor %}
   </span>
   <span class="u3-sum-hint" id="u3-cefr-label">{{ cefr_label }}</span>
@@ -95,9 +95,9 @@
   <div class="u3-param">
     <span class="u3-param-l">{{ s["create_more_volume"] }}</span>
     <span class="u3-chipset" role="radiogroup" aria-label="{{ s["create_more_volume"] }}">
-      <label class="u3-chip"><input type="radio" name="learning_level" value=""{% if sel_level == "" %} checked{% endif %}><span>{{ s["create_level_none"] }}</span></label>
+      <label class="u3-rchip"><input type="radio" name="learning_level" value=""{% if sel_level == "" %} checked{% endif %}><span>{{ s["create_level_none"] }}</span></label>
       {% for lvl in create_defaults.learning_levels %}
-      <label class="u3-chip"><input type="radio" name="learning_level" value="{{ lvl }}"{% if sel_level == lvl %} checked{% endif %}><span>{{ lvl }}</span></label>
+      <label class="u3-rchip"><input type="radio" name="learning_level" value="{{ lvl }}"{% if sel_level == lvl %} checked{% endif %}><span>{{ lvl }}</span></label>
       {% endfor %}
     </span>
     <p class="u3-sum-hint" id="u3-vol-hint">{{ vol_hint }}</p>
