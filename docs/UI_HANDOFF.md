@@ -2899,9 +2899,10 @@ V4 довела её до V-T10 (контраст) и сняла все 15 эк�
 `a06f949` (ui_shots — светлая через cookie `u3-theme`; без cookie
 `color_scheme=light` остаётся тёмной), `d888800` (on-accent тёмный `#04140A`,
 TZ §4.2/§4.3), `095e72a` (`v10_contrast --theme` + `--st-warn` `#A05A00`),
-`098d3a4` (переписанный `design-system.md`), `3045d29` (ruff). Стенд демо
+`098d3a4` (переписанный `design-system.md`), `3045d29` (ruff), `5463082`
+(`import_detecting` удалён + CONTROL). Стенд демо
 127.0.0.1:8421, dark+light, 384×715, dsf 2.25, is_mobile, ru-RU; посев
-12 книг / 6 заданий. Снимки V4: `.a/tasks/ui-audit/shots/V4/3045d29/` —
+12 книг / 6 заданий. Снимки V4: `.a/tasks/ui-audit/shots/V4/5463082/` —
 15 экранов × 2 темы (dark + light), A3 (коды + `S<nn>.dom.txt` + metrics.json).
 
 | Критерий | Статус | Основание |
@@ -2933,9 +2934,9 @@ light `--st-a`/`--st-ab` 4,75, `--st-e`/`--st-eb` 4,71; dark `--st-w`/`--st-wb`
 
 V4 (светлая тема §4.2 + удаление пояснений §9 + полный прогон обеих тем +
 переписанный `design-system.md`) выполнен. **V-T13 PASS** (15 экранов light,
-V-T2/V-T10), **V-T7 PASS** (1 откл.), **V-T14 PASS** (pytest/ruff/mypy/контраст),
-**V-T16 PASS**, **V-T17** (ответ V4 ниже). Снимки обеих тем:
-`.a/tasks/ui-audit/shots/V4/3045d29/`.
+V-T2/V-T10), **V-T7 PASS**, **V-T14 PASS** (pytest/ruff/mypy/контраст),
+**V-T16 PASS**, **V-T17** (ответ V4 ниже). Отклонений нет (`import_detecting`
+удалён). Снимки обеих тем: `.a/tasks/ui-audit/shots/V4/5463082/`.
 
 **Владелец решает (дословно):**
 (a) **`import_detecting` (§9 cat-3)** — транзитный статус «Определение языка
