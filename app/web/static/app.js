@@ -1751,9 +1751,17 @@ const volHint=$("u3-vol-hint");
 const cefrLabels=JSON.parse(form.dataset.cefrLabels||"{}");
 const volHints=JSON.parse(form.dataset.volHints||"{}");
 const radios=Array.from(form.querySelectorAll('input[name="book"]'));
-const targetSel=form.target_language;
-const levelSel=form.learning_level;
-const cefrSel=form.learning_cefr;
+// V3 7.6: chip fields are radio groups (not <select>); form.X is a
+// RadioNodeList without .value/.addEventListener. Value = checked radio.
+const chipVal=(name)=>{
+const grp=form.elements?form.elements[name]:null;
+const c=grp?[...grp].find(i=>i&&i.checked):undefined;
+return c?c.value:"";
+};
+const chipChange=(name,fn)=>{
+const grp=form.elements?form.elements[name]:null;
+if(grp)[...grp].forEach(i=>i.addEventListener("change",fn));
+};
 const selRadio=()=>radios.find(r=>r.checked)||null;
 const setRadio=(name,val)=>{
 if(!val)return;
@@ -1795,12 +1803,12 @@ row.hidden=q!==""&&!hay.includes(q);
 });
 });
 const refreshSummary=()=>{
-if(cefrLabel&&targetSel)cefrLabel.textContent=cefrLabels[targetSel.value]||"";
-if(mats&&levelSel)mats.textContent=levelSel.value?S.create_materials_cards:S.create_materials_translation;
-if(volHint&&levelSel)volHint.textContent=volHints[levelSel.value]||volHints[""]||"";
+if(cefrLabel)cefrLabel.textContent=cefrLabels[chipVal("target_language")]||"";
+if(mats)mats.textContent=chipVal("learning_level")?S.create_materials_cards:S.create_materials_translation;
+if(volHint)volHint.textContent=volHints[chipVal("learning_level")]||volHints[""]||"";
 };
-if(targetSel)targetSel.addEventListener("change",refreshSummary);
-if(levelSel)levelSel.addEventListener("change",refreshSummary);
+chipChange("target_language",refreshSummary);
+chipChange("learning_level",refreshSummary);
 refreshSummary();
 const pre=selRadio();
 if(pre)applyBook(pre);
@@ -1811,7 +1819,7 @@ if(!r){
 msg.textContent=S.create_book_none;
 return;
 }
-const body={book:r.value,target_language:targetSel?targetSel.value:"",mode:form.mode?form.mode.value:"bilingual",learning_level:levelSel?levelSel.value:"",learning_cefr:cefrSel?cefrSel.value:""};
+const body={book:r.value,target_language:chipVal("target_language"),mode:chipVal("mode")||"bilingual",learning_level:chipVal("learning_level"),learning_cefr:chipVal("learning_cefr")};
 const run=()=>{
 msg.textContent=S.common_sending;
 fetchJSON("/api/jobs", { method: "POST",headers:JH,body:JSON.stringify(body)}).then(created=>{

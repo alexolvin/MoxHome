@@ -748,6 +748,8 @@ import { readFileSync } from "node:fs";
 const [scenario, appJsPath, stringsFile, uiFile] = process.argv.slice(2);
 const t0 = Date.now();
 const calls = [];
+let lastJobsBody = null;
+let submitBound = false;
 
 function makeEl(id) {
   const el = {
@@ -908,6 +910,8 @@ globalThis.fetch = async (url, opts) => {
   calls.push({ t, url, m });
   console.log(JSON.stringify({ t, url, m }));
   if (m === "POST" && url === "/api/jobs") {
+    try { lastJobsBody = JSON.parse((opts && opts.body) || "{}"); }
+    catch (e) { lastJobsBody = null; }
     return { ok: true, status: 200,
       text: async () => JSON.stringify({ id: "job-9", status: "CREATED" }) };
   }
@@ -945,8 +949,8 @@ documentStub.getElementById("u3-llm-form").elements = {
 };
 
 if (scenario === "restart") {
-  /* wizard form: one checked book radio + named selects, so the real
-     submit handler runs POST /api/jobs -> jobsRefresh() */
+  /* wizard form: one checked book radio + chip (radio-group) fields,
+     so the real submit handler runs POST /api/jobs -> jobsRefresh() */
   const f = documentStub.getElementById("u3-create-form");
   const radio = {
     checked: true,
@@ -955,10 +959,36 @@ if (scenario === "restart") {
     addEventListener() {},
   };
   f.querySelectorAll = () => [radio];
-  f.target_language = { value: "ru", addEventListener() {} };
-  f.mode = { value: "bilingual" };
-  f.learning_level = { value: "", addEventListener() {} };
-  f.learning_cefr = { value: "" };
+  f.elements = {
+    book: [radio],
+    target_language: [{ checked: true, value: "ru", addEventListener() {} }],
+    mode: [{ checked: true, value: "bilingual", addEventListener() {} }],
+    learning_level: [{ checked: false, value: "", addEventListener() {} }],
+    learning_cefr: [{ checked: false, value: "", addEventListener() {} }],
+  };
+}
+if (scenario === "create-chips") {
+  /* V3 7.6: chip fields are radio groups (RadioNodeList-like), not
+     selects. bindCreateForm must read the checked radio value and bind
+     the submit handler without throwing (regression: form.target_language
+     was a RadioNodeList, .addEventListener threw, submit never bound). */
+  const f = documentStub.getElementById("u3-create-form");
+  const bookRadio = {
+    checked: true, value: "b.epub",
+    dataset: { title: "B", detected: "en", dc: "en" },
+    addEventListener() {},
+  };
+  f.querySelectorAll = () => [bookRadio];
+  f.elements = {
+    book: [bookRadio],
+    target_language: [
+      { checked: false, value: "en", addEventListener() {} },
+      { checked: true, value: "ru", addEventListener() {} },
+    ],
+    mode: [{ checked: true, value: "bilingual", addEventListener() {} }],
+    learning_level: [{ checked: false, value: "", addEventListener() {} }],
+    learning_cefr: [{ checked: false, value: "", addEventListener() {} }],
+  };
 }
 
 (0, eval)(readFileSync(appJsPath, "utf8"));
@@ -984,9 +1014,16 @@ async function main() {
     await sleep(500);
     els["u3-create-form"]._listeners["submit"][0]({ preventDefault() {} });
     await sleep(500);
+  } else if (scenario === "create-chips") {
+    await sleep(300);
+    const sub = els["u3-create-form"]._listeners["submit"];
+    submitBound = Array.isArray(sub) && sub.length > 0;
+    if (submitBound) sub[0]({ preventDefault() {} });
+    await sleep(300);
   }
   const refresh = els["u3-jobs-refresh"] ? els["u3-jobs-refresh"].textContent : "";
-  console.log(JSON.stringify({ final: true, calls: calls.length, refresh }));
+  console.log(JSON.stringify({ final: true, calls: calls.length, refresh,
+    submitBound, jobsBody: lastJobsBody }));
 }
 main().then(() => process.exit(0));
 """
@@ -1027,7 +1064,9 @@ _NODE = shutil.which("node")
 
 
 @pytest.mark.skipif(_NODE is None, reason="node не установлен — харнесс T-U3-15")
-@pytest.mark.parametrize("scenario", ["visible", "errors", "terminal", "restart"])
+@pytest.mark.parametrize(
+    "scenario", ["visible", "errors", "terminal", "restart", "create-chips"]
+)
 def test_u3_15_autorefresh_harness(tmp_path: Path, scenario: str) -> None:
     """T-U3-15: автообновление — пауза при document.hidden (один немедленный
     опрос при возврате), экспоненциальный backoff до ui.refresh_seconds_max
@@ -1061,7 +1100,7 @@ def test_u3_15_autorefresh_harness(tmp_path: Path, scenario: str) -> None:
         assert "boom" in final["refresh"], final["refresh"]
     elif scenario == "terminal":
         assert len(times) == 1, f"запросы после терминального статуса: {times}"
-    else:  # restart
+    elif scenario == "restart":
         posts = [c for c in requests if c.get("m") == "POST"]
         gets = [
             c
@@ -1075,3 +1114,15 @@ def test_u3_15_autorefresh_harness(tmp_path: Path, scenario: str) -> None:
         )
         # после создания — полный рефетч списка (jobsRefresh пробудил)
         assert len(gets) == 2, f"список не обновился после создания: {requests}"
+    elif scenario == "create-chips":
+        # V3-регрессия: chip-поля — radio-группы; bindCreateForm читает
+        # значение галочки и привязывает submit без исключений.
+        assert final.get("submitBound") is True, (
+            "submit create-form не привязан (V3 chip regression): "
+            + str(final)
+        )
+        body = final.get("jobsBody") or {}
+        assert body.get("book") == "b.epub", body
+        assert body.get("target_language") == "ru", body
+        assert body.get("mode") == "bilingual", body
+        assert body.get("learning_level") == "", body
