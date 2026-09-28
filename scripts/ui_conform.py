@@ -7,6 +7,9 @@
 * R-K12 — кит на стенде доступен (`dev_kit: true`); 404-ветку в проде
   проверяет unit-тест маршрута.
 * R-L4 — размер компонента ∈ `size` из ui-components.yaml (мин И макс).
+* R-Y1 — число различных кеглей за прогон ≤ `type_scale_max_steps` (ui-rules).
+* R-Y2 — никаких кеглей < 11 px; R-Y3 — на мобильном ≤ `max_font_app_screen_px`.
+* R-Y5/R-Y6 — число строк ≤ `max_lines` (ui-text.yaml) у однострочных ролей.
 * R-T1 — каждый видимый интерактивный элемент несёт `data-role` (0 без роли).
 * R-T4 — вычисленный цвет/фон совпадает с токеном роли (data-role → ui-roles).
   Без `data-role` элемент не проверяется (это R-T1).
@@ -95,6 +98,50 @@ INTERACTIVE_WITH_ROLE_JS = (
 )
 
 _TOKEN_MAP: dict[str, str] = {}
+
+# --- R-Y (текст) -----------------------------------------------------------------
+# Однострочные текстовые роли (ui-text.yaml max_lines: 1) → селектор. Для R-Y5/6
+# меряем число строк у этих элементов (getClientRects()). Роли без уверенного
+# селектора (chip/status/book-card) НЕ маплены честно — не гадаем (TZ §1.4).
+TEXT_SINGLE_LINE: list[tuple[str, str]] = [
+    # (селектор, max_lines)
+    (".u3-appbar-title", 1),   # appbar.title
+    (".u3-row-line1", 1),      # list.title
+    (".u3-row-line2", 1),      # list.meta
+    (".u3-row-line3", 1),      # list line3
+    (".u3-btn", 1),            # button.label
+    (".u3-tab", 1),            # tabbar.label
+    (".u3-toast", 2),          # toast.label
+]
+
+TEXT_JS = r"""
+(sels, lo, hi) => {
+  const out = { sizes: [], flag: [], lines: {} };
+  document.querySelectorAll("body *").forEach(e => {
+    const hasText = [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
+    if (!hasText) return;
+    const cs = getComputedStyle(e);
+    const r = e.getBoundingClientRect();
+    if (cs.display === "none" || cs.visibility === "hidden" || r.width < 1 || r.height < 1) return;
+    const fs = Math.round(parseFloat(cs.fontSize) * 100) / 100;
+    out.sizes.push(fs);
+    if (fs < lo || fs > hi) out.flag.push(
+      { fs, tag: e.tagName, cls: String(e.className || "").slice(0, 40),
+        text: (e.textContent || "").trim().slice(0, 24) });
+  });
+  for (const [sel, maxl] of sels) {
+    const arr = [];
+    for (const e of document.querySelectorAll(sel)) {
+      const cs = getComputedStyle(e);
+      if (cs.display === "none" || e.getBoundingClientRect().width < 1) continue;
+      const range = document.createRange(); range.selectNodeContents(e);
+      arr.push({ lines: range.getClientRects().length, ws: cs.whiteSpace });
+    }
+    out.lines[sel] = { maxl, items: arr };
+  }
+  return out;
+}
+"""
 
 
 @dataclass
@@ -266,6 +313,33 @@ def check_role_color(it: dict, reg: Registry, sid: str, out: dict[str, Any]) -> 
                           f"{it['component']}: {attr} {gotx} ≠ роль {it['data_role']} ({want})")
 
 
+def check_text(page, sid: str, out: dict[str, Any], lo: float, hi: float) -> None:
+    """R-Y1 (кегли в шкалу — глобально) / R-Y2 (<lo px) / R-Y3 (>hi моб.) /
+    R-Y5+6 (число строк ≤ max_lines у однострочных ролей)."""
+    sigs = [list(t) for t in TEXT_SINGLE_LINE]
+    res = page.evaluate(TEXT_JS, [sigs, lo, hi])
+    fonts = out["stats"].setdefault("fonts_seen", [])
+    for fs in res["sizes"]:
+        if fs not in fonts:
+            fonts.append(fs)
+    for f in res["flag"]:
+        if f["fs"] < lo:
+            add_violation(out, "R-Y2", "P1", sid,
+                          f"кегль {f['fs']}px < {lo:g} — <{f['tag']} {f['cls']}> «{f['text']}»")
+        else:  # > hi на мобильном (кроме объявленных исключений — R-Y3, P2)
+            add_violation(
+                out, "R-Y3", "P2", sid,
+                f"кегль {f['fs']}px > {hi:g} (моб.) — <{f['tag']} {f['cls']}>",
+            )
+    for sel, spec in res["lines"].items():
+        maxl = spec["maxl"]
+        for it in spec["items"]:
+            if it["lines"] > maxl:
+                sev = "P0" if sel in (".u3-btn", ".u3-tab") else "P1"
+                add_violation(out, "R-Y5", sev, sid,
+                              f"{sel}: {it['lines']} строки > {maxl} (white-space: {it['ws']})")
+
+
 def check_screen(page, sid: str, path: str, reg: Registry, out: dict[str, Any]) -> int:
     """R-T1 / R-L4 / R-T4 на одном экране; возвращает число экземпляров."""
     page.goto(reg.base + path, wait_until="domcontentloaded", timeout=30_000)
@@ -326,6 +400,10 @@ def main() -> None:
 
     dec = load_declarations()
     reg = Registry(args.base, dec["components"], dec["roles"])
+    rules = dec.get("rules", {}) or {}
+    max_steps = int(rules.get("type_scale_max_steps", 8))
+    hi = float((rules.get("max_font_app_screen_px") or {}).get("mobile", 20))
+    lo = 11.0  # R-Y2: абсолютный нижний порог («ничего < 11 px»)
     out: dict[str, Any] = {
         "violations": [], "stats": {}, "run": {"theme": args.theme, "base": args.base},
     }
@@ -350,9 +428,16 @@ def main() -> None:
                 print(f"{sid}: нет пути в базовом наборе — пропуск")
                 continue
             total += check_screen(page, sid, path, reg, out)
+            check_text(page, sid, out, lo, hi)
         out["stats"]["total_instances"] = total
         browser.close()
 
+    # R-Y1 — число различных кеглей за прогон ≤ шкале (type_scale_max_steps)
+    fonts = out["stats"].get("fonts_seen", [])
+    out["stats"]["r_y1_distinct_sizes"] = sorted(fonts)
+    if len(fonts) > max_steps:
+        add_violation(out, "R-Y1", "P1", "ALL",
+                      f"различных кеглей {len(fonts)} > {max_steps}: {sorted(fonts)}")
     write_report(out, args.out)
 
 
