@@ -30,6 +30,14 @@ class InputValidationError(AppError):
     exit_code = 3
 
 
+class SettingsIncompleteError(AppError):
+    """Настройки LLM неполны для способа задания (MTPE TZ §5.3): создание задания
+    отклонено — API возвращает 422, CLI/мастер — отказ (exit_code 3). Не входной
+    файл, а конфигурация профилей, обязательных при текущем pipeline."""
+
+    exit_code = 3
+
+
 class LLMUnavailableError(AppError):
     """LLM-эндпоинт или профиль недоступны (fail closed, Rule 6)."""
 

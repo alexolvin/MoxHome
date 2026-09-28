@@ -33,7 +33,7 @@ import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 import yaml
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
@@ -44,7 +44,8 @@ from app.adapters.convert.checks import classify
 from app.adapters.epub_engine.epubcheck import facts as epubcheck_facts
 from app.adapters.epub_engine.epubcheck import run_epubcheck
 from app.core.config import Settings
-from app.core.errors import AppError
+from app.core.errors import AppError, SettingsIncompleteError
+from app.core.llm_settings import mt_draft_template_issues, validate_llm_settings
 from app.domain.job import TERMINAL_STATES, Job, JobStatus
 from app.learning import card_export
 from app.llm.prompts import (
@@ -573,6 +574,12 @@ def create(
     """Создание задания (У1.3): ``book`` — имя файла в ``input/`` (или
     абсолютный путь), остальные поля формы создания."""
     settings, repo = deps
+    # MTPE TZ §4.1/§6.1: способ задаётся только в настройках; поле `pipeline`
+    # в теле — 400 (M1-8). Способ задания берётся из конфига (create_job).
+    if "pipeline" in body:
+        raise HTTPException(
+            status_code=400, detail=_S["pipeline_in_settings_only"]
+        )
     book_name = str(body.get("book", ""))
     if not book_name:
         raise HTTPException(status_code=400, detail=_S["err_book_required"])
@@ -591,9 +598,25 @@ def create(
             learning_level=body.get("learning_level") or None,
             learning_cefr=body.get("learning_cefr") or None,
         )
+    except SettingsIncompleteError as exc:
+        raise HTTPException(
+            status_code=422, detail=_format_settings_issues(exc)
+        ) from exc
     except AppError as exc:
         raise HTTPException(status_code=400, detail=exc.message) from exc
     return {"id": job.id, "status": job.status.value}
+
+
+def _format_settings_issues(exc: SettingsIncompleteError) -> str:
+    """Текст 422 по кодам validate_* из `strings` (MTPE TZ §5.3)."""
+    raw = (exc.details or {}).get("issues")
+    issues: list[tuple[str, str]] = (
+        cast("list[tuple[str, str]]", raw) if isinstance(raw, list) else []
+    )
+    if not issues:
+        return exc.message
+    parts = [f"{path}: {_S.get(code, code)}" for path, code in issues]
+    return f"{exc.message}: " + "; ".join(parts)
 
 
 @router.get("/jobs/{job_id}")
@@ -1302,6 +1325,18 @@ def prompt_create(
         task_name, spec.pair_required, level, body.get("source"), body.get("target")
     )
     content = _validate_prompt_yaml(body.get("content"))
+    # MTPE TZ §5.3 (точка 5): новая версия mt_draft — V7 (плейсхолдеры ровно
+    # {src_name},{tgt_name},{text}); нарушение — 400, файл не создаётся.
+    if task_name == "mt_draft":
+        parsed = yaml.safe_load(content)
+        user_template = (
+            str(parsed.get("user_template", "")) if isinstance(parsed, dict) else ""
+        )
+        if mt_draft_template_issues(user_template):
+            raise HTTPException(
+                status_code=400,
+                detail=_S["validate_mt_template_placeholders"],
+            )
     if level == LEVEL_PAIR:
         directory = settings.prompts_dir / task_name / source / target
     elif level == LEVEL_SOURCE:
@@ -1447,9 +1482,15 @@ def config_llm_update(
             config_path=config_path,
             env_path=env_path,
         )
+    except SettingsIncompleteError as exc:
+        # MTPE TZ §5.3 (точка 1): неполные для способа — 422, файлы не тронуты.
+        raise HTTPException(
+            status_code=422, detail=_format_settings_issues(exc)
+        ) from exc
     except AppError as exc:
         raise HTTPException(status_code=400, detail=exc.message) from exc
     request.app.state.settings = new_settings
+    request.app.state.llm_settings_issues = validate_llm_settings(new_settings)
     logger.info(
         "llm_config_update: user=%s shared=%s",
         _user(request),

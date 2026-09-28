@@ -39,11 +39,19 @@ ALL_ENV_KEYS: tuple[str, ...] = (
     "ALLOW_WILDCARD_BIND",
     "LLM_API_KEY",
     "LLM_ANALYSIS_API_KEY",
+    "LLM_MT_API_KEY",
+    "LLM_POSTEDIT_API_KEY",
 )
 #: Обязательные переменные окружения (без них — отказ старта).
 REQUIRED_ENV_KEYS: tuple[str, ...] = ("SERVER_BIND_ADDRESS",)
-#: Имена профилей LLM (E4): фиксированный набор, не язык/модель, а архитектура.
+#: Имена чат-профилей LLM (E4, тракт T): движок, классический R8-экран,
+#: cost/describe/health. Не язык/модель, а архитектура (Rule 1).
 PROFILE_NAMES: tuple[str, ...] = ("translation", "fill", "analysis")
+#: Профильные профили тракта M (MTPE TZ §4.1) — mt_pe-конвейер. Классический
+#: R8-экран их НЕ управляет (экран M2), но они присутствуют в схеме.
+MT_PE_PROFILES: tuple[str, ...] = ("mt", "postedit")
+#: Все профили LLM в схеме (3 чат-профиля + 2 профильных) — строит load_settings.
+ALL_PROFILE_NAMES: tuple[str, ...] = PROFILE_NAMES + MT_PE_PROFILES
 #: Значение, требующее явного разрешения (E0.6). Константа спецификации ТЗ.
 WILDCARD_ADDRESS = "0.0.0.0"
 
@@ -54,12 +62,17 @@ class LLMProfile(BaseModel):
     `base_url` и `model` задаются здесь (YAML) и нигде больше не задаются
     (Rule 1, E4.1; «второго места не существует»). Секреты (API-ключи) — в .env.
     Опциональные цены (E4.7): без них стоимость показывается как `Cost: unknown`.
+
+    Пустые `base_url`/`model` допустимы (профиль «ещё не заполнен»); их
+    заполненность для профиля, обязательного при текущем `translation.pipeline`,
+    проверяет `validate_llm_settings` (TZ §5.3), а не `load_settings` (сервер
+    стартует с полосой «Настройки LLM неполны», TZ §5.3 п.2).
     """
 
     model_config = ConfigDict(frozen=True)
 
-    base_url: str = Field(min_length=1)
-    model: str = Field(min_length=1)
+    base_url: str = ""
+    model: str = ""
     token_encoding: str = Field(default="cl100k_base", min_length=1)
     temperature: float = Field(default=0.2, ge=0.0, le=2.0)
     timeout_seconds: float = Field(default=300.0, gt=0.0)
@@ -74,6 +87,23 @@ class LLMProfile(BaseModel):
     #: `chat_template_kwargs: {enable_thinking: false}` для thinking-моделей,
     #: чей reasoning-поток иначе попадает в контент ответа (D80).
     extra_body: dict[str, Any] = Field(default_factory=dict)
+    #: Протокол запроса (MTPE TZ §5.1): `chat` (chat/completions) или
+    #: `completions` (текстовый completions). Для существующих профилей — `chat`.
+    api: str = "chat"
+    #: Задача промпта в `llm.prompts_root` (mt: `mt_draft`; postedit: `postedit`).
+    prompt_task: str | None = None
+    #: Таймаут прогревочного запроса перед LLM-стадией/фазой (TZ §4.6).
+    warmup_timeout_s: float = Field(default=900.0, gt=0.0)
+    # --- Поля профиля mt (completions-черновик, TZ §5.1) ---
+    # Числовые поля без range-ограничений в схеме: их границы — единая точка
+    # validate_llm_settings V8 (TZ §5.3 «иных проверок этих полей в коде нет»).
+    top_k: int | None = None
+    max_tokens_ratio: float | None = None
+    max_segment_tokens: int | None = None
+    stop: list[str] = Field(default_factory=list)
+    #: Транспортные повторы (mt/postedit, TZ §5.1); чат-профили — `retry_times`.
+    retries: int | None = None
+    timeout_s: float | None = None
 
     @property
     def cost_defined(self) -> bool:
@@ -88,10 +118,16 @@ class LLMSection(BaseModel):
     api_key: str = ""
     #: Секрет профиля analysis (LLM_ANALYSIS_API_KEY в .env); пусто → api_key.
     analysis_api_key: str = ""
+    #: Секрет профиля mt (LLM_MT_API_KEY в .env); пусто → api_key (TZ §5.2).
+    mt_api_key: str = ""
+    #: Секрет профиля postedit (LLM_POSTEDIT_API_KEY в .env); пусто → api_key.
+    postedit_api_key: str = ""
     profiles: dict[str, LLMProfile]
     #: Корень внешних промптов (E4.5), относительно storage.root:
     #: prompts/<task>/<source>/<target>/vN.yaml.
     prompts_root: str = Field(default="prompts", min_length=1)
+    #: Таймаут кнопки «Проверить» на экране «LLM и модели», с (TZ §5.1).
+    probe_timeout_s: float = Field(default=300.0, gt=0.0)
 
     def profile(self, name: str) -> LLMProfile:
         try:
@@ -100,9 +136,13 @@ class LLMSection(BaseModel):
             raise ConfigurationError(f"LLM-профиль не найден: {name}") from exc
 
     def api_key_for(self, name: str) -> str:
-        """API-ключ профиля: analysis может иметь собственный (T-E4-8)."""
+        """API-ключ профиля: analysis/mt/postedit могут иметь собственные."""
         if name == "analysis":
             return self.analysis_api_key or self.api_key
+        if name == "mt":
+            return self.mt_api_key or self.api_key
+        if name == "postedit":
+            return self.postedit_api_key or self.api_key
         return self.api_key
 
     def endpoint(self, name: str) -> tuple[str, str, str]:
@@ -367,16 +407,23 @@ class ConverterSection(BaseModel):
 
 
 class TranslationSection(BaseModel):
-    """Режимы перевода задания (E5.2): translation → REPLACE, bilingual → submit из YAML.
+    """Режимы перевода задания (E5.2) + способ перевода (MTPE).
 
     `submit_mode_bilingual` — движковый режим режима bilingual: по умолчанию
     APPEND_BLOCK; APPEND_TEXT доступен настройкой, но не используется по
     умолчанию (ухудшает последующее выравнивание, ТЗ E5 п.2).
+
+    `pipeline` — способ перевода (MTPE TZ §5.1): `single` (движок) или `mt_pe`
+    (черновик MT + постредактура). Меняется только экраном «LLM и модели»;
+    в теле `POST /api/jobs` поле `pipeline` запрещено (M1-8).
     """
 
     model_config = ConfigDict(frozen=True)
 
     submit_mode_bilingual: str = Field(default="APPEND_BLOCK")
+    #: Способ перевода задания (TZ §5.1): single | mt_pe. Проверка значения —
+    #: validate_llm_settings V1 (единая точка, TZ §5.3).
+    pipeline: str = "single"
 
     @field_validator("submit_mode_bilingual")
     @classmethod
@@ -386,6 +433,32 @@ class TranslationSection(BaseModel):
                 "translation.submit_mode_bilingual: допустимы APPEND_BLOCK | APPEND_TEXT"
             )
         return value
+
+
+class MTPESection(BaseModel):
+    """Параметры конвейера `mt_pe` (TZ §5.1) — только конфигурация (Rule 1).
+
+    Пороги флага heavy_edit, доли остановок и период системных проверок
+    фазы постредактуры. Значения — данные, не код. Числовые поля без
+    range-ограничений в схеме: их границы — единая точка validate_llm_settings
+    V8 (TZ §5.3 «иных проверок этих полей в коде нет»)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    #: Число предыдущих сегментов главы в контексте постредактуры.
+    context_segments: int = 6
+    #: Коротче (слов) — язык сегмента не проверяется.
+    lang_check_min_words: int = 4
+    #: Порог флага heavy_edit (доля заменённых токенов).
+    max_edit_ratio: float = 0.40
+    #: Доля heavy_edit-сегментов, выше — системная остановка.
+    max_heavy_edit_ratio: float = 0.10
+    #: Допустимая разница числа предложений между черновиком и итогом.
+    max_sentence_delta: int = 1
+    #: Доля pe_rejected-сегментов, выше — системная остановка.
+    max_rejected_ratio: float = 0.005
+    #: Период проверки системных остановок, сегментов.
+    check_every_segments: int = 200
 
 
 class UiSection(BaseModel):
@@ -451,6 +524,8 @@ class Settings(BaseModel):
     epubcheck: EpubcheckSection
     converter: ConverterSection
     translation: TranslationSection
+    #: Параметры конвейера mt_pe (MTPE TZ §5.1); опциональная секция YAML.
+    mtpe: MTPESection = Field(default_factory=MTPESection)
     #: Параметры Web-интерфейса (U3); опциональная секция YAML (дефолты в схеме).
     ui: UiSection = Field(default_factory=UiSection)
 
@@ -613,14 +688,10 @@ def load_settings(config_yaml: Path, env_file: Path) -> Settings:
     if not isinstance(root_raw, str) or not root_raw.strip():
         missing.append("storage.root (YAML-конфиг)")
     # E4.1: адрес и модель — только в YAML-профилях; второго места нет.
+    # Заполненность base_url/model — НЕ отказ старта (MTPE TZ §5.3 п.2): сервер
+    # стартует с полосой «Настройки LLM неполны»; проверяет validate_llm_settings.
     llm_sub = _sub(data, "llm")
     profiles_sub = _sub(llm_sub, "profiles")
-    for name in PROFILE_NAMES:
-        profile_sub = _sub(profiles_sub, name)
-        for field in ("base_url", "model"):
-            value = profile_sub.get(field)
-            if not isinstance(value, str) or not value.strip():
-                missing.append(f"llm.profiles.{name}.{field} (YAML-конфиг)")
     if missing:
         raise ConfigurationError(
             "не заданы обязательные параметры конфигурации (молчаливых значений по умолчанию нет)",
@@ -633,10 +704,16 @@ def load_settings(config_yaml: Path, env_file: Path) -> Settings:
         llm_section = LLMSection(
             api_key=env["LLM_API_KEY"],
             analysis_api_key=env["LLM_ANALYSIS_API_KEY"],
+            mt_api_key=env["LLM_MT_API_KEY"],
+            postedit_api_key=env["LLM_POSTEDIT_API_KEY"],
+            # Все пять профилей схемы (TZ §4.1): отсутствующие в YAML — дефолтный
+            # (пустой) профиль; заполненность проверяет validate_llm_settings (TZ §5.3).
             profiles={
-                name: LLMProfile.model_validate(_sub(profiles_sub, name)) for name in PROFILE_NAMES
+                name: LLMProfile.model_validate(_sub(profiles_sub, name))
+                for name in ALL_PROFILE_NAMES
             },
             prompts_root=str(llm_sub.get("prompts_root", "prompts")),
+            probe_timeout_s=llm_sub.get("probe_timeout_s", 300.0),
         )
         server_section = ServerSection.model_validate(
             {
@@ -659,6 +736,7 @@ def load_settings(config_yaml: Path, env_file: Path) -> Settings:
         epubcheck_section = EpubcheckSection.model_validate(_sub(data, "epubcheck"))
         converter_section = ConverterSection.model_validate(_sub(data, "converter"))
         translation_section = TranslationSection.model_validate(_sub(data, "translation"))
+        mtpe_section = MTPESection.model_validate(_sub(data, "mtpe"))
         ui_section = UiSection.model_validate(_sub(data, "ui"))
     except ValidationError as exc:
         raise ConfigurationError(
@@ -678,6 +756,7 @@ def load_settings(config_yaml: Path, env_file: Path) -> Settings:
         epubcheck=epubcheck_section,
         converter=converter_section,
         translation=translation_section,
+        mtpe=mtpe_section,
         ui=ui_section,
     )
 

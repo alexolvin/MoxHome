@@ -132,6 +132,9 @@ def cmd_translate(settings: Settings, args: argparse.Namespace) -> int:
         db.close()
     print(f"задание: {job.id}")
     print(f"статус: {job.status.value}")
+    # MTPE TZ §6: способ перевода — на отдельной строке (из конфига; создание
+    # задания на неполных настройках отклонено выше — SettingsIncompleteError).
+    print(f"способ перевода: {job.pipeline}")
     if args.wait is None:
         print("воркер — отдельный процесс: python -m app.workers.run --loop")
         return 0

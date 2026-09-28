@@ -82,6 +82,10 @@ class PackSpec(BaseModel):
 
     code: str
     name: str = Field(min_length=1)
+    #: Точное имя языка из списка MiLMMT-46 для способа mt_pe (MTPE TZ §5.5).
+    #: Пусто/None — mt_pe для пар с этим языком недоступен. Имена языков нигде
+    #: в коде не встречаются, кроме чтения pack.yaml (TZ §5.5).
+    mt_name: str | None = None
     #: Альтернативные коды (ISO 639-2 и пр.): eng→en, deu→de, … — данные, не код.
     aliases: tuple[str, ...] = ()
     #: Имя spaCy-пайплайна (L1). None — пайплайн не объявлен (целевой язык).

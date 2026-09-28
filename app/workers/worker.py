@@ -22,6 +22,7 @@ from pathlib import Path
 
 from app.core.config import Settings, load_settings
 from app.core.errors import AppError, ConfigurationError
+from app.core.llm_settings import apply_job_config_snapshot, validate_llm_settings
 from app.core.logging import attach_job_logs, detach_job_logs, job_context
 from app.core.worker_signal import write_heartbeat
 from app.domain.job import NEXT_STAGE, WORKING_STATES, Job, JobStatus
@@ -53,6 +54,9 @@ class Worker:
         self._lease_lost = threading.Event()
         self._heartbeat_thread: threading.Thread | None = None
         self._active_job_id: str | None = None
+        #: MTPE TZ §5.3 (точка 3): предупреждение о неполных настройках — раз
+        #: на «промежуток», не каждый полл (анти-спам лога).
+        self._incomplete_logged = False
 
     # ------------------------------------------------------------------ публичное
 
@@ -67,6 +71,9 @@ class Worker:
         """Взять одно задание (если есть) и выполнить до терминального/стоп-состояния."""
         self.startup()
         self._reload_config()
+        # MTPE TZ §5.3 (точка 3): неполные настройки — задание не берётся.
+        if self._settings_incomplete():
+            return None
         job = self._repo.next_claimable()
         if job is None:
             return None
@@ -77,6 +84,12 @@ class Worker:
         self.startup()
         while True:
             self._reload_config()
+            # MTPE TZ §5.3 (точка 3): неполные настройки — очередь не трогать.
+            if self._settings_incomplete():
+                time.sleep(poll_seconds)
+                self.write_alive()
+                self.startup()
+                continue
             job = self._repo.next_claimable()
             if job is None:
                 time.sleep(poll_seconds)
@@ -108,14 +121,34 @@ class Worker:
         self._settings = settings
         self._pipeline = Pipeline(settings)
 
+    def _settings_incomplete(self) -> bool:
+        """MTPE TZ §5.3 (точка 3): настройки неполны → задание не берётся,
+        причина в лог (раз на промежуток). True — очередь не трогать."""
+        issues = validate_llm_settings(self._settings)
+        if issues:
+            if not self._incomplete_logged:
+                logger.warning(
+                    "настройки LLM неполны — задание не берётся: %s",
+                    "; ".join(f"{i.path} ({i.code})" for i in issues),
+                )
+                self._incomplete_logged = True
+            return True
+        self._incomplete_logged = False
+        return False
+
     def _execute(self, job: Job) -> Job:
         lease = self._settings.server.lease_seconds
         if not self._repo.claim(job.id, self._pid, lease):
             logger.info("задание не занято (арена занята другим): %s", job.id)
             return job
-        # R8: задание держит Pipeline НА СТАРТОВЫХ настройках — подмена
-        # конфигурации между стадиями недопустима (ТЗ §13).
-        pipeline = self._pipeline
+        # MTPE TZ §4.5: задание работает на СНИМКЕ настроек (значения создания;
+        # ключи — из .env). Нет снимка (старые задания) — на текущих настройках
+        # воркера (R8: подмена конфигурации между стадиями недопустима).
+        pipeline = (
+            Pipeline(apply_job_config_snapshot(self._settings, job.config_snapshot))
+            if job.config_snapshot
+            else self._pipeline
+        )
         handlers = attach_job_logs(self._settings.job_dir(job.id), self._settings.secrets())
         try:
             with job_context(job.id):

@@ -1,6 +1,7 @@
 # Языковой пакет (L0.1/L1) — язык это данные, а не код (Rule 1).
 code: it
 name: Italian
+mt_name: Italian  # имя из списка MiLMMT-46 (MTPE TZ §5.5) — для способа mt_pe
 aliases: [ita]
 spacy_model: it_core_news_sm  # NLP-пайплайн (L1); версия зафиксирована в docs/HANDOFF.md
 frequency_source: wordfreq  # источник частотности (L1: Zipf-шкала, bands ниже)

@@ -625,6 +625,11 @@ UI_STRINGS: dict[str, str] = {
         "отображаются — только признак «задан». Проба не пишет конфиг "
         "и не создаёт задание."
     ),
+    # MTPE TZ §5.3 (точка 2): полоса на страницах при неполных настройках.
+    "llm_incomplete_banner": (
+        "Настройки LLM неполны для текущего способа перевода — "
+        "создание заданий и сохранение будут отклонены, пока не заполнены: "
+    ),
     "llm_shared_label": "Все профили используют один эндпоинт",
     "llm_base_url_label": "Эндпоинт (base_url)",
     "llm_base_url_hint": "http(s)://127.0.0.1:8004/v1",
@@ -702,6 +707,35 @@ UI_STRINGS: dict[str, str] = {
     "err_llm_config_invalid": "новая конфигурация не валидирована: {reason}",
     "err_llm_paths_missing": "пути конфигурации не заданы",
     "err_purge_bad_days": "дни: число ≥ 0",
+    # ------------------------------------------------------------- MTPE: единая
+    # проверка настроек LLM (TZ §5.3, validate_llm_settings). Коды V1–V10 +
+    # коды отказа создания задания. Текст — по коду; path — в SettingsIssue.
+    "validate_pipeline_unknown": (
+        "translation.pipeline: допустимы single | mt_pe (получено: {value})"
+    ),
+    "validate_base_url_empty": "эндпоинт (base_url) не задан",
+    "validate_base_url_format": "эндпоинт: http(s)://… с путём, оканчивающимся на /v1",
+    "validate_model_empty": "модель: непустое имя без пробельных символов",
+    "validate_api_fixed": (
+        "api: профиль mt — completions, остальные — chat (получено: {value})"
+    ),
+    "validate_prompt_missing": (
+        "задача промпта {task} отсутствует или не имеет активной версии"
+    ),
+    "validate_mt_template_placeholders": (
+        "mt_draft: активная версия содержит {src_name}, {tgt_name}, {text} — "
+        "без других плейсхолдеров"
+    ),
+    "validate_out_of_limits": "значение вне допустимых границ",
+    "validate_extra_body_invalid": "extra_body: ожидается JSON-объект",
+    "validate_no_mt_pairs": (
+        "нет пар со статусом supported для mt_pe: задайте mt_name у обоих языков"
+    ),
+    "pipeline_in_settings_only": (
+        "способ перевода (pipeline) задаётся только на экране «LLM и модели», "
+        "не в создании задания"
+    ),
+    "pair_unsupported_mt_pe": "пара {pair}: mt_pe недоступен (нет mt_name у обоих языков)",
     "logs_cleared_fact_global": (
         "{time}: логи очищены пользователем {user}: app.log — {bytes} Б"
     ),

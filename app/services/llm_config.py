@@ -26,7 +26,8 @@ import httpx
 
 from app.core.config import PROFILE_NAMES, Settings, load_settings
 from app.core.config_edit import apply_env_keys, apply_llm_profiles
-from app.core.errors import AppError, ConfigurationError
+from app.core.errors import AppError, ConfigurationError, SettingsIncompleteError
+from app.core.llm_settings import validate_llm_settings
 from app.web.strings import UI_STRINGS
 
 logger = logging.getLogger("app.web")
@@ -330,11 +331,19 @@ def update_llm_config(
         cfg_tmp.write_text(new_cfg, encoding="utf-8")
         env_tmp.write_text(new_env, encoding="utf-8")
         try:
-            load_settings(cfg_tmp, env_tmp)
+            loaded = load_settings(cfg_tmp, env_tmp)
         except ConfigurationError as exc:
             raise AppError(
                 _S["err_llm_config_invalid"].format(reason=_load_error_reason(exc))
             ) from exc
+        # MTPE TZ §5.3 (точка 1): единая проверка настроек — ДО записи.
+        # Неполные для способа (pipeline) → отказ, файлы не тронуты (M1-3).
+        issues = validate_llm_settings(loaded)
+        if issues:
+            raise SettingsIncompleteError(
+                "настройки LLM неполны для способа задания",
+                details={"issues": [(issue.path, issue.code) for issue in issues]},
+            )
         # .env — ПЕРВЫМ: окно ошибки между заменами = новый ключ без
         # новой модели (профиль работает на старом адресе), повтор
         # сохранения идемпотентен.

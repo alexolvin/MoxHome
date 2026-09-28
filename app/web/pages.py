@@ -38,6 +38,7 @@ from starlette.responses import Response
 from app.adapters.convert import probe as converter_probe
 from app.core.config import PROFILE_NAMES, Settings
 from app.core.errors import AppError
+from app.core.llm_settings import validate_llm_settings
 from app.core.worker_signal import worker_alive
 from app.domain.job import TERMINAL_STATES, Job, JobStatus
 from app.languages.cefr import CEFR_ORDER
@@ -1436,6 +1437,7 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
         except AppError as exc:
             return None, exc.message
         request.app.state.settings = new_settings
+        request.app.state.llm_settings_issues = validate_llm_settings(new_settings)
         return new_settings, None
 
     @router.get("/settings/llm")
