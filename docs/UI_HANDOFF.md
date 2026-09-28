@@ -3369,5 +3369,40 @@ M4 закрыт: **CONTROL M4 11/11 PASS** (`docs/CONTROL/M4.md`). Ветка `s
 - Регрессия: ruff 0 / mypy 0 (93) / **pytest 484** (база 471 + 13, ни один прежний
   не удалён). Артефакты: `docs/CONTROL/M4.md`. D128–D130 в `docs/DECISIONS.md`.
 
-Следующий этап — **M5** (writer.py, §4.9: сборка выходного EPUB из `final.jsonl` +
-кодек; DECISIONS до кода).
+## MTPE M5 — тракт M, писатель сегментов (TZ §4.9) (2026-09-28)
+
+M5 закрыт: **CONTROL M5 8/8 PASS** (`docs/CONTROL/M5.md`). Ветка `stage/mtpe-M5`
+→ `main` (merge --no-ff). D131 (решение о писателе) — первым коммитом, до кода.
+
+- **Писатель** (`app/mtpe/writer.py`, §4.9): **четвёртое исключение Rule 8** — дублирует
+  сборку EPUB **движка** (`epub-translator 0.1.10`, эталон `docs/ENGINE_PROBE.md`), а не
+  тракт A. Текст модели из `final.jsonl` — только lxml-текстовые узлы (`_append_text`,
+  `.text`/`.tail`, экранирование lxml); элементы — только из `markup_map`
+  (`_make_element`, trusted-тег исходника); **XHTML-разбор ответа запрещён** (M5-5).
+- **Структура** (D131): `read_epub` (тракт A) — главы/сегменты; `segment_id → элемент`
+  формулой ридера; **text-root** (как `aligner.text_root`): `blockquote>п` переводит
+  **внутренний** элемент, вставка ВНУТРЬ контейнера; **двойная сегментация** контейнера →
+  один переводный блок (финал листового сегмента); **id-дедуп** document-wide
+  (`__translated`/`__translated_2`, и блок, и inline-якоря).
+- **void-правило** (D132): из перевода несутся только элементы с текстом и `<br>`;
+  нетекстовые пустые (`img`, `wbr`, …) — нет (движок в переводе их не несёт; иначе M5-2
+  расходится на блоке с `<img>`). Исходный блок не тронут (в APPEND_BLOCK — sibling-клон).
+- **Вставка/замена** (по `SubmitKind`, то же поле, что у тракта T): APPEND_BLOCK —
+  клоновка `Element(tag, attribs)` + вставка sibling (tail оригинала → переводу);
+  REPLACE — замена контента text-root на месте (тег/id/XPath хранятся). **OPF/nav —
+  побайто** (движок меняет только их текст; M5-2 сравнивает скелет).
+- **Выход + выравнивание**: `rebuild_epub` (mimetype первой без сжатия) →
+  `atomic_finalize` (валидация + EPUBCheck fail-closed + бэкап + `os.replace` + fsync) =
+  **вызовы E5, не копии**; `write_map.json` (`segment_id` → XPath блока перевода) — для
+  M5-4; выравнивание — **штатный E6** (`build_alignment_report`).
+- Тесты: `tests/test_mtpe_m5.py` (6 функций / 10 кейсов). M5-1 — полный тракт M на 5
+  книгах (mock) → EPUBCheck 0 ошибок; M5-2/M5-3 — сверка **скелета** и
+  **множества переведённых блоков** с **реальным выходом движка** под тем же mock;
+  M5-4 — E6 карта == `write_map` (100 %); M5-5 — экранирование (T-M5-5); M5-7 —
+  атомарность E5 (monkeypatch `os.replace`); M5-6 — `git diff` по модулям (CONTROL).
+- Регрессия: ruff 0 / mypy 0 (94) / **pytest 494** (база 484 + 10, ни один прежний
+  не удалён). Артефакты: `docs/CONTROL/M5.md`. D131–D132 в `docs/DECISIONS.md`.
+
+Следующий этап — **M6** (задание, воркер, прогрев, API и UI задания: развилка
+`single`/`mt_pe` в `TRANSLATING`, фазы `m_draft`→`m_postedit`→`m_assemble` с записью
+`jobs.phase`, прогресс §4.4, поля `GET /api/jobs/{id}` + `GET .../postedit`).
