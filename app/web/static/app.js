@@ -80,6 +80,9 @@ if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
 const n=parseInt(h,16);
 return "rgb("+((n>>16)&255)+", "+((n>>8)&255)+", "+(n&255)+")";
 }
+// Порядок: конкретные классы сначала, fallback (bare button/input) в конце —
+// чтобы специфичные роли победили. R-T4 подсветит элементы, чей токен расходится
+// со стандартной ролью (swipe/.btn/textarea) — это честные findings, не шум.
 const ROLE_RULES=[
 [".u3-btn.u3-primary","action.primary"],
 [".u3-btn.u3-danger","action.destructive"],
@@ -88,16 +91,21 @@ const ROLE_RULES=[
 [".u3-btn:not(.u3-primary):not(.u3-danger):not(.u3-text):not(.u3-tertiary)","action.secondary"],
 [".u3-row-btn","action.icon"],
 [".u3-fab","action.fab"],
+[".u3-swipe-btn.u3-danger","action.destructive"],
+[".u3-swipe-btn","action.secondary"],
 [".u3-chip-select.is-selected,.u3-chip-select.is-current","chip.selected"],
 [".u3-chip-select:not(.is-selected):not(.is-current)","chip.default"],
 [".u3-seg-pill.is-current","seg.pill.current"],
 [".u3-seg-pill:not(.is-current)","seg.pill"],
 [".u3-switch","switch"],
 [".u3-fld input","input.field"],
+["textarea","input.field"],
 ["select","select"],
 [".u3-tab.is-current","link.accent"],
 [".u3-fstrip-reset,.u3-book-all","link.accent"],
 [".u3-tab:not(.is-current),.u3-llm-keydel","link.muted"],
+["button","action.secondary"],
+["input","input.field"],
 ];
 function applyRoles(root){
 const scope=root&&root.querySelectorAll?root:document;
