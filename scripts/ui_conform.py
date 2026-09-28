@@ -272,10 +272,20 @@ def check_screen(page, sid: str, path: str, reg: Registry, out: dict[str, Any]) 
     page.wait_for_load_state("networkidle", timeout=15_000)
     inst = page.evaluate(INSTANCES_JS, [list(t) for t in SIGNATURES])
 
-    n_interactive = page.evaluate(
-        f"() => document.querySelectorAll('{INTERACTIVE_JS}').length")
-    n_with_role = page.evaluate(
-        f"() => document.querySelectorAll('{INTERACTIVE_WITH_ROLE_JS}').length")
+    # R-T1 — только ВИДИМЫЕ интерактивные элементы (TZ: «каждый видимый
+    # элемент несёт роль»); скрытые (display:none) не учитываются.
+    t1 = page.evaluate(
+        """(inter) => {
+          const vis = (e) => { const cs = getComputedStyle(e);
+            const r = e.getBoundingClientRect();
+            return cs.visibility !== 'hidden' && cs.display !== 'none'
+              && r.width > 0 && r.height > 0; };
+          const v = [...document.querySelectorAll(inter)].filter(vis);
+          return { n: v.length, withRole: v.filter(e => e.hasAttribute('data-role')).length };
+        }""",
+        INTERACTIVE_JS,
+    )
+    n_interactive, n_with_role = t1["n"], t1["withRole"]
     n_no_role = n_interactive - n_with_role
     out["stats"].setdefault("r_t1", {})[sid] = {
         "interactive": n_interactive, "with_role": n_with_role, "without_role": n_no_role,
