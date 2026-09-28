@@ -115,7 +115,7 @@ TEXT_SINGLE_LINE: list[tuple[str, str]] = [
 ]
 
 TEXT_JS = r"""
-(sels, lo, hi) => {
+({ sels, lo, hi }) => {
   const out = { sizes: [], flag: [], lines: {} };
   document.querySelectorAll("body *").forEach(e => {
     const hasText = [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
@@ -316,8 +316,8 @@ def check_role_color(it: dict, reg: Registry, sid: str, out: dict[str, Any]) -> 
 def check_text(page, sid: str, out: dict[str, Any], lo: float, hi: float) -> None:
     """R-Y1 (кегли в шкалу — глобально) / R-Y2 (<lo px) / R-Y3 (>hi моб.) /
     R-Y5+6 (число строк ≤ max_lines у однострочных ролей)."""
-    sigs = [list(t) for t in TEXT_SINGLE_LINE]
-    res = page.evaluate(TEXT_JS, [sigs, lo, hi])
+    res = page.evaluate(TEXT_JS, {"sels": [list(t) for t in TEXT_SINGLE_LINE],
+                                  "lo": lo, "hi": hi})
     fonts = out["stats"].setdefault("fonts_seen", [])
     for fs in res["sizes"]:
         if fs not in fonts:
