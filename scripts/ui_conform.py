@@ -37,6 +37,7 @@ from playwright.sync_api import sync_playwright
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ARTIFACTS = REPO_ROOT / ".a" / "ui-audit"
+ENV_DEMO = REPO_ROOT / ".env.demo"
 WIDTH, HEIGHT, DSF = 384, 715, 2.25
 ANDROID_UA = (
     "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 "
@@ -109,6 +110,23 @@ def git_dirty() -> bool:
         capture_output=True, text=True, check=True,
     ).stdout
     return bool(porcelain.strip())
+
+
+def read_secret() -> str:
+    """SERVER_AUTH_SECRET из .env.demo (тот же секрет, что у запущенного стенда)."""
+    for line in ENV_DEMO.read_text(encoding="utf-8").splitlines():
+        if line.startswith("SERVER_AUTH_SECRET="):
+            return line.split("=", 1)[1].strip()
+    raise SystemExit(f"SERVER_AUTH_SECRET не найден в {ENV_DEMO} (запустите seed_demo.py)")
+
+
+def login(context, base: str, secret: str) -> None:
+    """POST /login (form, не data= — иначе app не парсит → 401). Ожидаем 303."""
+    resp = context.request.post(
+        base + "/login", form={"password": secret, "next": "/"}, max_redirects=0,
+    )
+    if resp.status != 303:
+        raise SystemExit(f"ОТКАЗ: login → HTTP {resp.status} (ожидался 303)")
 
 
 def load_declarations() -> dict[str, Any]:
@@ -305,6 +323,7 @@ def main() -> None:
         )
         if args.theme == "light":
             ctx.add_cookies([{"name": "u3-theme", "value": "light", "url": args.base}])
+        login(ctx, args.base, read_secret())
         page = ctx.new_page()
         check_kit(page, reg, out)
         total = 0
