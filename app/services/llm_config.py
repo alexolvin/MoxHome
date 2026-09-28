@@ -1,8 +1,9 @@
 """LLM-настройки (R8, ТЗ §13): валидация, проба соединения, запись.
 
-Единые точки для JS-эндпоинтов (POST /api/llm/probe, PUT /api/
-config/llm, GET /api/llm/models) и no-JS-маршрутов страниц —
-двух реализаций механизма нет (Rule 8).
+Единые точки для JS-эндпоинтов (POST /api/llm/probe, GET /api/llm/models)
+и форм страниц (POST /settings/llm — сохранение, /settings/llm/probe —
+проба) — двух реализаций механизма нет (Rule 8; M2: API-эндпоинт записи
+PUT /api/config/llm удалён, D122).
 
 Запись (Р8-решение 5): валидация ДО записи (fail-closed) → редактор
 строк `app.core.config_edit` (комментарии сохраняются) → валидация
@@ -24,10 +25,18 @@ from urllib.parse import urlparse
 
 import httpx
 
-from app.core.config import PROFILE_NAMES, Settings, load_settings
-from app.core.config_edit import apply_env_keys, apply_llm_profiles
+from app.core.config import ALL_PROFILE_NAMES, Settings, load_settings
+from app.core.config_edit import (
+    apply_env_keys,
+    apply_llm_profiles,
+    apply_translation_pipeline,
+)
 from app.core.errors import AppError, ConfigurationError, SettingsIncompleteError
 from app.core.llm_settings import validate_llm_settings
+from app.domain.job import WORKING_STATES, Job, JobStatus
+from app.languages.registry import load_registry
+from app.llm.prompts import _best_version, _parse_prompt_file
+from app.storage.jobs_repo import JobRepository
 from app.web.strings import UI_STRINGS
 
 logger = logging.getLogger("app.web")
@@ -39,6 +48,8 @@ _S = UI_STRINGS
 PROBE_TIMEOUT_SECONDS = 15.0
 #: Число токенов минимального chat-вызова (ТЗ §13: «на 8 токенов»).
 PROBE_MAX_TOKENS = 8
+#: Число токенов пробы mt-модели (MTPE §6.5: «16 токенов»).
+PROBE_MT_MAX_TOKENS = 16
 
 
 def _now_human() -> str:
@@ -125,18 +136,52 @@ def _probe_status(status_code: int) -> dict[str, Any] | None:
     return None
 
 
+def _parse_stop(value: Any) -> list[str]:
+    """Поле `stop` карточки: список или строка (по строке/пустой строке)."""
+    if isinstance(value, list):
+        return [str(item) for item in value if str(item) != ""]
+    if isinstance(value, str) and value.strip():
+        return [line for line in value.split("\n") if line != ""]
+    return []
+
+
+def _mt_probe_prompt(settings: Settings) -> str:
+    """Проба mt (§6.5): активный user_template mt_draft, «Good morning.»,
+    en → ru. Плейсхолдеры — mt_name из пакетов (MiLMMT-имена)."""
+    src_name, tgt_name = "en", "ru"
+    try:
+        registry = load_registry(settings.languages_root)
+        src_name = registry["en"].mt_name or "en"
+        tgt_name = registry["ru"].mt_name or "ru"
+    except ConfigurationError:
+        pass
+    template = "Translate this from {src_name} to {tgt_name}:\n{src_name}: {text}\n{tgt_name}:"
+    version_file = _best_version(settings.prompts_dir / "mt_draft")
+    if version_file is not None:
+        try:
+            _version, _system, user_template = _parse_prompt_file(version_file)
+            template = user_template
+        except ConfigurationError:
+            pass
+    return (
+        template.replace("{src_name}", src_name)
+        .replace("{tgt_name}", tgt_name)
+        .replace("{text}", "Good morning.")
+    )
+
+
 def probe_request(
     body: dict[str, Any],
     settings: Settings,
-) -> tuple[str, str, str, float, dict[str, Any]]:
-    """ТЗ §13: тело POST /api/llm/probe → (base_url, model, api_key,
-    temperature, extra_body). AppError — 400 на стороне API.
+) -> dict[str, Any]:
+    """MTPE §6.5: тело POST /api/llm/probe → данные пробы. AppError — 400.
 
-    Пустые api_key/extra_body = сохранённые для профиля (UI показывает
-    ключ только как «задан»; extra_body «пусто — без изменений» —
-    семантика та же, что у сохранения)."""
+    Пустые api_key/extra_body = сохранённые для профиля (UI показывает ключ
+    только как «задан»). Для mt параметры top_k/stop — из карточки
+    (несохранённые), иначе из сохранённого профиля; `prompt` — активный
+    mt_draft (§6.5: «Good morning.», en → ru)."""
     name = str(body.get("profile") or "")
-    if name not in PROFILE_NAMES:
+    if name not in ALL_PROFILE_NAMES:
         raise AppError(_S["err_llm_unknown_profile"].format(profile=name or "—"))
     base_url = str(body.get("base_url") or "")
     validate_base_url(base_url)
@@ -146,45 +191,95 @@ def probe_request(
     temperature = _as_float(body.get("temperature"))
     if not 0.0 <= temperature <= 2.0:
         raise AppError(_S["err_llm_bad_temperature"])
+    profile = settings.llm.profile(name)
     extra_body = _validate_extra_body(body.get("extra_body"))
     if extra_body is None:
-        extra_body = settings.llm.profile(name).extra_body
+        extra_body = profile.extra_body
     api_key = str(body.get("api_key") or "") or settings.llm.api_key_for(name) or ""
-    return base_url, model, api_key, temperature, extra_body
+    top_k = profile.top_k
+    if body.get("top_k") not in (None, ""):
+        top_k = int(_as_float(body.get("top_k")))
+    stop = _parse_stop(body.get("stop")) or list(profile.stop)
+    data: dict[str, Any] = {
+        "base_url": base_url,
+        "model": model,
+        "api_key": api_key,
+        "temperature": temperature,
+        "extra_body": extra_body,
+        "api": profile.api,
+        "top_k": top_k,
+        "stop": stop,
+    }
+    if profile.api == "completions":
+        data["prompt"] = _mt_probe_prompt(settings)
+    return data
 
 
-def probe_profile(
-    base_url: str,
-    model: str,
-    api_key: str,
-    temperature: float,
-    extra_body: dict[str, Any],
-) -> dict[str, Any]:
-    """ТЗ §13: GET {base_url}/models + минимальный POST chat/completions
-    на 8 токенов. Не пишет конфиг, не создаёт задание.
+def _model_ids(response: httpx.Response) -> list[str] | None:
+    """Имена моделей из GET /models; None — ответ не-JSON или без списка."""
+    try:
+        data: Any = response.json()
+    except ValueError:
+        return None
+    items = data.get("data") if isinstance(data, dict) else None
+    if not isinstance(items, list):
+        return None
+    return [str(item.get("id")) for item in items if isinstance(item, dict)]
 
-    Возврат: ``{"ok": bool, "message": str, ...}`` — message = одна
-    строка (успех: «Ответ N мс · модель X · N токенов», отказ — точная
-    причина). URL-контракт chat — тот же, что `app.llm.analysis`
-    (base_url + /chat/completions)."""
-    base = base_url.rstrip("/")
-    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+
+def _chat_body(data: dict[str, Any]) -> dict[str, Any]:
+    body: dict[str, Any] = {
+        "model": data["model"],
+        "messages": [{"role": "user", "content": "OK"}],
+        "max_tokens": PROBE_MAX_TOKENS,
+        "temperature": data["temperature"],
+    }
+    body.update(data["extra_body"])
+    return body
+
+
+def _completions_body(data: dict[str, Any]) -> dict[str, Any]:
+    body: dict[str, Any] = {
+        "model": data["model"],
+        "prompt": data["prompt"],
+        "max_tokens": PROBE_MT_MAX_TOKENS,
+        "temperature": data["temperature"],
+    }
+    if data.get("top_k") is not None:
+        body["top_k"] = data["top_k"]
+    if data.get("stop"):
+        body["stop"] = data["stop"]
+    return body
+
+
+def probe_profile(data: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR0911, PLR0912
+    """MTPE §6.5: проба профиля — 3 шага. Не пишет конфиг, не создаёт задание.
+
+    1) GET {base}/models — модель есть в списке; 2) POST chat/completions
+    (chat, 8 токенов) или /completions (mt, активный mt_draft, 16 токенов);
+    3) model ответа = модели профиля. Возврат ``{"ok", "message", ...}`` —
+    одна строка (успех/точная причина отказа); для mt + `response_text`."""
+    base = data["base_url"].rstrip("/")
+    model = data["model"]
+    headers = {"Authorization": f"Bearer {data['api_key']}"} if data["api_key"] else {}
+    # Шаг 1: модель в списке эндпоинта.
     models_response = _probe_response(f"{base}/models", headers, None)
     if not isinstance(models_response, httpx.Response):
         return models_response
     failure = _probe_status(models_response.status_code)
     if failure is not None:
         return failure
-
-    body: dict[str, Any] = {
-        "model": model,
-        "messages": [{"role": "user", "content": "OK"}],
-        "max_tokens": PROBE_MAX_TOKENS,
-        "temperature": temperature,
-    }
-    body.update(extra_body)
+    listed = _model_ids(models_response)
+    if listed is None:
+        return _probe_failure(_S["llm_probe_bad_json"])
+    if model not in listed:
+        return _probe_failure(_S["llm_probe_model_not_listed"])
+    # Шаг 2: минимальный генеративный вызов.
+    is_mt = data["api"] == "completions"
+    request_url = f"{base}/completions" if is_mt else f"{base}/chat/completions"
+    body = _completions_body(data) if is_mt else _chat_body(data)
     start = time.monotonic()
-    response = _probe_response(f"{base}/chat/completions", headers, body)
+    response = _probe_response(request_url, headers, body)
     if not isinstance(response, httpx.Response):
         return response
     elapsed_ms = round((time.monotonic() - start) * 1000)
@@ -192,25 +287,36 @@ def probe_profile(
     if failure is not None:
         return failure
     try:
-        data: Any = response.json()
+        payload: Any = response.json()
     except ValueError:
-        data = None
-    if not isinstance(data, dict):
+        payload = None
+    if not isinstance(payload, dict):
         return _probe_failure(_S["llm_probe_bad_json"])
-    model_name = data.get("model") or model
-    usage = data.get("usage")
-    tokens = PROBE_MAX_TOKENS
+    # Шаг 3: модель ответа = модели профиля.
+    response_model = payload.get("model")
+    if response_model and response_model != model:
+        return _probe_failure(_S["llm_probe_model_mismatch"])
+    model_name = response_model or model
+    response_text = ""
+    if is_mt:
+        choices = payload.get("choices")
+        if isinstance(choices, list) and choices and isinstance(choices[0], dict):
+            response_text = str(choices[0].get("text") or "")
+    expected = PROBE_MT_MAX_TOKENS if is_mt else PROBE_MAX_TOKENS
+    tokens = expected
+    usage = payload.get("usage")
     if isinstance(usage, dict) and isinstance(usage.get("completion_tokens"), int):
         tokens = usage["completion_tokens"]
-    return {
+    result: dict[str, Any] = {
         "ok": True,
-        "message": _S["llm_probe_ok"].format(
-            ms=elapsed_ms, model=model_name, tokens=tokens
-        ),
+        "message": _S["llm_probe_ok"].format(ms=elapsed_ms, model=model_name, tokens=tokens),
         "elapsed_ms": elapsed_ms,
         "model": model_name,
         "tokens": tokens,
     }
+    if is_mt and response_text:
+        result["response_text"] = response_text
+    return result
 
 
 def list_models(base_url: str, api_key: str) -> list[str]:
@@ -241,59 +347,174 @@ def list_models(base_url: str, api_key: str) -> list[str]:
     return sorted(str(item.get("id")) for item in items if isinstance(item, dict))
 
 
+def _stage_profile(job: Job) -> str | None:
+    """Профиль текущей LLM-стадии задания; None — LLM-стадии сейчас нет."""
+    if job.status is JobStatus.ANALYZING:
+        return "analysis"
+    if job.status is JobStatus.TRANSLATING:
+        if job.pipeline == "mt_pe":
+            return "postedit" if job.phase == "postedit" else "mt"
+        return "translation"
+    return None
+
+
+def _stage_label(job: Job, profile_name: str) -> str:
+    """Имя фазы/стадии для текста 409: mt_pe — jobs.phase, single — по профилю."""
+    if job.phase:
+        return job.phase
+    return {
+        "translation": _S["llm_stage_translation"],
+        "analysis": _S["llm_stage_analysis"],
+    }.get(profile_name, profile_name)
+
+
+def _snapshot_endpoint(snapshot_json: str, profile_name: str) -> tuple[str, str]:
+    """(base_url, model) профиля из снимка задания (§4.5); ('', '') — нет."""
+    try:
+        data: Any = json.loads(snapshot_json)
+    except ValueError:
+        return "", ""
+    profiles = data.get("profiles") if isinstance(data, dict) else None
+    prof = profiles.get(profile_name) if isinstance(profiles, dict) else None
+    if not isinstance(prof, dict):
+        return "", ""
+    return str(prof.get("base_url") or ""), str(prof.get("model") or "")
+
+
+def probe_conflict(repo: JobRepository, probe_base_url: str, probe_model: str) -> str | None:
+    """MTPE §6.5: 409 — задание в LLM-стадии на этом эндпоинте с другой моделью.
+
+    Возврат — текст 409 или None. Критерий: рабочее задание, base_url его
+    текущей LLM-стадии (из снимка) == base_url пробы и модель != модели пробы."""
+    base = probe_base_url.rstrip("/")
+    working = tuple(s.value for s in WORKING_STATES)
+    for job in repo.list_jobs(statuses=working):
+        profile_name = _stage_profile(job)
+        if profile_name is None:
+            continue
+        snap_base, snap_model = _snapshot_endpoint(job.config_snapshot, profile_name)
+        if (
+            snap_base
+            and snap_base.rstrip("/") == base
+            and snap_model
+            and snap_model != probe_model
+        ):
+            return _S["llm_probe_409"].format(
+                phase=_stage_label(job, profile_name), job_id=job.id
+            )
+    return None
+
+
 # ------------------------------------------------------------------ запись
 
 
-def _profile_changes(
-    shared: bool,
-    shared_url: str | None,
+#: chat-профили (extra_body — только у них; §6.2).
+_CHAT_PROFILES = frozenset({"translation", "fill", "analysis", "postedit"})
+#: Профиль → переменная .env его ключа (translation/fill — общий LLM_API_KEY).
+_KEY_ENV = {
+    "translation": "LLM_API_KEY",
+    "fill": "LLM_API_KEY",
+    "analysis": "LLM_ANALYSIS_API_KEY",
+    "mt": "LLM_MT_API_KEY",
+    "postedit": "LLM_POSTEDIT_API_KEY",
+}
+
+
+def _profile_changes(  # noqa: PLR0912, PLR0915 — поле-проверка §6.2, каждое — своя граница
     profile_fields: dict[str, dict[str, Any]],
 ) -> tuple[dict[str, dict[str, Any]], dict[str, str | None]]:
-    """Сверить тело запроса с конфигом → (изменения для config.yaml,
-    ключи для .env). AppError — любое несоответствие (ничего не
-    записано, Р8-решение 5а)."""
-    if shared and (not isinstance(shared_url, str) or not shared_url.strip()):
-        raise AppError(_S["err_llm_bad_base_url"].format(url=shared_url or "—"))
+    """MTPE §6.2: тело сохранения → (изменения config.yaml, ключи .env).
+
+    base_url/model обязательны; остальные поля — по наличию в теле
+    (отсутствует — сохранить текущее, `None` в `apply_llm_profiles`).
+    mt: top_k/max_tokens_ratio/max_segment_tokens/stop. Ключ: пустое поле —
+    без изменений; «Удалить ключ» — пустая строка (фолбэк на общий ключ).
+    AppError — несоответствие (ничего не записано)."""
     changes: dict[str, dict[str, Any]] = {}
     env_keys: dict[str, str | None] = {}
-    shared_keys: dict[str, str] = {}
-    for name in PROFILE_NAMES:
+    shared_values: list[str] = []
+    shared_delete = False
+    # Fail-closed: неизвестное имя профиля в теле — 400 (не молча игнорировать).
+    for name in profile_fields:
+        if name not in ALL_PROFILE_NAMES:
+            raise AppError(_S["err_llm_unknown_profile"].format(profile=name))
+    for name in ALL_PROFILE_NAMES:
         raw = profile_fields.get(name)
         if raw is None:
+            continue
+        if not isinstance(raw, dict):
             raise AppError(_S["err_llm_unknown_profile"].format(profile=name))
-        url = shared_url if shared else raw.get("base_url")
+        url = raw.get("base_url")
         if not isinstance(url, str) or not url.strip():
-            raise AppError(_S["err_llm_bad_base_url"].format(url=url or "—"))
+            # Пустой base_url — профиль не менять (M2-1: неполнота для способа
+            # ловится в validate_llm_settings → 422, а не 400 здесь).
+            continue
         validate_base_url(url)
         model = raw.get("model")
         if not isinstance(model, str) or not model.strip():
             raise AppError(_S["err_llm_bad_model"])
-        temperature = _as_float(raw.get("temperature"))
-        if not 0.0 <= temperature <= 2.0:
-            raise AppError(_S["err_llm_bad_temperature"])
-        retry_times = _validate_number(raw.get("retry_times"), 0, "err_llm_bad_retries")
-        concurrency = _validate_number(
-            raw.get("concurrency"), 1, "err_llm_bad_concurrency"
-        )
-        extra_body = _validate_extra_body(raw.get("extra_body"))
-        changes[name] = {
-            "base_url": url,
-            "model": model,
-            "temperature": temperature,
-            "retry_times": retry_times,
-            "concurrency": concurrency,
-            "extra_body": extra_body,
-        }
+        entry: dict[str, Any] = {"base_url": url, "model": model}
+        if raw.get("temperature") is not None:
+            temperature = _as_float(raw["temperature"])
+            if not 0.0 <= temperature <= 2.0:
+                raise AppError(_S["err_llm_bad_temperature"])
+            entry["temperature"] = temperature
+        if raw.get("retry_times") is not None:
+            entry["retry_times"] = _validate_number(
+                raw["retry_times"], 0, "err_llm_bad_retries"
+            )
+        if raw.get("concurrency") is not None:
+            entry["concurrency"] = _validate_number(
+                raw["concurrency"], 1, "err_llm_bad_concurrency"
+            )
+        if raw.get("timeout_seconds") is not None:
+            timeout_seconds = _as_float(raw["timeout_seconds"])
+            if timeout_seconds <= 0:
+                raise AppError(_S["err_llm_bad_timeout"])
+            entry["timeout_seconds"] = timeout_seconds
+        if raw.get("warmup_timeout_s") is not None:
+            warmup = _as_float(raw["warmup_timeout_s"])
+            if warmup <= 0:
+                raise AppError(_S["err_llm_bad_timeout"])
+            entry["warmup_timeout_s"] = warmup
+        if name in _CHAT_PROFILES:
+            extra_body = _validate_extra_body(raw.get("extra_body"))
+            if extra_body is not None:
+                entry["extra_body"] = extra_body
+        if name == "mt":
+            if raw.get("top_k") is not None:
+                entry["top_k"] = _validate_number(raw["top_k"], 1, "err_llm_bad_top_k")
+            if raw.get("max_tokens_ratio") is not None:
+                ratio = _as_float(raw["max_tokens_ratio"])
+                if ratio < 0:
+                    raise AppError(_S["err_llm_bad_max_tokens_ratio"])
+                entry["max_tokens_ratio"] = ratio
+            if raw.get("max_segment_tokens") is not None:
+                entry["max_segment_tokens"] = _validate_number(
+                    raw["max_segment_tokens"], 1, "err_llm_bad_max_segment_tokens"
+                )
+            if raw.get("stop") is not None:
+                entry["stop"] = _parse_stop(raw["stop"])
+        changes[name] = entry
         key = str(raw.get("api_key") or "")
-        if name == "analysis":
-            env_keys["LLM_ANALYSIS_API_KEY"] = key or None
+        delete_key = bool(raw.get("delete_key"))
+        if name in ("translation", "fill"):
+            if delete_key:
+                shared_delete = True
+            elif key:
+                shared_values.append(key)
         else:
-            shared_keys[name] = key
-    translation_key = shared_keys.get("translation", "")
-    fill_key = shared_keys.get("fill", "")
-    if translation_key and fill_key and translation_key != fill_key:
-        raise AppError(_S["err_llm_key_conflict"])
-    env_keys["LLM_API_KEY"] = (translation_key or fill_key) or None
+            env_var = _KEY_ENV[name]
+            if delete_key:
+                env_keys[env_var] = ""
+            elif key:
+                env_keys[env_var] = key
+    if shared_delete:
+        env_keys["LLM_API_KEY"] = ""
+    elif shared_values:
+        if len(set(shared_values)) > 1:
+            raise AppError(_S["err_llm_key_conflict"])
+        env_keys["LLM_API_KEY"] = shared_values[0]
     return changes, env_keys
 
 
@@ -308,20 +529,29 @@ def _load_error_reason(exc: ConfigurationError) -> str:
 
 def update_llm_config(
     *,
-    shared: bool,
-    shared_url: str | None,
+    pipeline: str | None,
     profile_fields: dict[str, dict[str, Any]],
     config_path: Path,
     env_path: Path,
 ) -> Settings:
-    """Записать профили в config.yaml и ключи в .env (Р8-решение 5).
+    """MTPE §6.4: запись способа (translation.pipeline) + профилей
+    (config.yaml) + ключей (.env). Атомарно, fail-closed.
 
     Возврат — НОВЫЕ `Settings` (веб-эндпоинт подменяет `app.state.
-    settings`). AppError — валидация не пройдена (файлы не тронуты)."""
-    changes, env_keys = _profile_changes(shared, shared_url, profile_fields)
+    settings`). AppError — валидация не пройдена (файлы не тронуты).
+    `pipeline` — single | mt_pe; None/пусто — не менять (R8-совместимо)."""
+    if pipeline not in (None, "", "single", "mt_pe"):
+        raise AppError(_S["err_llm_bad_pipeline"])
+    changes, env_keys = _profile_changes(profile_fields)
     cfg_text = config_path.read_text(encoding="utf-8")
     env_text = env_path.read_text(encoding="utf-8")
-    new_cfg = apply_llm_profiles(cfg_text, changes)
+    new_cfg = cfg_text
+    if pipeline in ("single", "mt_pe"):
+        try:
+            new_cfg = apply_translation_pipeline(new_cfg, pipeline)
+        except ValueError as exc:
+            raise AppError(_S["err_llm_config_invalid"].format(reason=str(exc))) from exc
+    new_cfg = apply_llm_profiles(new_cfg, changes)
     new_env = apply_env_keys(env_text, env_keys)
 
     # Валидация ОБОИХ новых текстов ДО записи (fail-closed).

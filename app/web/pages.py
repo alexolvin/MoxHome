@@ -36,9 +36,9 @@ from starlette.datastructures import FormData
 from starlette.responses import Response
 
 from app.adapters.convert import probe as converter_probe
-from app.core.config import PROFILE_NAMES, Settings
-from app.core.errors import AppError
-from app.core.llm_settings import validate_llm_settings
+from app.core.config import ALL_PROFILE_NAMES, Settings
+from app.core.errors import AppError, SettingsIncompleteError
+from app.core.llm_settings import SettingsIssue, validate_llm_settings
 from app.core.worker_signal import worker_alive
 from app.domain.job import TERMINAL_STATES, Job, JobStatus
 from app.languages.cefr import CEFR_ORDER
@@ -56,6 +56,7 @@ from app.services.import_book import get_import
 from app.services.jobs import JOB_MODES, confirm_job, create_job
 from app.services.llm_config import (
     clear_app_log,
+    probe_conflict,
     probe_profile,
     probe_request,
     update_llm_config,
@@ -414,6 +415,23 @@ def _resolve_cover_thumb(
     if not thumb.exists():
         covers.ensure_thumbnails(source, sha_full, covers_dir)
     return thumb if thumb.exists() else None
+
+
+#: MTPE M2 (§6.2): правимые текстовые поля карточки (кроме ключа).
+_LLM_EDITABLE_FIELDS = (
+    "base_url",
+    "model",
+    "temperature",
+    "retry_times",
+    "concurrency",
+    "timeout_seconds",
+    "warmup_timeout_s",
+    "top_k",
+    "max_tokens_ratio",
+    "max_segment_tokens",
+    "stop",
+    "extra_body",
+)
 
 
 def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршруты в одном замыкании (R1–R5)
@@ -1344,101 +1362,121 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
         *,
         error: str | None = None,
         probe: dict[str, Any] | None = None,
+        save_issues: list[dict[str, str]] | None = None,
     ) -> dict[str, object]:
-        """Контекст /settings/llm. ``form`` — при отказе валидации: данные
-        из формы (ввод пользователя сохраняется); иначе — из настроек."""
+        """Контекст /settings/llm. ``form`` — при отказе: значения из формы
+        (ввод сохраняется) поверх данных настроек; ``save_issues`` — сводка
+        проблем при отказе сохранения (MTPE §6.4)."""
         st = _live(request)
-        if form is None:
-            data: dict[str, Any] = views.llm_form_view(st)
-        else:
-            data = {
-                "profiles": [
-                    {
-                        "name": name,
-                        "base_url": str(form.get(f"base_url_{name}") or ""),
-                        "model": str(form.get(f"model_{name}") or ""),
-                        "api_key_set": bool(str(form.get(f"api_key_{name}") or "")),
-                        "temperature": str(form.get(f"temperature_{name}") or ""),
-                        "retry_times": str(form.get(f"retry_times_{name}") or ""),
-                        "concurrency": str(form.get(f"concurrency_{name}") or ""),
-                        "extra_body": str(form.get(f"extra_body_{name}") or ""),
-                    }
-                    for name in PROFILE_NAMES
-                ],
-                "shared": form.get("shared_endpoint") is not None,
-                "base_url": str(form.get("base_url") or ""),
-                "bounds": views.llm_form_view(st)["bounds"],
-            }
+        data: dict[str, Any] = views.llm_form_view(st)
+        if form is not None:
+            pipeline_value = form.get("pipeline")
+            if pipeline_value is not None:
+                data["pipeline"] = str(pipeline_value)
+            for prof in data["profiles"]:
+                name = str(prof["name"])
+                for field in _LLM_EDITABLE_FIELDS:
+                    value = form.get(f"{field}_{name}")
+                    if value is not None:
+                        prof[field] = str(value)
+                prof["delete_key"] = form.get(f"delete_key_{name}") is not None
         out: dict[str, object] = {"back_href": "/settings", "form": data}
         if error is not None:
             out["error"] = error
         if probe is not None:
             out["probe"] = probe
+        if save_issues is not None:
+            out["save_issues"] = save_issues
+            # сообщения у полей (MTPE §6.4): path
+            # "llm.profiles.<name>.<field>" -> поле "<field>_<name>".
+            field_msgs: dict[str, str] = {}
+            for item in save_issues:
+                parts = str(item.get("path", "")).split(".")
+                if len(parts) == 4 and parts[0] == "llm" and parts[1] == "profiles":
+                    code = str(item.get("code", ""))
+                    field_msgs[f"{parts[3]}_{parts[2]}"] = _S.get(code, code)
+            out["field_msgs"] = field_msgs
         return ctx(request, _page_title("title_settings_llm"), "settings") | out
 
     def _llm_save_fields(
         form: FormData,
     ) -> tuple[dict[str, Any] | None, str | None]:
-        """no-JS-форма → тело PUT /api/config/llm (тот же контракт, тот же
-        сервис — Rule 8). Возврат (body, строка-ошибка)."""
+        """Форма сохранения (JS + no-JS; M2: API-эндпоинт записи удалён, D122).
+
+        Возврат (body, строка-ошибка). Профиль в теле — только если его
+        base_url-поле есть в форме (R8: 3 профиля, M2: 5)."""
         profile_fields: dict[str, dict[str, Any]] = {}
-        for name in PROFILE_NAMES:
-            fields: dict[str, Any] = {}
-            for field in ("temperature", "retry_times", "concurrency"):
-                raw = str(form.get(f"{field}_{name}") or "").strip()
-                if field == "temperature":
-                    try:
-                        fields[field] = float(raw)
-                    except ValueError:
-                        return None, _S["err_llm_bad_temperature"]
-                else:
-                    try:
-                        fields[field] = int(raw)
-                    except ValueError:
-                        key = (
-                            "err_llm_bad_retries"
-                            if field == "retry_times"
-                            else "err_llm_bad_concurrency"
-                        )
-                        return None, _S[key]
-            profile_fields[name] = {
+        for name in ALL_PROFILE_NAMES:
+            if form.get(f"base_url_{name}") is None:
+                continue
+            fields: dict[str, Any] = {
                 "base_url": str(form.get(f"base_url_{name}") or "").strip(),
                 "model": str(form.get(f"model_{name}") or "").strip(),
                 "api_key": str(form.get(f"api_key_{name}") or "").strip(),
+                "delete_key": form.get(f"delete_key_{name}") is not None,
                 "extra_body": str(form.get(f"extra_body_{name}") or "").strip(),
-                **fields,
             }
+            for field, cast_, key in (
+                ("temperature", float, "err_llm_bad_temperature"),
+                ("retry_times", int, "err_llm_bad_retries"),
+                ("concurrency", int, "err_llm_bad_concurrency"),
+                ("timeout_seconds", float, "err_llm_bad_timeout"),
+                ("warmup_timeout_s", float, "err_llm_bad_timeout"),
+                ("top_k", int, "err_llm_bad_top_k"),
+                ("max_segment_tokens", int, "err_llm_bad_max_segment_tokens"),
+            ):
+                raw = str(form.get(f"{field}_{name}") or "").strip()
+                if raw:
+                    try:
+                        fields[field] = cast_(raw)
+                    except ValueError:
+                        return None, _S[key]
+            ratio_raw = str(form.get(f"max_tokens_ratio_{name}") or "").strip()
+            if ratio_raw:
+                try:
+                    fields["max_tokens_ratio"] = float(ratio_raw)
+                except ValueError:
+                    return None, _S["err_llm_bad_max_tokens_ratio"]
+            stop_raw = str(form.get(f"stop_{name}") or "").strip()
+            if stop_raw:
+                fields["stop"] = [line for line in stop_raw.split("\n") if line != ""]
+            profile_fields[name] = fields
         return (
-            {
-                "shared_endpoint": form.get("shared_endpoint") is not None,
-                "base_url": str(form.get("base_url") or "").strip(),
-                "profiles": profile_fields,
-            },
+            {"pipeline": str(form.get("pipeline") or ""), "profiles": profile_fields},
             None,
         )
 
     def _llm_apply(
-        request: Request, shared: bool, shared_url: str, profile_fields: dict[str, Any]
-    ) -> tuple[Settings | None, str | None]:
+        request: Request, pipeline: str, profile_fields: dict[str, Any]
+    ) -> tuple[Settings | None, str | None, list[dict[str, str]] | None]:
         """Общая запись LLM-настроек (JS-API и no-JS — Rule 8): сервис
-        + подмена app.state. Возврат (новые Settings, строка-ошибка)."""
+        + подмена app.state. Возврат (Settings, строка-ошибка, сводка проблем)."""
         config_path = request.app.state.config_path
         env_path = request.app.state.env_path
         if config_path is None or env_path is None:
-            return None, _S["err_llm_paths_missing"]
+            return None, _S["err_llm_paths_missing"], None
         try:
             new_settings = update_llm_config(
-                shared=shared,
-                shared_url=shared_url or None,
+                pipeline=pipeline or None,
                 profile_fields=profile_fields,
                 config_path=config_path,
                 env_path=env_path,
             )
+        except SettingsIncompleteError as exc:
+            # details["issues"] — пары (path, code) (формат update_llm_config).
+            raw = exc.details.get("issues", []) if isinstance(exc.details, dict) else []
+            issues: list[dict[str, str]] = []
+            for item in raw if isinstance(raw, list) else []:
+                if isinstance(item, SettingsIssue):
+                    issues.append({"path": item.path, "code": item.code})
+                elif isinstance(item, (list, tuple)) and len(item) == 2:
+                    issues.append({"path": str(item[0]), "code": str(item[1])})
+            return None, _S["llm_save_incomplete"], issues
         except AppError as exc:
-            return None, exc.message
+            return None, exc.message, None
         request.app.state.settings = new_settings
         request.app.state.llm_settings_issues = validate_llm_settings(new_settings)
-        return new_settings, None
+        return new_settings, None, None
 
     @router.get("/settings/llm")
     def settings_llm_page(request: Request) -> Response:
@@ -1448,8 +1486,9 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
 
     @router.post("/settings/llm")
     async def settings_llm_save(request: Request) -> Response:
-        """R8 no-JS: сохранение — тот же сервис, что PUT /api/config/llm
-        (Rule 8). Успех — 303; отказ валидации — 400, форма с вводом."""
+        """MTPE §6.4 no-JS: сохранение — тот же сервис, что PUT (Rule 8).
+
+        Успех — 303; отказ валидации — 400, форма со сводкой проблем."""
         form = await request.form()
         body, form_error = _llm_save_fields(form)
         if body is None:
@@ -1459,36 +1498,35 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
                 _llm_form_ctx(request, form, error=form_error),
                 status_code=400,
             )
-        _new, error = _llm_apply(
+        new, error, issues = _llm_apply(
             request,
-            bool(body["shared_endpoint"]),
-            str(body["base_url"]),
+            str(body["pipeline"]),
             cast(dict[str, Any], body["profiles"]),
         )
-        if _new is None:
+        if new is None:
+            # неполные для способа — 422 (MTPE TZ §5.3), файлы не тронуты.
             return templates.TemplateResponse(
                 request,
                 "settings_llm.html",
-                _llm_form_ctx(request, form, error=error),
-                status_code=400,
+                _llm_form_ctx(request, form, error=error, save_issues=issues),
+                status_code=422,
             )
         logger.info(
-            "llm_save(no-js): user=%s shared=%s",
+            "llm_save(no-js): user=%s pipeline=%s",
             _basic_user(request),
-            bool(body["shared_endpoint"]),
+            new.translation.pipeline,
         )
         return RedirectResponse("/settings/llm", status_code=303)
 
     @router.post("/settings/llm/probe")
     async def settings_llm_probe(request: Request) -> Response:
-        """R8 no-JS: проба профиля — кнопка формы (submit + formaction,
-        ``name="profile"``) отправляет всю форму на этот маршрут;
-        результат — баннер на странице (200). Конфиг НЕ пишет (тот же
-        сервис, что POST /api/llm/probe)."""
+        """MTPE §6.5 no-JS: проба профиля — кнопка формы (formaction,
+        name="profile") отправляет форму сюда; результат — баннер (200).
+        Конфиг НЕ пишет (тот же сервис, что POST /api/llm/probe)."""
         form = await request.form()
         st = _live(request)
         profile = str(form.get("profile") or "")
-        if profile not in PROFILE_NAMES:
+        if profile not in ALL_PROFILE_NAMES:
             return templates.TemplateResponse(
                 request,
                 "settings_llm.html",
@@ -1499,12 +1537,7 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
                 ),
                 status_code=400,
             )
-        shared = form.get("shared_endpoint") is not None
-        base_url = (
-            str(form.get("base_url") or "")
-            if shared
-            else str(form.get(f"base_url_{profile}") or "")
-        )
+        base_url = str(form.get(f"base_url_{profile}") or "")
         try:
             temperature: float | None = float(
                 str(form.get(f"temperature_{profile}") or "").strip()
@@ -1514,7 +1547,7 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
         if temperature is None:
             result: dict[str, Any] = {"ok": False, "message": _S["err_llm_bad_temperature"]}
         else:
-            probe_body = {
+            probe_body: dict[str, Any] = {
                 "profile": profile,
                 "base_url": base_url,
                 "model": str(form.get(f"model_{profile}") or ""),
@@ -1522,18 +1555,22 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
                 "temperature": temperature,
                 "extra_body": str(form.get(f"extra_body_{profile}") or ""),
             }
+            top_k_raw = str(form.get(f"top_k_{profile}") or "").strip()
+            if top_k_raw:
+                probe_body["top_k"] = top_k_raw
+            stop_raw = str(form.get(f"stop_{profile}") or "").strip()
+            if stop_raw:
+                probe_body["stop"] = [line for line in stop_raw.split("\n") if line]
             try:
-                (
-                    probed_url,
-                    model,
-                    api_key,
-                    probe_temp,
-                    extra_body,
-                ) = probe_request(probe_body, st)
+                data = probe_request(probe_body, st)
             except AppError as exc:
                 result = {"ok": False, "message": exc.message}
             else:
-                result = probe_profile(probed_url, model, api_key, probe_temp, extra_body)
+                conflict = probe_conflict(repo, data["base_url"], data["model"])
+                if conflict is not None:
+                    result = {"ok": False, "message": conflict}
+                else:
+                    result = probe_profile(data)
         result["profile"] = profile
         return templates.TemplateResponse(
             request,

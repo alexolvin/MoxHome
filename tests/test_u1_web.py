@@ -630,13 +630,11 @@ _CONSUMERS: dict[str, tuple[tuple[str, str], ...]] = {
     "/api/prompts/version": (
         ("app/web/static/app.js", '"/api/prompts/version?path="'),  # DELETE
     ),
-    # R8 (ТЗ §15, решение 13): LLM-проба, запись профилей, список
-    # моделей, очистка логов (app.js fetchJSON; no-JS — формы pages.py).
+    # R8 (ТЗ §15, решение 13): LLM-проба, список моделей, очистка логов
+    # (app.js fetchJSON; сохранение LLM — форма pages.py, M2: API-эндпоинт
+    # записи удалён — JS save = отправка формы, серверный 422).
     "/api/llm/probe": (
         ("app/web/static/app.js", 'fetchJSON("/api/llm/probe"'),  # POST
-    ),
-    "/api/config/llm": (
-        ("app/web/static/app.js", 'fetchJSON("/api/config/llm"'),  # PUT
     ),
     "/api/llm/models": (
         ("app/web/static/app.js", 'fetchJSON("/api/llm/models?base_url="'),  # GET

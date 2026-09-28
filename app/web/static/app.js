@@ -1973,28 +1973,58 @@ fe[field].addEventListener("change",updateCreateLabel);
 }
 updateCreateLabel();
 }
-const LLM_PROFILES=["translation","fill","analysis"];
+const LLM_PROFILES=["translation","fill","analysis","mt","postedit"];
+const LLM_PIPELINE_PROFILES={
+  single:["translation","fill","analysis"],
+  mt_pe:["mt","postedit","analysis"]
+};
 function bindSettingsLLM(){
 const form=$("u3-llm-form");
 if(!form)return;
 const fe=form.elements;
 const msg=$("u3-llm-msg");
 const probeMsg=$("u3-llm-probe-msg");
-const saveBtn=$("u3-llm-save");
-const sharedEl=fe.shared_endpoint;
+const selGroup=$("u3-llm-selected");
+const unusedBody=$("u3-llm-unused-body");
+const descEl=$("u3-llm-desc");
+const segs=fe.pipeline;
 const numOr=v=>v===""?null:Number(v);
-const profileData=name=>({
-base_url:fe["base_url_"+name].value.trim(),
-model:fe["model_"+name].value.trim(),
-api_key:fe["api_key_"+name].value,
-temperature:numOr(fe["temperature_"+name].value),
-retry_times:numOr(fe["retry_times_"+name].value),
-concurrency:numOr(fe["concurrency_"+name].value),
-extra_body:fe["extra_body_"+name].value.trim(),
-});
-const syncShared=()=>form.classList.toggle("u3-llm-shared-on",sharedEl.checked);
-sharedEl.addEventListener("change",syncShared);
-syncShared();
+const profileData=name=>{
+const F=p=>fe[p+"_"+name];
+const d={
+base_url:F("base_url").value.trim(),
+model:F("model").value.trim(),
+api_key:F("api_key").value,
+temperature:numOr(F("temperature").value),
+retry_times:numOr(F("retry_times").value),
+concurrency:numOr(F("concurrency").value),
+timeout_seconds:numOr(F("timeout_seconds").value),
+warmup_timeout_s:numOr(F("warmup_timeout_s").value),
+extra_body:F("extra_body")?F("extra_body").value.trim():"",
+};
+const del=F("delete_key");
+if(del&&del.checked)d.delete_key=true;
+if(name==="mt"){
+d.top_k=numOr(F("top_k").value);
+d.max_tokens_ratio=numOr(F("max_tokens_ratio").value);
+d.max_segment_tokens=numOr(F("max_segment_tokens").value);
+const sv=F("stop").value.split("\n").map(s=>s.trim()).filter(Boolean);
+if(sv.length)d.stop=sv;
+}
+return d;
+};
+const setDesc=p=>{
+if(descEl)descEl.textContent=p==="mt_pe"?descEl.dataset.mtpe:descEl.dataset.single;
+};
+const moveCards=pipeline=>{
+const sel=LLM_PIPELINE_PROFILES[pipeline]||[];
+for(const c of form.querySelectorAll("details.u3-llm-card")){
+const t=sel.includes(c.dataset.u3Profile)?selGroup:unusedBody;
+if(c.parentNode!==t)t.appendChild(c);
+}
+setDesc(pipeline);
+};
+if(segs&&segs.length)for(const r of segs)r.addEventListener("change",()=>moveCards(r.value));
 const setProbeBanner=(name,ok,text)=>{
 if(!probeMsg)return;
 probeMsg.hidden=!text;
@@ -2004,27 +2034,11 @@ probeMsg.textContent=text?fmt(S.llm_profile_title,{profile:name})+": "+text:"";
 };
 const runProbe=async name=>{
 setProbeBanner(name,null,S.common_sending);
-const data=Object.assign({profile:name},profileData(name));
-if(sharedEl.checked)data.base_url=fe.base_url.value.trim();
 try{
-const result=await fetchJSON("/api/llm/probe",{method:"POST",headers:JH,body:JSON.stringify(data)});
-setProbeBanner(name,result.ok,result.message);
+const result=await fetchJSON("/api/llm/probe",{method:"POST",headers:JH,body:JSON.stringify(Object.assign({profile:name},profileData(name)))});
+setProbeBanner(name,result.ok,result.message+(result.response_text?"\n"+result.response_text:""));
 }catch(e){
 setProbeBanner(name,false,e.message);
-}
-};
-const runSave=async()=>{
-msg.textContent=S.common_sending;
-saveBtn.disabled=true;
-const data={shared_endpoint:sharedEl.checked,base_url:fe.base_url.value.trim(),profiles:{}};
-for(const name of LLM_PROFILES)data.profiles[name]=profileData(name);
-try{
-await fetchJSON("/api/config/llm",{method:"PUT",headers:JH,body:JSON.stringify(data)});
-msg.textContent=S.llm_saved;
-setTimeout(()=>window.location.reload(),1000);
-}catch(e){
-saveBtn.disabled=false;
-failWithRetry(msg,apiErr(e),runSave);
 }
 };
 let modelsTimer;
@@ -2041,28 +2055,19 @@ msg.textContent=fmt(S.llm_models_unavailable,{reason:e.message});
 }
 },500);
 };
-fe.base_url.addEventListener("input",()=>{
-if(sharedEl.checked)loadModels(fe.base_url.value.trim());
-});
-for(const name of LLM_PROFILES){
-fe["base_url_"+name].addEventListener("input",()=>{
-if(!sharedEl.checked)loadModels(fe["base_url_"+name].value.trim());
-});
-}
+for(const name of LLM_PROFILES)fe["base_url_"+name].addEventListener("input",e=>loadModels(e.target.value.trim()));
 document.addEventListener("click",e=>{
-const target=e.target;
-if(!target||!target.getAttribute)return;
-const name=target.getAttribute("data-u3-llm-extra-reset");
-if(!name)return;
-fe["extra_body_"+name].value=target.getAttribute("data-saved")||"";
+const t=e.target;
+if(!t||!t.getAttribute)return;
+const n=t.getAttribute("data-u3-llm-extra-reset");
+if(!n)return;
+fe["extra_body_"+n].value=t.getAttribute("data-saved")||"";
 });
-if(sharedEl.checked)loadModels(fe.base_url.value.trim());
 form.addEventListener("submit",e=>{
-e.preventDefault();
 const btn=e.submitter;
-if(btn&&btn.getAttribute("data-u3-llm-probe"))runProbe(btn.getAttribute("data-u3-llm-probe"));
-else runSave();
+if(btn&&btn.getAttribute("data-u3-llm-probe")){e.preventDefault();runProbe(btn.getAttribute("data-u3-llm-probe"));}
 });
+const iss=$("u3-llm-issues");if(iss)iss.focus();
 }
 function bindAppearance(){
 const form=$("u3-appearance-form");

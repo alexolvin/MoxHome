@@ -30,11 +30,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
-from app.core.config import PROFILE_NAMES, LLMProfile, Settings
-from app.core.errors import AppError
+from app.core.config import ALL_PROFILE_NAMES, PROFILE_NAMES, LLMProfile, Settings
+from app.core.errors import AppError, ConfigurationError
+from app.core.llm_settings import validate_llm_settings
 from app.domain.job import LEARNING_LEVELS, TERMINAL_STATES, WORKING_STATES, Job, JobStatus
 from app.languages.cefr import CEFR_ORDER, language_cefr_label
 from app.languages.registry import load_registry
+from app.languages.resolver import load_matrix, mt_pe_supported
 from app.learning import SUBSTAGE_LEVELS
 from app.llm.prompts import (
     LEVEL_GENERIC,
@@ -42,6 +44,7 @@ from app.llm.prompts import (
     LEVEL_SOURCE,
     VERSION_FILE_RE,
     PromptResolver,
+    _best_version,
 )
 from app.llm.tasks import all_tasks
 from app.services.jobs import create_baseline
@@ -1358,27 +1361,66 @@ def settings_view(settings: Settings) -> dict[str, Any]:
 # ---------------------------------------------------------------- LLM-форма (R8)
 
 
-def llm_form_view(settings: Settings) -> dict[str, Any]:
-    """R8 (ТЗ §13): данные формы /settings/llm.
+#: MTPE M2 (§6.1.4): карточки выбранного способа — порядок в группе.
+_PIPELINE_PROFILES: dict[str, tuple[str, ...]] = {
+    "single": ("translation", "fill", "analysis"),
+    "mt_pe": ("mt", "postedit", "analysis"),
+}
 
-    API-ключи в данные НЕ попадают (U1-8) — только признак
-    «задан/не задан». Границы числовых полей — из схемы
-    ``LLMProfile`` (единый источник, Rule 1): шаблон получает ``min``
-    для number-инпутов (ТЗ §13: «Границы из limits»)."""
-    # Границы — из JSON-схемы (в pydantic ≥ 2.13 у FieldInfo нет .ge/.le)
+
+def _profile_prompt_version(prompts_dir: Path, task: str | None) -> int | None:
+    """Активная версия задачи промпта (vN.yaml); None — задачи/версии нет."""
+    if not task:
+        return None
+    version_file = _best_version(prompts_dir / task)
+    if version_file is None:
+        return None
+    match = VERSION_FILE_RE.match(version_file.name)
+    return int(match.group(1)) if match else None
+
+
+def llm_form_view(settings: Settings) -> dict[str, Any]:
+    """MTPE M2 (§6.1–6.3): данные формы /settings/llm.
+
+    Способ перевода (pipeline) + 5 профилей (перевод/разметка/анализ +
+    mt/постредактура). API-ключи в данные НЕ попадают (U1-8) — только
+    признак «задан/не задан». Границы — из схемы ``LLMProfile`` (Rule 1).
+    ``issues`` — текущие проблемы (validate_llm_settings); ``mt_pe_pairs``
+    — поддерживаемые пары резолвером (§6.1.3), сгруппированные по цели."""
     props = LLMProfile.model_json_schema()["properties"]
+    titles = {
+        "translation": _S["llm_title_translation"],
+        "fill": _S["llm_title_fill"],
+        "analysis": _S["llm_title_analysis"],
+        "mt": _S["llm_title_mt"],
+        "postedit": _S["llm_title_postedit"],
+    }
     profiles: list[dict[str, Any]] = []
-    for name in PROFILE_NAMES:
+    for name in ALL_PROFILE_NAMES:
         profile = settings.llm.profile(name)
         profiles.append(
             {
                 "name": name,
+                "title": titles[name],
+                "api": profile.api,
                 "base_url": profile.base_url,
                 "model": profile.model,
                 "api_key_set": bool(settings.llm.api_key_for(name)),
                 "temperature": profile.temperature,
                 "retry_times": profile.retry_times,
                 "concurrency": profile.concurrency,
+                "timeout_seconds": profile.timeout_seconds,
+                "warmup_timeout_s": profile.warmup_timeout_s,
+                "top_k": profile.top_k,
+                "max_tokens_ratio": profile.max_tokens_ratio,
+                "max_segment_tokens": profile.max_segment_tokens,
+                "stop": "\n".join(profile.stop),
+                "retries": profile.retries,
+                "timeout_s": profile.timeout_s,
+                "prompt_task": profile.prompt_task,
+                "prompt_version": _profile_prompt_version(
+                    settings.prompts_dir, profile.prompt_task
+                ),
                 "extra_body": (
                     json.dumps(profile.extra_body, ensure_ascii=False)
                     if profile.extra_body
@@ -1386,19 +1428,40 @@ def llm_form_view(settings: Settings) -> dict[str, Any]:
                 ),
             }
         )
-    urls = {p["base_url"] for p in profiles}
+    pipeline = settings.translation.pipeline
+    selected = _PIPELINE_PROFILES.get(pipeline, ())
+    unused = [n for n in ALL_PROFILE_NAMES if n not in selected]
+    # mt_pe_pairs — поддерживаемые пары резолвером (§6.1.3), по целям.
+    try:
+        matrix = load_matrix(settings.language_matrix_path)
+        registry = load_registry(settings.languages_root)
+        groups: dict[str, list[str]] = {}
+        for source, target in matrix:
+            if mt_pe_supported(registry, source, target):
+                groups.setdefault(target, []).append(source)
+        mt_pe_pairs = "; ".join(
+            f"{', '.join(srcs)} → {tgt}" for tgt, srcs in groups.items()
+        )
+    except ConfigurationError:
+        mt_pe_pairs = ""
     return {
+        "pipeline": pipeline,
         "profiles": profiles,
-        #: ТЗ §13: переключатель «один эндпоинт» — включён, когда все
-        #: три base_url равны (по умолчанию вкл — состояние стенда).
-        "shared": len(urls) == 1,
-        "base_url": next(iter(urls)),
+        "selected": list(selected),
+        "unused": unused,
+        "mt_pe_pairs": mt_pe_pairs,
         "bounds": {
             "temperature_min": props["temperature"].get("minimum") or 0,
             "temperature_max": props["temperature"].get("maximum") or 2,
             "retries_min": props["retry_times"].get("minimum") or 0,
             "parallelism_min": props["concurrency"].get("minimum") or 1,
+            "top_k_min": 1,
+            "max_segment_tokens_min": 1,
         },
+        "issues": [
+            {"path": i.path, "code": i.code, "message": _S.get(i.code, i.code)}
+            for i in validate_llm_settings(settings)
+        ],
     }
 
 

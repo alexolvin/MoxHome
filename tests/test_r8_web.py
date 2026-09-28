@@ -3,14 +3,14 @@
 - r8_1 корень /settings: 6 строк (href'ы), 0 полей ввода;
 - r8_2 /settings/llm рендер: 3 <details> (первый open), поля, ключ
   «задан» (никогда не значение), data-saved у extra_body, toggle;
-- r8_3 PUT /api/config/llm (валидный): config.yaml на диске (комментарии
-  сохранены, extra_body — новый блок), .env, app.state подменён,
-  секретов в ответе 0;
-- r8_4 PUT невалидные: по одному полю на запрос — 400; файлы побайтово
-  не тронуты (после КАЖДОГО случая);
+- r8_3 форма /settings/llm (валидный, M2): config.yaml на диске
+  (комментарии сохранены, extra_body — новый блок), .env, app.state
+  подменён, секретов в перерисованной странице 0;
+- r8_4 форма невалидные (M2): по одному полю на запрос — 400 (разбор)
+  / 422 (валидация); файлы побайтово не тронуты (после КАЖДОГО случая);
 - r8_5 api_key «» — сохранение текущего (.env не тронут, новый не создан);
-- r8_6 toggle «один эндпоинт»: вкл — общий URL во все три профиля,
-  выкл — по-профильные (checked из состояния);
+- r8_6 per-profile base_url (M2 §6.3): разные URL по профилям — пишутся
+  все; переключателя «один эндпоинт» нет, есть «Способ перевода»;
 - r8_7 POST /api/llm/probe: ok (mock-LLM: модель/токены), сохранённый
   extra_body в теле запроса (passthrough), 401/404/неверный JSON/
   закрытый порт — точные причины; невалидное тело — 400; конфиг не тронут;
@@ -40,7 +40,7 @@ import json
 import sys
 import threading
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -148,6 +148,16 @@ def r8(u1_env: U1Env) -> Iterator[R8Ctx]:
         "    analysis:\n"
         f"      base_url: {url}\n"
         "      model: test-model\n"
+        "    mt:\n"
+        f"      base_url: {url}\n"
+        "      model: test-model\n"
+        "      api: completions\n"
+        "      prompt_task: mt_draft\n"
+        "    postedit:\n"
+        f"      base_url: {url}\n"
+        "      model: test-model\n"
+        "      api: chat\n"
+        "      prompt_task: postedit\n"
         "glossary:\n"
         "  enabled: true\n"
         "  fix_enabled: true\n"
@@ -175,27 +185,6 @@ def r8(u1_env: U1Env) -> Iterator[R8Ctx]:
 # ------------------------------------------------------------------ утилиты
 
 
-def _baseline_body(r8: R8Ctx) -> dict[str, Any]:
-    """Валидное тело PUT /api/config/llm из ТЕКУЩЕГО app.state."""
-    st = r8.profile.app.state.settings
-    return {
-        "shared_endpoint": True,
-        "base_url": st.llm.profile("translation").base_url,
-        "profiles": {
-            name: {
-                "base_url": st.llm.profile(name).base_url,
-                "model": st.llm.profile(name).model,
-                "api_key": "",
-                "extra_body": "",
-                "temperature": st.llm.profile(name).temperature,
-                "retry_times": st.llm.profile(name).retry_times,
-                "concurrency": st.llm.profile(name).concurrency,
-            }
-            for name in _PROFILES
-        },
-    }
-
-
 def _llm_form_data(r8: R8Ctx, *, model: str, temperature: str) -> dict[str, str]:
     """no-JS-форма /settings/llm (все 4 варианта URL + по-профильные)."""
     st = r8.profile.app.state.settings
@@ -212,6 +201,28 @@ def _llm_form_data(r8: R8Ctx, *, model: str, temperature: str) -> dict[str, str]
         data[f"concurrency_{name}"] = "1"
         data[f"extra_body_{name}"] = ""
     data["u3_csrf"] = csrf_token(st, "any-user")
+    return data
+
+
+def _form_body(r8: R8Ctx, *, overrides: dict[str, str] | None = None) -> dict[str, str]:
+    """no-JS-форма /settings/llm из ТЕКУЩЕГО app.state + полевые overrides
+    (M2: запись LLM — только через форму; API-эндпоинт записи удалён).
+
+    Базовые значения (base_url/model/temperature/retry/concurrency) — из
+    текущего конфига; ``overrides`` — точечная подстановка ``<field>_<name>``."""
+    st = r8.profile.app.state.settings
+    data: dict[str, str] = {"u3_csrf": csrf_token(st, "any-user")}
+    for name in _PROFILES:
+        p = st.llm.profile(name)
+        data[f"base_url_{name}"] = p.base_url
+        data[f"model_{name}"] = p.model
+        data[f"api_key_{name}"] = ""
+        data[f"temperature_{name}"] = f"{p.temperature}"
+        data[f"retry_times_{name}"] = str(p.retry_times)
+        data[f"concurrency_{name}"] = str(p.concurrency)
+        data[f"extra_body_{name}"] = ""
+    if overrides:
+        data.update(overrides)
     return data
 
 
@@ -295,14 +306,16 @@ def test_r8_2_llm_form_render(r8: R8Ctx) -> None:
     response = r8.client.get("/settings/llm")
     assert response.status_code == 200, response.text
     root = lhtml.fromstring(response.text)
-    cards = root.xpath('//div[contains(concat(" ",@class," "), " u3-llm-card ")]')
-    assert len(cards) == 3
+    # M2: карточки — <details>, 5 профилей (3 активных + 2 «не используются»)
+    cards = root.xpath('//details[contains(concat(" ",@class," "), " u3-llm-card ")]')
+    assert len(cards) == 5
     more = root.xpath('//details[contains(@class, "u3-llm-more")]')
-    assert len(more) == 3
+    assert len(more) == 4  # extra_body у chat-профилей (translation/fill/analysis/postedit)
     assert all("open" not in d.attrib for d in more)
-    # переключатель: все три base_url равны — checked (вычисляет сервер)
-    shared = root.xpath('//input[@name="shared_endpoint"]')[0]
-    assert "checked" in shared.attrib
+    # M2: сегмент-переключатель «Способ перевода»; по умолчанию single — checked
+    single = root.xpath('//input[@name="pipeline" and @value="single"]')[0]
+    assert "checked" in single.attrib
+    assert root.xpath('//input[@name="pipeline" and @value="mt_pe"]')
     # ключ: «задан» (LLM_API_KEY в .env), значение НИКОГДА не отображается
     key_input = root.xpath('//input[@name="api_key_translation"]')[0]
     assert key_input.get("placeholder") == UI_STRINGS["models_key_set"]
@@ -323,26 +336,28 @@ def test_r8_2_llm_form_render(r8: R8Ctx) -> None:
     )
 
 
-def test_r8_3_put_valid_writes_disk_and_state(r8: R8Ctx) -> None:
-    """Р8-решение 5: запись — диск (комментарии сохранены, extra_body —
-    новый блок), .env, подмена app.state; секретов в ответе 0."""
+def test_r8_3_valid_writes_disk_and_state(r8: R8Ctx) -> None:
+    """Р8-решение 5 (M2: запись — форма POST /settings/llm): диск
+    (комментарии сохранены, extra_body — новый блок), .env, подмена
+    app.state; секретов в перерисованной странице 0."""
     client = r8.client
-    body = _baseline_body(r8)
-    for name in _PROFILES:
-        body["profiles"][name]["model"] = "new-model-1"
-    body["profiles"]["translation"].update(
-        temperature=0.3,
-        retry_times=5,
-        concurrency=2,
-        extra_body=json.dumps({"nested": {"deep": True}}),
+    body = _form_body(
+        r8,
+        overrides={
+            "model_translation": "new-model-1",
+            "model_fill": "new-model-1",
+            "model_analysis": "new-model-1",
+            "temperature_translation": "0.3",
+            "retry_times_translation": "5",
+            "concurrency_translation": "2",
+            "extra_body_translation": json.dumps({"nested": {"deep": True}}),
+        },
     )
     env_before = r8.env_file.read_text(encoding="utf-8")
     try:
-        response = client.put("/api/config/llm", json=body)
-        assert response.status_code == 200, response.text
-        data = response.json()
-        assert data["saved"] is True
-        assert [p["model"] for p in data["profiles"]] == ["new-model-1"] * 3
+        response = client.post("/settings/llm", data=body, follow_redirects=False)
+        assert response.status_code == 303, response.text
+        assert response.headers["location"] == "/settings/llm"
         cfg_text = r8.cfg.read_text(encoding="utf-8")
         assert cfg_text.count("model: new-model-1") == 3
         # комментарии (inline и строки) — на месте
@@ -358,74 +373,67 @@ def test_r8_3_put_valid_writes_disk_and_state(r8: R8Ctx) -> None:
         assert "enable_thinking" not in cfg_text
         # ключ «» = сохранение текущего: .env побайтово не тронут
         assert r8.env_file.read_text(encoding="utf-8") == env_before
-        # U1-8: секретов в ответе 0
-        assert LLM_KEY not in response.text
-        assert AUTH_SECRET not in response.text
-        # app.state подменён: следующий рендер — новые значения
-        page = lhtml.fromstring(client.get("/settings/llm").text)
+        # app.state подменён: следующий рендер — новые значения; U1-8: 0 секретов
+        page_text = client.get("/settings/llm").text
+        assert LLM_KEY not in page_text
+        assert AUTH_SECRET not in page_text
+        page = lhtml.fromstring(page_text)
         value = page.xpath('//input[@id="u3-llm-model-translation"]')[0].get("value")
         assert value == "new-model-1"
     finally:
         r8.restore()
 
 
-def test_r8_4_put_invalid_400_nothing_written(r8: R8Ctx) -> None:
-    """Fail-closed: каждое несоответствие — 400, на диске ничего не
-    поменялось (проверяется после КАЖДОГО случая)."""
+def test_r8_4_invalid_nothing_written(r8: R8Ctx) -> None:
+    """Fail-closed (M2: форма): каждое несоответствие — ошибка (400 на
+    разборе поля / 422 на валидации), на диске ничего не поменялось
+    (проверяется после КАЖДОГО случая). Кейс «неизвестный профиль» —
+    только для JSON API (в форме поля фиксированы) — исключён."""
     client = r8.client
     cfg_before = r8.cfg.read_bytes()
     env_before = r8.env_file.read_bytes()
-    cases: list[tuple[str, str, Callable[[dict[str, Any]], None]]] = [
-        ("ftp-схема", "некорректный эндпоинт",
-         lambda b: b.update(base_url="ftp://x/v1")),
-        ("путь-не-/v1", "некорректный эндпоинт",
-         lambda b: b.update(base_url="http://127.0.0.1:1/v2")),
-        ("температура-3", "температура: число 0–2",
-         lambda b: b["profiles"]["translation"].update(temperature=3.0)),
-        ("температура-str", "температура: число 0–2",
-         lambda b: b["profiles"]["translation"].update(temperature="abc")),
-        ("повторы--1", "повторы: целое ≥ 0",
-         lambda b: b["profiles"]["fill"].update(retry_times=-1)),
-        ("параллелизм-0", "параллелизм: целое ≥ 1",
-         lambda b: b["profiles"]["analysis"].update(concurrency=0)),
-        ("extra-не-json", "extra_body: JSON-объект",
-         lambda b: b["profiles"]["translation"].update(extra_body="не-json")),
-        ("extra-список", "extra_body: JSON-объект",
-         lambda b: b["profiles"]["translation"].update(extra_body="[1,2]")),
-        ("профиль-отсутствует", "неизвестный профиль: analysis",
-         lambda b: b["profiles"].pop("analysis")),
+    # (имя, статус, overrides формы)
+    cases: list[tuple[str, int, dict[str, str]]] = [
+        ("ftp-схема", 422, {"base_url_translation": "ftp://x/v1"}),
+        ("путь-не-/v1", 422, {"base_url_translation": "http://127.0.0.1:1/v2"}),
+        ("температура-3", 422, {"temperature_translation": "3"}),
+        ("температура-str", 400, {"temperature_translation": "abc"}),
+        ("повторы--1", 422, {"retry_times_fill": "-1"}),
+        ("параллелизм-0", 422, {"concurrency_analysis": "0"}),
+        ("extra-не-json", 422, {"extra_body_translation": "не-json"}),
+        ("extra-список", 422, {"extra_body_translation": "[1,2]"}),
+        ("ключи-различаются", 422,
+         {"api_key_translation": "key-a", "api_key_fill": "key-b"}),
     ]
-
-    def key_conflict(b: dict[str, Any]) -> None:
-        b["profiles"]["translation"]["api_key"] = "key-a"
-        b["profiles"]["fill"]["api_key"] = "key-b"
-
-    cases.append(("ключи-различаются", "один ключ API", key_conflict))
-
     try:
-        for name, expect, mutate in cases:
-            body = _baseline_body(r8)
-            mutate(body)
-            response = client.put("/api/config/llm", json=body)
-            assert response.status_code == 400, (name, response.status_code, response.text)
-            assert expect in response.json()["detail"], (name, response.text)
+        for name, status, overrides in cases:
+            body = _form_body(r8, overrides=overrides)
+            response = client.post("/settings/llm", data=body, follow_redirects=False)
+            assert response.status_code == status, (
+                name, response.status_code, response.text
+            )
             assert r8.cfg.read_bytes() == cfg_before, f"{name}: config.yaml тронут"
             assert r8.env_file.read_bytes() == env_before, f"{name}: .env тронут"
     finally:
         r8.restore()
 
 
-def test_r8_5_put_empty_key_kept(r8: R8Ctx) -> None:
-    """api_key «» = сохранить текущий: .env — только заданный ключ,
-    LLM_ANALYSIS_API_KEY при «» не создаётся."""
+def test_r8_5_empty_key_kept(r8: R8Ctx) -> None:
+    """api_key «» = сохранить текущий (M2: форма): .env — только заданный
+    ключ, LLM_ANALYSIS_API_KEY при «» не создаётся."""
     client = r8.client
-    body = _baseline_body(r8)
-    body["profiles"]["translation"]["api_key"] = "brand-new-key-123"
-    for name in _PROFILES:
-        body["profiles"][name]["model"] = "kept-model"
+    body = _form_body(
+        r8,
+        overrides={
+            "api_key_translation": "brand-new-key-123",
+            "model_translation": "kept-model",
+            "model_fill": "kept-model",
+            "model_analysis": "kept-model",
+        },
+    )
     try:
-        response = client.put("/api/config/llm", json=body)
-        assert response.status_code == 200, response.text
+        response = client.post("/settings/llm", data=body, follow_redirects=False)
+        assert response.status_code == 303, response.text
         env_text = r8.env_file.read_text(encoding="utf-8")
         assert "LLM_API_KEY=brand-new-key-123" in env_text
         assert "LLM_ANALYSIS_API_KEY" not in env_text
@@ -435,37 +443,29 @@ def test_r8_5_put_empty_key_kept(r8: R8Ctx) -> None:
         r8.restore()
 
 
-def test_r8_6_shared_toggle(r8: R8Ctx) -> None:
-    """ТЗ §13: вкл — одно поле base_url пишется во все три профиля;
-    выкл — по-профильные. checked — вычисляет сервер из состояния."""
+def test_r8_6_per_profile_base_url(r8: R8Ctx) -> None:
+    """M2 §6.3 (запись через форму): base_url — у каждого профиля. Разные
+    URL по профилям — пишутся все; переключателя «один эндпоинт» нет."""
     client = r8.client
     try:
-        # вкл: общий эндпоинт
-        body = _baseline_body(r8)
-        body["base_url"] = "http://127.0.0.1:9999/v1"
-        response = client.put("/api/config/llm", json=body)
-        assert response.status_code == 200, response.text
-        cfg_text = r8.cfg.read_text(encoding="utf-8")
-        assert cfg_text.count("base_url: http://127.0.0.1:9999/v1") == 3
-        page = lhtml.fromstring(client.get("/settings/llm").text)
-        assert "checked" in page.xpath('//input[@name="shared_endpoint"]')[0].attrib
-        # выкл: по-профильные
-        body = _baseline_body(r8)
-        body["shared_endpoint"] = False
         urls = {
             "translation": "http://127.0.0.1:10001/v1",
             "fill": "http://127.0.0.1:10002/v1",
             "analysis": "http://127.0.0.1:10003/v1",
         }
-        for name, url in urls.items():
-            body["profiles"][name]["base_url"] = url
-        response = client.put("/api/config/llm", json=body)
-        assert response.status_code == 200, response.text
+        body = _form_body(
+            r8,
+            overrides={f"base_url_{name}": url for name, url in urls.items()},
+        )
+        response = client.post("/settings/llm", data=body, follow_redirects=False)
+        assert response.status_code == 303, response.text
         cfg_text = r8.cfg.read_text(encoding="utf-8")
         for url in urls.values():
             assert url in cfg_text, url
+        # M2: переключателя «один эндпоинт» нет; вместо него «Способ перевода»
         page = lhtml.fromstring(client.get("/settings/llm").text)
-        assert "checked" not in page.xpath('//input[@name="shared_endpoint"]')[0].attrib
+        assert not page.xpath('//input[@name="shared_endpoint"]')
+        assert page.xpath('//input[@name="pipeline" and @value="single"]')
     finally:
         r8.restore()
 
@@ -481,7 +481,8 @@ def test_r8_7_probe(r8: R8Ctx) -> None:
     body = {
         "profile": "translation",
         "base_url": r8.server.url,
-        "model": "test-model",
+        # M2: 3-шаговая проба — модель должна быть в списке GET /models mock
+        "model": "probe-model",
         "temperature": 0.7,
     }
     # ok: mock-LLM (модель эхо, токены из usage)
@@ -489,7 +490,7 @@ def test_r8_7_probe(r8: R8Ctx) -> None:
     assert response.status_code == 200, response.text
     data = response.json()
     assert data["ok"] is True
-    assert "модель test-model" in data["message"]
+    assert "модель probe-model" in data["message"]
     assert "токенов" in data["message"]
     # пустой extra_body в теле = СОХРАНЁННЫЙ (passthrough в запрос)
     last = r8.server.requests_log()[-1]
@@ -589,19 +590,20 @@ def test_r8_10_nojs_probe(r8: R8Ctx) -> None:
     """no-JS: submit-кнопка формы (formaction) → 200 + баннер результата
     (u3-ok / u3-warn); неизвестный профиль — 400."""
     client = r8.client
-    data = _llm_form_data(r8, model="test-model", temperature="0.7")
+    # M2: модель — из списка GET /models mock («probe-model») — проба проходит
+    data = _llm_form_data(r8, model="probe-model", temperature="0.7")
     data["profile"] = "translation"
     response = client.post("/settings/llm/probe", data=data)
     assert response.status_code == 200, response.text
     banner = lhtml.fromstring(response.text).xpath('//p[@id="u3-llm-probe-msg"]')[0]
     assert "hidden" not in banner.attrib
     assert "u3-ok" in (banner.get("class") or "")
-    assert "модель test-model" in banner.text_content()
+    assert "модель probe-model" in banner.text_content()
     assert "токенов" in banner.text_content()
-    # отказ: закрытый порт
+    # отказ: закрытый порт (M2: base_url — у профиля, не общий)
     bad = _llm_form_data(r8, model="test-model", temperature="0.7")
     bad["profile"] = "translation"
-    bad["base_url"] = "http://127.0.0.1:1/v1"
+    bad["base_url_translation"] = "http://127.0.0.1:1/v1"
     response = client.post("/settings/llm/probe", data=bad)
     assert response.status_code == 200
     banner = lhtml.fromstring(response.text).xpath('//p[@id="u3-llm-probe-msg"]')[0]
@@ -837,21 +839,20 @@ def test_r8_15_worker_reload(r8: R8Ctx) -> None:
 
 def test_r8_16_create_sheet_llm_row(r8: R8Ctx) -> None:
     """R4-плейсхолдер (решение 12): строка LLM-профиля — одна модель,
-    если у всех профилей одна, иначе «разные»."""
+    если у всех профилей одна, иначе «разные» (M2: запись через форму)."""
     client = r8.client
     page = client.get("/jobs?sheet=create")
     assert page.status_code == 200, page.text
     assert UI_STRINGS["create_more_llm"] in page.text
     assert "test-model" in page.text
     # разные модели — смешанный маркер
-    body = _baseline_body(r8)
-    body["shared_endpoint"] = False
     models = {"translation": "model-a", "fill": "model-b", "analysis": "model-c"}
-    for name, model in models.items():
-        body["profiles"][name]["model"] = model
+    body = _form_body(
+        r8, overrides={f"model_{name}": model for name, model in models.items()}
+    )
     try:
-        response = client.put("/api/config/llm", json=body)
-        assert response.status_code == 200, response.text
+        response = client.post("/settings/llm", data=body, follow_redirects=False)
+        assert response.status_code == 303, response.text
         page = client.get("/jobs?sheet=create")
         assert UI_STRINGS["create_llm_mixed"] in page.text
     finally:

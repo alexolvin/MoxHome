@@ -23,9 +23,23 @@ from typing import Any
 
 import yaml
 
-#: Правимые скалярные поля профиля (ТЗ §13: endpoint, модель,
-#: температура, повторы, параллелизм). `extra_body` — отдельно (блок).
-_SCALAR_FIELDS = ("base_url", "model", "temperature", "retry_times", "concurrency")
+#: Правимые скалярные поля профиля (Р8 ТЗ §13 + MTPE M2 §6.2). `extra_body`
+#: (блок) и `stop` (список — сериализуется как YAML flow) — отдельно.
+_SCALAR_FIELDS = (
+    "base_url",
+    "model",
+    "temperature",
+    "retry_times",
+    "concurrency",
+    "timeout_seconds",
+    "warmup_timeout_s",
+    "top_k",
+    "max_tokens_ratio",
+    "max_segment_tokens",
+)
+#: Правимые списковые поля профиля (MTPE §6.2: `stop` у mt) — одна строка,
+#: YAML flow-стиль.
+_LIST_FIELDS = ("stop",)
 #: Индентация в config.yaml (фиксирована схемой файла, Р8).
 _LLM_KEY_RE = re.compile(r"^llm:\s*(?:#.*)?$")
 _PROFILES_KEY_RE = re.compile(r"^  profiles:\s*(?:#.*)?$")
@@ -62,6 +76,8 @@ def _serialize_value(value: Any) -> str:
         return "true" if value else "false"
     if isinstance(value, (int, float)):
         return str(value)
+    if isinstance(value, list):
+        return yaml.safe_dump(value, default_flow_style=True, allow_unicode=True).strip()
     return str(value)
 
 
@@ -95,7 +111,8 @@ def apply_llm_profiles(text: str, changes: dict[str, dict[str, Any]]) -> str:
     # Порядок: с конца файла — индексы не сдвигаются при вставках.
     for name in sorted(changes, reverse=True):
         fields = changes[name]
-        scalar = {f: fields[f] for f in _SCALAR_FIELDS if fields.get(f) is not None}
+        all_fields = _SCALAR_FIELDS + _LIST_FIELDS
+        scalar = {f: fields[f] for f in all_fields if fields.get(f) is not None}
         extra_body = fields.get("extra_body")
         if not scalar and extra_body is None:
             continue
@@ -105,7 +122,7 @@ def apply_llm_profiles(text: str, changes: dict[str, dict[str, Any]]) -> str:
             new_lines = _replace_extra_body(lines, start, end, extra_body)
             lines = new_lines
             start, end = _find_profile_block(lines, name)
-        for field in reversed(_SCALAR_FIELDS):
+        for field in reversed(all_fields):
             if field not in scalar:
                 continue
             found: int | None = None
@@ -118,6 +135,30 @@ def apply_llm_profiles(text: str, changes: dict[str, dict[str, Any]]) -> str:
                 _replace_field_line(lines, found, field, scalar[field])
             else:
                 lines.insert(end, f"      {field}: {_serialize_value(scalar[field])}")
+    return "\n".join(lines)
+
+
+def apply_translation_pipeline(text: str, pipeline: str) -> str:
+    """Поставить/обновить `translation.pipeline` (MTPE §5.1/§6.1.3).
+
+    Индентация секции — 2 пробела. Отсутствующее поле — вставка после
+    строки `translation:`. ValueError — секция не найдена."""
+    lines = text.split("\n")
+    trans_start: int | None = None
+    for idx, line in enumerate(lines):
+        if line.startswith("translation:"):
+            trans_start = idx
+            break
+    if trans_start is None:
+        raise ValueError("секция translation не найдена в конфиге")
+    for idx in range(trans_start + 1, len(lines)):
+        stripped = lines[idx].strip()
+        if stripped and _indent(lines[idx]) < 2:
+            break  # конец секции translation
+        if re.match(r"^  pipeline:", lines[idx]):
+            lines[idx] = f"  pipeline: {pipeline}"
+            return "\n".join(lines)
+    lines.insert(trans_start + 1, f"  pipeline: {pipeline}")
     return "\n".join(lines)
 
 

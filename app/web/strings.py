@@ -659,6 +659,46 @@ UI_STRINGS: dict[str, str] = {
     "llm_saved": "Сохранено — применится к следующему заданию.",
     "llm_probe_back": "Назад к LLM-настройкам",
     "llm_profile_title": "Проверка профиля {profile}",
+    # ------------------------------------------------------------- MTPE M2 (§6):
+    # способ перевода, карточки 5 профилей, поля mt, 409 пробы.
+    "llm_pipeline_label": "Способ перевода",
+    "llm_pipeline_single": "Одна модель",
+    "llm_pipeline_mt_pe": "MT + постредактура",
+    "llm_pipeline_desc_single": "Книгу переводит движок epub-translator моделью профиля «Перевод».",
+    "llm_pipeline_desc_mt_pe": (
+        "Черновик делает MT-модель, правку — модель постредактуры. "
+        "Глоссарий и материалы — профиль «Анализ»."
+    ),
+    "llm_pipeline_pairs_prefix": "Пары: ",
+    "llm_pipeline_unused_label": "Не используется в выбранном способе",
+    "llm_title_translation": "Перевод",
+    "llm_title_fill": "Разметка",
+    "llm_title_analysis": "Анализ и материалы",
+    "llm_title_mt": "MT-черновик",
+    "llm_title_postedit": "Постредактура",
+    "llm_key_set": "задан",
+    "llm_key_unset": "не задан",
+    "llm_api_label": "API",
+    "llm_top_k_label": "top_k",
+    "llm_max_tokens_ratio_label": "max_tokens_ratio",
+    "llm_max_segment_tokens_label": "Максимум токенов сегмента",
+    "llm_stop_label": "Стоп-последовательности",
+    "llm_timeout_s_label": "Таймаут, с",
+    "llm_warmup_label": "Таймаут прогрева, с",
+    "llm_prompt_label": "Промпт",
+    "llm_prompt_readonly_hint": "read-only — редактируется в файле",
+    "llm_prompt_version": "«{task} · версия {version}»",
+    "llm_prompts_link": "Промпты",
+    "llm_save_incomplete": "Настройки неполны для выбранного способа. Поправьте проблемы:",
+    "llm_key_delete_label": "Удалить ключ",
+    "llm_probe_waiting": "Ожидание ответа, сервер может загружать модель",
+    "llm_probe_model_not_listed": "модель не в списке эндпоинта",
+    "llm_probe_model_mismatch": "модель ответа не совпадает с профилем",
+    "llm_stage_translation": "перевод",
+    "llm_stage_analysis": "анализ",
+    "llm_probe_409": (
+        "Идёт фаза {phase} задания {job_id} на этом эндпоинте; проба сменила бы модель"
+    ),
     # ------------------------------------------------------------- R8: внешний вид
     "app_theme_label": "Тема",
     "app_theme_system": "Системная",
@@ -699,6 +739,11 @@ UI_STRINGS: dict[str, str] = {
     "err_llm_bad_temperature": "температура: число 0–2",
     "err_llm_bad_retries": "повторы: целое ≥ 0",
     "err_llm_bad_concurrency": "параллелизм: целое ≥ 1",
+    "err_llm_bad_timeout": "таймаут: число > 0",
+    "err_llm_bad_top_k": "top_k: целое ≥ 1",
+    "err_llm_bad_max_tokens_ratio": "max_tokens_ratio: число ≥ 0",
+    "err_llm_bad_max_segment_tokens": "max_segment_tokens: целое ≥ 1",
+    "err_llm_bad_pipeline": "неизвестный способ перевода",
     "err_llm_bad_extra_body": "extra_body: JSON-объект ({reason})",
     "err_llm_unknown_profile": "неизвестный профиль: {profile}",
     "err_llm_key_conflict": (
