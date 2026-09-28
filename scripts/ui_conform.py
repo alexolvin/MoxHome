@@ -66,8 +66,9 @@ SIGNATURES: list[tuple[str, str, str]] = [
     (".u3-rchip", "chip", "radio"),
     (".u3-chip-select.is-selected", "chip", "selected"),
     (".u3-chip-select:not(.is-selected):not(.is-current)", "chip", "default"),
-    (".u3-seg-pill.is-current", "segmented", "pill"),
-    (".u3-seg-pill:not(.is-current)", "segmented", "pill"),
+    # segmented — меряем визуальный бар .u3-seg-vis (36 px), а не tap-обёртку
+    # .u3-seg-pill (min-height:44 → 46 px): размер компонента = визуал (R-L4).
+    (".u3-seg-pill .u3-seg-vis", "segmented", "pill"),
     (".u3-switch", "switch", "default"),
     (".u3-status-chip.u3-st-wait", "status-chip", "wait"),
     (".u3-status-chip.u3-st-run", "status-chip", "run"),

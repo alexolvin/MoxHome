@@ -150,7 +150,7 @@ body:has(.u3-tabbar) .u3-toast-zone{bottom:calc(var(--u3-tabbar-h) + var(--gs) +
 .u3-sheet-page{padding:var(--p) 0}
 .u3-sheet-form{display:flex;flex-direction:column;gap:var(--gs)}
 .u3-sheet-action{width:100%}
-.u3-switch{appearance:none;-webkit-appearance:none;flex:0 0 auto;width:44px;height:26px;margin:0;border:0;border-radius:13px;background:var(--s3);position:relative;transition:background 150ms ease;cursor:pointer;vertical-align:middle}
+input.u3-switch{appearance:none;-webkit-appearance:none;flex:0 0 auto;min-width:0;min-height:0;width:44px;height:26px;margin:0;border:0;border-radius:13px;background:var(--s3);position:relative;transition:background 150ms ease;cursor:pointer;vertical-align:middle}
 .u3-switch::before{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--fgm);transition:transform 150ms ease,background 150ms ease}
 .u3-switch:checked{background:var(--ac)}
 .u3-switch:checked::before{transform:translateX(18px);background:var(--oac)}

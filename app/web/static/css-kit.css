@@ -48,4 +48,7 @@
 .u3-kit-sr-val{color:var(--fgm);font-size:var(--fsm)}
 .u3-fld-err-input{border-color:var(--st-e)}
 .u3-book-card{width:var(--cpw)}
+/* Кит: тост статичен в своей секции — в проде .u3-toast-zone fixed снизу
+   экрана (style.css), в референсе показываем компонент на месте (R-K). */
+.u3-kit-wrap .u3-toast-zone{position:static;pointer-events:auto}
 /* .u3-stat — из css-jobs.css (загружен в кит): одна реализация, R-K2 */
