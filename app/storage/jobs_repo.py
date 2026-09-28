@@ -103,10 +103,11 @@ class JobRepository:
             conn.execute(
                 """
                 INSERT INTO jobs (
-                    id, status, source_path, target_language, mode, priority, queue_rank,
-                    progress, created_at, updated_at, input_sha256, config_sha256,
-                    prompt_version, learning_level, learning_cefr, param_chips
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    id, status, source_path, target_language, mode, pipeline, phase,
+                    config_snapshot, priority, queue_rank, progress, created_at,
+                    updated_at, input_sha256, config_sha256, prompt_version,
+                    learning_level, learning_cefr, param_chips
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     job.id,
@@ -114,6 +115,9 @@ class JobRepository:
                     job.source_path,
                     job.target_language,
                     job.mode,
+                    job.pipeline,
+                    job.phase,
+                    job.config_snapshot,
                     job.priority,
                     job.queue_rank,
                     job.progress,
@@ -801,6 +805,9 @@ class JobRepository:
             source_path=row["source_path"],
             target_language=row["target_language"],
             mode=row["mode"],
+            pipeline=row["pipeline"] or "single",
+            phase=row["phase"],
+            config_snapshot=row["config_snapshot"] or "",
             priority=row["priority"],
             queue_rank=row["queue_rank"],
             progress=row["progress"],

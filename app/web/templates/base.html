@@ -51,6 +51,12 @@
 </head>
 <body>
 {% include "_appbar.html" %}
+{# MTPE TZ §5.3 (точка 2): полоса «Настройки LLM неполны» при неполном
+   конфиге (сервер стартует; issues — app.state, валидация единая). #}
+{% if request.app.state.llm_settings_issues %}
+<p class="u3-warn" role="alert">{{ s["llm_incomplete_banner"] }}
+  {{ request.app.state.llm_settings_issues | map(attribute="path") | join(", ") }}</p>
+{% endif %}
 <main class="u3-main" id="main">
 {% block content %}{% endblock %}
 </main>

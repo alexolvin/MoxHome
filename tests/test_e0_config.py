@@ -6,8 +6,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+import yaml
 
-from app.core.config import load_settings
+from app.core.config import PROFILE_NAMES, load_settings
 from app.core.errors import ConfigurationError
 
 
@@ -40,13 +41,25 @@ def test_missing_required_llm_profile_field(
     make_yaml: object,
     tmp_path: Path,
 ) -> None:
-    # E4.1: адрес и модель — только в YAML-профилях; пропуск → отказ старта.
-    yaml_file = make_yaml(  # type: ignore[operator]
-        str(tmp_path / "data"), profile_overrides={profile: {field: ""}}
-    )
-    with pytest.raises(ConfigurationError) as excinfo:
-        load_settings(yaml_file, make_env())  # type: ignore[operator]
-    assert f"llm.profiles.{profile}.{field} (YAML-конфиг)" in _missing_keys(excinfo)
+    # MTPE TZ §5.3 п.2: пустой base_url/model больше НЕ блокирует загрузку
+    # (мягкая загрузка; «сервер стартует даже с неполными настройками»); проверка
+    # этих полей вынесена в validate_llm_settings (TZ §5.3, T-M1-2). Конфиг пишется
+    # напрямую (yaml.safe_dump), чтобы пустая строка не превратилась в YAML-null.
+    profiles: dict[str, dict[str, str]] = {}
+    for name in PROFILE_NAMES:
+        prof = {"base_url": "http://127.0.0.1:9999/v1", "model": "test-model"}
+        if name == profile:
+            prof[field] = ""
+        profiles[name] = prof
+    data = {
+        "storage": {"root": str(tmp_path / "data")},
+        "server": {"bind_address": "127.0.0.1:8321"},
+        "llm": {"profiles": profiles},
+    }
+    yaml_file = tmp_path / "config.yaml"
+    yaml_file.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    settings = load_settings(yaml_file, make_env())  # type: ignore[operator]
+    assert getattr(settings.llm.profiles[profile], field) == ""
 
 
 def test_missing_storage_root(make_env: object, tmp_path: Path) -> None:
@@ -60,7 +73,9 @@ def test_missing_storage_root(make_env: object, tmp_path: Path) -> None:
 def test_all_missing_listed_at_once(
     make_env: object, tmp_path: Path
 ) -> None:
-    # Пустой YAML (нет root и всех LLM-профилей) + пустой bind — всё в одном списке.
+    # Пустой YAML (нет root) + пустой bind — всё в одном списке. LLM-профили
+    # сюда НЕ попадают: пустые base_url/model не блокируют загрузку (MTPE TZ
+    # §5.3 п.2) — их проверяет validate_llm_settings (T-M1-2).
     yaml_file = tmp_path / "config.yaml"
     yaml_file.write_text("storage: {}\n", encoding="utf-8")
     env_file = make_env({"SERVER_BIND_ADDRESS": None})  # type: ignore[operator]
@@ -69,12 +84,6 @@ def test_all_missing_listed_at_once(
     assert set(_missing_keys(excinfo)) == {
         "SERVER_BIND_ADDRESS",
         "storage.root (YAML-конфиг)",
-        "llm.profiles.translation.base_url (YAML-конфиг)",
-        "llm.profiles.translation.model (YAML-конфиг)",
-        "llm.profiles.fill.base_url (YAML-конфиг)",
-        "llm.profiles.fill.model (YAML-конфиг)",
-        "llm.profiles.analysis.base_url (YAML-конфиг)",
-        "llm.profiles.analysis.model (YAML-конфиг)",
     }
 
 
@@ -110,7 +119,10 @@ def test_valid_config_loads(make_env: object, make_yaml: object, tmp_path: Path)
     assert settings.storage.root == (tmp_path / "data").resolve()
     for directory in settings.all_data_dirs():
         assert directory.is_dir(), directory
-    assert set(settings.llm.profiles) == {"translation", "fill", "analysis"}
+    # MTPE TZ §4.1: пять фиксированных профилей (mt/postedit — профильный тракт).
+    assert set(settings.llm.profiles) == {
+        "translation", "fill", "analysis", "mt", "postedit"
+    }
     assert translation.concurrency == 1
     assert settings.secrets() == ("test-key-value-000",)
 

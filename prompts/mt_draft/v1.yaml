@@ -1,0 +1,11 @@
+# mt_draft (MTPE TZ §5.4) — шаблон черновика MT. Начальная версия, дословно
+# формат карточки модели, без системного промпта и chat template.
+# Запрос: POST {base_url}/completions, поле `prompt` — заполненный user_template
+# (плейсхолдеры {src_name}, {tgt_name}, {text}); temperature/top_k/stop/max_tokens
+# — из профиля mt. `system` — лишь маркер задачи в файле промпта; в запрос
+# completions не попадает.
+system: mt_draft
+user_template: |
+  Translate this from {src_name} to {tgt_name}:
+  {src_name}: {text}
+  {tgt_name}:

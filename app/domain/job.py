@@ -140,6 +140,13 @@ class Job:
     target_language: str
     #: Режим задания (E5.2): "bilingual" (APPEND_BLOCK по умолчанию) | "translation" (REPLACE).
     mode: str = "bilingual"
+    #: MTPE TZ §4.1: способ перевода (single | mt_pe), зафиксирован при создании (§4.5).
+    pipeline: str = "single"
+    #: MTPE TZ §4.4: фаза мт_pe (m_draft/m_postedit/m_assemble); single — None.
+    phase: str | None = None
+    #: MTPE TZ §4.5: фиксация pipeline + значений профилей (без ключей) на момент
+    #: создания. JSON `{"pipeline": str, "profiles": {name: {…}}}`; '' — нет снимка.
+    config_snapshot: str = ""
     priority: int = 0
     #: Серия R §11/§15: ручное место в очереди («Вперёд очереди»);
     #: воркер сортирует кандидатов по queue_rank DESC, created_at ASC.

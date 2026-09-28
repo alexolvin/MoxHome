@@ -38,6 +38,8 @@ llm:
   # разрешается от storage.root, абсолютный — как есть. Явно заданный
   # несуществующий каталог — отказ старта (ConfigurationError).
   prompts_root: prompts
+  # Таймаут кнопки «Проверить» на экране «LLM и модели», с (MTPE TZ §5.1).
+  probe_timeout_s: 300
   profiles:
     translation:
       base_url: http://localhost:8000/v1
@@ -49,6 +51,7 @@ llm:
       max_retries: 5
       concurrency: 1
       max_group_tokens: 2600
+      warmup_timeout_s: 900
       extra_body: {}
     fill:
       base_url: http://localhost:8000/v1
@@ -60,6 +63,7 @@ llm:
       max_retries: 5
       concurrency: 1
       max_group_tokens: 2600
+      warmup_timeout_s: 900
       extra_body: {}
     analysis:
       base_url: http://localhost:8000/v1
@@ -70,7 +74,35 @@ llm:
       retry_times: 3
       max_retries: 3
       concurrency: 1
+      warmup_timeout_s: 900
       extra_body: {}
+    # Профили тракта M (MTPE TZ §5.1). base_url/model — заполняет пользователь
+    # (локальный MT-сервер); по умолчанию пусты: pipeline=single их не требует.
+    mt:
+      base_url: ""
+      model: ""
+      api: completions
+      prompt_task: mt_draft
+      temperature: 0
+      top_k: 1
+      max_tokens_ratio: 3.0
+      max_segment_tokens: 400
+      stop: ["\nTranslate this from"]
+      concurrency: 16
+      retries: 3
+      timeout_s: 120
+      warmup_timeout_s: 900
+    postedit:
+      base_url: ""
+      model: ""
+      api: chat
+      prompt_task: postedit
+      temperature: 0
+      concurrency: 8
+      retries: 3
+      timeout_s: 300
+      warmup_timeout_s: 900
+      extra_body: {chat_template_kwargs: {enable_thinking: false}}
 
 limits:
   vocabulary_max_cards_per_1000_words: 15
@@ -149,6 +181,19 @@ translation:
   # bilingual → значение ниже. APPEND_BLOCK по умолчанию; APPEND_TEXT доступен
   # настройкой, но не используется по умолчанию (ухудшает выравнивание).
   submit_mode_bilingual: APPEND_BLOCK
+  # Способ перевода (MTPE TZ §5.1): single (движок) | mt_pe (черновик MT +
+  # постредактура). Меняется только экраном «LLM и модели».
+  pipeline: single
+
+mtpe:
+  # Параметры конвейера mt_pe (MTPE TZ §5.1) — пороги фазы постредактуры.
+  context_segments: 6         # предыдущих сегментов главы в контексте PE
+  lang_check_min_words: 4     # короче (слов) — язык не проверяется
+  max_edit_ratio: 0.40        # порог флага heavy_edit
+  max_heavy_edit_ratio: 0.10  # доля heavy_edit, выше — остановка
+  max_sentence_delta: 1       # допустимая разница числа предложений
+  max_rejected_ratio: 0.005   # доля pe_rejected, выше — остановка
+  check_every_segments: 200   # период проверки системных остановок
 
 ui:
   # Параметры Web-интерфейса (U3, серия R). Единственное место числовых

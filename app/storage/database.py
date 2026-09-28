@@ -27,6 +27,9 @@ CREATE TABLE IF NOT EXISTS jobs (
     source_path TEXT NOT NULL,
     target_language TEXT NOT NULL,
     mode TEXT NOT NULL DEFAULT 'bilingual',
+    pipeline TEXT NOT NULL DEFAULT 'single',
+    phase TEXT,
+    config_snapshot TEXT,
     priority INTEGER NOT NULL DEFAULT 0,
     queue_rank INTEGER NOT NULL DEFAULT 0,
     progress REAL NOT NULL DEFAULT 0.0,
@@ -113,6 +116,13 @@ _MIGRATED_JOB_COLUMNS: dict[str, str] = {
     "queue_rank": "INTEGER NOT NULL DEFAULT 0",
     # Серия R §12: чипы параметров, отличающихся от умолчаний (JSON; '' — нет).
     "param_chips": "TEXT NOT NULL DEFAULT ''",
+    # MTPE TZ §4.1/§6.2: способ перевода (single | mt_pe); существующие записи — single.
+    "pipeline": "TEXT NOT NULL DEFAULT 'single'",
+    # MTPE TZ §4.4: фаза мт_pe (m_draft/m_postedit/m_assemble); single — NULL.
+    "phase": "TEXT",
+    # MTPE TZ §4.5: фиксация pipeline + значений профилей (без ключей) на момент
+    # создания; '' — задание без снимка (старые) — работает на текущем конфиге.
+    "config_snapshot": "TEXT",
 }
 
 

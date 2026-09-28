@@ -3208,3 +3208,51 @@ path:line, 10 пунктов (2.1–2.10) дословно. **5 расхожде
 `docs/DECISIONS.md` (D115–D119). Код не тронут (M0-5: 0 строк в app/config/templates);
 baseline 8c61a08: ruff 0 / mypy 0 (85) / pytest 433. Следующий этап — **M1**
 (конфиг + валидация + запись + миграция + первый промпт), mock-provable.
+
+## MTPE M1 — конфигурация, единая проверка, запись конфига (2026-09-28)
+
+М1 закрыт: **CONTROL M1 11/11 PASS** (`docs/CONTROL/M1.md`). Ветка `stage/mtpe-M1`
+→ `main` (merge --no-ff).
+
+- **Схема конфига** (`app/core/config.py`): `TranslationSection.pipeline` (нет range/
+  `_check_pipeline`), `LLMProfile.api`/`prompt_task`/`warmup_timeout_s`/`top_k`/
+  `max_tokens_ratio`/`max_segment_tokens`/`retries`/`timeout_s` (без range — границы в
+  `validate_llm_settings` V8), `LLMSection.mt_api_key`/`postedit_api_key`/`probe_timeout_s`
+  (`api_key_for` → analysis/mt/postedit), `MTPESection` (frozen, 7 полей: `context_segments`
+  6/`lang_check_min_words` 4/`max_edit_ratio` 0.40/`max_heavy_edit_ratio` 0.10/
+  `max_sentence_delta` 1/`max_rejected_ratio` 0.005/`check_every_segments` 200).
+  `PROFILE_NAMES`=(translation,fill,analysis) (классический T-тракт: R8-экран, движок,
+  стоимость, describe, health), `MT_PE_PROFILES`=(mt,postedit) (M-тракт, экран M2),
+  `ALL_PROFILE_NAMES`=оба (только в `load_settings` — 5 профилей; отсутствующий в YAML →
+  пустой профиль). `load_settings` — софт-лоад (нет hard-fail на пустой base_url/model).
+- **Единая проверка** (`app/core/llm_settings.py`): `SettingsIssue=(path, code)`,
+  `validate_llm_settings` (V1–V10, текст по `code` из `strings.py`), `mt_draft_template_issues`
+  (V7: ровно `{src_name}{tgt_name}{text}`). Пять точек входа (§5.3): сохранение
+  (`llm_config.py:341`, ДО `os.replace`; подполоса `api.py:1493`/`pages.py:1440`), старт веба
+  (`app.py:148` — полоса «Настройки LLM неполны» + лог), воркер (`worker.py:127` — не берёт
+  задание), создание задания (`jobs.py:155`), новая версия `mt_draft` (`api.py:1335`, V7).
+  Иных проверок этих полей в коде нет (Rule; `config.py` софт-лоад, 6 отсылок к единой точке).
+- **Снимок §4.5** (D120): `build_job_config_snapshot` = JSON `{pipeline, profiles:{обязательные:
+  model_dump()}}` (без ключей — ключи в `LLMSection`), `apply_job_config_snapshot` — воркер
+  применяет на выполнение → задание работает на значениях создания для обоих способов;
+  существующий `config_sha256` (D21) сохранён для идемпотентности. `SettingsIncompleteError`
+  (`AppError`, exit 3 / API 422).
+- **Миграция `jobs`**: `pipeline TEXT NOT NULL DEFAULT 'single'` + `phase TEXT` +
+  `config_snapshot TEXT` (SCHEMA для новых БД + `_MIGRATED_JOB_COLUMNS` ALTER для
+  существующих); `Job` + `JobRepository` (INSERT/`_row_to_job`).
+- **`pack.yaml`/резолвер** (6 пакетов): `mt_name` (Russian/English/German/French/Dutch/Italian),
+  `mt_pe_supported(registry, s, t)` в резолвере L0 (supported, только когда `mt_name` у обоих).
+- **`prompts/mt_draft/v1.yaml`** (§5.4, дословный формат карточки). **Строки** (`strings.py`):
+  12 кодов §5.3 + `pipeline_in_settings_only` + `pair_unsupported_mt_pe` +
+  `llm_incomplete_banner`.
+- **Запись конфига** — переиспользованный атомарный механизм R8 (D116): `.partial` →
+  `os.replace`, комментарии и порядок сохранены; `.env` атомарно с сохранением строк.
+- Тесты: `tests/test_mtpe_m1.py` (13 функций / 22 кейса; T-M1-2 матрица ×10, M1-1..M1-10,
+  M1-3/M1-5/M1-6/M1-8), `tests/test_e0_config.py` (софт-лоад, 5 профилей).
+- Регрессия: ruff 0 / mypy 0 (86) / **pytest 455** (база 433 + 22, ни один прежний не удалён).
+  Артефакты: `docs/CONTROL/M1.md`, `.a/tasks/mtpe/m1_lint.log`, `m1_pytest.log`.
+  Д120 в `docs/DECISIONS.md`.
+
+Следующий этап — **M2** (экран «LLM и модели», §6: переключатель способа, карточки
+mt/postedit, полоса ошибок, проба `completions`, `409` в фазе; Playwright 384×715,
+бюджеты D117, axe). Экран СУЩЕСТВУЕТ (R8) — M2 его переделывает под §6, не строит с нуля.

@@ -21,8 +21,9 @@ import zipfile
 from pathlib import Path
 
 from app.core.config import Settings
-from app.core.errors import InputValidationError
+from app.core.errors import InputValidationError, SettingsIncompleteError
 from app.core.ids import new_job_id
+from app.core.llm_settings import build_job_config_snapshot, validate_llm_settings
 from app.domain.job import LEARNING_LEVELS, Job, JobStatus
 from app.epub.reader import read_dc_language
 from app.languages.cefr import CEFR_LEVELS
@@ -149,6 +150,14 @@ def create_job(
     no-op). Параметры не входят в config_hash: перевод не зависит от них, а
     ключ подстадии S1 включает уровень/CEFR явно.
     """
+    # MTPE TZ §5.3 (точка 4): создание задания требует валидных настроек LLM
+    # для способа (single | mt_pe); неполные — отказ (API 422 / CLI отказ).
+    issues = validate_llm_settings(settings)
+    if issues:
+        raise SettingsIncompleteError(
+            "настройки LLM неполны для способа задания",
+            details={"issues": [(issue.path, issue.code) for issue in issues]},
+        )
     if mode not in JOB_MODES:
         raise InputValidationError(
             f"недопустимый режим задания: {mode!r} (допустимы: {', '.join(JOB_MODES)})"
@@ -191,6 +200,8 @@ def create_job(
         source_path=str(source_path),
         target_language=target_language,
         mode=mode,
+        pipeline=settings.translation.pipeline,
+        config_snapshot=build_job_config_snapshot(settings),
         priority=priority,
         created_at=now,
         updated_at=now,

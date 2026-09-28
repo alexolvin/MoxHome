@@ -1,6 +1,7 @@
 # Языковой пакет (L0.1) — ЦЕЛЕВОЙ язык (MVP: все исходные → ru).
 code: ru
 name: Russian
+mt_name: Russian  # имя из списка MiLMMT-46 (MTPE TZ §5.5) — для способа mt_pe
 aliases: [rus]
 spacy_model: null  # NLP-пайплайн не объявлен (целевой язык; L1 — если появится)
 frequency_source: wordfreq

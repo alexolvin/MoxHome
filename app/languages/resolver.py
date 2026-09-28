@@ -118,6 +118,17 @@ def load_matrix(path: Path) -> tuple[tuple[str, str], ...]:
     return tuple(pairs)
 
 
+def mt_pe_supported(
+    registry: dict[str, PackSpec], source: str, target: str
+) -> bool:
+    """Статус способа mt_pe для пары (MTPE TZ §5.5): `supported`, когда
+    `mt_name` задан у обоих языков; иначе `unsupported`. Статуса degraded
+    у mt_pe нет. Единая точка: резолвер и validate_llm_settings V10."""
+    src_pack = registry.get(source.strip().lower())
+    tgt_pack = registry.get(target.strip().lower())
+    return bool(src_pack and tgt_pack and src_pack.mt_name and tgt_pack.mt_name)
+
+
 def _l1_resource_deficits(src_pack: PackSpec, pack_dir: Path) -> list[str]:
     """L1-ресурсы пакета (мягкие): наличие каждого ресурса проверяется отдельно,
     отсутствие каждого — своё точное сообщение (L0.3)."""

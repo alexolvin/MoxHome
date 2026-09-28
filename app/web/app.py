@@ -26,6 +26,7 @@ TЗ UI (публичный доступ):
 from __future__ import annotations
 
 import hmac
+import logging
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 
@@ -38,6 +39,7 @@ from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse, Response
 
 from app.core.config import Settings
+from app.core.llm_settings import validate_llm_settings
 from app.services.export_artifacts import sweep_exports
 from app.services.import_book import sweep_orphans
 from app.storage.database import Database
@@ -58,6 +60,7 @@ TEMPLATES_DIR = _DIR / "templates"
 STATIC_DIR = _DIR / "static"
 
 _S = UI_STRINGS
+logger = logging.getLogger("app.web")
 #: Публичный ассет вне auth (E9): иконка не несёт данных, а 401 на ней
 #: роняет console.error на странице входа (TЗ UI §7.1).
 _PUBLIC_PATHS = frozenset({"/favicon.ico"})
@@ -140,6 +143,16 @@ def create_app(
     app.state.repo = repo
     app.state.config_path = config_path
     app.state.env_path = env_path
+    # MTPE TZ §5.3 (точка 2): старт с неполными настройками — сервер СТАРТИТУЕТ,
+    # полоса «Настройки LLM неполны» + запись в лог. issues — для шаблона.
+    app.state.llm_settings_issues = validate_llm_settings(settings)
+    if app.state.llm_settings_issues:
+        # Логи — на английском (UI-строки — в strings.py, TZ §5.3 точка 2).
+        logger.warning(
+            "LLM settings incomplete for pipeline %s: %s",
+            settings.translation.pipeline,
+            "; ".join(f"{i.path} ({i.code})" for i in app.state.llm_settings_issues),
+        )
     # R6 (ТЗ §8): осиротевшие <name>.source.* (рестарт посреди
     # конвертации) — sweep при старте веб-процесса.
     sweep_orphans(settings)
