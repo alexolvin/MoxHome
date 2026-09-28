@@ -3330,3 +3330,44 @@ M3 закрыт: **CONTROL M3 10/10 PASS** (`docs/CONTROL/M3.md`). Ветка `s
 
 Следующий этап — **M4** (постредактура: задача `postedit`, чтение `src_encoded`,
 запись итога).
+
+## MTPE M4 — тракт M, постредактура (TZ §4) (2026-09-28)
+
+M4 закрыт: **CONTROL M4 11/11 PASS** (`docs/CONTROL/M4.md`). Ветка `stage/mtpe-M4`
+→ `main` (merge --no-ff).
+
+- **Транспорт** (`app/llm/postedit.py`, §4.9): третья ветвь того же клиента `app/llm/`
+  (mt.py=completions, analysis=chat, postedit=chat): `POST {base_url}/chat/completions`,
+  ответ JSON-объект `{"text":…, "edits":[{type,note}]}`. Прогрев §4.6
+  (`max_tokens:1`). Повторы — только транспортные; 4xx/не-JSON — стоп. Токены —
+  `profile=postedit` (`_UsageAccumulator`), сырые — `raw/pe_<label>_attempt_<n>.json`.
+- **Проверки** (`app/mtpe/checks.py`, §4.5): жёсткие H1–H7 (H1 JSON + type в таксономии,
+  H2 мультивино маркеров + вложенность, H3 язык, H4 не пуст/≠src, H5 delta строк,
+  H6 `edits` пусто ⇒ `text`==черновик, H7 число строк) — любая → следующий шаг лестницы;
+  мягкие S1–S3 (`glossary_miss`/`heavy_edit`/`numbers_mismatch`) — флаги.
+- **Лестница** (`app/mtpe/postedit.py`, §4.6): 1 → 2 (+список нарушенных H) → 3 (по
+  предложениям; пропуск, если пара маркеров пересекает границу). Попытка 3 **собирает**
+  правки предложений в склейку (D129). Все провалены → `pe_rejected` (черновик,
+  `markup_dropped`, без структурных) либо остановка `pe_unrecoverable` (структурные /
+  `draft_bad`). Системные остановки — по долям `pe_rejected`/`heavy_edit` на каждой
+  `check_every_segments`.
+- **Контекст/вход** (§4.2/§4.1): 6 блоков (языки `mt_name`, стиль, глоссарий
+  (`absent`), контекст = `context_segments` предыдущих той же главы, `src_encoded`,
+  черновик); `finals` обновляется по мере прогона (D130); `draft_bad` → строка
+  непригодности из промпта (ACC-RETRANSLATE), S2 пропускается.
+- **Аудит** (§4.7): `quality.log` (100 % сегментов с правками/флагами) +
+  `pe_report.json` (типы правок, попытки, `pe_rejected`/`heavy_edit`/`markup_dropped`/
+  `numbers_mismatch`, медиана/p95 ratio, `glossary`).
+- **Схема/репо:** `tokens_postedit` (колонка + миграция + инвариант E4-5
+  `total = перевод+fill+analysis+mt+postedit`), `add_profile_tokens` принимает `postedit`.
+  Таксономия (9 id) — `config/taxonomies/postedit_edits.yaml`, пороги — секция `mtpe`
+  (Rule 1; M4-10: в коде 0).
+- Тесты: `tests/test_mtpe_m4.py` (10 функций / 13 кейсов: M4-1…M4-10), mock-ветвь
+  `postedit` на `/v1/chat/completions` + `_postedit_response` (`pe_marker_loss`/
+  `pe_marker_loss_structural`/`pe_reject_burst`/`pe_bad_type`/`pe_silent_edit`/
+  `pe_overedit`).
+- Регрессия: ruff 0 / mypy 0 (93) / **pytest 484** (база 471 + 13, ни один прежний
+  не удалён). Артефакты: `docs/CONTROL/M4.md`. D128–D130 в `docs/DECISIONS.md`.
+
+Следующий этап — **M5** (writer.py, §4.9: сборка выходного EPUB из `final.jsonl` +
+кодек; DECISIONS до кода).

@@ -672,6 +672,7 @@ class JobRepository:
             "fill": "tokens_fill",
             "analysis": "tokens_analysis",
             "mt": "tokens_mt",
+            "postedit": "tokens_postedit",
         }.get(profile)
         if column is None:
             raise JobStateError(f"неизвестный профиль токенов: {profile}")
@@ -679,12 +680,12 @@ class JobRepository:
             f"UPDATE jobs SET {column} = {column} + ?, updated_at = ? WHERE id = ?",
             (delta, _now(), job_id),
         )
-        # Инвариант E4-5: tokens_total всегда равен сумме по профилям (MTPE M3: + mt).
-        # Отдельное UPDATE: в SQLite правые части SET вычисляются от исходных значений
-        # строки, поэтому пересчёт в том же выражении недоучёл бы прирост.
+        # Инвариант E4-5: tokens_total всегда равен сумме по профилям (MTPE M3: + mt,
+        # M4: + postedit). Отдельное UPDATE: в SQLite правые части SET вычисляются от
+        # исходных значений строки, поэтому пересчёт в том же выражении недоучёл бы прирост.
         self._db.conn.execute(
             "UPDATE jobs SET tokens_total = tokens_translation + tokens_fill "
-            "+ tokens_analysis + tokens_mt WHERE id = ?",
+            "+ tokens_analysis + tokens_mt + tokens_postedit WHERE id = ?",
             (job_id,),
         )
         self._db.conn.commit()
@@ -700,7 +701,7 @@ class JobRepository:
         """Разбивка токенов профиля (E4.7): накопление по job_tokens."""
         if input_delta <= 0 and input_cache_delta <= 0 and output_delta <= 0:
             return
-        if profile not in ("translation", "fill", "analysis", "mt"):
+        if profile not in ("translation", "fill", "analysis", "mt", "postedit"):
             raise JobStateError(f"неизвестный профиль токенов: {profile}")
         self._db.conn.execute(
             """
@@ -841,6 +842,7 @@ class JobRepository:
             tokens_fill=row["tokens_fill"],
             tokens_analysis=row["tokens_analysis"],
             tokens_mt=row["tokens_mt"],
+            tokens_postedit=row["tokens_postedit"],
             tokens_total=row["tokens_total"],
             alignment_coverage=row["alignment_coverage"],
             source_language=row["source_language"],
