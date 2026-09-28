@@ -87,6 +87,11 @@ SIGNATURES: list[tuple[str, str, str]] = [
 
 # Интерактивные элементы (для R-T1: должны нести data-role).
 INTERACTIVE_JS = "button, a[href], input, select, textarea, [role=button]"
+# ВАЖНО: data-role через :is() — иначе [data-role] в конце списка селекторов
+# применяется только к последнему ([role=button]) и R-T1 занизит нарушения.
+INTERACTIVE_WITH_ROLE_JS = (
+    ":is(button, a[href], input, select, textarea, [role=button])[data-role]"
+)
 
 _TOKEN_MAP: dict[str, str] = {}
 
@@ -266,9 +271,10 @@ def check_screen(page, sid: str, path: str, reg: Registry, out: dict[str, Any]) 
     page.wait_for_load_state("networkidle", timeout=15_000)
     inst = page.evaluate(INSTANCES_JS, [list(t) for t in SIGNATURES])
 
-    n_interactive = page.evaluate(f"() => document.querySelectorAll('{INTERACTIVE_JS}').length")
+    n_interactive = page.evaluate(
+        f"() => document.querySelectorAll('{INTERACTIVE_JS}').length")
     n_with_role = page.evaluate(
-        f"() => document.querySelectorAll('{INTERACTIVE_JS}[data-role]').length")
+        f"() => document.querySelectorAll('{INTERACTIVE_WITH_ROLE_JS}').length")
     n_no_role = n_interactive - n_with_role
     out["stats"].setdefault("r_t1", {})[sid] = {
         "interactive": n_interactive, "with_role": n_with_role, "without_role": n_no_role,
