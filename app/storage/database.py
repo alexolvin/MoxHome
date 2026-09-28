@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     tokens_translation INTEGER NOT NULL DEFAULT 0,
     tokens_fill INTEGER NOT NULL DEFAULT 0,
     tokens_analysis INTEGER NOT NULL DEFAULT 0,
+    tokens_mt INTEGER NOT NULL DEFAULT 0,
     tokens_total INTEGER NOT NULL DEFAULT 0,
     alignment_coverage REAL,
     source_language TEXT,
@@ -123,6 +124,8 @@ _MIGRATED_JOB_COLUMNS: dict[str, str] = {
     # MTPE TZ §4.5: фиксация pipeline + значений профилей (без ключей) на момент
     # создания; '' — задание без снимка (старые) — работает на текущем конфиге.
     "config_snapshot": "TEXT",
+    # MTPE TZ §7 (M3) п.11: токены фазы черновика (профиль mt) — в инвариант E4-5.
+    "tokens_mt": "INTEGER NOT NULL DEFAULT 0",
 }
 
 

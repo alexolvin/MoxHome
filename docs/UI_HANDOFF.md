@@ -3294,3 +3294,39 @@ M2 закрыт: **CONTROL M2 10/10 PASS** (`docs/CONTROL/M2.md`). Ветка `s
   `.a/tasks/ui-audit/shots/M2/`. D121–D124 в `docs/DECISIONS.md`.
 
 Следующий этап — **M3** (markup.py + draft.py + completions-транспорт).
+
+## MTPE M3 — тракт M, кодек разметки + черновик (TZ §4.7, §7) (2026-09-28)
+
+M3 закрыт: **CONTROL M3 10/10 PASS** (`docs/CONTROL/M3.md`). Ветка `stage/mtpe-M3`
+→ `main` (merge --no-ff).
+
+- **Кодек** (`app/mtpe/markup.py`, §4.7): замена на уровне строки (байты тегов
+  сохраняются, дерево не пере-сериализуется) → побайтовая обратимость. Парные
+  `⟦n⟧…⟦/n⟧`, пустые (void/`<br>`) `⟦n/⟧`; карта `n → (open, close)`; литеральные
+  `⟦`/`⟧` → U+E000/U+E001. `src_plain` — без маркеров, `br` → `\n` (вход черновика).
+  М3-1: `decode(encode(x)) == x` — 38/38 сегментов 5 книг (complex/de/fr/it/nl).
+- **Транспорт** (`app/llm/mt.py`, §4.9): вторая ветвь того же клиента `app/llm/`
+  (второго клиента нет): `POST {base_url}/completions`, поле `prompt` (заполненный
+  `mt_draft`); `choices[0].text` + `finish_reason` + `usage`. Прогрев §4.6
+  (`max_tokens:1`, `warmup_timeout_s`). Повторы — только транспортные (таймаут/5xx/обрыв);
+  4xx/не-JSON — стоп. `model` ответа сверяется со снимком → `model_mismatch` — остановка.
+  Токены — `profile=mt` (`_UsageAccumulator`), сырые — в `raw/`.
+- **Фаза** (`app/mtpe/draft.py`, §7): состав = общая `read_epub` (тракт A, копии нет).
+  Без букв → `passthrough`. Строки по `\n` — отдельные запросы (черновик через `\n`);
+  длинная строка (>`max_segment_tokens`) — по предложениям L1 (spaCy), `split`.
+  `max_tokens = ceil(src_tokens×ratio)+32`. Ключ §4.8; возобновление по ключу. `draft_bad`
+  (§7 п.9): пустой / `Translate this from` / строка `«mt_name»:»` / `length` / язык ≠ целевой
+  (≥ `lang_check_min_words`, детектор, seed 0). Запись в `drafts.jsonl` + `fsync`.
+- **Схема/репо:** `tokens_mt` (колонка + миграция + инвариант E4-5 `total = перевод+fill+
+  analysis+mt`), `add_profile_tokens` принимает `mt`, `set_phase` (M6, колонка `phase` —
+  в схеме с M1). Фаза не создаёт строку `jobs`: `add_tokens` без задачи — no-op,
+  `add_profile_tokens` — в `job_tokens` (без FK) — `job_id` = строка.
+- Тесты: `tests/test_mtpe_m3.py` (9 функций / 11 кейсов: M3-1…M3-9, M3-7 ×3), mock
+  `/v1/completions` + `_mt_response` (`mt_echo`/`mt_truncate`/`mt_wrong_lang`/
+  `model_mismatch`); `run_book` на синтетических книгах (M3-4: 1 сегмент = 1 запрос →
+  счётчик = прямое «повторов 0», M3-7/8: управляемый ввод).
+- Регрессия: ruff 0 / mypy 0 (90) / **pytest 471** (база 460 + 11, ни один прежний
+  не удалён). Артефакты: `docs/CONTROL/M3.md`. D125–D127 в `docs/DECISIONS.md`.
+
+Следующий этап — **M4** (постредактура: задача `postedit`, чтение `src_encoded`,
+запись итога).
