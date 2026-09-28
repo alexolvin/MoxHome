@@ -34,6 +34,10 @@ data/v1/
 working/
 output/
 
+# TZ-UI-AUDIT: декларация чисел — управляется владельцем, живёт локально (не в git).
+# Аудит её читает, а скрипты требуют чистого дерева (git status --porcelain пуст).
+ui-rules.yaml
+
 # Python
 .venv/
 __pycache__/
