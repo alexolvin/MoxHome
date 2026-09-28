@@ -54,6 +54,16 @@ roles:
   seg.pill:           { bg: transparent, fg: --fgm }
   seg.pill.current:   { bg: --ac,  fg: --oac }
 
+  # --- ссылки / переключатель / select (интерактив; доп. к R-T1) ---
+  # link — нейтральная текстовая ссылка (back, row, tabbar); accent — акцент
+  # (сброс/изменить, текстовая). switch — трек (off); on-состояние = --ac
+  # (state-роль уточняется в R-T4). select — как input.field.
+  link:               { fg: --fg }
+  link.muted:         { fg: --fgm }
+  link.accent:        { fg: --acf }
+  switch:             { bg: --s3 }
+  select:             { bg: --s2, fg: --fg, border: --lns }
+
   # --- баннеры / обратная связь ---
   banner.ok:          { bg: --st-ob, fg: --st-o }
   banner.warn:        { bg: --st-ab, fg: --st-a }
