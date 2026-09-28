@@ -129,12 +129,21 @@ TEXT_JS = r"""
       { fs, tag: e.tagName, cls: String(e.className || "").slice(0, 40),
         text: (e.textContent || "").trim().slice(0, 24) });
   });
+  // TZ §2.5: число строк — getClientRects() для ТЕКСТОВОГО УЗЛА (не элемента):
+  // иначе инлайновые иконки/SVG дают ложные «линии».
+  const firstText = (el) => {
+    const tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    while (tw.nextNode()) { if (tw.currentNode.textContent.trim()) return tw.currentNode; }
+    return null;
+  };
   for (const [sel, maxl] of sels) {
     const arr = [];
     for (const e of document.querySelectorAll(sel)) {
       const cs = getComputedStyle(e);
       if (cs.display === "none" || e.getBoundingClientRect().width < 1) continue;
-      const range = document.createRange(); range.selectNodeContents(e);
+      const tn = firstText(e);
+      if (!tn) continue;
+      const range = document.createRange(); range.selectNodeContents(tn);
       arr.push({ lines: range.getClientRects().length, ws: cs.whiteSpace });
     }
     out.lines[sel] = { maxl, items: arr };
