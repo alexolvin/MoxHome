@@ -143,8 +143,15 @@ TEXT_JS = r"""
       if (cs.display === "none" || e.getBoundingClientRect().width < 1) continue;
       const tn = firstText(e);
       if (!tn) continue;
-      const range = document.createRange(); range.selectNodeContents(tn);
-      arr.push({ lines: range.getClientRects().length, ws: cs.whiteSpace });
+      // nowrap/pre — перенос невозможен → 1 строка (getClientRects для
+      // overflow:hidden+ellipsis возвращает лишний фрагмент — артефакт, не строка).
+      const nowrap = cs.whiteSpace === "nowrap" || cs.whiteSpace === "pre";
+      let lines = 1;
+      if (!nowrap) {
+        const range = document.createRange(); range.selectNodeContents(tn);
+        lines = range.getClientRects().length;
+      }
+      arr.push({ lines, ws: cs.whiteSpace });
     }
     out.lines[sel] = { maxl, items: arr };
   }
