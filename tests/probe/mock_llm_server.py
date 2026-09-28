@@ -1088,11 +1088,13 @@ def _analysis_response(scenario: str, system: str, user: str) -> str:
 
 
 def _detect_kind(system: str) -> str:
-    """Вид запроса по системному промпту (translate / analysis / fill)."""
+    """Вид запроса по системному промпту (translate / analysis / fill / postedit)."""
     if system.startswith("You are a translator"):
         return "translate"
     if system.startswith("You are an analysis engine"):
         return "analysis"
+    if system.startswith("You are a post-editing engine"):
+        return "postedit"
     return "fill"
 
 
@@ -1138,6 +1140,66 @@ def _fill_response(user: str, scenario: str) -> str:
     return _inject_inconsistent(text, scenario)
 
 
+# ------------------------------------------------------------------ postedit (MTPE M4)
+
+#: Любая форма маркера (совпадает с app/mtpe/checks._MARKER_ANY): `⟦n⟧`, `⟦/n⟧`, `⟦n/⟧`.
+_PE_MARKER_RE = re.compile(r"\u27e6\s*([/]?)(\d+)\s*([/]?)\u27e7")
+_PE_ORIGINAL_MARKER = "Original (with markers):\n"
+_PE_DRAFT_MARKER = "\n\nDraft:\n"
+#: S2 (heavy_edit) — текст, далёкий от любого черновика (нормированное
+#: расстояние Левенштейна > max_edit_ratio).
+_PE_OVEREDIT_TEXT = (
+    "Полностью переписанный текст без какого-либо отношения к исходному "
+    "черновику для проверки порога массовой правки постредактурой."
+)
+
+
+def _extract_pe_blocks(user: str) -> tuple[str, str]:
+    """(оригинал с маркерами, черновик) из 6-блочного user-сообщения §4.2."""
+    o_start = user.find(_PE_ORIGINAL_MARKER)
+    d_start = user.find(_PE_DRAFT_MARKER)
+    if o_start == -1 or d_start == -1:
+        return "", ""
+    original = user[o_start + len(_PE_ORIGINAL_MARKER) : d_start].strip()
+    draft = user[d_start + len(_PE_DRAFT_MARKER) :].strip()
+    return original, draft
+
+
+def _pe_marker_strings(original: str) -> list[str]:
+    return [
+        "\u27e6" + lead + num + trail + "\u27e7"
+        for lead, num, trail in _PE_MARKER_RE.findall(original)
+    ]
+
+
+def _postedit_response(scenario: str, user: str) -> str:
+    """Детерминированный ответ postedit (MTPE §4.8). `ok` — черновик с маркерами
+    оригинала (H2/H6 проходят); сценарии инъекции ломают конкретную проверку."""
+    original, draft = _extract_pe_blocks(user)
+    markers = _pe_marker_strings(original)
+    if scenario in ("pe_marker_loss", "pe_marker_loss_structural", "pe_reject_burst"):
+        text = "".join(markers[:-1]) + draft  # без последнего маркера → H2
+        return json.dumps({"text": text, "edits": []}, ensure_ascii=False)
+    if scenario == "pe_bad_type":
+        return json.dumps(
+            {"text": "".join(markers) + draft, "edits": [{"type": "ZZ-FAKE-TYPE", "note": "mock"}]},
+            ensure_ascii=False,
+        )
+    if scenario == "pe_silent_edit":
+        changed = draft + " изменено"  # edits пуст, но text ≠ draft → H6
+        return json.dumps({"text": "".join(markers) + changed, "edits": []}, ensure_ascii=False)
+    if scenario == "pe_overedit":
+        return json.dumps(
+            {
+                "text": "".join(markers) + _PE_OVEREDIT_TEXT,
+                "edits": [{"type": "ACC-MISTRANSLATION", "note": "mock overedit"}],
+            },
+            ensure_ascii=False,
+        )
+    # ok: черновик + все маркеры оригинала по порядку (H2/H6/вложенность проходят).
+    return json.dumps({"text": "".join(markers) + draft, "edits": []}, ensure_ascii=False)
+
+
 def _build_response(kind: str, scenario: str, user: str, system: str) -> str:
     """Детерминированный ответ на запрос вида kind в сценарии scenario."""
     if kind == "translate":
@@ -1148,6 +1210,8 @@ def _build_response(kind: str, scenario: str, user: str, system: str) -> str:
         return _inject_inconsistent(code(user), scenario)
     if kind == "analysis":
         return _analysis_response(scenario, system, user)
+    if kind == "postedit":
+        return _postedit_response(scenario, user)
     return _fill_response(user, scenario)
 
 

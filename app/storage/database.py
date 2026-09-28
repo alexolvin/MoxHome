@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     tokens_fill INTEGER NOT NULL DEFAULT 0,
     tokens_analysis INTEGER NOT NULL DEFAULT 0,
     tokens_mt INTEGER NOT NULL DEFAULT 0,
+    tokens_postedit INTEGER NOT NULL DEFAULT 0,
     tokens_total INTEGER NOT NULL DEFAULT 0,
     alignment_coverage REAL,
     source_language TEXT,
@@ -126,6 +127,8 @@ _MIGRATED_JOB_COLUMNS: dict[str, str] = {
     "config_snapshot": "TEXT",
     # MTPE TZ §7 (M3) п.11: токены фазы черновика (профиль mt) — в инвариант E4-5.
     "tokens_mt": "INTEGER NOT NULL DEFAULT 0",
+    # MTPE TZ §4 (M4): токены постредактуры (профиль postedit) — в инвариант E4-5.
+    "tokens_postedit": "INTEGER NOT NULL DEFAULT 0",
 }
 
 
