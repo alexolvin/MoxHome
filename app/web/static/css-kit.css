@@ -12,10 +12,8 @@
 .u3-st-ok{color:var(--st-o);background:var(--st-ob)}
 .u3-st-warn{color:var(--st-a);background:var(--st-ab)}
 .u3-st-err{color:var(--st-e);background:var(--st-eb)}
-.u3-switch{appearance:none;width:var(--u3-tap);height:var(--swh);min-height:0;min-width:0;padding:0;border:1px solid var(--lns);border-radius:var(--swr);background:var(--s3);position:relative;cursor:pointer;transition:background 120ms}
-.u3-switch::after{content:"";position:absolute;top:2px;left:2px;width:var(--ck);height:var(--ck);border-radius:var(--r50);background:var(--fg);transition:left 120ms}
-.u3-switch:checked{background:var(--ac)}
-.u3-switch:checked::after{left:var(--ck)}
+/* .u3-switch — БЕЗ локальной копии: кит показывает переключатель из style.css
+   (одна реализация, R-K2). Локальный дубль удалён (UI-AUDIT). */
 .u3-banner{display:flex;align-items:center;gap:var(--gs);padding:var(--gs) var(--g);border-radius:var(--r12);font-size:var(--fsm);font-weight:600}
 .u3-banner-ok{background:var(--st-ob);color:var(--st-o)}
 .u3-banner-warn{background:var(--st-ab);color:var(--st-a)}
@@ -45,3 +43,9 @@
 .u3-glist{border:1px solid var(--ln);border-radius:var(--r12);background:var(--s1);overflow:hidden}
 .u3-grow{position:relative;display:flex;align-items:center;justify-content:space-between;gap:var(--gs);min-height:var(--srt);padding:0 var(--p)}
 .u3-grow+.u3-grow::before{content:"";position:absolute;top:0;left:var(--gin);right:0;height:1px;background:var(--ln)}
+/* UI-AUDIT: кит-хелперы (только для /dev/kit, не используются в продукте) */
+.u3-kit-staticbar{position:static !important;width:auto;max-width:none;margin:0 auto 0;padding-left:var(--p);padding-right:var(--p)}
+.u3-kit-sr-val{color:var(--fgm);font-size:var(--fsm)}
+.u3-fld-err-input{border-color:var(--st-e)}
+.u3-book-card{width:var(--cpw)}
+/* .u3-stat — из css-jobs.css (загружен в кит): одна реализация, R-K2 */

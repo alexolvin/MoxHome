@@ -3,13 +3,17 @@
 {% block css %}
 <link rel="stylesheet" href="/static/css-kit.css">
 <link rel="stylesheet" href="/static/css-settings.css">
+<link rel="stylesheet" href="/static/css-jobs.css">
+<link rel="stylesheet" href="/static/css-books.css">
 {% endblock %}
 {% block content %}
-{# V1 §6: dev-kit (S14) — витрина компонентов дизайн-системы.
-   Строки — strings.py (kit_*); токены — :root style.css (свотчи,
-   сервером, _kit_tokens). Формат-коды и hex — данные, не строки UI. #}
+{# UI-AUDIT v2.0 §2.6: /dev/kit — живой эталон. Каждый компонент реестра
+   (ui-components.yaml) — со своим якорем id="kit-<name>", во всех вариантах
+   и состояниях. Рядом — css-jobs/books для строк/карточек/сегментов. #}
 
-<section class="u3-panel">
+<div class="u3-kit-wrap">
+
+<section class="u3-panel" id="kit-button">
   <h2>{{ s["kit_sec_buttons"] }}</h2>
   <div class="u3-actions">
     <button type="button" class="u3-btn u3-primary">{{ s["kit_btn_primary"] }}</button>
@@ -18,24 +22,47 @@
     <button type="button" class="u3-btn u3-text">{{ s["kit_btn_text"] }}</button>
     <button type="button" class="u3-btn u3-danger">{{ s["kit_btn_danger"] }}</button>
   </div>
+  <div class="u3-actions">
+    <button type="button" class="u3-btn u3-primary" disabled>{{ s["kit_btn_disabled"] }}</button>
+    <button type="button" class="u3-btn" disabled>{{ s["kit_btn_disabled"] }}</button>
+    <button type="button" class="u3-btn u3-text" disabled>{{ s["kit_btn_disabled"] }}</button>
+  </div>
 </section>
 
-<section class="u3-panel">
+<section class="u3-panel" id="kit-fab">
   <h2>{{ s["kit_sec_fab"] }}</h2>
   <a class="u3-fab u3-kit-fab" href="/dev/kit" aria-label="{{ s["kit_fab_label"] }}">
     <svg class="u3-ico u3-ico-18" aria-hidden="true"><use href="/static/icons.svg#plus"></use></svg>{{ s["kit_fab_label"] }}
   </a>
 </section>
 
-<section class="u3-panel">
+<section class="u3-panel" id="kit-chip">
   <h2>{{ s["kit_sec_chips"] }}</h2>
   <div class="u3-actions">
     <span class="u3-chip-select">EN &#8594; RU</span>
     <span class="u3-chip-select is-selected">DE &#8594; EN</span>
+    <span class="u3-chip-select" aria-disabled="true">IT &#8594; FR</span>
   </div>
 </section>
 
-<section class="u3-panel">
+<section class="u3-panel" id="kit-segment">
+  <h2>{{ s["kit_sec_segment"] }}</h2>
+  <div class="u3-seg" role="tablist" aria-label="{{ s["kit_sec_segment"] }}">
+    <button type="button" class="u3-seg-pill is-current"><span class="u3-seg-vis">{{ s["kit_seg_a"] }}</span></button>
+    <button type="button" class="u3-seg-pill"><span class="u3-seg-vis">{{ s["kit_seg_b"] }}</span></button>
+  </div>
+</section>
+
+<section class="u3-panel" id="kit-toggle">
+  <h2>{{ s["kit_sec_switches"] }}</h2>
+  <div class="u3-actions">
+    <label class="u3-check"><input type="checkbox" class="u3-switch" checked>{{ s["kit_switch_a"] }}</label>
+    <label class="u3-check"><input type="checkbox" class="u3-switch">{{ s["kit_switch_b"] }}</label>
+    <label class="u3-check"><input type="checkbox" class="u3-switch" disabled>{{ s["kit_switch_disabled"] }}</label>
+  </div>
+</section>
+
+<section class="u3-panel" id="kit-status">
   <h2>{{ s["kit_sec_status_chips"] }}</h2>
   <div class="u3-actions">
     <span class="u3-status-chip u3-st-wait">{{ s["kit_st_wait"] }}</span>
@@ -46,69 +73,126 @@
   </div>
 </section>
 
-<section class="u3-panel">
+<section class="u3-panel" id="kit-banner">
   <h2>{{ s["kit_sec_banners"] }}</h2>
   <div class="u3-kit-stack">
     <div class="u3-banner u3-banner-ok"><svg class="u3-ico u3-ico-18" aria-hidden="true"><use href="/static/icons.svg#check"></use></svg>{{ s["kit_banner_ok"] }}</div>
     <div class="u3-banner u3-banner-warn"><svg class="u3-ico u3-ico-18" aria-hidden="true"><use href="/static/icons.svg#triangle-alert"></use></svg>{{ s["kit_banner_warn"] }}</div>
+    <div class="u3-banner u3-banner-err"><svg class="u3-ico u3-ico-18" aria-hidden="true"><use href="/static/icons.svg#triangle-alert"></use></svg>{{ s["kit_state_error"] }}</div>
   </div>
 </section>
 
-<section class="u3-panel">
+<section class="u3-panel" id="kit-toast">
+  <h2>{{ s["kit_sec_toast"] }}</h2>
+  <div class="u3-toast-zone" aria-live="polite">
+    <div class="u3-toast"><span>{{ s["kit_toast"] }}</span><button type="button" class="u3-toast-undo">{{ s["kit_toast_undo"] }}</button></div>
+  </div>
+</section>
+
+<section class="u3-panel" id="kit-field">
   <h2>{{ s["kit_sec_fields"] }}</h2>
   <div class="u3-kit-stack">
     <div class="u3-fld">
       <label class="u3-fld-label" for="kit-field">{{ s["kit_field_label"] }}</label>
       <input type="text" id="kit-field" placeholder="{{ s["kit_field_ph"] }}">
     </div>
+    <div class="u3-fld">
+      <label class="u3-fld-label" for="kit-field-err">{{ s["kit_field_label"] }}</label>
+      <input type="text" id="kit-field-err" class="u3-fld-err-input" aria-invalid="true" value="x">
+      <p class="u3-fld-err" role="alert">{{ s["kit_field_error"] }}</p>
+    </div>
+    <div class="u3-fld">
+      <label class="u3-fld-label" for="kit-field-dis">{{ s["kit_field_label"] }}</label>
+      <input type="text" id="kit-field-dis" disabled value="{{ s["kit_field_disabled"] }}">
+    </div>
   </div>
 </section>
 
-<section class="u3-panel">
-  <h2>{{ s["kit_sec_switches"] }}</h2>
-  <div class="u3-actions">
-    <label class="u3-check"><input type="checkbox" class="u3-switch" checked>{{ s["kit_switch_a"] }}</label>
-    <label class="u3-check"><input type="checkbox" class="u3-switch">{{ s["kit_switch_b"] }}</label>
+<section class="u3-panel" id="kit-row">
+  <h2>{{ s["kit_sec_row"] }}</h2>
+  <article class="u3-row u3-row-job status-run" data-status-group="run">
+    <span class="u3-row-line1" title="{{ s["kit_row_title"] }}">{{ s["kit_row_title"] }}</span>
+    <span class="u3-row-line2">{{ s["kit_row_meta"] }}</span>
+    <span class="u3-row-line3"><span class="u3-status status-run">{{ s["kit_row_status"] }}</span></span>
+  </article>
+</section>
+
+<section class="u3-panel" id="kit-card">
+  <h2>{{ s["kit_sec_card"] }}</h2>
+  <article class="u3-book-card" data-name="kit-card">
+    <a class="u3-book-card-link" href="#kit-card">
+      <span class="u3-book-ph" style="background:var(--cover-g1)"><svg class="u3-book-ph-ico" aria-hidden="true"><use href="/static/icons.svg#book-open"></use></svg><span class="u3-book-ph-title">{{ s["kit_card_title"] }}</span><span class="u3-book-ph-author">{{ s["kit_card_author"] }}</span></span>
+      <span class="u3-book-card-title" title="{{ s["kit_card_title"] }}">{{ s["kit_card_title"] }}</span>
+      <span class="u3-book-card-st u3-st-wait">{{ s["kit_st_wait"] }}</span>
+    </a>
+  </article>
+</section>
+
+<section class="u3-panel" id="kit-settings-row">
+  <h2>{{ s["kit_sec_settings_row"] }}</h2>
+  <div class="u3-grp-row"><span>{{ s["kit_sr_label"] }}</span><span class="u3-kit-sr-val">{{ s["kit_sr_value"] }}</span></div>
+</section>
+
+<section class="u3-panel" id="kit-stat">
+  <h2>{{ s["kit_sec_stat"] }}</h2>
+  <div class="u3-stat u3-stat-run"><span class="u3-stat-n">{{ s["kit_stat_num"] }}</span><span class="u3-stat-l">{{ s["kit_stat_label"] }}</span></div>
+</section>
+
+<section class="u3-panel" id="kit-state">
+  <h2>{{ s["kit_sec_state"] }}</h2>
+  <div class="u3-kit-stack">
+    <div class="u3-state">
+      <div class="u3-state-line">{{ s["kit_state_empty"] }}</div>
+      <button type="button" class="u3-btn u3-primary">{{ s["kit_state_empty_action"] }}</button>
+    </div>
+    <div class="u3-state">
+      <div class="u3-state-line">{{ s["kit_state_error"] }}</div>
+      <button type="button" class="u3-btn">{{ s["kit_state_error_action"] }}</button>
+    </div>
   </div>
 </section>
 
-<section class="u3-panel">
-  <h2>{{ s["kit_sec_icons"] }}</h2>
-  <div class="u3-actions">
-    <span class="u3-fmt-tile u3-card"><svg class="u3-ico u3-ico-22" aria-hidden="true"><use href="/static/icons.svg#book-open"></use></svg></span>
-    <span class="u3-fmt-tile u3-card"><svg class="u3-ico u3-ico-22" aria-hidden="true"><use href="/static/icons.svg#cpu"></use></svg></span>
-    <span class="u3-fmt-tile u3-card"><svg class="u3-ico u3-ico-22" aria-hidden="true"><use href="/static/icons.svg#languages"></use></svg></span>
-    <span class="u3-fmt-tile u3-card"><svg class="u3-ico u3-ico-22" aria-hidden="true"><use href="/static/icons.svg#message-square-text"></use></svg></span>
-    <span class="u3-fmt-tile u3-card"><svg class="u3-ico u3-ico-22" aria-hidden="true"><use href="/static/icons.svg#wrench"></use></svg></span>
+<section class="u3-panel" id="kit-skeleton">
+  <h2>{{ s["kit_sec_skeleton"] }}</h2>
+  <div class="u3-kit-stack">
+    <div class="u3-skel-row"></div>
+    <div class="u3-skel-row"></div>
+    <div class="u3-skel-row"></div>
   </div>
 </section>
 
-<section class="u3-panel">
-  <h2>{{ s["kit_sec_swatches"] }}</h2>
-  <div class="u3-swatch-grid">
-    {% for sw in swatches %}
-    <span class="u3-swatch">
-      <span class="u3-swatch-chip" style="background:{{ sw.hex }}"></span>
-      <span class="u3-swatch-name">{{ sw.name }}</span>
-      <span class="u3-swatch-hex">{{ sw.hex }}</span>
-    </span>
-    {% endfor %}
+<section class="u3-panel" id="kit-netbar">
+  <h2>{{ s["kit_sec_netbar"] }}</h2>
+  <div class="u3-netbar">{{ s["kit_netbar"] }}</div>
+</section>
+
+<section class="u3-panel" id="kit-appbar">
+  <h2>{{ s["kit_sec_appbar"] }}</h2>
+  <div class="u3-appbar u3-kit-staticbar">
+    <h1 class="u3-appbar-title">{{ s["kit_appbar_title"] }}</h1>
   </div>
 </section>
 
-<section class="u3-panel">
-  <h2>{{ s["kit_sec_formats"] }}</h2>
-  <div class="u3-actions">
-    {% for code, cls in [("EPUB","fmt-epub"),("DOCX","fmt-docx"),("PDF","fmt-pdf"),("MD","fmt-md"),("TXT","fmt-txt"),("FB2","fmt-fb2"),("AZW3","fmt-azw3"),("HTMLZ","fmt-htmlz")] %}
-    <span class="u3-fmt-tile {{ cls }}">
-      <span class="u3-fmt-cap">{{ code }}</span>
-      <span class="u3-fmt-sub">{{ s["kit_fmt_sub_" + code.lower()] }}</span>
-    </span>
-    {% endfor %}
+<section class="u3-panel" id="kit-tabbar">
+  <h2>{{ s["kit_sec_tabbar"] }}</h2>
+  <nav class="u3-tabbar u3-kit-staticbar" aria-label="{{ s["kit_sec_tabbar"] }}">
+    <a href="#kit-tabbar" class="is-current" aria-current="page"><svg class="u3-ico" aria-hidden="true"><use href="/static/icons.svg#library"></use></svg><span>Библиотека</span></a>
+    <a href="#kit-tabbar"><svg class="u3-ico" aria-hidden="true"><use href="/static/icons.svg#list-checks"></use></svg><span>Задания</span></a>
+    <a href="#kit-tabbar"><svg class="u3-ico" aria-hidden="true"><use href="/static/icons.svg#settings"></use></svg><span>Настройки</span></a>
+  </nav>
+</section>
+
+<section class="u3-panel" id="kit-sheet">
+  <h2>{{ s["kit_sec_sheet"] }}</h2>
+  <div class="u3-sheet u3-kit-staticbar">
+    <h2 class="u3-sheet-title">{{ s["kit_sheet_title"] }}</h2>
+    <div class="u3-sheet-form">
+      <button type="button" class="u3-btn u3-primary u3-sheet-action">{{ s["kit_sheet_action"] }}</button>
+    </div>
   </div>
 </section>
 
-<section class="u3-panel">
+<section class="u3-panel" id="kit-progress">
   <h2>{{ s["kit_sec_progress"] }}</h2>
   <div class="u3-kit-stack">
     <div>
@@ -122,23 +206,30 @@
   </div>
 </section>
 
-<section class="u3-panel">
-  <h2>{{ s["kit_sec_glist"] }}</h2>
-  <div class="u3-glist">
-    <div class="u3-grow"><span>{{ s["kit_glist_a"] }}</span><input type="checkbox" class="u3-switch" checked></div>
-    <div class="u3-grow"><span>{{ s["kit_glist_b"] }}</span><input type="checkbox" class="u3-switch"></div>
-    <div class="u3-grow"><span>{{ s["kit_glist_c"] }}</span><input type="checkbox" class="u3-switch" checked></div>
+<section class="u3-panel" id="kit-format">
+  <h2>{{ s["kit_sec_formats"] }}</h2>
+  <div class="u3-actions">
+    {% for code, cls in [("EPUB","fmt-epub"),("DOCX","fmt-docx"),("PDF","fmt-pdf"),("MD","fmt-md"),("TXT","fmt-txt"),("FB2","fmt-fb2"),("AZW3","fmt-azw3"),("HTMLZ","fmt-htmlz")] %}
+    <span class="u3-fmt-tile {{ cls }}">
+      <span class="u3-fmt-cap">{{ code }}</span>
+      <span class="u3-fmt-sub">{{ s["kit_fmt_sub_" + code.lower()] }}</span>
+    </span>
+    {% endfor %}
   </div>
 </section>
 
-<section class="u3-panel">
-  <h2>{{ s["kit_sec_status"] }}</h2>
-  <div class="u3-kit-stack">
-    <span class="u3-status status-wait">{{ s["kit_st_wait"] }}</span>
-    <span class="u3-status status-run">{{ s["kit_st_run"] }}</span>
-    <span class="u3-status status-ok">{{ s["kit_st_ok"] }}</span>
-    <span class="u3-status status-warn">{{ s["kit_st_warn"] }}</span>
-    <span class="u3-status status-err">{{ s["kit_st_err"] }}</span>
+<section class="u3-panel" id="kit-swatches">
+  <h2>{{ s["kit_sec_swatches"] }}</h2>
+  <div class="u3-swatch-grid">
+    {% for sw in swatches %}
+    <span class="u3-swatch">
+      <span class="u3-swatch-chip" style="background:{{ sw.hex }}"></span>
+      <span class="u3-swatch-name">{{ sw.name }}</span>
+      <span class="u3-swatch-hex">{{ sw.hex }}</span>
+    </span>
+    {% endfor %}
   </div>
 </section>
+
+</div>
 {% endblock %}
