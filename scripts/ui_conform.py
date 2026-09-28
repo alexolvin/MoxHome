@@ -10,6 +10,7 @@
 * R-Y1 — число различных кеглей за прогон ≤ `type_scale_max_steps` (ui-rules).
 * R-Y2 — никаких кеглей < 11 px; R-Y3 — на мобильном ≤ `max_font_app_screen_px`.
 * R-Y5/R-Y6 — число строк ≤ `max_lines` (ui-text.yaml) у однострочных ролей.
+* R-Y10 — длина подписи ≤ `max_chars` (ui-text.yaml).
 * R-T1 — каждый видимый интерактивный элемент несёт `data-role` (0 без роли).
 * R-T4 — вычисленный цвет/фон совпадает с токеном роли (data-role → ui-roles).
   Без `data-role` элемент не проверяется (это R-T1).
@@ -113,6 +114,31 @@ TEXT_SINGLE_LINE: list[tuple[str, str]] = [
     (".u3-tab", 1),            # tabbar.label
     (".u3-toast", 2),          # toast.label
 ]
+
+# R-Y10 — потолок длины (ui-text.yaml max_chars) → (селектор, роль, max_chars)
+TEXT_MAX_CHARS: list[tuple[str, str, int]] = [
+    (".u3-btn", "button.label", 20),
+    (".u3-chip-select, .u3-rchip", "chip.label", 16),
+    (".u3-tab", "tabbar.label", 12),
+]
+
+# R-Y10: длина подписи ≤ max_chars (по ui-text.yaml).
+CHARS_JS = r"""
+(sels) => {
+  const out = {};
+  for (const [sel, maxc, role] of sels) {
+    const arr = [];
+    for (const e of document.querySelectorAll(sel)) {
+      if (getComputedStyle(e).display === "none") continue;
+      const t = (e.textContent || "").trim();
+      if (!t) continue;
+      arr.push({ len: t.length, txt: t.slice(0, 24) });
+    }
+    out[sel] = { maxc, role, items: arr };
+  }
+  return out;
+}
+"""
 
 TEXT_JS = r"""
 ({ sels, lo, hi }) => {
@@ -354,6 +380,12 @@ def check_text(page, sid: str, out: dict[str, Any], lo: float, hi: float) -> Non
                 sev = "P0" if sel in (".u3-btn", ".u3-tab") else "P1"
                 add_violation(out, "R-Y5", sev, sid,
                               f"{sel}: {it['lines']} строки > {maxl} (white-space: {it['ws']})")
+    # R-Y10 — длина ≤ max_chars
+    for sel, spec in page.evaluate(CHARS_JS, [list(t) for t in TEXT_MAX_CHARS]).items():
+        for it in spec["items"]:
+            if it["len"] > spec["maxc"]:
+                add_violation(out, "R-Y10", "P1", sid,
+                              f"{spec['role']}: {it['len']} симв. > {spec['maxc']} — «{it['txt']}»")
 
 
 def check_screen(page, sid: str, path: str, reg: Registry, out: dict[str, Any]) -> int:
