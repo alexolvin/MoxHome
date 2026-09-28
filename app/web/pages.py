@@ -1054,6 +1054,11 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
                 # R4: «Ещё» — глоссарий read-only из конфига (per-job — вне
                 # границ ТЗ §1: изменение pipeline.py)
                 "glossary_enabled": settings.glossary.enabled,
+                # MTPE M6 (req 6): «Способ перевода» read-only — из конфига;
+                # llm_incomplete — конфиг не проходит §5.3 (строка причины,
+                # «Запустить» недоступна; сервер — 422).
+                "translation_pipeline": settings.translation.pipeline,
+                "llm_incomplete": bool(validate_llm_settings(settings)),
                 # R8 (ТЗ §13): «Ещё» — LLM-профиль read-only (одна модель,
                 # если у всех профилей одинаковая; правится на /settings/llm)
                 "llm_model": views.llm_model_summary(_live(request)),
@@ -1174,6 +1179,36 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
                 "sheet": sheet if sheet == "delete" else "",
                 # no-JS-подтверждение: причина отказа (303 c ?confirm_err=)
                 "confirm_err": confirm_err,
+            },
+        )
+
+    # MTPE M6 (req 8b): страница постредактуры — server-render, no-JS.
+    # Тот же views.postedit_view, что API (Rule 8); фильтр по флагу и
+    # пагинация — ссылками (без JS, M6-9).
+    @router.get("/jobs/{job_id}/postedit")
+    def job_postedit_page(
+        request: Request,
+        job_id: str,
+        page: int = Query(default=1, ge=1),
+        flag: str | None = Query(default=None),
+    ) -> Response:
+        job: Job | None = repo.get(job_id)
+        if job is None:
+            return templates.TemplateResponse(
+                request,
+                "not_found.html",
+                ctx(request, _page_title("title_not_found"), "jobs"),
+                status_code=404,
+            )
+        data = views.postedit_view(settings, job, page, flag)
+        return templates.TemplateResponse(
+            request,
+            "job_postedit.html",
+            ctx(request, _page_title("title_job", id=job_id), "jobs")
+            | {
+                "job_id": job_id,
+                "data": data,
+                "flag": flag,
             },
         )
 

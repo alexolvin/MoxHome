@@ -24,6 +24,7 @@ import json
 import os
 import re
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -144,7 +145,10 @@ class PostEditPhase:
         target_lang: str,
         glossary: Glossary | None = None,
         style: StyleProfile | None = None,
+        on_progress: Callable[[int, int], None] | None = None,
     ) -> PostEditPhaseResult:
+        """Постредактура (§4). `on_progress(done, total)` — после каждого
+        сегмента: сделано итогов (вкл. возобновлённые) / всего (MTPE §4.4, M6)."""
         self._setup_prompt(source_lang, target_lang)
         segments = self._load_segments()
         if not segments:
@@ -170,6 +174,7 @@ class PostEditPhase:
 
         chains = self._group_by_chain(segments)
         processed_since_check = 0
+        finals_done = result.resumed_count
         for spine_idx in sorted(chains):
             chain = chains[spine_idx]
             for index, seg in enumerate(chain):
@@ -183,6 +188,9 @@ class PostEditPhase:
                 row = self._process_segment(ctx, result)
                 if row is not None:
                     finals[seg_id] = row  # контекст для следующих сегментов
+                finals_done += 1
+                if on_progress is not None:
+                    on_progress(finals_done, result.segment_count)
                 processed_since_check += 1
                 if (
                     self._mtpe.check_every_segments > 0
@@ -463,7 +471,8 @@ class PostEditPhase:
         self._attempts_dist[attempts] = self._attempts_dist.get(attempts, 0) + 1
         if ctx.is_draft_bad or has_structural:
             raise PostEditStopError(
-                "pe_unrecoverable", {"segment_ids": [ctx.seg_id]}
+                "pe_unrecoverable",
+                {"profile": "postedit", "segment_ids": [ctx.seg_id]},
             )
         flags = ["pe_rejected", "markup_dropped"]
         result.rejected_count += 1
@@ -523,12 +532,22 @@ class PostEditPhase:
         if rejected_ratio > self._mtpe.max_rejected_ratio:
             raise PostEditStopError(
                 "pe_reject_ratio_exceeded",
-                {"ratio": rejected_ratio, "limit": self._mtpe.max_rejected_ratio},
+                {
+                    "ratio": rejected_ratio,
+                    "limit": self._mtpe.max_rejected_ratio,
+                    "profile": "postedit",
+                    "segment_ids": list(self._rejected_ids),
+                },
             )
         if heavy_ratio > self._mtpe.max_heavy_edit_ratio:
             raise PostEditStopError(
                 "pe_overedit",
-                {"ratio": heavy_ratio, "limit": self._mtpe.max_heavy_edit_ratio},
+                {
+                    "ratio": heavy_ratio,
+                    "limit": self._mtpe.max_heavy_edit_ratio,
+                    "profile": "postedit",
+                    "segment_ids": list(self._heavy_ids),
+                },
             )
 
     def _write_report(

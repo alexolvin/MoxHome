@@ -33,6 +33,7 @@ import time
 import uuid
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 from app.adapters.epub_engine.epubcheck import run_epubcheck
 from app.core.config import Settings, load_settings
@@ -196,6 +197,20 @@ def cmd_job_list(settings: Settings, args: argparse.Namespace) -> int:
     return 0
 
 
+def _way_phase_line(facts: dict[str, Any]) -> str:
+    """Строка «способ перевода» + текущая фаза (MTPE M6, req 10).
+
+    mt_pe в LLM-фазе — способ + `m_draft`/`m_postedit` + дробь §4.4;
+    `m_assemble` (не LLM) и single — только способ."""
+    way = facts["pipeline"]
+    phase = facts["phase"] if way == "mt_pe" else None
+    if phase is None:
+        return f"способ перевода: {way}"
+    frac = facts["phase_progress"]
+    frac_str = f" · {frac * 100:.0f}%" if frac is not None else ""
+    return f"способ перевода: {way} · фаза: {phase}{frac_str}"
+
+
 def cmd_job_status(settings: Settings, args: argparse.Namespace) -> int:
     """Факты задания (тот же ``views.job_facts``, что API). Код выхода по
     исходу: неуспешное терминальное задание — ≠ 0 (дефект — иначе)."""
@@ -207,6 +222,9 @@ def cmd_job_status(settings: Settings, args: argparse.Namespace) -> int:
         db.close()
     print(f"задание: {facts['id']}")
     print(f"статус: {facts['status']}")
+    # MTPE M6 (req 10): способ перевода + текущая фаза (mt_pe — m_draft/
+    # m_postedit/m_assemble и дробь §4.4; single — только способ).
+    print(_way_phase_line(facts))
     source = facts["source_language"] or "—"
     print(f"пара: {source} → {facts['target_language']}  режим: {facts['mode']}")
     level = f", уровень: {facts['learning_level']}" if facts["learning_level"] else ""

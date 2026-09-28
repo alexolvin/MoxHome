@@ -3403,6 +3403,42 @@ M5 закрыт: **CONTROL M5 8/8 PASS** (`docs/CONTROL/M5.md`). Ветка `sta
 - Регрессия: ruff 0 / mypy 0 (94) / **pytest 494** (база 484 + 10, ни один прежний
   не удалён). Артефакты: `docs/CONTROL/M5.md`. D131–D132 в `docs/DECISIONS.md`.
 
-Следующий этап — **M6** (задание, воркер, прогрев, API и UI задания: развилка
-`single`/`mt_pe` в `TRANSLATING`, фазы `m_draft`→`m_postedit`→`m_assemble` с записью
-`jobs.phase`, прогресс §4.4, поля `GET /api/jobs/{id}` + `GET .../postedit`).
+## MTPE M6 — задание, воркер, прогрев, API и UI задания (TZ §6) (2026-09-28)
+
+M6 закрыт: **CONTROL M6 11/11 PASS** (`docs/CONTROL/M6.md`). Ветка `stage/mtpe-M6`
+→ `main` (merge --no-ff). Ядро M6 — D133–D136, UI — D137–D139 (в `docs/DECISIONS.md`).
+
+- **Развилка способа** (D133): `TRANSLATING` по `job.pipeline`. `single` — прежний
+  движок (выход побайто, M6-1). `mt_pe` — фазы `m_draft → m_postedit → m_assemble`
+  (`jobs.phase`), прогресс §4.4 `(черновиков+итогов)/(2×сегментов)` (m_draft → 0.5,
+  m_postedit → 1.0, m_assemble — неопределённая полоса).
+- **Прогрев LLM-стадий** (D134): единый `app/llm/warmup.py::warmup_profile` («свой
+  клиент» воркера); chat → ping `max_tokens:1`, completions → шаблон `mt_draft` ping
+  `max_tokens:1`; `model` ответа ≠ профиля → `model_mismatch`, таймаут →
+  `warmup_timeout`. Мт/постред — внутри фаз (M3/M4); отказ → `FAILED` (M6-4).
+- **Причины остановки** (M6-6/M6-7): 6 стоп-причин (`warmup_timeout`, `model_mismatch`,
+  `pe_unrecoverable`, `pe_reject_ratio_exceeded`, `pe_overedit`, `settings_invalid`) →
+  `FAILED` с кодом дословно + профиль + число и список `segment_id`.
+- **API задания** (D136): `GET /api/jobs/{id}` + `pipeline`/`phase`/`phase_progress`/
+  `pe_report`; `GET /api/jobs/{id}/postedit?page=&flag=` (сегменты + сводка).
+- **UI (D137–D139)**:
+  - **Мастер создания** — 5-я строка (read-only) «Способ перевода»: текущий способ
+    (`Одна модель` / `MT + постредактура`) + «изменить в Настройках»; при неполных
+    LLM-настройках — чип-предупреждение + `disabled` кнопки (создание → 422).
+  - **Строка задания** — 2-я строка `… · MT+PE`, 3-я (в `TRANSLATING`) —
+    `TRANSLATING · черновик · 44%` / `· постредактура · N%` / `· сборка` (без `%`).
+    Единый макет: no-JS `_job_row.html` + JS `jobLine2`/`jobLine3`.
+  - **Страница задания** — секция «Потредактура» (mt_pe после `m_postedit`): сводка
+    `pe_report` + ссылки на 4 списка правок.
+  - **Новая страница** `/jobs/{id}/postedit` — **server-rendered (no-JS)**: 3 строки/
+    сегмент (исходник/черновик/итог), diff `<del>/<ins>` на сервере (difflib),
+    пагинация `ui.page_size`, фильтр по флагу-ссылками.
+- **CLI**: `job status` — строка «способ перевода: `<way>`» + (mt_pe) «· фаза:
+  `m_draft` · N%» (`_way_phase_line`).
+- Тесты: `tests/test_mtpe_m6.py` (7 функций / 7 кейсов). Полный прогон mt_pe
+  (`complex.epub`) — фазы + прогресс + прогрев; остальное — изолированные проверки.
+- Регрессия: ruff 0 / mypy 0 (95) / **pytest 501** (база 494 + 7). D133–D139 в
+  `docs/DECISIONS.md`.
+
+Следующий этап — **M7** (внешние зависимости: прокси владельца §10.1 +
+MiLMMT-46-12B на GPU §10.2 — на решение владельца).

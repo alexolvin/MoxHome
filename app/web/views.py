@@ -18,9 +18,12 @@ U3: строки интерфейса — только из ``app.web.strings`` 
 
 from __future__ import annotations
 
+import difflib
 import hashlib
 import hmac
+import html
 import json
+import math
 import re
 import shutil
 import subprocess
@@ -465,6 +468,24 @@ def job_facts(
     _cov = book_cover_facts(
         settings, Path(job.source_path), read_book_meta(Path(job.source_path))
     )
+    # MTPE M6 (D136): способ + фаза + прогресс фазы + отчёт постредактуры.
+    # single: `phase` — как раньше (из progress_facts), `phase_progress`/
+    # `pe_report` = None (состав ответа single не меняется). mt_pe: `phase` =
+    # job.phase (m_draft/m_postedit/m_assemble), `phase_progress` = дробь §4.4
+    # (только в LLM-фазах), `pe_report` — pe_report.json (None до m_postedit).
+    pipeline = job.pipeline
+    if pipeline == "mt_pe":
+        api_phase = job.phase
+        phase_progress = (
+            job.progress if job.phase in ("m_draft", "m_postedit") else None
+        )
+        pe_report = read_json(jdir / "m" / "pe_report.json")
+        if not isinstance(pe_report, dict):
+            pe_report = None
+    else:
+        api_phase = progress["phase"]
+        phase_progress = None
+        pe_report = None
     return {
         "id": job.id,
         "book_name": Path(job.source_path).name,
@@ -488,7 +509,10 @@ def job_facts(
         "priority": job.priority,
         "progress": job.progress,
         "progress_display": progress["display"],
-        "phase": progress["phase"],
+        "pipeline": pipeline,
+        "phase": api_phase,
+        "phase_progress": phase_progress,
+        "pe_report": pe_report,
         "phases": {
             "completed": progress["completed"],
             "total": progress["total_phases"],
@@ -1604,4 +1628,94 @@ def quality_view(settings: Settings, job_id: str) -> dict[str, Any]:
             if l3_report is not None
             else None
         ),
+    }
+
+
+def _read_jsonl(path: Path) -> list[dict[str, Any]]:
+    """Строки .jsonl в порядке файла (пустой список, если файла нет)."""
+    if not path.is_file():
+        return []
+    rows: list[dict[str, Any]] = []
+    with path.open(encoding="utf-8") as handle:
+        for raw_line in handle:
+            line = raw_line.strip()
+            if line:
+                rows.append(json.loads(line))
+    return rows
+
+
+def _diff_markup(a: str, b: str) -> str:
+    """Серверный diff черновик→итог в `<del>/<ins>` (MTPE M6, без клиентского JS).
+
+    Текст экранируется (`html.escape`); разметка — только теги `<del>`/`<ins>`
+    (содержимое безопасно, XSS невозможен)."""
+    if a == b:
+        return html.escape(a)
+    matcher = difflib.SequenceMatcher(None, a, b, autojunk=False)
+    parts: list[str] = []
+    for op, i1, i2, j1, j2 in matcher.get_opcodes():
+        if op == "equal":
+            parts.append(html.escape(a[i1:i2]))
+        elif op == "delete":
+            parts.append(f"<del>{html.escape(a[i1:i2])}</del>")
+        elif op == "insert":
+            parts.append(f"<ins>{html.escape(b[j1:j2])}</ins>")
+        else:  # replace
+            parts.append(
+                f"<del>{html.escape(a[i1:i2])}</del>"
+                f"<ins>{html.escape(b[j1:j2])}</ins>"
+            )
+    return "".join(parts)
+
+
+def postedit_view(
+    settings: Settings, job: Job, page: int, flag: str | None
+) -> dict[str, Any]:
+    """Пагинированные итоги постредактуры (MTPE M6): 3 строки/сегмент
+    (исходник/черновик/итог) + серверный diff + флаг; фильтр по флагу.
+
+    Порядок — как в книге (из `segments.jsonl`); построчно данные из
+    `final.jsonl` (`text` — итог, `draft`, `flags`, `attempts`). `single`
+    или незавершённый mt_pe (м/ нет `final.jsonl`) — пустой список."""
+    m_dir = settings.job_dir(job.id) / "m"
+    segments = _read_jsonl(m_dir / "segments.jsonl")
+    finals = {str(r["segment_id"]): r for r in _read_jsonl(m_dir / "final.jsonl")}
+    rows: list[dict[str, Any]] = []
+    for seg in segments:
+        seg_id = str(seg["segment_id"])
+        final = finals.get(seg_id)
+        if final is None:
+            continue
+        source = str(seg.get("src_plain", ""))
+        draft_text = str(final.get("draft", ""))
+        final_text = str(final.get("text", ""))
+        rows.append(
+            {
+                "segment_id": seg_id,
+                "source": source,
+                "draft": draft_text,
+                "final": final_text,
+                "flags": list(final.get("flags", [])),
+                "attempts": final.get("attempts"),
+                "diff": _diff_markup(draft_text, final_text),
+            }
+        )
+    flag_count: dict[str, int] = {}
+    for row in rows:
+        for f in row["flags"]:
+            flag_count[f] = flag_count.get(f, 0) + 1
+    if flag:
+        rows = [row for row in rows if flag in row["flags"]]
+    page_size = settings.ui.page_size or 20
+    page = max(1, page)
+    total = len(rows)
+    total_pages = math.ceil(total / page_size) if page_size else 0
+    start = (page - 1) * page_size
+    return {
+        "page": page,
+        "page_size": page_size,
+        "total_segments": total,
+        "total_pages": total_pages,
+        "flag_count": flag_count,
+        "segments": rows[start:start + page_size],
     }

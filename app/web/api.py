@@ -151,11 +151,26 @@ def _job_row(
     # (None — индетерминированные стадии без единиц: PLANNING/
     # VALIDATING_OUTPUT) и время работы (механизм E7/M7, без дубля).
     status = job.status.value
-    indeterminate = job.status in (JobStatus.PLANNING, JobStatus.VALIDATING_OUTPUT)
+    # MTPE M6 (req 7): mt_pe в m_assemble — индетерминированная полоса (без
+    # единиц), как PLANNING/VALIDATING_OUTPUT.
+    mtpe_assemble = job.pipeline == "mt_pe" and job.phase == "m_assemble"
+    indeterminate = (
+        job.status in (JobStatus.PLANNING, JobStatus.VALIDATING_OUTPUT)
+        or mtpe_assemble
+    )
     progress_pct = None if indeterminate else round((job.progress or 0.0) * 100)
+    # способ + фаза в строке задания (mt_pe — метка «MT+PE» + фаза в
+    # TRANSLATING; single — меток нет).
+    way_tag = _S["job_row_mtpe"] if job.pipeline == "mt_pe" else ""
+    phase_label = ""
+    if job.pipeline == "mt_pe" and job.status is JobStatus.TRANSLATING and job.phase:
+        phase_label = _S.get(f"job_row_phase_{job.phase.removeprefix('m_')}", "")
     return {
         "id": job.id,
         "status": status,
+        "pipeline": job.pipeline,
+        "way_tag": way_tag,
+        "phase_label": phase_label,
         # Серия R §4: группа и глиф — из единой таблицы views.STATUS_GROUP;
         # клиент (app.js) рендерит статус по этим полям без собственного
         # соответствия статус→группа.
@@ -1053,6 +1068,20 @@ def job_quality(
     settings, repo = deps
     _job_or_404(repo, job_id)
     return views.quality_view(settings, job_id)
+
+
+@router.get("/jobs/{job_id}/postedit")
+def job_postedit(
+    job_id: str,
+    page: int = 1,
+    flag: str | None = None,
+    deps: tuple[Settings, JobRepository] = Depends(get_deps),
+) -> dict[str, Any]:
+    """Итоги постредактуры (MTPE M6): 3 строки/сегмент + серверный diff
+    (`<del>/<ins>`), фильтр по флагу, пагинация `ui.page_size`."""
+    settings, repo = deps
+    job = _job_or_404(repo, job_id)
+    return views.postedit_view(settings, job, page, flag)
 
 
 # ------------------------------------------------------------------ export (R7, TZ §9)

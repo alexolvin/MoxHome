@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/css-jobs.css">
+{% endblock %}
+{% block content %}
+{# MTPE M6 (req 8b): страница постредактуры — server-render, no-JS.
+   3 строки/сегмент: оригинал / черновик / итог; разница «черновик → итог»
+   размечена <del>/<ins> на сервере (data.segments[].diff). Фильтр по флагу и
+   пагинация — ссылками (без JS, M6-9). #}
+<h1>{{ s["job_postedit_list_title"] }}</h1>
+<p><a href="/jobs/{{ job_id }}">{{ s["job_postedit_back"] }}</a></p>
+
+{# фильтр по флагу — ссылками (без JS). #}
+<p class="u3-filter">
+  <a href="/jobs/{{ job_id }}/postedit"{% if not flag %} aria-current="page"{% endif %}>{{ s["job_postedit_flag_all"] }}</a>
+  {% for f, n in data.flag_count.items() %}
+  · <a href="/jobs/{{ job_id }}/postedit?flag={{ f }}"{% if flag == f %} aria-current="page"{% endif %}>{{ f }}: {{ n }}</a>
+  {% endfor %}
+</p>
+
+{% if not data.segments %}
+<p>{{ s["job_postedit_empty"] }}</p>
+{% else %}
+{% for seg in data.segments %}
+<article class="u3-card">
+  <dl class="u3-card-fields">
+    <div class="u3-field"><dt>{{ s["job_postedit_source"] }}</dt><dd>{{ seg.source }}</dd></div>
+    <div class="u3-field"><dt>{{ s["job_postedit_draft"] }}</dt><dd>{{ seg.draft }}</dd></div>
+    <div class="u3-field"><dt>{{ s["job_postedit_final"] }}</dt><dd>{{ seg.diff | safe }}</dd></div>
+  </dl>
+  {% if seg.flags %}<p>{% for f in seg.flags %}<span class="u3-chip">{{ f }}</span> {% endfor %}</p>{% endif %}
+</article>
+{% endfor %}
+{% endif %}
+
+{# пагинация — ссылками (без JS). #}
+{% if data.total_pages > 1 %}
+<p>
+  {{ s["job_postedit_page"].format(page=data.page, total=data.total_pages) }}
+  {% if data.page > 1 %}<a href="/jobs/{{ job_id }}/postedit?page={{ data.page - 1 }}{% if flag %}&amp;flag={{ flag }}{% endif %}">{{ s["job_postedit_prev"] }}</a>{% endif %}
+  {% if data.page < data.total_pages %}<a href="/jobs/{{ job_id }}/postedit?page={{ data.page + 1 }}{% if flag %}&amp;flag={{ flag }}{% endif %}">{{ s["job_postedit_next"] }}</a>{% endif %}
+</p>
+{% endif %}
+{% endblock %}

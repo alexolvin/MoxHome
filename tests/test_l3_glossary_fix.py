@@ -841,7 +841,8 @@ def test_l3_11_three_variants_20_occurrences(l3_env: L3Env) -> None:
     assert report["attempted"] == 20
     assert report["applied"] == 20, "все 20 вхождений исправлены"
     assert report["rejected"] == 0, "пропущенных нет — перечень объяснений пуст"
-    assert run.fix_requests == 20, "один запрос на вхождение, повторов нет"
+    # M6 §4.6: +1 прогрев analysis перед L3 (не запрос на вхождение, не повтор).
+    assert run.fix_requests == 21, "20 на вхождения + 1 прогрев, повторов нет"
     lines = _fix_log_lines(run.quality_log)
     assert len(lines) == 20, "quality.log: ровно 20 записей (≤20)"
     final = _chapter_of(run.job_dir / "target.epub").decode("utf-8")
@@ -885,7 +886,8 @@ def test_l3_14_rejected_without_term(l3_env: L3Env) -> None:
     assert all(f["validation_points"] == [1] for f in report["fixes"]), (
         "отказ — по пункту 1 (форма парадигмы отсутствует)"
     )
-    assert run.fix_requests == 3, "повторной попытки нет: 1 запрос на сегмент"
+    # M6 §4.6: +1 прогрев analysis перед L3 (не повторной попытки, не запрос).
+    assert run.fix_requests == 4, "3 на сегменты + 1 прогрев; повторной попытки нет"
     assert run.quality["glossary_consistency"]["mismatches"] == 3, (
         "расхождения неустранены — в финальном отчёте"
     )
