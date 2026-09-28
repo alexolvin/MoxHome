@@ -98,6 +98,25 @@
   <p>{{ s["job_warnings"] }}</p>
   <ul>{% for w in facts.warnings %}<li>{{ w }}</li>{% endfor %}</ul>
   {% endif %}
+  {# MTPE M6 (req 8a): раздел «Потредактура» — только mt_pe, после m_postedit
+     (pe_report.json). Сводка + ссылки на списки + переход на страницу
+     /jobs/{id}/postedit (no-JS, server-render). #}
+  {% if facts.pipeline == "mt_pe" and facts.pe_report %}
+  <section id="u1-postedit">
+    <h3>{{ s["job_postedit_title"] }}</h3>
+    <table class="u3-facts">
+      <tr><th scope="row">{{ s["job_postedit_segments"] }}</th><td>{{ facts.pe_report.segment_count }}</td></tr>
+      <tr><th scope="row">{{ s["job_postedit_edit_types"] }}</th><td>{% for t, c in facts.pe_report.edit_types.items() %}{{ t }}: {{ c }}{% if not loop.last %} · {% endif %}{% endfor %}</td></tr>
+      <tr><th scope="row">{{ s["job_postedit_glossary"] }}</th><td>{{ s["job_postedit_glossary_present"] if facts.pe_report.glossary == "present" else s["job_postedit_glossary_absent"] }}</td></tr>
+    </table>
+    <p>
+      {% for key in ["pe_rejected", "heavy_edit", "markup_dropped", "numbers_mismatch"] %}
+      <a href="/jobs/{{ facts.id }}/postedit?flag={{ key }}">{{ key }}: {{ facts.pe_report[key] | length }}</a>{% if not loop.last %} · {% endif %}
+      {% endfor %}
+    </p>
+    <p><a class="btn" href="/jobs/{{ facts.id }}/postedit">{{ s["job_postedit_open"] }}</a></p>
+  </section>
+  {% endif %}
 </div>
 
 <div class="u3-actions">

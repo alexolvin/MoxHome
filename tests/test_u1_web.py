@@ -605,6 +605,11 @@ _CONSUMERS: dict[str, tuple[tuple[str, str], ...]] = {
         ("app/web/static/app.js", 'base + "/" + enc(n)'),  # GET (download)
         ("app/web/pages.py", '"/api/jobs/{job_id}/export/{quote(name)}"'),
     ),
+    # MTPE M6 (req 5/8b): итоги постредактуры — страница /jobs/{id}/postedit
+    # (server-render, pages.py; тот же views.postedit_view, что API).
+    "/api/jobs/{job_id}/postedit": (
+        ("app/web/pages.py", "views.postedit_view"),
+    ),
     "/api/books/{filename}/export": (
         (
             "app/web/static/app.js",

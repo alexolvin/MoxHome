@@ -531,7 +531,10 @@ def test_e5_9_unavailable_llm_failed_no_output(
         assert worker.wait(timeout=180) == 0
         final = repo.require(job.id)
         assert final.status is JobStatus.FAILED
-        assert "тракт T недоступен" in (final.error_message or ""), final.error_message
+        # M6 §4.6: недоступный LLM (мёртвый порт) — отказ ПРОГРЕВА (connection_error)
+        # до engine, не «тракт T недоступен»; выхода нет.
+        assert "connection_error" in (final.error_message or ""), final.error_message
+        assert "профиль translation" in (final.error_message or ""), final.error_message
         assert "test-key-value-000" not in (final.error_message or ""), "ключ API в сообщении"
         assert not (settings.jobs_dir / job.id / "target.epub").exists()
     finally:
@@ -561,8 +564,10 @@ def test_e5_9_inprocess_unavailable_llm_raises(
         pipeline.run_planning(repo, job_now)
         with pytest.raises(LLMUnavailableError) as excinfo:
             pipeline.run_translating(repo, job_now, lambda: None)
+        # M6 §4.6: на мёртвом порту сначала падает ПРОГРЕВ (LLMWarmupError ⊂
+        # LLMUnavailableError), не engine.
         message = str(excinfo.value)
-        assert "тракт T недоступен" in message
+        assert "connection_error" in message
         assert "test-key-value-000" not in message
         assert not (settings.job_dir(job.id) / "target.epub").exists()
     finally:

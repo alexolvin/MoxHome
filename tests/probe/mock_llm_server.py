@@ -113,6 +113,10 @@ class _State:
         self.lock = threading.Lock()
         self.scenario = "ok"
         self.delay_seconds = 0.0
+        # MTPE M6: задержка ТОЛЬКО прогревочного запроса (max_tokens == 1) —
+        # warmup_slow (держать, затем ответить) / warmup_timeout (держать
+        # дольше warmup_timeout_s клиента).
+        self.warmup_delay_seconds = 0.0
         self.requests: list[dict[str, object]] = []
 
 
@@ -155,6 +159,11 @@ class MockLLMServer:
     def delay_seconds(self) -> float:
         with self._state.lock:
             return self._state.delay_seconds
+
+    def set_warmup_delay(self, seconds: float) -> None:
+        """MTPE M6: задержка прогревочного запроса (max_tokens == 1)."""
+        with self._state.lock:
+            self._state.warmup_delay_seconds = max(0.0, float(seconds))
 
     @property
     def url(self) -> str:
@@ -1272,8 +1281,17 @@ def _build_server(
             with state.lock:
                 scenario = state.scenario
                 delay = state.delay_seconds
+                warmup_delay = state.warmup_delay_seconds
             if delay > 0:
                 time.sleep(delay)
+
+            # MTPE M6: прогрев (max_tokens == 1) — warmup_slow (держать, затем
+            # ответить) / warmup_timeout (держать дольше warmup_timeout_s).
+            _chat_max_tokens = int(body.get("max_tokens", 16) or 16)
+            if _chat_max_tokens == 1 and scenario == "warmup_slow":
+                time.sleep(warmup_delay if warmup_delay > 0 else 1.0)
+            elif _chat_max_tokens == 1 and scenario == "warmup_timeout":
+                time.sleep(30.0)
 
             if scenario == "http500":
                 error_payload = {
@@ -1315,6 +1333,10 @@ def _build_server(
                 )
 
             model_name = str(body.get("model", "probe-model"))
+            # MTPE M6: model_mismatch — ответ с чужой моделью (прогрев/рабочий
+            # chat-запрос): сверка response.model ≠ модели профиля → стоп.
+            if scenario == "model_mismatch":
+                model_name = "chat-wrong-model"
             if body.get("stream"):
                 self._send_sse(response, model_name, prompt_tokens, completion_tokens)
             else:
@@ -1356,8 +1378,16 @@ def _build_server(
             with state.lock:
                 scenario = state.scenario
                 delay = state.delay_seconds
+                warmup_delay = state.warmup_delay_seconds
             if delay > 0:
                 time.sleep(delay)
+
+            # MTPE M6: прогрев (max_tokens == 1) — warmup_slow (держать, затем
+            # ответить) / warmup_timeout (держать дольше warmup_timeout_s).
+            if max_tokens == 1 and scenario == "warmup_slow":
+                time.sleep(warmup_delay if warmup_delay > 0 else 1.0)
+            elif max_tokens == 1 and scenario == "warmup_timeout":
+                time.sleep(30.0)
 
             if scenario == "http500":
                 error_payload = {"error": {"message": "mock internal error"}}

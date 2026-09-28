@@ -28,7 +28,7 @@ from app.domain.job import LEARNING_LEVELS, Job, JobStatus
 from app.epub.reader import read_dc_language
 from app.languages.cefr import CEFR_LEVELS
 from app.languages.registry import load_registry
-from app.languages.resolver import PairResolver, PairStatus
+from app.languages.resolver import PairResolver, PairStatus, mt_pe_supported
 from app.storage.jobs_repo import JobRepository
 
 #: Версия промптов (E4: prompts/<task>/<src>/<tgt>/vN.yaml). В E3 единая версия.
@@ -188,6 +188,17 @@ def create_job(
             raise InputValidationError(
                 f"языковая пара {report.source} → {report.target} не поддерживается "
                 f"(L0.2); не хватает: {'; '.join(report.missing)}"
+            )
+        # MTPE M6 (req 6): способ mt_pe — пара должна быть supported (mt_name
+        # у обоих языков); иначе 422 pair_unsupported_mt_pe (не 400: это
+        # ограничение способа, а не пары в целом).
+        if settings.translation.pipeline == "mt_pe" and not mt_pe_supported(
+            load_registry(settings.languages_root), dc_language, target_language
+        ):
+            raise SettingsIncompleteError(
+                f"способ mt_pe недоступен для пары {dc_language} → "
+                f"{target_language} (pair_unsupported_mt_pe): "
+                "нет mt_name у обоих языков",
             )
     now = time.time()
     # Серия R §12: базовая линия ДО вставки (последнее существующее задание

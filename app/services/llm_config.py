@@ -348,12 +348,19 @@ def list_models(base_url: str, api_key: str) -> list[str]:
 
 
 def _stage_profile(job: Job) -> str | None:
-    """Профиль текущей LLM-стадии задания; None — LLM-стадии сейчас нет."""
+    """Профиль текущей LLM-стадии задания; None — LLM-стадии сейчас нет.
+
+    MTPE M6 (D135): лексика фаз = `m_draft`/`m_postedit`/`m_assemble` (M1).
+    `m_assemble` — сборка без LLM → None (409 не даёт)."""
     if job.status is JobStatus.ANALYZING:
         return "analysis"
     if job.status is JobStatus.TRANSLATING:
         if job.pipeline == "mt_pe":
-            return "postedit" if job.phase == "postedit" else "mt"
+            if job.phase == "m_draft":
+                return "mt"
+            if job.phase == "m_postedit":
+                return "postedit"
+            return None  # m_assemble — не LLM-стадия
         return "translation"
     return None
 

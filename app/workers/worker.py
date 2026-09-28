@@ -22,7 +22,11 @@ from pathlib import Path
 
 from app.core.config import Settings, load_settings
 from app.core.errors import AppError, ConfigurationError
-from app.core.llm_settings import apply_job_config_snapshot, validate_llm_settings
+from app.core.llm_settings import (
+    SettingsIssue,
+    apply_job_config_snapshot,
+    validate_llm_settings,
+)
 from app.core.logging import attach_job_logs, detach_job_logs, job_context
 from app.core.worker_signal import write_heartbeat
 from app.domain.job import NEXT_STAGE, WORKING_STATES, Job, JobStatus
@@ -32,6 +36,35 @@ from app.workers.controls import LeaseLost, WorkerCancelled, WorkerPaused
 from app.workers.pipeline import Pipeline
 
 logger = logging.getLogger("app.worker")
+
+
+def _issue_profile(issue: SettingsIssue) -> str:
+    """Профиль из пути проблемы §5.3: `llm.profiles.<name>.…` → `<name>`;
+    прочие пути (`translation.pipeline`, `mtpe`) — сами по себе."""
+    parts = issue.path.split(".")
+    if len(parts) >= 3 and parts[0] == "llm" and parts[1] == "profiles":
+        return parts[2]
+    return issue.path
+
+
+def _format_stop_reason(exc: AppError) -> tuple[str, str]:
+    """`(reason, error_message)` для FAILED (MTPE M6, req 9 / M6-7).
+
+    6 стоп-причин (`details` несёт `profile` + `segment_ids`) — код причины
+    дословно + профиль + число и список `segment_id`. Остальные ошибки —
+    обычный `сбой этапа: <message>` (не меняется)."""
+    details = exc.details or {}
+    profile = details.get("profile")
+    code = exc.message
+    if not profile:
+        return f"сбой этапа: {code}", code
+    raw_seg_ids = details.get("segment_ids")
+    seg_ids = [str(s) for s in raw_seg_ids] if isinstance(raw_seg_ids, list) else []
+    if seg_ids:
+        core = f"{code}; профиль {profile}; сегментов {len(seg_ids)}: {', '.join(seg_ids)}"
+    else:
+        core = f"{code}; профиль {profile}; сегментов 0"
+    return f"сбой этапа: {core}", core
 
 
 class Worker:
@@ -144,11 +177,28 @@ class Worker:
         # MTPE TZ §4.5: задание работает на СНИМКЕ настроек (значения создания;
         # ключи — из .env). Нет снимка (старые задания) — на текущих настройках
         # воркера (R8: подмена конфигурации между стадиями недопустима).
-        pipeline = (
-            Pipeline(apply_job_config_snapshot(self._settings, job.config_snapshot))
-            if job.config_snapshot
-            else self._pipeline
-        )
+        if job.config_snapshot:
+            snapshot_settings = apply_job_config_snapshot(
+                self._settings, job.config_snapshot
+            )
+            issues = validate_llm_settings(snapshot_settings)
+            if issues:
+                # MTPE M6: снимок не проходит §5.3 в момент очереди — задание
+                # не запускается (остановка `settings_invalid`, код + профиль).
+                self._finalize_failed(
+                    job.id,
+                    AppError(
+                        "settings_invalid",
+                        details={
+                            "profile": _issue_profile(issues[0]),
+                            "segment_ids": [],
+                        },
+                    ),
+                )
+                return self._repo.require(job.id)
+            pipeline = Pipeline(snapshot_settings)
+        else:
+            pipeline = self._pipeline
         handlers = attach_job_logs(self._settings.job_dir(job.id), self._settings.secrets())
         try:
             with job_context(job.id):
@@ -320,12 +370,14 @@ class Worker:
             # Причина — в той же транзакции, что переход в FAILED:
             # опрашивающий (CLI --wait, UI) не должен видеть терминальный
             # статус без причины (гонка двух отдельных записей, флейк u2_2
-            # под нагрузкой).
+            # под нагрузкой). MTPE M6 (req 9, M6-7): для 6 стоп-причин —
+            # код дословно + профиль + число и список segment_id.
+            reason, error_message = _format_stop_reason(exc)
             self._repo.transition(
                 job_id,
                 JobStatus.FAILED,
-                reason=f"сбой этапа: {exc.message}",
-                error_message=exc.message,
+                reason=reason,
+                error_message=error_message,
             )
         else:
             logger.error("сбой в не-рабочем состоянии %s: %s", job_now.status.value, exc.message)

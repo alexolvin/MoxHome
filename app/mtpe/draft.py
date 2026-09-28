@@ -19,6 +19,7 @@ import hashlib
 import json
 import math
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -93,16 +94,24 @@ class DraftPhase:
         source_lang: str,
         target_lang: str,
         work_dir: str | None = None,
+        on_progress: Callable[[int, int], None] | None = None,
     ) -> DraftPhaseResult:
         work = Path(work_dir) if work_dir is not None else self._job_dir / "unpack"
         book = read_epub(Path(source_path), work, self._settings)
-        return self.run_book(book, source_lang, target_lang)
+        return self.run_book(book, source_lang, target_lang, on_progress=on_progress)
 
     def run_book(
-        self, book: Any, source_lang: str, target_lang: str
+        self,
+        book: Any,
+        source_lang: str,
+        target_lang: str,
+        on_progress: Callable[[int, int], None] | None = None,
     ) -> DraftPhaseResult:
         """Ядро фазы для готовой книги (тракт A: `read_epub` → `Book`). Точка
-        входа для M6 (воркер) и для тестов на синтетической книге."""
+        входа для M6 (воркер) и для тестов на синтетической книге.
+
+        `on_progress(done, total)` — после каждого сегмента: сделано черновиков
+        (вкл. возобновлённые) / всего сегментов (MTPE §4.4, M6)."""
         ctx = self._build_context(source_lang, target_lang)
         segments = self._collect_segments(book, ctx)
         self._m_dir.mkdir(parents=True, exist_ok=True)
@@ -121,6 +130,8 @@ class DraftPhase:
             self._client.warmup(ping)
         for seg in pending:
             self._process_segment(seg, ctx, result)
+            if on_progress is not None:
+                on_progress(result.resumed_count + result.processed_count, result.segment_count)
         return result
 
     # ------------------------------------------------------------------ внутреннее

@@ -63,6 +63,7 @@ from app.domain.book import Book
 from app.domain.glossary import (
     PARADIGM_VERIFIED,
     Glossary,
+    StyleProfile,
     TermMismatch,
 )
 from app.domain.job import Job
@@ -103,6 +104,10 @@ from app.learning.selection import select_lexis_candidates
 from app.learning.study import validate_exercise, validate_question, validate_summary
 from app.llm.analysis import AnalysisClient
 from app.llm.tasks import task as llm_task
+from app.llm.warmup import warmup_profile
+from app.mtpe.draft import DraftPhase
+from app.mtpe.postedit import PostEditPhase
+from app.mtpe.writer import WriterPhase
 from app.workers.controls import LeaseLost, WorkerCancelled, WorkerPaused
 from app.workers.qc import QcInput, run_qc
 
@@ -407,6 +412,12 @@ class Pipeline:
                 return int(self._read_json(failures_file)["count"])
             return 0
 
+        # MTPE M6 (D133): развилка по способу перевода (снимок задания §4.5).
+        # mt_pe — фазы m_draft → m_postedit → m_assemble; single — движок ниже
+        # без изменений (M6-1: выход способа single побайто).
+        if job.pipeline == "mt_pe":
+            return self._run_mt_pe(repo, job, control_check)
+
         settings = self._settings
         job_dir = self._settings.job_dir(job.id)
         target = job_dir / "target.epub"
@@ -440,6 +451,11 @@ class Pipeline:
         if self._glossary_provider is not None:
             glossary = tuple(self._glossary_provider(job))
         elif settings.glossary.enabled:
+            # MTPE M6 (D134): прогрев analysis (§4.6) — перед L2-аннотацией,
+            # если глоссарий не собран (будут LLM-вызовы); повтор/кэш — без
+            # прогрева (паттерн M3-5: завершённая работа → 0 вызовов).
+            if self._book_glossary(job) is None:
+                warmup_profile(settings, "analysis")
             bundle = self._book_glossary_bundle(repo, job)
             glossary = tuple(
                 GlossaryEntry(
@@ -460,6 +476,10 @@ class Pipeline:
             on_progress=on_progress,
             on_fill_failed=on_fill_failed,
         )
+        # MTPE M6 (D134): прогрев translation + fill (§4.6) — перед первой
+        # LLM-операцией стадии (вызов движка).
+        warmup_profile(settings, "translation")
+        warmup_profile(settings, "fill")
         try:
             result = engine.translate_book(request)
         except (LeaseLost, WorkerCancelled, WorkerPaused):
@@ -513,6 +533,83 @@ class Pipeline:
             tokens=result.usage.total,
         )
         return len(fill_failures)
+
+    def _run_mt_pe(
+        self, repo: JobRepository, job: Job, control_check: Callable[[], None]
+    ) -> int:
+        """MTPE M6 (D133): развилка mt_pe — фазы `m_draft → m_postedit →
+        m_assemble` (§4.4) с записью `jobs.phase` и прогрессом §4.4. Тракты M3/M4/
+        M5 (черновик, постредактура, писатель) — вызовы, не копии. Возвращает 0
+        (fill-сбоев у тракта M нет — fill только у движка)."""
+        settings = self._settings
+        job_dir = settings.job_dir(job.id)
+        target = job_dir / "target.epub"
+        m_dir = job_dir / "m"
+        source_lang = job.source_language
+        target_lang = job.target_language
+        if source_lang is None:
+            raise AppError(
+                "подтверждённый исходный язык не задан (L0.5) — mt_pe не запускается"
+            )
+
+        book = read_epub(Path(job.source_path), job_dir / "unpack", settings)
+
+        def _progress(done: int, total: int, is_final: bool) -> None:
+            # §4.4: (черновиков + итогов) / (2 × сегментов). m_draft — итоги 0;
+            # m_postedit — черновики = total (все готовы), итоги = done.
+            if total <= 0:
+                return
+            fraction = (total + done) / (2 * total) if is_final else done / (2 * total)
+            repo.set_progress(job.id, min(1.0, fraction))
+
+        # m_draft (профиль mt; прогрев внутри DraftPhase, M3).
+        repo.set_phase(job.id, "m_draft")
+        repo.set_progress(job.id, 0.0)
+        DraftPhase(settings, repo, job.id).run_book(
+            book, source_lang, target_lang,
+            on_progress=lambda d, t: _progress(d, t, is_final=False),
+        )
+        control_check()
+
+        # L2-бандл для postedit (§4.2.3): только если глоссарий включён, иначе
+        # `glossary: absent`. Прогрев analysis (§4.6) — если глоссарий не собран.
+        glossary: Glossary | None = None
+        style: StyleProfile | None = None
+        if settings.glossary.enabled:
+            if self._book_glossary(job) is None:
+                warmup_profile(settings, "analysis")
+            bundle = self._book_glossary_bundle(repo, job)
+            glossary = bundle.glossary
+            style = bundle.style
+
+        # m_postedit (профиль postedit; прогрев внутри PostEditPhase, M4).
+        repo.set_phase(job.id, "m_postedit")
+        PostEditPhase(settings, repo, job.id).run(
+            source_lang, target_lang, glossary, style,
+            on_progress=lambda d, t: _progress(d, t, is_final=True),
+        )
+        control_check()
+
+        # m_assemble (без LLM; полоса неопределённая, §4.4).
+        repo.set_phase(job.id, "m_assemble")
+        WriterPhase(settings).run(
+            Path(job.source_path), target, m_dir, self._submit_mode(job.mode).value
+        )
+        control_check()
+
+        # Стадия завершена: прогресс 1.0, фаза сбрасывается (вне TRANSLATING — NULL).
+        repo.set_progress(job.id, 1.0)
+        repo.set_phase(job.id, None)
+        self._write_json(
+            job_dir / "translation_result.json",
+            {
+                "mode": job.mode,
+                "submit_mode": self._submit_mode(job.mode).value,
+                "pipeline": "mt_pe",
+            },
+        )
+        repo.record_stage_result(job.id, "translating", self.input_hash(job), str(target))
+        return 0
 
     def _make_callbacks(
         self,
@@ -847,6 +944,10 @@ class Pipeline:
         )
         key = hashlib.sha256(f"{self.input_hash(job)}|{glossary_hash}".encode()).hexdigest()
 
+        # MTPE M6 (D134): прогрев analysis (§4.6) — перед L3-правкой, если есть
+        # правимые сегменты (будут LLM-вызовы).
+        if selection.fixable:
+            warmup_profile(settings, "analysis")
         outcomes, changed_docs = self._l3_apply(repo, job, job_dir, glossary, selection)
         applied = [o for o in outcomes if o.applied]
         epubcheck_result = self._l3_rebuild(job_dir, applied, changed_docs)
@@ -929,6 +1030,9 @@ class Pipeline:
             ).encode()
         ).hexdigest()
         level = job.learning_level
+        # MTPE M6 (D134): прогрев analysis (§4.6) — перед LLM-материалами S1–S5.
+        # S1 — базовая подстадия (все уровни, LLM); learning включён → прогрев.
+        warmup_profile(self._settings, "analysis")
         substages = (
             ("s1_vocabulary", SUBSTAGE_LEVELS["s1"], self._s1_vocabulary),
             ("s2_mwe", SUBSTAGE_LEVELS["s2"], self._s2_mwe),

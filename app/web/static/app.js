@@ -127,7 +127,7 @@ queue:(a,b)=>(b.queue_rank||0)-(a.queue_rank||0)||a.created_at-b.created_at||(a.
 done:(a,b)=>b.updated_at-a.updated_at,
 };
 function jobLine2(j){
-return (j.source_display||j.source_language||NS)+"→"+j.target_language+" · "+j.mode+(j.learning_cefr?" · "+j.learning_cefr:"");
+return (j.source_display||j.source_language||NS)+"→"+j.target_language+" · "+j.mode+(j.learning_cefr?" · "+j.learning_cefr:"")+(j.way_tag?" · "+j.way_tag:"");
 }
 function fmtDuration(totalSeconds){
 const m=Math.max(0,Math.floor((totalSeconds||0)/60));
@@ -135,8 +135,9 @@ if(m<60)return fmt(S.time_min,{n:m});
 return fmt(S.time_hm,{h:Math.floor(m/60),m:m%60});
 }
 function jobLine3(j){
+const ph=j.phase_label?"<span class='u3-row-sep'> · </span>"+esc(j.phase_label):"";
 const pct=j.progress_pct==null?"":"<span class='u3-row-sep'> · </span>"+j.progress_pct+"%";
-return "<span class='u3-status status-"+esc(j.status_group)+"' title='"+esc(j.status)+"'><span class='u3-status-ico' aria-hidden='true'>"+ICO(ST_ICO[j.status_group],14)+"</span></span>"+pct+"<span class='u3-row-sep'> · </span>"+esc(j.time_label||NS);
+return "<span class='u3-status status-"+esc(j.status_group)+"' title='"+esc(j.status)+"'><span class='u3-status-ico' aria-hidden='true'>"+ICO(ST_ICO[j.status_group],14)+"</span></span>"+ph+pct+"<span class='u3-row-sep'> · </span>"+esc(j.time_label||NS);
 }
 function jobCoverHtml(j){
 const c=j.cover;

@@ -35,8 +35,8 @@
     {% endif %}
     <a class="u3-row-body" href="/jobs/{{ j.id }}">
       <span class="u3-row-line1" title="{{ row.book_title }}">{{ row.book_title }}</span>
-      <span class="u3-row-line2">{{ src }}→{{ tgt }} · {{ j.mode }}{% if j.learning_cefr %} · {{ j.learning_cefr }}{% endif %}</span>
-      <span class="u3-row-line3"><span class="u3-status status-{{ row.status_group }}" title="{{ st }}"><span class="u3-status-ico" aria-hidden="true"><svg class="u3-ico u3-ico-14"><use href="/static/icons.svg#{{ {'wait':'pause','run':'play','ok':'check','warn':'triangle-alert','err':'x'}[row.status_group] }}"></use></svg></span></span>{% if row.progress_pct is not none %}<span class="u3-row-sep"> · </span>{{ row.progress_pct }}%{% endif %}<span class="u3-row-sep"> · </span>{{ row.time_label or s["common_not_set"] }}</span>
+      <span class="u3-row-line2">{{ src }}→{{ tgt }} · {{ j.mode }}{% if j.learning_cefr %} · {{ j.learning_cefr }}{% endif %}{% if row.way_tag %} · {{ row.way_tag }}{% endif %}</span>
+      <span class="u3-row-line3"><span class="u3-status status-{{ row.status_group }}" title="{{ st }}"><span class="u3-status-ico" aria-hidden="true"><svg class="u3-ico u3-ico-14"><use href="/static/icons.svg#{{ {'wait':'pause','run':'play','ok':'check','warn':'triangle-alert','err':'x'}[row.status_group] }}"></use></svg></span></span>{% if row.phase_label %}<span class="u3-row-sep"> · </span>{{ row.phase_label }}{% endif %}{% if row.progress_pct is not none %}<span class="u3-row-sep"> · </span>{{ row.progress_pct }}%{% endif %}<span class="u3-row-sep"> · </span>{{ row.time_label or s["common_not_set"] }}</span>
     </a>
     <span class="u3-row-acts">
       {% if st == "NEEDS_CONFIRMATION" %}

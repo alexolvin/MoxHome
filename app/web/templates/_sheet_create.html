@@ -82,6 +82,18 @@
   <span class="u3-param-l">{{ s["create_row_materials"] }}</span>
   <span class="u3-chipset"><span class="u3-chip u3-chip-st" id="u3-materials-value">{{ s["create_materials_cards"] if sel_level else s["create_materials_translation"] }}</span></span>
 </div>
+{# MTPE M6 (req 6): пятая строка «Способ перевода» — только для чтения
+   (способ задаётся в Настройках; ссылка туда). Неполный конфиг — строка
+   причины + «Запустить» недоступна (сервер — 422). #}
+<div class="u3-param">
+  <span class="u3-param-l">{{ s["create_row_way"] }}</span>
+  {% if llm_incomplete %}
+  <span class="u3-chipset"><span class="u3-chip u3-chip-st u3-warn">{{ s["create_row_way_incomplete"] }}</span></span>
+  {% else %}
+  <span class="u3-chipset"><span class="u3-chip u3-chip-st">{{ s["llm_pipeline_mt_pe"] if translation_pipeline == "mt_pe" else s["llm_pipeline_single"] }}</span></span>
+  <a class="u3-wiz-link" href="/settings/llm">{{ s["create_row_way_change"] }}</a>
+  {% endif %}
+</div>
 {% if retry %}
 <p class="u3-wiz-source">{{ s["jobs_create_retry_of"].format(id=create.retry_of) }}</p>
 {% elif create_defaults.from_last_job %}
@@ -106,6 +118,6 @@
   <p class="u3-filter u3-wiz-readonly">{{ s["create_more_llm"] }}: <span class="u3-mono">{{ llm_model }}</span></p>
 </details>
 <input type="hidden" name="u3_csrf" value="{{ csrf }}">
-<button type="submit" class="u3-btn u3-primary u3-sheet-action">{{ s["jobs_create_btn"] }}</button>
+<button type="submit" class="u3-btn u3-primary u3-sheet-action"{% if llm_incomplete %} disabled{% endif %}>{{ s["jobs_create_btn"] }}</button>
 <span id="u3-create-msg" role="status"></span>
 </form>
