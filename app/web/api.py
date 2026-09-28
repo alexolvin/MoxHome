@@ -45,7 +45,7 @@ from app.adapters.epub_engine.epubcheck import facts as epubcheck_facts
 from app.adapters.epub_engine.epubcheck import run_epubcheck
 from app.core.config import Settings
 from app.core.errors import AppError, SettingsIncompleteError
-from app.core.llm_settings import mt_draft_template_issues, validate_llm_settings
+from app.core.llm_settings import mt_draft_template_issues
 from app.domain.job import TERMINAL_STATES, Job, JobStatus
 from app.learning import card_export
 from app.llm.prompts import (
@@ -70,9 +70,9 @@ from app.services.jobs import confirm_job, create_job
 from app.services.llm_config import (
     clear_app_log,
     list_models,
+    probe_conflict,
     probe_profile,
     probe_request,
-    update_llm_config,
     validate_base_url,
 )
 from app.storage.jobs_repo import JobRepository
@@ -1430,73 +1430,20 @@ def llm_probe(
     body: dict[str, Any],
     deps: tuple[Settings, JobRepository] = Depends(get_deps),
 ) -> dict[str, Any]:
-    """ТЗ §13: проба профиля — GET {base_url}/models + минимальный
-    chat-вызов на 8 токенов. Не пишет конфиг, не создаёт задание.
+    """MTPE §6.5: проба профиля — 3 шага (chat 8 токенов / mt /completions 16).
 
-    200 всегда: ``ok``/``message`` — данные (одна строка результата);
-    400 — некорректное тело. Пустые ключ/extra_body = сохранённые."""
-    settings, _repo = deps
+    Не пишет конфиг, не создаёт задание. 200 — ``ok``/``message`` (одна
+    строка); 400 — некорректное тело; 409 — идёт LLM-фаза задания на этом
+    эндпоинте с другой моделью. Пустые ключ/extra_body = сохранённые."""
+    settings, repo = deps
     try:
-        base_url, model, api_key, temperature, extra_body = probe_request(body, settings)
+        data = probe_request(body, settings)
     except AppError as exc:
         raise HTTPException(status_code=400, detail=exc.message) from exc
-    return probe_profile(base_url, model, api_key, temperature, extra_body)
-
-
-@router.put("/config/llm")
-def config_llm_update(
-    body: dict[str, Any],
-    request: Request,
-    deps: tuple[Settings, JobRepository] = Depends(get_deps),
-) -> dict[str, Any]:
-    """ТЗ §13: запись ``llm.profiles.*`` (config.yaml) + ключи (.env).
-
-    Fail-closed: валидация ДО записи — AppError → 400, файлы не
-    тронуты. Успех — атомарная замена файлов, НОВЫЕ Settings в
-    ``app.state`` (применяются к следующему заданию: идемпотентные
-    ключи стадий включают конфиг)."""
-    _settings, _repo = deps
-    config_path = request.app.state.config_path
-    env_path = request.app.state.env_path
-    if config_path is None or env_path is None:
-        raise HTTPException(
-            status_code=500, detail=_S["err_llm_paths_missing"]
-        )
-    profiles_raw = body.get("profiles")
-    if not isinstance(profiles_raw, dict):
-        raise HTTPException(
-            status_code=400,
-            detail=_S["err_llm_unknown_profile"].format(profile="—"),
-        )
-    profile_fields = {
-        str(name): dict(raw)
-        for name, raw in profiles_raw.items()
-        if isinstance(raw, dict)
-    }
-    shared_url = body.get("base_url")
-    try:
-        new_settings = update_llm_config(
-            shared=bool(body.get("shared_endpoint")),
-            shared_url=shared_url if isinstance(shared_url, str) else None,
-            profile_fields=profile_fields,
-            config_path=config_path,
-            env_path=env_path,
-        )
-    except SettingsIncompleteError as exc:
-        # MTPE TZ §5.3 (точка 1): неполные для способа — 422, файлы не тронуты.
-        raise HTTPException(
-            status_code=422, detail=_format_settings_issues(exc)
-        ) from exc
-    except AppError as exc:
-        raise HTTPException(status_code=400, detail=exc.message) from exc
-    request.app.state.settings = new_settings
-    request.app.state.llm_settings_issues = validate_llm_settings(new_settings)
-    logger.info(
-        "llm_config_update: user=%s shared=%s",
-        _user(request),
-        bool(body.get("shared_endpoint")),
-    )
-    return {"saved": True, "profiles": views.models_view(new_settings)}
+    conflict = probe_conflict(repo, data["base_url"], data["model"])
+    if conflict is not None:
+        raise HTTPException(status_code=409, detail=conflict)
+    return probe_profile(data)
 
 
 @router.get("/llm/models")

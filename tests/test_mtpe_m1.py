@@ -346,8 +346,7 @@ def test_m1_3_save_with_problems_files_unchanged(tmp_path: Path) -> None:
     }
     with pytest.raises(SettingsIncompleteError):
         update_llm_config(
-            shared=True,
-            shared_url=url,
+            pipeline="mt_pe",
             profile_fields=profile_fields,
             config_path=cfg,
             env_path=env,
@@ -398,8 +397,7 @@ def test_m1_5_config_write_atomic(tmp_path: Path, monkeypatch: Any) -> None:
     }
     with pytest.raises(AppError):
         update_llm_config(
-            shared=True,
-            shared_url=url,
+            pipeline="single",
             profile_fields=profile_fields,
             config_path=cfg,
             env_path=env,

@@ -3256,3 +3256,41 @@ baseline 8c61a08: ruff 0 / mypy 0 (85) / pytest 433. Следующий этап
 Следующий этап — **M2** (экран «LLM и модели», §6: переключатель способа, карточки
 mt/postedit, полоса ошибок, проба `completions`, `409` в фазе; Playwright 384×715,
 бюджеты D117, axe). Экран СУЩЕСТВУЕТ (R8) — M2 его переделывает под §6, не строит с нуля.
+
+## MTPE M2 — экран «LLM и модели» (TZ §6) (2026-09-28)
+
+M2 закрыт: **CONTROL M2 10/10 PASS** (`docs/CONTROL/M2.md`). Ветка `stage/mtpe-M2`
+→ `main` (merge --no-ff).
+
+- **Экран §6** (`settings_llm.html` + `css-settings.css`): сегмент-переключатель «Способ
+  перевода» (`.u3-pseg`, 44 px, `input` скрыт, переключение по `label`; переименовано из
+  `.u3-seg`, D124) + карточки **выбранного** способа (первая открыта) + «Профили, не
+  используемые выбранным способом» (свёрнут) + «Сохранить». Ключ — только «задан/не задан».
+  «Пары» = полный вывод резолвера `mt_pe_supported` (D123).
+- **Запись** (D123): `update_llm_config` + `_profile_changes` (пропуск профилей с пустым
+  `base_url` → mt_pe с пустыми mt/postedit доходит до `validate_llm_settings` → 422, файлы
+  не тронуты, sha256 не изменился). no-JS-сохранение «неполные для способа» `400 → 422`
+  (`pages.settings_llm_save`); `400` — только для `form_error`.
+- **422-рендер — серверный** (D121): save = обычная отправка формы `POST /settings/llm`
+  (без fetch); ответ 422 → полоса-сводка `#u3-llm-issues` (`role=alert`, `tabindex=-1`,
+  фокус по onload JS) + построчные `.u3-fld-err` у полей (макрос `fld_err`, `field_msgs` из
+  `save_issues`). **Дефект, выловленный CONTROL**: `_llm_apply` фильтровал `details["issues"]`
+  по `isinstance(item, SettingsIssue)`, а `update_llm_config` кладёт **пары** `(path, code)`
+  → сводка пустая; исправлено (пары обрабатываются, объект — как fallback).
+- **JS** (D122): `runSave` (fetch `PUT /api/config/llm`) **удалён** — save = отправка формы;
+  без потребителя в UI эндпоинт ломает U1-6 (биекция routes↔consumers) → решением владельца
+  `PUT /api/config/llm` **удалён** (`config_llm_update` из `api.py`); единственный путь
+  сохранения = форма `POST /settings/llm` (JS + no-JS, Rule 8: тот же `update_llm_config`);
+  тесты R8 (r8_3/4/5/6/16) переписаны на форму; `moveCards` + `runProbe` без изменений;
+  `app.js` = 81 469 Б (≤ 81 920, D117).
+- **Проба §6.5**: 3 ступени (GET /models → `model_not_listed`; POST completions/chat →
+  `response.model` сверка → `model_mismatch`); 409 `probe_conflict` (рабочее задание + та же
+  `base_url` + другая модель) → `llm_probe_409`.
+- Тесты: `tests/test_mtpe_m2.py` (5 кейсов: M2-1/4/5/6/8, мок-эндпоинты), `test_u3_web.py`
+  (мок u3_15 под форму M2 + guard `if(segs&&segs.length)` в `bindSettingsLLM`),
+  `test_r8_web.py`, `test_mtpe_m1.py` (соответствие механизму).
+- Регрессия: ruff 0 / mypy 0 (86) / **pytest 460** (база 455 + 5, ни один прежний не удалён).
+  Артефакты: `docs/CONTROL/M2.md`, `.a/tasks/ui-audit/results.json["m2"]`,
+  `.a/tasks/ui-audit/shots/M2/`. D121–D124 в `docs/DECISIONS.md`.
+
+Следующий этап — **M3** (markup.py + draft.py + completions-транспорт).

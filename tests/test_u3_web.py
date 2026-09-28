@@ -941,11 +941,15 @@ promptForm.elements = {
 };
 documentStub.getElementById("u3-prompt-versions").textContent = "[]";
 documentStub.getElementById("u3-llm-form").elements = {
-  shared_endpoint: { checked: false, addEventListener() {} },
-  base_url: { value: "", addEventListener() {} },
+  pipeline: [
+    { value: "single", checked: true, addEventListener() {} },
+    { value: "mt_pe", checked: false, addEventListener() {} },
+  ],
   base_url_translation: { value: "", addEventListener() {} },
   base_url_fill: { value: "", addEventListener() {} },
   base_url_analysis: { value: "", addEventListener() {} },
+  base_url_mt: { value: "", addEventListener() {} },
+  base_url_postedit: { value: "", addEventListener() {} },
 };
 
 if (scenario === "restart") {
