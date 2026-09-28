@@ -1,0 +1,35 @@
+# ui-text.yaml — текстовые пределы и словарь (TZ-UI-AUDIT §2.5)
+# max_lines — потолок строк (R-Y5: фактических ≤ объявленных; перенос там, где
+# его быть не должно). max_chars — потолок длины (R-Y10). case — регистр
+# подписи (R-Y11). truncate: ellipsis — обрезка видима (R-Y7).
+# glossary — одно понятие, одно слово во всём интерфейсе (R-C8).
+
+text_roles:
+  button.label:      { max_lines: 1, max_chars: 20, case: sentence }
+  chip.label:        { max_lines: 1, max_chars: 16 }
+  tabbar.label:      { max_lines: 1, max_chars: 12 }
+  appbar.title:      { max_lines: 1, truncate: ellipsis }
+  list.title:        { max_lines: 1, truncate: ellipsis }
+  list.meta:         { max_lines: 1, truncate: ellipsis }
+  grid.title:        { max_lines: 2, truncate: ellipsis }
+  status.label:      { max_lines: 1 }
+  facts.label:       { max_lines: 1 }
+  banner.label:      { max_lines: 3 }
+  toast.label:       { max_lines: 2 }
+  body:              { max_lines: null }
+
+glossary:
+  задание:            [job, jobs]
+  книга:              [book, books]
+  способ перевода:     [pipeline, way]
+  постредактура:       [postedit, post-editing]
+  глоссарий:          [glossary]
+  экспорт:            [export]
+  импорт:             [import]
+  статус:             [status]
+  прогресс:           [progress]
+  настройки:          [settings]
+  черновик:           [draft]
+  модель:             [model]
+  профиль:            [profile]
+  уровень:            [level]

@@ -1,0 +1,76 @@
+# ui-roles.yaml — роль элемента → обязательный токен (TZ-UI-AUDIT §2.2)
+# Каждый видимый элемент несёт `data-role` из этого списка (R-T1). Роль без
+# объявления и элемент без роли — дефекты (R-T1/R-T2). Расхождение «роль →
+# ожидаемый токен» — R-T4 (P0). Токены — из :root (style.css + runtime base.html).
+#
+# max_per_screen — потолок экземпляров роли на экране (R-T6).
+
+roles:
+  # --- поверхности ---
+  surface.bg:         { bg: --bg }
+  surface.1:          { bg: --s1 }
+  surface.2:          { bg: --s2 }
+  surface.3:          { bg: --s3 }
+
+  # --- текст ---
+  text.primary:       { fg: --fg }
+  text.meta:          { fg: --fgm }
+  text.faint:         { fg: --fgs }
+  text.mono:          { fg: --fgm }
+
+  # --- действия (кнопки, иконки, FAB) ---
+  action.primary:     { bg: --ac,  fg: --oac, max_per_screen: 1 }
+  action.secondary:   { bg: --s2,  fg: --fg,  border: --ln }
+  action.tertiary:    { bg: --s1,  fg: --fgm }
+  action.text:        { bg: transparent, fg: --acf }
+  action.destructive: { bg: transparent, fg: --st-e }
+  action.icon:        { bg: transparent, fg: --fgm }
+  action.fab:         { bg: --ac,  fg: --oac }
+
+  # --- статусы (5 групп, views.STATUS_GROUP) ---
+  status.wait:        { fg: --st-w, bg: --st-wb }
+  status.run:         { fg: --st-r, bg: --st-rb }
+  status.ok:          { fg: --st-o, bg: --st-ob }
+  status.warn:        { fg: --st-a, bg: --st-ab }
+  status.error:       { fg: --st-e, bg: --st-eb }
+
+  # --- границы ---
+  border.decorative:  { border: --ln }
+  border.control:     { border: --lns }
+
+  # --- акцент / CTA ---
+  accent:             { fg: --ac }
+  accent.strong:      { fg: --acs }
+  accent.focus:       { fg: --acf }
+  cta:                { bg: --cta, fg: --oct }
+
+  # --- оверлеи ---
+  scrim:              { bg: --scr }
+
+  # --- чипы и сегменты (интерактив) ---
+  chip.default:       { bg: --s2,  fg: --fg,  border: --ln }
+  chip.selected:      { bg: --acs, fg: --os }
+  seg.track:          { bg: --s2 }
+  seg.pill:           { bg: transparent, fg: --fgm }
+  seg.pill.current:   { bg: --ac,  fg: --oac }
+
+  # --- баннеры / обратная связь ---
+  banner.ok:          { bg: --st-ob, fg: --st-o }
+  banner.warn:        { bg: --st-ab, fg: --st-a }
+  banner.error:       { bg: --st-eb, fg: --st-e }
+
+  # --- формы ---
+  input.field:        { bg: --s2, fg: --fg, border: --lns }
+  input.label:        { fg: --fg }
+  input.hint:         { fg: --fgm }
+  input.error:        { fg: --st-e }
+
+  # --- прогресс ---
+  progress.track:     { bg: --s2 }
+  progress.fill:      { bg: --ac }
+
+  # --- карточки статистики ---
+  stat.number:        { fg: --fg }
+  stat.number.ok:     { fg: --st-o }
+  stat.number.run:    { fg: --st-r }
+  stat.label:         { fg: --fgm }

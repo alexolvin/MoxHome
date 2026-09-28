@@ -1,0 +1,181 @@
+# ui-screens.yaml — реестр экранов (TZ-UI-AUDIT §2.4)
+# Единственный источник истины о том, что снимается. ID `S<nn>` совпадают с
+# S01–S15 съёмочного стенда (scripts/ui_shots.py); S16+ — доп. экраны.
+#
+# viewports — классы из ui-rules.yaml/viewports (матрица §4.1: полная — на
+# опорных mobile_reference 384×715 + desktop_reference 1440×900).
+# states — применимые состояния §4.3 (загрузка/пусто/пусто-фильтр/ошибка/
+#         нет-сети/предельные данные).
+# rules — группы правил (контур 2–3), применяемые к экрану.
+# exceptions — объявленные отклонения с причиной и сроком (не объявлено — нет).
+
+meta:
+  version: "2.0"
+  primary_viewports: [mobile_reference, desktop_reference]
+
+screens:
+  S01:
+    name: login
+    path: /login
+    auth: false
+    states: [error]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-M, R-D, R-S, R-F, R-X, R-Z]
+
+  S02:
+    name: books
+    path: /books
+    item_selector: ".u3-book-card"
+    states: [loading, ok, empty, filtered_empty, error, offline, extreme_data]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-M, R-D, R-S, R-C, R-I, R-X, R-P, R-Z]
+
+  S03:
+    name: books-empty
+    path: /books
+    item_selector: ".u3-book-card"
+    states: [empty]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-M, R-D, R-S, R-X]
+
+  S04:
+    name: book
+    path: /books/{book}
+    states: [ok, error]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-M, R-D, R-S, R-C, R-X, R-Z]
+
+  S05:
+    name: book-nocover
+    path: /books/{book}
+    states: [ok, error]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-M, R-D, R-S, R-C, R-X, R-Z]
+
+  S06:
+    name: jobs
+    path: /jobs
+    item_selector: ".u3-row-job"
+    states: [loading, ok, empty, filtered_empty, error, offline, extreme_data]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-M, R-D, R-S, R-C, R-I, R-X, R-P, R-Z]
+
+  S07:
+    name: jobs-empty
+    path: /jobs
+    item_selector: ".u3-row-job"
+    states: [empty, filtered_empty]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-M, R-D, R-S, R-X]
+
+  S08:
+    name: job
+    path: /jobs/{job}
+    states: [ok, loading, error]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-M, R-D, R-S, R-C, R-X, R-P, R-Z]
+
+  S09:
+    name: create
+    path: /jobs?sheet=create&book={book}
+    states: [ok, error]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-M, R-D, R-S, R-F, R-X, R-Z]
+
+  S10:
+    name: import
+    path: /books/upload
+    states: [loading, ok, error, offline]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-M, R-D, R-S, R-F, R-X, R-Z]
+
+  S11:
+    name: export
+    path: /jobs?sheet=export&job={job}
+    states: [ok, error]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-M, R-D, R-S, R-F, R-C, R-X, R-Z]
+
+  S12:
+    name: settings
+    path: /settings
+    states: [ok]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-M, R-D, R-C, R-X]
+
+  S13:
+    name: settings-llm
+    path: /settings/llm
+    states: [ok, error]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-M, R-D, R-S, R-F, R-X, R-Z]
+
+  S14:
+    name: dev-kit
+    path: /dev/kit
+    states: [ok]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-X]
+
+  S15:
+    name: book-delete
+    path: /books/{book}/delete
+    states: [ok, error]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-M, R-D, R-S, R-F, R-X, R-Z]
+
+  S16:
+    name: settings-languages
+    path: /settings/languages
+    states: [ok]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-M, R-D, R-C, R-X, R-P]
+
+  S17:
+    name: settings-prompts
+    path: /settings/prompts
+    states: [ok, error]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-M, R-D, R-S, R-C, R-X, R-P]
+
+  S18:
+    name: settings-appearance
+    path: /settings/appearance
+    states: [ok]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-M, R-D, R-F, R-X]
+
+  S19:
+    name: settings-maintenance
+    path: /settings/maintenance
+    states: [ok, error]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-M, R-D, R-S, R-C, R-X, R-P, R-Z]
+
+  S20:
+    name: settings-about
+    path: /settings/about
+    states: [ok]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-M, R-D, R-C, R-X]
+
+  S21:
+    name: job-postedit
+    path: /jobs/{job}/postedit
+    states: [ok, empty, error]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-M, R-D, R-S, R-C, R-X, R-Z]
+
+  S22:
+    name: not-found
+    path: /__ui_audit_404__
+    states: [error]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-M, R-D, R-S, R-X]
+
+  S23:
+    name: forbidden
+    path: /__ui_audit_403__
+    states: [error]
+    viewports: [mobile_reference, desktop_reference]
+    rules: [R-T, R-Y, R-L, R-K, R-M, R-D, R-S, R-X]

@@ -1,0 +1,191 @@
+# ui-components.yaml — реестр компонентов (TZ-UI-AUDIT §2.3)
+# Единственный источник истины о том, как выглядит и ведёт себя компонент.
+# kit_anchor — якорь на /dev/kit (R-K11). size — диапазон [min, max] в CSS px
+# (R-L4: минимум И максимум). contexts — где какой вариант разрешён (R-K4:
+# вариант вне контекста — P0). max_lines — предел строк подписи (R-Y5).
+#
+# Сигнатуры и размеры — по :root-токенам и шаблонам app/web/templates.
+
+components:
+  button:
+    partial: inline  # .u3-btn* в шаблонах + jobRowHtml(app.js)
+    kit_anchor: kit-button
+    variants: [primary, secondary, tertiary, text, destructive, icon]
+    states: [default, hover, focus, active, disabled]
+    size:
+      mobile: { h: [44, 48], w_max_pct: 100 }
+      desktop: { h: [32, 40] }
+    contexts:
+      list.row: [icon]                      # R-M18: в строке — только иконка
+      app.bar: [icon, text]
+      sheet.footer: [primary, secondary, tertiary, destructive]
+      card: [primary, text, secondary]
+      form: [primary, secondary, destructive]
+      inline: [text, tertiary, icon]
+    max_lines: 1
+
+  fab:
+    partial: "_fab.html"
+    kit_anchor: kit-fab
+    variants: [default]
+    states: [default, focus]
+    size: { w: [56, 56], h: [56, 56] }      # --ww
+    contexts: [page.corner, app.bar.desktop]
+    max_lines: 0
+
+  chip:
+    partial: inline  # .u3-chip / .u3-rchip
+    kit_anchor: kit-chip
+    variants: [default, selected, radio]
+    states: [default, focus, selected, disabled]
+    size: { h: [24, 36] }                   # --chs / --ch
+    contexts: [wizard.group, filter, card, list.row]
+    max_lines: 1
+
+  segmented:
+    partial: inline  # .u3-seg + .u3-seg-pill
+    kit_anchor: kit-segment
+    variants: [pill]
+    states: [default, current]
+    size: { h: [36, 44] }
+    contexts: [filter, tabs, wizard, settings]
+    max_lines: 1
+
+  switch:
+    partial: inline  # .u3-switch
+    kit_anchor: kit-toggle
+    variants: [default]
+    states: [off, on, focus, disabled]
+    size: { w: [44, 44], h: [26, 26] }      # --u3-tap / --swh
+    contexts: [settings.row, wizard, list.row]
+
+  status-chip:
+    partial: inline  # .u3-status-chip / .u3-st-*
+    kit_anchor: kit-status
+    variants: [wait, run, ok, warn, error]
+    states: [default]
+    size: { h: [20, 32] }
+    contexts: [card, list.row, page.header, dev-kit]
+
+  list-row:
+    partial: "_job_row.html"
+    kit_anchor: kit-row
+    variants: [job, book]
+    states: [default, selected, dragging, swiped, new]
+    size: { h: [48, 72] }                   # --rc (compact) / --jr
+    contexts: [jobs.list, books.list]
+    max_lines: 3                             # R-M9: ≤ 3 текстовые строки
+
+  book-card:
+    partial: "_book_card.html"
+    kit_anchor: kit-card
+    variants: [default]
+    states: [default, cover, nocover]
+    size: { cover_w: [120, 120], cover_h: [180, 180] }  # --cpw / --cph
+    contexts: [books.grid]
+    max_lines: 2                             # grid.title — 2-line clamp
+
+  settings-row:
+    partial: inline  # .u3-grp-row
+    kit_anchor: kit-settings-row
+    variants: [default]
+    states: [default, hover]
+    size: { h: [52, 52] }                    # --srt
+    contexts: [settings.list]
+    max_lines: 2
+
+  sheet:
+    partial: inline  # <dialog class="u3-sheet">
+    kit_anchor: kit-sheet
+    variants: [default]
+    states: [closed, open, focus]
+    size: { w_max: [440, 440], max_h_vh: [85, 85] }     # min(92vw,440px), 85vh
+    contexts: [page]
+
+  banner:
+    partial: inline  # .u3-banner-ok/-warn
+    kit_anchor: kit-banner
+    variants: [ok, warn, error]
+    states: [default]
+    contexts: [page, sheet, settings]
+    max_lines: null
+
+  field:
+    partial: "_field.html"
+    kit_anchor: kit-field
+    variants: [text, select, checkbox, search]
+    states: [default, focus, error, disabled]
+    size: { h: [44, 48] }                    # --u3-tap
+    contexts: [form, settings, wizard, sheet]
+
+  appbar:
+    partial: "_appbar.html"
+    kit_anchor: kit-appbar
+    variants: [default, menu]
+    states: [default]
+    size: { h: [40, 40] }                    # --ah + safe-area
+    contexts: [page]
+
+  tabbar:
+    partial: "_tabbar.html"
+    kit_anchor: kit-tabbar
+    variants: [mobile, sidebar]
+    states: [default, current]
+    size: { h: [44, 44] }                    # --u3-tabbar-h
+    contexts: [page]
+    max_items: [3, 5]                         # R-M16
+
+  toast:
+    partial: "_toast.html"
+    kit_anchor: kit-toast
+    variants: [default, undo, action]
+    states: [visible]
+    contexts: [page]
+    max_lines: 2
+
+  progress:
+    partial: inline  # .u3-row-strip / .u3-prog
+    kit_anchor: kit-progress
+    variants: [strip, bar]
+    states: [default, indeterminate]
+    size: { h: [12, 12] }                    # --skh
+    contexts: [list.row, page, dev-kit]
+
+  stat-card:
+    partial: inline  # .u3-stat
+    kit_anchor: kit-stat
+    variants: [default]
+    states: [default, ok, run, wait]
+    contexts: [page]
+    max_lines: 2
+
+  format-tile:
+    partial: inline  # .u3-fmt-*
+    kit_anchor: kit-format
+    variants: [epub, pdf, docx, md, txt, fb2, azw3, htmlz]
+    states: [default, selected]
+    contexts: [export, settings]
+    max_lines: 1
+
+  skeleton:
+    partial: inline  # .u3-skel-row
+    kit_anchor: kit-skeleton
+    variants: [row]
+    states: [loading]
+    contexts: [list]
+
+  state:
+    partial: inline  # .u3-state
+    kit_anchor: kit-state
+    variants: [loading, empty, empty-filter, error, offline]
+    states: [default]
+    contexts: [list, page]
+    max_lines: null
+
+  netbar:
+    partial: inline  # .u3-netbar
+    kit_anchor: kit-netbar
+    variants: [offline]
+    states: [visible]
+    contexts: [page]
+    max_lines: 1
