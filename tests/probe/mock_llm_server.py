@@ -198,6 +198,53 @@ _STANDARD_REQUEST_KEYS = frozenset(
     }
 )
 
+#: Стандартные поля тела запроса `completions` (MTPE M3): остальное — `extra`.
+_STANDARD_COMPLETIONS_REQUEST_KEYS = frozenset(
+    {
+        "model",
+        "prompt",
+        "suffix",
+        "max_tokens",
+        "temperature",
+        "top_k",
+        "top_p",
+        "stream",
+        "stop",
+        "seed",
+        "n",
+        "logprobs",
+        "echo",
+        "user",
+    }
+)
+
+#: MT-черновик (MTPE M3): детерминированные ответы mock-мира. `ok` — на целевом
+#: (ru) языке; `mt_wrong_lang` — на другом (en) → флаг `draft_bad`. `mt_echo` —
+#: эхо промпта (содержит маркер шаблона) → `draft_bad`.
+_MT_OK_RU = "Это пример перевода текста на русском языке для проверки черновика."
+_MT_WRONG_EN = "This is a sample English sentence to trigger the wrong-language flag."
+
+
+def _mt_response(scenario: str, prompt: str, model: str, max_tokens: int) -> tuple[str, str, str]:
+    """(text, finish_reason, response_model) для транспорта `completions`.
+
+    Прогрев (max_tokens == 1) — всегда корректный ответ (модель = запрошенная).
+    Сценарии черновика: model_mismatch (модель ≠ запрошенной), mt_echo (эхо),
+    mt_truncate (finish_reason=length), mt_wrong_lang (чужой язык), ok (ru).
+    """
+    if max_tokens == 1:
+        return " ", "stop", model
+    if scenario == "model_mismatch":
+        return _MT_OK_RU, "stop", "mt-wrong-model"
+    if scenario == "mt_echo":
+        return prompt, "stop", model
+    if scenario == "mt_truncate":
+        return _MT_OK_RU[: len(_MT_OK_RU) // 2], "length", model
+    if scenario == "mt_wrong_lang":
+        return _MT_WRONG_EN, "stop", model
+    return _MT_OK_RU, "stop", model
+
+
 #: L2: mock-аннотация глоссария. Sentinel-термины (для T-L2-6/T-L2-11):
 #: «badparadigm» (casefold) — 12 идентичных форм БЕЗ объяснений →
 #: paradigm_unverified; «indeclinable» (casefold) — явная метка
@@ -1132,6 +1179,8 @@ def _build_server(
                 self._send_json(200, json.dumps({"ok": True, "mode": state.scenario}))
             elif self.path == "/v1/chat/completions":
                 self._handle_chat(body)
+            elif self.path == "/v1/completions":
+                self._handle_completions(body)
             else:
                 self._send_json(404, json.dumps({"error": "not found"}))
 
@@ -1232,6 +1281,71 @@ def _build_server(
                         ensure_ascii=False,
                     ),
                 )
+
+        def _handle_completions(self, body: dict[str, object]) -> None:
+            """Транспорт `completions` (MTPE M3): профиль mt. `prompt` — заполненный
+            шаблон `mt_draft`; детерминированный ответ по сценарию (mock-мир)."""
+            prompt = str(body.get("prompt", ""))
+            max_tokens = int(body.get("max_tokens", 16) or 16)
+            model_name = str(body.get("model", "mt-model"))
+
+            with state.lock:
+                scenario = state.scenario
+                delay = state.delay_seconds
+            if delay > 0:
+                time.sleep(delay)
+
+            if scenario == "http500":
+                error_payload = {"error": {"message": "mock internal error"}}
+                self._send_json(500, json.dumps(error_payload))
+                return
+
+            text, finish_reason, response_model = _mt_response(
+                scenario, prompt, model_name, max_tokens
+            )
+            encoding = tiktoken.get_encoding("cl100k_base")
+            prompt_tokens = len(encoding.encode(prompt))
+            completion_tokens = len(encoding.encode(text))
+
+            with state.lock:
+                state.requests.append(
+                    {
+                        "seq": len(state.requests),
+                        "scenario": scenario,
+                        "kind": "mt" if max_tokens > 1 else "mt_warmup",
+                        "model": model_name,
+                        "max_tokens": max_tokens,
+                        "prompt": prompt,
+                        "prompt_tokens": prompt_tokens,
+                        "completion_tokens": completion_tokens,
+                        "response": text,
+                        "finish_reason": finish_reason,
+                        "extra": {
+                            key: value
+                            for key, value in body.items()
+                            if key not in _STANDARD_COMPLETIONS_REQUEST_KEYS
+                        },
+                    }
+                )
+
+            self._send_json(
+                200,
+                json.dumps(
+                    {
+                        "id": f"cmpl-{uuid.uuid4().hex[:12]}",
+                        "object": "text_completion",
+                        "created": int(time.time()),
+                        "model": response_model,
+                        "choices": [{"index": 0, "text": text, "finish_reason": finish_reason}],
+                        "usage": {
+                            "prompt_tokens": prompt_tokens,
+                            "completion_tokens": completion_tokens,
+                            "total_tokens": prompt_tokens + completion_tokens,
+                        },
+                    },
+                    ensure_ascii=False,
+                ),
+            )
 
         def _send_sse(
             self, response: str, model: str, prompt_tokens: int, completion_tokens: int

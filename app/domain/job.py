@@ -168,7 +168,9 @@ class Job:
     tokens_translation: int = 0
     tokens_fill: int = 0
     tokens_analysis: int = 0
-    #: Инвариант (E4-5): tokens_total == tokens_translation + tokens_fill + tokens_analysis.
+    #: MTPE M3 (профиль mt): токены фазы черновика (тракт M).
+    tokens_mt: int = 0
+    #: Инвариант (E4-5): tokens_total == перевод + fill + analysis + mt.
     tokens_total: int = 0
     #: Доля выровненных сегментов (E6.5) — в статусе задания; ниже порога
     #: (alignment.min_coverage) — COMPLETED_WITH_WARNINGS. None — не измерялась.
