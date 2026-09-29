@@ -122,6 +122,10 @@ TEXT_MAX_CHARS: list[tuple[str, str, int]] = [
     (".u3-tab", "tabbar.label", 12),
 ]
 
+# (selector, role, case) — роли с объявленным регистром (ui-text.yaml: case).
+# sentence: первая буква заглавная; не ALL CAPS; не начинается со строчной.
+TEXT_CASE: list[tuple[str, str, str]] = [(".u3-btn", "button.label", "sentence")]
+
 # R-Y10: длина подписи ≤ max_chars (по ui-text.yaml).
 CHARS_JS = r"""
 (sels) => {
@@ -427,6 +431,33 @@ def _check_truncate(page, sid: str, out: dict[str, Any]) -> None:
         )
 
 
+def _case_issue(text: str, cas: str) -> str | None:
+    """Нарушение объявленного регистра; None — ок."""
+    al = [c for c in text if c.isalpha()]
+    if not al:
+        return None
+    if cas == "sentence":
+        if al[0].islower():
+            return "начинается со строчной (не sentence case)"
+        if len(al) > 2 and all(c.isupper() for c in al):
+            return "ALL CAPS (не sentence case)"
+    return None
+
+
+def _check_case(page, sid: str, out: dict[str, Any]) -> None:
+    """R-Y11 (P2) — регистр подписи соответствует case роли (ui-text.yaml)."""
+    for sel, role, cas in TEXT_CASE:
+        texts = page.evaluate(
+            "(s) => [...document.querySelectorAll(s)]"
+            ".map(e => (e.textContent || '').trim()).filter(Boolean)",
+            sel,
+        )
+        for t in texts:
+            issue = _case_issue(t, cas)
+            if issue:
+                add_violation(out, "R-Y11", "P2", sid, f"{role} «{t}»: {issue} (case: {cas})")
+
+
 def check_text(page, sid: str, out: dict[str, Any], tr: TextRules) -> None:
     """R-Y1 (кегли в шкалу) / R-Y2 (<lo) / R-Y3 (>hi моб.) / R-Y4 (line-height) /
     R-Y5+6 (строки ≤ max_lines) / R-Y10 (симв. ≤ max_chars)."""
@@ -454,6 +485,7 @@ def check_text(page, sid: str, out: dict[str, Any], tr: TextRules) -> None:
     _check_line_counts(res["lines"], sid, out)
     _check_max_chars(page, sid, out)
     _check_truncate(page, sid, out)
+    _check_case(page, sid, out)
 
 
 def check_screen(page, sid: str, path: str, reg: Registry, out: dict[str, Any]) -> int:
