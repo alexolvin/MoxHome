@@ -529,6 +529,40 @@ def _check_case(page, sid: str, out: dict[str, Any]) -> None:
                 add_violation(out, "R-Y11", "P2", sid, f"{role} «{t}»: {issue} (case: {cas})")
 
 
+# R-M (384×715): нет горизонтального скролла; кегль вводов ≥16px (iOS zoom-on-focus).
+MOBILE_JS = r"""
+() => {
+  const de = document.documentElement;
+  const out = { hscroll: de.scrollWidth - de.clientWidth, smallInputs: [] };
+  document.querySelectorAll("input,select,textarea").forEach(el => {
+    const cs = getComputedStyle(el); const r = el.getBoundingClientRect();
+    if (cs.display === "none" || cs.visibility === "hidden" || r.width < 1) return;
+    if (el.type === "hidden" || el.type === "range") return;
+    const fs = parseFloat(cs.fontSize);
+    if (fs < 16) out.smallInputs.push({ tag: el.tagName,
+      cls: String(el.className || "").slice(0, 20), fs: Math.round(fs), type: el.type || "-" });
+  });
+  return out;
+}
+"""
+
+
+def _check_mobile(page, sid: str, out: dict[str, Any]) -> None:
+    """R-M (mobile_reference 384×715): без h-скролла; ввод ≥16px."""
+    m = page.evaluate(MOBILE_JS, None)
+    if m["hscroll"] > 1:
+        add_violation(
+            out, "R-M", "P1", sid,
+            f"горизонтальный скролл: scrollWidth > clientWidth на {m['hscroll']}px",
+        )
+    for i in m["smallInputs"]:
+        add_violation(
+            out, "R-M", "P2", sid,
+            f"ввод <16px (iOS zoom-on-focus): <{i['tag']} .u3…{i['cls']}> "
+            f"кегль {i['fs']}px (type={i['type']})",
+        )
+
+
 def check_accessibility(page, sid: str, out: dict[str, Any]) -> None:
     """R-X (WCAG 2.2 AA): контраст (R-X1), h1 (R-X2), заголовки (R-X3), img/alt (R-X4),
     form-имена (R-X5). Лимит замера: background-color (без градиентов/::before)."""
@@ -684,6 +718,7 @@ def main() -> None:
             total += check_screen(page, sid, path, reg, out)
             check_text(page, sid, out, tr)
             check_accessibility(page, sid, out)
+            _check_mobile(page, sid, out)
         out["stats"]["total_instances"] = total
         browser.close()
 
