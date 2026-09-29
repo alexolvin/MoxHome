@@ -714,6 +714,41 @@ def write_report(out: dict[str, Any], out_path: str) -> None:
         print(f"  … и ещё {len(out['violations']) - 60}")
 
 
+def _run_screens(page, screens, out, desktop: bool, reg_tr) -> int:
+    """Прогон по экранам: desktop — только R-D; mobile — полный набор."""
+    reg, tr = reg_tr
+    total = 0
+    for sid in screens:
+        path = PATH_BY_ID.get(sid)
+        if path is None:
+            print(f"{sid}: нет пути в базовом наборе — пропуск")
+            continue
+        if desktop:
+            page.goto(reg.base + path, wait_until="domcontentloaded", timeout=30_000)
+            page.wait_for_load_state("networkidle", timeout=15_000)
+            _check_desktop(page, sid, out)
+        else:
+            total += check_screen(page, sid, path, reg, out)
+            check_text(page, sid, out, tr)
+            check_accessibility(page, sid, out)
+            _check_mobile(page, sid, out)
+    return total
+
+
+def _emit_global_text_rules(out: dict[str, Any], tr: TextRules, max_steps: int) -> None:
+    """R-Y1 (кегли ≤ шкалы) + R-Y4 (сводный) — глобально за прогон (mobile)."""
+    fonts = out["stats"].get("fonts_seen", [])
+    out["stats"]["r_y1_distinct_sizes"] = sorted(fonts)
+    if len(fonts) > max_steps:
+        add_violation(out, "R-Y1", "P1", "ALL",
+                      f"различных кеглей {len(fonts)} > {max_steps}: {sorted(fonts)}")
+    lh_low = sorted(out["stats"].get("r_y4_low_ratios", []))
+    if lh_low:
+        add_violation(out, "R-Y4", "P2", "ALL",
+                      f"line-height {lh_low} ниже body {tr.lh_body} "
+                      f"/ heading {tr.lh_head} (компактный дизайн; вопрос владельца)")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--base", default="http://127.0.0.1:8421")
@@ -763,37 +798,11 @@ def main() -> None:
         page = ctx.new_page()
         if not desktop:
             check_kit(page, reg, out)
-        total = 0
-        for sid in screens:
-            path = PATH_BY_ID.get(sid)
-            if path is None:
-                print(f"{sid}: нет пути в базовом наборе — пропуск")
-                continue
-            if desktop:
-                page.goto(reg.base + path, wait_until="domcontentloaded", timeout=30_000)
-                page.wait_for_load_state("networkidle", timeout=15_000)
-                _check_desktop(page, sid, out)
-            else:
-                total += check_screen(page, sid, path, reg, out)
-                check_text(page, sid, out, tr)
-                check_accessibility(page, sid, out)
-                _check_mobile(page, sid, out)
-        out["stats"]["total_instances"] = total
+        out["stats"]["total_instances"] = _run_screens(page, screens, out, desktop, (reg, tr))
         browser.close()
 
     if not desktop:
-        # R-Y1 — число различных кеглей за прогон ≤ шкале (type_scale_max_steps)
-        fonts = out["stats"].get("fonts_seen", [])
-        out["stats"]["r_y1_distinct_sizes"] = sorted(fonts)
-        if len(fonts) > max_steps:
-            add_violation(out, "R-Y1", "P1", "ALL",
-                          f"различных кеглей {len(fonts)} > {max_steps}: {sorted(fonts)}")
-        # R-Y4 — сводный: кегли ниже порога (компактный дизайн vs body≥1.4)
-        lh_low = sorted(out["stats"].get("r_y4_low_ratios", []))
-        if lh_low:
-            add_violation(out, "R-Y4", "P2", "ALL",
-                          f"line-height {lh_low} ниже body {tr.lh_body} "
-                          f"/ heading {tr.lh_head} (компактный дизайн; вопрос владельца)")
+        _emit_global_text_rules(out, tr, max_steps)
     write_report(out, args.out)
 
 
