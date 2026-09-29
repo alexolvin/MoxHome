@@ -534,10 +534,13 @@ MOBILE_JS = r"""
 () => {
   const de = document.documentElement;
   const out = { hscroll: de.scrollWidth - de.clientWidth, smallInputs: [] };
-  document.querySelectorAll("input,select,textarea").forEach(el => {
+  // zoom-on-focus — только текстовые вводы (radio/checkbox не зумят текст)
+  const textEntry = new Set(["", "text", "email", "password", "number", "tel",
+    "url", "date", "datetime-local", "month", "week", "time", "search"]);
+  document.querySelectorAll("input,textarea").forEach(el => {
     const cs = getComputedStyle(el); const r = el.getBoundingClientRect();
     if (cs.display === "none" || cs.visibility === "hidden" || r.width < 1) return;
-    if (el.type === "hidden" || el.type === "range") return;
+    if (el.tagName === "INPUT" && !textEntry.has((el.type || "text").toLowerCase())) return;
     const fs = parseFloat(cs.fontSize);
     if (fs < 16) out.smallInputs.push({ tag: el.tagName,
       cls: String(el.className || "").slice(0, 20), fs: Math.round(fs), type: el.type || "-" });
