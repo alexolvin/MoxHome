@@ -375,6 +375,26 @@ def check_role_color(it: dict, reg: Registry, sid: str, out: dict[str, Any]) -> 
                           f"{it['component']}: {attr} {gotx} ≠ роль {it['data_role']} ({want})")
 
 
+def _check_line_counts(lines: dict, sid: str, out: dict[str, Any]) -> None:
+    """R-Y5/6 — число строк ≤ max_lines (роли с max_lines)."""
+    for sel, spec in lines.items():
+        maxl = spec["maxl"]
+        for it in spec["items"]:
+            if it["lines"] > maxl:
+                sev = "P0" if sel in (".u3-btn", ".u3-tab") else "P1"
+                add_violation(out, "R-Y5", sev, sid,
+                              f"{sel}: {it['lines']} строки > {maxl} (white-space: {it['ws']})")
+
+
+def _check_max_chars(page, sid: str, out: dict[str, Any]) -> None:
+    """R-Y10 — длина ≤ max_chars (ui-text.yaml)."""
+    for spec in page.evaluate(CHARS_JS, [list(t) for t in TEXT_MAX_CHARS]).values():
+        for it in spec["items"]:
+            if it["len"] > spec["maxc"]:
+                add_violation(out, "R-Y10", "P1", sid,
+                              f"{spec['role']}: {it['len']} симв. > {spec['maxc']} — «{it['txt']}»")
+
+
 def check_text(page, sid: str, out: dict[str, Any], tr: TextRules) -> None:
     """R-Y1 (кегли в шкалу) / R-Y2 (<lo) / R-Y3 (>hi моб.) / R-Y4 (line-height) /
     R-Y5+6 (строки ≤ max_lines) / R-Y10 (симв. ≤ max_chars)."""
@@ -394,24 +414,13 @@ def check_text(page, sid: str, out: dict[str, Any], tr: TextRules) -> None:
                 out, "R-Y3", "P2", sid,
                 f"кегль {f['fs']}px > {tr.hi:g} (моб.) — <{f['tag']} {f['cls']}>",
             )
-    # R-Y4: сводный — собрать kегли ниже порога (глобально, в stats).
+    # R-Y4: сводный — собрать кегли ниже порога (глобально, в stats).
     lh_low = out["stats"].setdefault("r_y4_low_ratios", [])
     for r in res["lhLow"]:
         if r not in lh_low:
             lh_low.append(r)
-    for sel, spec in res["lines"].items():
-        maxl = spec["maxl"]
-        for it in spec["items"]:
-            if it["lines"] > maxl:
-                sev = "P0" if sel in (".u3-btn", ".u3-tab") else "P1"
-                add_violation(out, "R-Y5", sev, sid,
-                              f"{sel}: {it['lines']} строки > {maxl} (white-space: {it['ws']})")
-    # R-Y10 — длина ≤ max_chars
-    for spec in page.evaluate(CHARS_JS, [list(t) for t in TEXT_MAX_CHARS]).values():
-        for it in spec["items"]:
-            if it["len"] > spec["maxc"]:
-                add_violation(out, "R-Y10", "P1", sid,
-                              f"{spec['role']}: {it['len']} симв. > {spec['maxc']} — «{it['txt']}»")
+    _check_line_counts(res["lines"], sid, out)
+    _check_max_chars(page, sid, out)
 
 
 def check_screen(page, sid: str, path: str, reg: Registry, out: dict[str, Any]) -> int:
