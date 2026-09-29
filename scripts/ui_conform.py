@@ -140,6 +140,28 @@ CHARS_JS = r"""
 }
 """
 
+# R-Y7: текст, обрезанный по ширине (scrollWidth > clientWidth), обязан иметь
+# text-overflow: ellipsis ИЛИ полное значение в title/aria-label (TZ §2.5).
+TRUNC_JS = r"""
+() => {
+  const out = [];
+  document.querySelectorAll("body *").forEach(e => {
+    const hasText = [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
+    if (!hasText) return;
+    const cs = getComputedStyle(e);
+    const r = e.getBoundingClientRect();
+    if (cs.display === "none" || cs.visibility === "hidden" || r.width < 1) return;
+    if (e.scrollWidth <= e.clientWidth + 1) return;
+    const ell = cs.textOverflow && cs.textOverflow.split(/\s+/).includes("ellipsis");
+    const hasAlt = !!(e.getAttribute("title") || e.getAttribute("aria-label"));
+    if (!ell && !hasAlt) out.push(
+      { tag: e.tagName, cls: String(e.className || "").slice(0, 30),
+        sw: e.scrollWidth, cw: e.clientWidth });
+  });
+  return out;
+}
+"""
+
 TEXT_JS = r"""
 ({ sels, lo, hi, lhBody, lhHead, headFs }) => {
   const out = { sizes: [], flag: [], lhLow: [], lines: {} };
@@ -395,6 +417,16 @@ def _check_max_chars(page, sid: str, out: dict[str, Any]) -> None:
                               f"{spec['role']}: {it['len']} симв. > {spec['maxc']} — «{it['txt']}»")
 
 
+def _check_truncate(page, sid: str, out: dict[str, Any]) -> None:
+    """R-Y7 (P1) — обрезанный по ширине текст обязан иметь ellipsis или title/aria-label."""
+    for f in page.evaluate(TRUNC_JS, None):
+        add_violation(
+            out, "R-Y7", "P1", sid,
+            f"<{f['tag']} .{f['cls']}>: scrollWidth {f['sw']} > clientWidth {f['cw']}"
+            " без text-overflow:ellipsis и без title/aria-label",
+        )
+
+
 def check_text(page, sid: str, out: dict[str, Any], tr: TextRules) -> None:
     """R-Y1 (кегли в шкалу) / R-Y2 (<lo) / R-Y3 (>hi моб.) / R-Y4 (line-height) /
     R-Y5+6 (строки ≤ max_lines) / R-Y10 (симв. ≤ max_chars)."""
@@ -421,6 +453,7 @@ def check_text(page, sid: str, out: dict[str, Any], tr: TextRules) -> None:
             lh_low.append(r)
     _check_line_counts(res["lines"], sid, out)
     _check_max_chars(page, sid, out)
+    _check_truncate(page, sid, out)
 
 
 def check_screen(page, sid: str, path: str, reg: Registry, out: dict[str, Any]) -> int:
