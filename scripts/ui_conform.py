@@ -126,7 +126,7 @@ TEXT_MAX_CHARS: list[tuple[str, str, int]] = [
 CHARS_JS = r"""
 (sels) => {
   const out = {};
-  for (const [sel, maxc, role] of sels) {
+  for (const [sel, role, maxc] of sels) {
     const arr = [];
     for (const e of document.querySelectorAll(sel)) {
       if (getComputedStyle(e).display === "none") continue;
@@ -381,7 +381,7 @@ def check_text(page, sid: str, out: dict[str, Any], lo: float, hi: float) -> Non
                 add_violation(out, "R-Y5", sev, sid,
                               f"{sel}: {it['lines']} строки > {maxl} (white-space: {it['ws']})")
     # R-Y10 — длина ≤ max_chars
-    for sel, spec in page.evaluate(CHARS_JS, [list(t) for t in TEXT_MAX_CHARS]).items():
+    for spec in page.evaluate(CHARS_JS, [list(t) for t in TEXT_MAX_CHARS]).values():
         for it in spec["items"]:
             if it["len"] > spec["maxc"]:
                 add_violation(out, "R-Y10", "P1", sid,
