@@ -155,14 +155,23 @@ TEXT_JS = r"""
       { fs, tag: e.tagName, cls: String(e.className || "").slice(0, 40),
         text: (e.textContent || "").trim().slice(0, 24) });
     // R-Y4: line-height ≥ 1.4 (body) / ≥ 1.15 (heading, кегль ≥ headFs).
+    // Только для ТЕКСТА в несколько строк (reading-text): однострочные
+    // компактные подписи (rows/labels, lh ~1.33) — по дизайну, не violation.
     // «normal» (NaN) — не меряем (зависит от браузера), честно пропускаем.
     const lh = parseFloat(cs.lineHeight);
     if (!isNaN(lh) && fs > 0) {
       const ratio = lh / fs;
       const minLh = (fs >= headFs) ? lhHead : lhBody;
-      if (ratio < minLh - 1e-9) out.lhflag.push(
-        { fs, ratio: Math.round(ratio * 100) / 100, minLh,
-          tag: e.tagName, cls: String(e.className || "").slice(0, 30) });
+      if (ratio < minLh - 1e-9) {
+        const tw = document.createTreeWalker(e, NodeFilter.SHOW_TEXT);
+        let tn = null;
+        while (tw.nextNode()) { if (tw.currentNode.textContent.trim()) { tn = tw.currentNode; break; } }
+        let lines = 1;
+        if (tn) { const rg = document.createRange(); rg.selectNodeContents(tn); lines = rg.getClientRects().length; }
+        if (lines > 1) out.lhflag.push(
+          { fs, ratio: Math.round(ratio * 100) / 100, minLh,
+            tag: e.tagName, cls: String(e.className || "").slice(0, 30) });
+      }
     }
   });
   // TZ §2.5: число строк — getClientRects() для ТЕКСТОВОГО УЗЛА (не элемента):
