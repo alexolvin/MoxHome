@@ -166,6 +166,77 @@ TRUNC_JS = r"""
 }
 """
 
+# R-X1: WCAG-контраст текста к эффективному фону (α-композитинг по дереву).
+# Лимит: background-color (без градиентов/::before-фонов) — честная近似.
+CONTRAST_JS = r"""
+() => {
+  const pc = s => { const m = s && s.match(/rgba?\(([^)]+)\)/); if (!m) return null;
+    const p = m[1].split(",").map(x => parseFloat(x));
+    return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 }; };
+  const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92
+    : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const lum = c => 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+  const ratio = (a, b) => { const l1 = lum(a), l2 = lum(b);
+    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05); };
+  const over = (f, bg) => ({ r: f.r * f.a + bg.r * (1 - f.a), g: f.g * f.a + bg.g * (1 - f.a),
+    b: f.b * f.a + bg.b * (1 - f.a), a: 1 });
+  const bgOf = el => { let bg = { r: 255, g: 255, b: 255, a: 1 }; const chain = [];
+    let n = el; while (n) { chain.unshift(n); n = n.parentElement; }
+    for (const node of chain) { const c = pc(getComputedStyle(node).backgroundColor);
+      if (c && c.a > 0) bg = over(c, bg); } return bg; };
+  const out = [];
+  document.querySelectorAll("body *").forEach(e => {
+    const hasText = [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
+    if (!hasText) return;
+    const cs = getComputedStyle(e); const r = e.getBoundingClientRect();
+    if (cs.display === "none" || cs.visibility === "hidden" || r.width < 1 || r.height < 1) return;
+    if (e.closest(".u3-toast, .u3-sheet:not(.open)")) return;  // эфемерные слои
+    const fg0 = pc(cs.color); if (!fg0) return;
+    const bg = bgOf(e);
+    const fg = fg0.a < 1 ? over(fg0, bg) : fg0;
+    const fs = parseFloat(cs.fontSize); const w = parseInt(cs.fontWeight, 10) || 400;
+    const large = fs >= 24 || (fs >= 18.5 && w >= 700);
+    const need = large ? 3.0 : 4.5;
+    const rt = ratio(fg, bg);
+    if (rt < need) out.push({ tag: e.tagName, cls: String(e.className || "").slice(0, 28),
+      txt: (e.textContent || "").trim().slice(0, 18), fs: Math.round(fs),
+      ratio: +rt.toFixed(2), need, fg: cs.color });
+  });
+  return out;
+}
+"""
+
+# R-X2/3/4/5: h1, пропуски заголовков, img без alt, form-контроли без имени.
+A11Y_STRUCT_JS = r"""
+() => {
+  const out = { h1: [], skips: [], imgNoAlt: [], formNoName: [] };
+  document.querySelectorAll("h1").forEach(h => {
+    if (h.getClientRects().length) out.h1.push((h.textContent || "").trim().slice(0, 24)); });
+  let prev = 0;
+  document.querySelectorAll("h1,h2,h3,h4,h5,h6").forEach(h => {
+    const lvl = +h.tagName[1];
+    if (prev && lvl > prev + 1) out.skips.push(`${h.tagName} после h${prev}`);
+    prev = lvl; });
+  document.querySelectorAll("img").forEach(img => {
+    if (!img.hasAttribute("alt") && img.getAttribute("role") !== "presentation"
+        && !img.hasAttribute("aria-hidden"))
+      out.imgNoAlt.push((img.getAttribute("src") || "").slice(-24)); });
+  document.querySelectorAll("input,select,textarea").forEach(el => {
+    const cs = getComputedStyle(el); const r = el.getBoundingClientRect();
+    const vis = cs.display !== "none" && cs.visibility !== "hidden"
+      && (r.width > 1 || r.height > 1);
+    if (!vis) return;
+    if (el.type === "hidden") return;
+    const hasFor = el.id && document.querySelector(`label[for="${el.id}"]`);
+    const hasAria = el.getAttribute("aria-label") || el.getAttribute("aria-labelledby");
+    const hasName = hasFor || hasAria || el.getAttribute("placeholder")
+      || el.getAttribute("title") || el.closest("label");
+    if (!hasName) out.formNoName.push(
+      `${el.tagName}.${String(el.className || "").slice(0, 18)} type=${el.type || "-"}`); });
+  return out;
+}
+"""
+
 TEXT_JS = r"""
 ({ sels, lo, hi, lhBody, lhHead, headFs }) => {
   const out = { sizes: [], flag: [], lhLow: [], lines: {} };
@@ -458,6 +529,36 @@ def _check_case(page, sid: str, out: dict[str, Any]) -> None:
                 add_violation(out, "R-Y11", "P2", sid, f"{role} «{t}»: {issue} (case: {cas})")
 
 
+def check_accessibility(page, sid: str, out: dict[str, Any]) -> None:
+    """R-X (WCAG 2.2 AA): контраст (R-X1), h1 (R-X2), заголовки (R-X3), img/alt (R-X4),
+    form-имена (R-X5). Лимит замера: background-color (без градиентов/::before)."""
+    low = page.evaluate(CONTRAST_JS, None)
+    # сводный по кеглям/ролям, чтобы не завалить отчёт повторами одного цвета
+    seen: dict[str, dict] = {}
+    for f in low:
+        key = f"{f['fg']}|{f['ratio']}|{f['fs']}"
+        if key in seen:
+            seen[key]["n"] += 1
+        else:
+            seen[key] = {**f, "n": 1}
+    for f in sorted(seen.values(), key=lambda x: x["ratio"]):
+        sev = "P0" if f["ratio"] < 3.0 else "P1"
+        add_violation(
+            out, "R-X1", sev, sid,
+            f"контраст {f['ratio']} < {f['need']:g} — «{f['txt']}» "
+            f"(<.u3…{f['cls']}>, кегль {f['fs']}px, color {f['fg']}; ×{f['n']})",
+        )
+    st = page.evaluate(A11Y_STRUCT_JS, None)
+    if len(st["h1"]) != 1:
+        add_violation(out, "R-X2", "P1", sid, f"h1: {len(st['h1'])} (ожидалось 1) {st['h1']}")
+    for s in st["skips"]:
+        add_violation(out, "R-X3", "P2", sid, f"пропуск уровня заголовков: {s}")
+    for src in st["imgNoAlt"]:
+        add_violation(out, "R-X4", "P1", sid, f"img без alt/role=presentation: …{src}")
+    for f in st["formNoName"]:
+        add_violation(out, "R-X5", "P1", sid, f"form-контроль без имени: {f}")
+
+
 def check_text(page, sid: str, out: dict[str, Any], tr: TextRules) -> None:
     """R-Y1 (кегли в шкалу) / R-Y2 (<lo) / R-Y3 (>hi моб.) / R-Y4 (line-height) /
     R-Y5+6 (строки ≤ max_lines) / R-Y10 (симв. ≤ max_chars)."""
@@ -582,6 +683,7 @@ def main() -> None:
                 continue
             total += check_screen(page, sid, path, reg, out)
             check_text(page, sid, out, tr)
+            check_accessibility(page, sid, out)
         out["stats"]["total_instances"] = total
         browser.close()
 
