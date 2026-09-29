@@ -142,7 +142,7 @@ CHARS_JS = r"""
 
 TEXT_JS = r"""
 ({ sels, lo, hi, lhBody, lhHead, headFs }) => {
-  const out = { sizes: [], flag: [], lhflag: [], lines: {} };
+  const out = { sizes: [], flag: [], lhLow: [], lines: {} };
   document.querySelectorAll("body *").forEach(e => {
     const hasText = [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
     if (!hasText) return;
@@ -155,23 +155,14 @@ TEXT_JS = r"""
       { fs, tag: e.tagName, cls: String(e.className || "").slice(0, 40),
         text: (e.textContent || "").trim().slice(0, 24) });
     // R-Y4: line-height ≥ 1.4 (body) / ≥ 1.15 (heading, кегль ≥ headFs).
-    // Только для ТЕКСТА в несколько строк (reading-text): однострочные
-    // компактные подписи (rows/labels, lh ~1.33) — по дизайну, не violation.
-    // «normal» (NaN) — не меряем (зависит от браузера), честно пропускаем.
+    // Дизайн — компактный (lh ~1.25-1.38), ниже порога → не поэлементно, а
+    // единым сводным finding (список kеглей ниже порога). «normal» (NaN) —
+    // не меряем (зависит от браузера), честно пропускаем.
     const lh = parseFloat(cs.lineHeight);
     if (!isNaN(lh) && fs > 0) {
-      const ratio = lh / fs;
+      const ratio = Math.round((lh / fs) * 100) / 100;
       const minLh = (fs >= headFs) ? lhHead : lhBody;
-      if (ratio < minLh - 1e-9) {
-        const tw = document.createTreeWalker(e, NodeFilter.SHOW_TEXT);
-        let tn = null;
-        while (tw.nextNode()) { if (tw.currentNode.textContent.trim()) { tn = tw.currentNode; break; } }
-        let lines = 1;
-        if (tn) { const rg = document.createRange(); rg.selectNodeContents(tn); lines = rg.getClientRects().length; }
-        if (lines > 1) out.lhflag.push(
-          { fs, ratio: Math.round(ratio * 100) / 100, minLh,
-            tag: e.tagName, cls: String(e.className || "").slice(0, 30) });
-      }
+      if (ratio < minLh - 1e-9 && !out.lhLow.includes(ratio)) out.lhLow.push(ratio);
     }
   });
   // TZ §2.5: число строк — getClientRects() для ТЕКСТОВОГО УЗЛА (не элемента):
@@ -403,10 +394,11 @@ def check_text(page, sid: str, out: dict[str, Any], tr: TextRules) -> None:
                 out, "R-Y3", "P2", sid,
                 f"кегль {f['fs']}px > {tr.hi:g} (моб.) — <{f['tag']} {f['cls']}>",
             )
-    for f in res["lhflag"]:
-        add_violation(out, "R-Y4", "P2", sid,
-                      f"line-height {f['ratio']} < {f['minLh']} — "
-                      f"<{f['tag']} {f['cls']}> кегль {f['fs']}")
+    # R-Y4: сводный — собрать kегли ниже порога (глобально, в stats).
+    lh_low = out["stats"].setdefault("r_y4_low_ratios", [])
+    for r in res["lhLow"]:
+        if r not in lh_low:
+            lh_low.append(r)
     for sel, spec in res["lines"].items():
         maxl = spec["maxl"]
         for it in spec["items"]:
@@ -525,6 +517,12 @@ def main() -> None:
     if len(fonts) > max_steps:
         add_violation(out, "R-Y1", "P1", "ALL",
                       f"различных кеглей {len(fonts)} > {max_steps}: {sorted(fonts)}")
+    # R-Y4 — сводный: kегли ниже порога (компактный дизайн vs body≥1.4)
+    lh_low = sorted(out["stats"].get("r_y4_low_ratios", []))
+    if lh_low:
+        add_violation(out, "R-Y4", "P2", "ALL",
+                      f"line-height {lh_low} ниже body {tr.lh_body} "
+                      f"/ heading {tr.lh_head} (компактный дизайн; вопрос владельца)")
     write_report(out, args.out)
 
 
