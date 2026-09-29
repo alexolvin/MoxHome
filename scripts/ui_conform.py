@@ -141,8 +141,8 @@ CHARS_JS = r"""
 """
 
 TEXT_JS = r"""
-({ sels, lo, hi }) => {
-  const out = { sizes: [], flag: [], lines: {} };
+({ sels, lo, hi, lhBody, lhHead, headFs }) => {
+  const out = { sizes: [], flag: [], lhflag: [], lines: {} };
   document.querySelectorAll("body *").forEach(e => {
     const hasText = [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
     if (!hasText) return;
@@ -154,6 +154,16 @@ TEXT_JS = r"""
     if (fs < lo || fs > hi) out.flag.push(
       { fs, tag: e.tagName, cls: String(e.className || "").slice(0, 40),
         text: (e.textContent || "").trim().slice(0, 24) });
+    // R-Y4: line-height ≥ 1.4 (body) / ≥ 1.15 (heading, кегль ≥ headFs).
+    // «normal» (NaN) — не меряем (зависит от браузера), честно пропускаем.
+    const lh = parseFloat(cs.lineHeight);
+    if (!isNaN(lh) && fs > 0) {
+      const ratio = lh / fs;
+      const minLh = (fs >= headFs) ? lhHead : lhBody;
+      if (ratio < minLh - 1e-9) out.lhflag.push(
+        { fs, ratio: Math.round(ratio * 100) / 100, minLh,
+          tag: e.tagName, cls: String(e.className || "").slice(0, 30) });
+    }
   });
   // TZ §2.5: число строк — getClientRects() для ТЕКСТОВОГО УЗЛА (не элемента):
   // иначе инлайновые иконки/SVG дают ложные «линии».
@@ -197,6 +207,16 @@ class Registry:
     base: str
     comps: dict
     roles: dict
+
+
+@dataclass
+class TextRules:
+    """Пороги R-Y из ui-rules.yaml / ui-text.yaml (пакет для check_text)."""
+    lo: float
+    hi: float
+    lh_body: float
+    lh_head: float
+    head_fs: float
 
 
 def git_dirty() -> bool:
@@ -355,24 +375,29 @@ def check_role_color(it: dict, reg: Registry, sid: str, out: dict[str, Any]) -> 
                           f"{it['component']}: {attr} {gotx} ≠ роль {it['data_role']} ({want})")
 
 
-def check_text(page, sid: str, out: dict[str, Any], lo: float, hi: float) -> None:
-    """R-Y1 (кегли в шкалу — глобально) / R-Y2 (<lo px) / R-Y3 (>hi моб.) /
-    R-Y5+6 (число строк ≤ max_lines у однострочных ролей)."""
+def check_text(page, sid: str, out: dict[str, Any], tr: TextRules) -> None:
+    """R-Y1 (кегли в шкалу) / R-Y2 (<lo) / R-Y3 (>hi моб.) / R-Y4 (line-height) /
+    R-Y5+6 (строки ≤ max_lines) / R-Y10 (симв. ≤ max_chars)."""
     res = page.evaluate(TEXT_JS, {"sels": [list(t) for t in TEXT_SINGLE_LINE],
-                                  "lo": lo, "hi": hi})
+                                  "lo": tr.lo, "hi": tr.hi, "lhBody": tr.lh_body,
+                                  "lhHead": tr.lh_head, "headFs": tr.head_fs})
     fonts = out["stats"].setdefault("fonts_seen", [])
     for fs in res["sizes"]:
         if fs not in fonts:
             fonts.append(fs)
     for f in res["flag"]:
-        if f["fs"] < lo:
+        if f["fs"] < tr.lo:
             add_violation(out, "R-Y2", "P1", sid,
-                          f"кегль {f['fs']}px < {lo:g} — <{f['tag']} {f['cls']}> «{f['text']}»")
+                          f"кегль {f['fs']}px < {tr.lo:g} — <{f['tag']} {f['cls']}> «{f['text']}»")
         else:  # > hi на мобильном (кроме объявленных исключений — R-Y3, P2)
             add_violation(
                 out, "R-Y3", "P2", sid,
-                f"кегль {f['fs']}px > {hi:g} (моб.) — <{f['tag']} {f['cls']}>",
+                f"кегль {f['fs']}px > {tr.hi:g} (моб.) — <{f['tag']} {f['cls']}>",
             )
+    for f in res["lhflag"]:
+        add_violation(out, "R-Y4", "P2", sid,
+                      f"line-height {f['ratio']} < {f['minLh']} — "
+                      f"<{f['tag']} {f['cls']}> кегль {f['fs']}")
     for sel, spec in res["lines"].items():
         maxl = spec["maxl"]
         for it in spec["items"]:
@@ -450,8 +475,13 @@ def main() -> None:
     reg = Registry(args.base, dec["components"], dec["roles"])
     rules = dec.get("rules", {}) or {}
     max_steps = int(rules.get("type_scale_max_steps", 8))
-    hi = float((rules.get("max_font_app_screen_px") or {}).get("mobile", 20))
-    lo = 11.0  # R-Y2: абсолютный нижний порог («ничего < 11 px»)
+    tr = TextRules(
+        lo=11.0,  # R-Y2: абсолютный нижний порог («ничего < 11 px»)
+        hi=float((rules.get("max_font_app_screen_px") or {}).get("mobile", 20)),
+        lh_body=float(rules.get("line_height_body_min", 1.4)),
+        lh_head=float(rules.get("line_height_heading_min", 1.15)),
+        head_fs=18.0,  # кегль ≥ 18 — заголовок (иначе body); из шкалы (flg=18)
+    )
     out: dict[str, Any] = {
         "violations": [], "stats": {}, "run": {"theme": args.theme, "base": args.base},
     }
@@ -476,7 +506,7 @@ def main() -> None:
                 print(f"{sid}: нет пути в базовом наборе — пропуск")
                 continue
             total += check_screen(page, sid, path, reg, out)
-            check_text(page, sid, out, lo, hi)
+            check_text(page, sid, out, tr)
         out["stats"]["total_instances"] = total
         browser.close()
 
