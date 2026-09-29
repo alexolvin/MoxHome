@@ -47,6 +47,11 @@ ANDROID_UA = (
     "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
 )
+DWIDTH, DHEIGHT, DDSF = 1440, 900, 1
+DESKTOP_UA = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+)
 PATH_BY_ID = {
     "S02": "/books", "S06": "/jobs", "S12": "/settings",
     "S13": "/settings/llm", "S14": "/dev/kit", "S18": "/settings/appearance",
@@ -566,6 +571,43 @@ def _check_mobile(page, sid: str, out: dict[str, Any]) -> None:
         )
 
 
+# R-D (1440×900): нет h-скролла; pointer-target ≥32px; sticky-заголовок ≤64px.
+DESKTOP_JS = r"""
+() => {
+  const de = document.documentElement;
+  const hscroll = de.scrollWidth - de.clientWidth;
+  const ab = document.querySelector(".u3-appbar");
+  const appbarH = ab ? Math.round(ab.getBoundingClientRect().height) : null;
+  const small = [];
+  const vis = e => { const cs = getComputedStyle(e); const r = e.getBoundingClientRect();
+    return cs.visibility !== "hidden" && cs.display !== "none" && r.width > 0 && r.height > 0; };
+  document.querySelectorAll("button, a[href], input, select, textarea, [role=button]")
+    .forEach(e => { if (!vis(e)) return; const r = e.getBoundingClientRect();
+      if (r.width < 31.5 || r.height < 31.5)
+        small.push({ tag: e.tagName, cls: String(e.className || "").slice(0, 24),
+          w: Math.round(r.width), h: Math.round(r.height) }); });
+  return { hscroll, appbarH, small };
+}
+"""
+
+
+def _check_desktop(page, sid: str, out: dict[str, Any]) -> None:
+    """R-D (desktop_reference 1440×900): h-скролл, pointer-target ≥32, header ≤64."""
+    d = page.evaluate(DESKTOP_JS, None)
+    if d["hscroll"] > 1:
+        add_violation(
+            out, "R-D", "P1", sid,
+            f"горизонтальный скролл (desktop): scrollWidth > clientWidth на {d['hscroll']}px",
+        )
+    if d["appbarH"] is not None and d["appbarH"] > 64:
+        add_violation(out, "R-D", "P2", sid, f"sticky-заголовок {d['appbarH']}px > 64px")
+    for s in d["small"]:
+        add_violation(
+            out, "R-D", "P2", sid,
+            f"pointer-target {s['w']}×{s['h']} < 32px: <{s['tag']} .u3…{s['cls']}>",
+        )
+
+
 def check_accessibility(page, sid: str, out: dict[str, Any]) -> None:
     """R-X (WCAG 2.2 AA): контраст (R-X1), h1 (R-X2), заголовки (R-X3), img/alt (R-X4),
     form-имена (R-X5). Лимит замера: background-color (без градиентов/::before)."""
@@ -677,6 +719,7 @@ def main() -> None:
     ap.add_argument("--base", default="http://127.0.0.1:8421")
     ap.add_argument("--screens", nargs="*", default=None)
     ap.add_argument("--theme", default="dark", choices=("dark", "light"))
+    ap.add_argument("--viewport", default="mobile", choices=("mobile", "desktop"))
     ap.add_argument("--out", default=str(ARTIFACTS / "conform.json"))
     args = ap.parse_args()
 
@@ -700,43 +743,57 @@ def main() -> None:
     }
     screens = args.screens or ["S02", "S06"]
 
+    desktop = args.viewport == "desktop"
+    out["run"]["viewport"] = args.viewport
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, args=["--disable-dev-shm-usage"])
-        ctx = browser.new_context(
-            viewport={"width": WIDTH, "height": HEIGHT},
-            device_scale_factor=DSF, is_mobile=True, has_touch=True,
-            color_scheme=args.theme, locale="ru-RU", user_agent=ANDROID_UA,
-        )
+        if desktop:
+            ctx = browser.new_context(
+                viewport={"width": DWIDTH, "height": DHEIGHT},
+                device_scale_factor=DDSF, is_mobile=False, has_touch=False,
+                color_scheme=args.theme, locale="ru-RU", user_agent=DESKTOP_UA)
+        else:
+            ctx = browser.new_context(
+                viewport={"width": WIDTH, "height": HEIGHT},
+                device_scale_factor=DSF, is_mobile=True, has_touch=True,
+                color_scheme=args.theme, locale="ru-RU", user_agent=ANDROID_UA)
         if args.theme == "light":
             ctx.add_cookies([{"name": "u3-theme", "value": "light", "url": args.base}])
         login(ctx, args.base, read_secret())
         page = ctx.new_page()
-        check_kit(page, reg, out)
+        if not desktop:
+            check_kit(page, reg, out)
         total = 0
         for sid in screens:
             path = PATH_BY_ID.get(sid)
             if path is None:
                 print(f"{sid}: нет пути в базовом наборе — пропуск")
                 continue
-            total += check_screen(page, sid, path, reg, out)
-            check_text(page, sid, out, tr)
-            check_accessibility(page, sid, out)
-            _check_mobile(page, sid, out)
+            if desktop:
+                page.goto(reg.base + path, wait_until="domcontentloaded", timeout=30_000)
+                page.wait_for_load_state("networkidle", timeout=15_000)
+                _check_desktop(page, sid, out)
+            else:
+                total += check_screen(page, sid, path, reg, out)
+                check_text(page, sid, out, tr)
+                check_accessibility(page, sid, out)
+                _check_mobile(page, sid, out)
         out["stats"]["total_instances"] = total
         browser.close()
 
-    # R-Y1 — число различных кеглей за прогон ≤ шкале (type_scale_max_steps)
-    fonts = out["stats"].get("fonts_seen", [])
-    out["stats"]["r_y1_distinct_sizes"] = sorted(fonts)
-    if len(fonts) > max_steps:
-        add_violation(out, "R-Y1", "P1", "ALL",
-                      f"различных кеглей {len(fonts)} > {max_steps}: {sorted(fonts)}")
-    # R-Y4 — сводный: kегли ниже порога (компактный дизайн vs body≥1.4)
-    lh_low = sorted(out["stats"].get("r_y4_low_ratios", []))
-    if lh_low:
-        add_violation(out, "R-Y4", "P2", "ALL",
-                      f"line-height {lh_low} ниже body {tr.lh_body} "
-                      f"/ heading {tr.lh_head} (компактный дизайн; вопрос владельца)")
+    if not desktop:
+        # R-Y1 — число различных кеглей за прогон ≤ шкале (type_scale_max_steps)
+        fonts = out["stats"].get("fonts_seen", [])
+        out["stats"]["r_y1_distinct_sizes"] = sorted(fonts)
+        if len(fonts) > max_steps:
+            add_violation(out, "R-Y1", "P1", "ALL",
+                          f"различных кеглей {len(fonts)} > {max_steps}: {sorted(fonts)}")
+        # R-Y4 — сводный: кегли ниже порога (компактный дизайн vs body≥1.4)
+        lh_low = sorted(out["stats"].get("r_y4_low_ratios", []))
+        if lh_low:
+            add_violation(out, "R-Y4", "P2", "ALL",
+                          f"line-height {lh_low} ниже body {tr.lh_body} "
+                          f"/ heading {tr.lh_head} (компактный дизайн; вопрос владельца)")
     write_report(out, args.out)
 
 
