@@ -39,6 +39,7 @@ from app.core.errors import AppError
 from app.domain.job import Job, JobStatus
 from app.epub import segmenter
 from app.epub.aligner import resolve_positional_xpath
+from app.epub.rebuild import rebuild_epub
 from app.learning.card_export import CARDS_FILES
 from app.web import views
 from app.web.strings import UI_STRINGS
@@ -701,6 +702,41 @@ def _build_zip(edir: Path, dst: Path, names: list[str]) -> None:
             zf.write(edir / name, arcname=name)
 
 
+#: Приглушение перевода в билингв-EPUB (чтение оригинала): каждый блок перевода
+#: помечен `id*="__translated"` (конвейер, app/mtpe/writer.py), поэтому одной
+#: CSS-записью красим все переводы, не трогая текст/разметку. `*` + !important —
+#: чтобы перекрасить и вложенные span/b с собственным цветом у других книг.
+_TRANSLATION_STYLE = (
+    "/* et-translation-style: приглушение перевода для чтения оригинала */\n"
+    '[id*="__translated"], [id*="__translated"] * { color: #8a8f98 !important; }\n'
+)
+
+
+def _inject_translation_style(epub_path: Path) -> None:
+    """Добавляет в EPUB правило приглушения перевода (id*="__translated").
+
+    Идемпотентно (маркер в CSS) и fail-мягко: нет `.css` в архиве или правило
+    уже вставлено — не меняем файл. Пересборка — штатным rebuild_epub
+    (mimetype первым без сжатия, E5.7).
+    """
+    if not epub_path.is_file():
+        return
+    patches: dict[str, bytes] = {}
+    with zipfile.ZipFile(epub_path) as zf:
+        for name in zf.namelist():
+            if not name.lower().endswith(".css"):
+                continue
+            css = zf.read(name).decode("utf-8", "replace")
+            if "et-translation-style" in css:
+                continue  # уже вставлено — не дублируем
+            patches[name] = (css.rstrip() + "\n" + _TRANSLATION_STYLE).encode("utf-8")
+    if not patches:
+        return
+    partial = epub_path.with_name(epub_path.name + ".style.partial")
+    rebuild_epub(epub_path, patches, partial)
+    partial.replace(epub_path)
+
+
 def _run_job_export(  # noqa: PLR0912, PLR0915, PLR0917 — фоновая нить: 8 форматов
     settings: Settings,
     job: Job,
@@ -741,6 +777,10 @@ def _run_job_export(  # noqa: PLR0912, PLR0915, PLR0917 — фоновая ни�
                 )
                 if item["name"].endswith(".epub"):
                     shutil.copyfile(src, dst)
+                    if item["src"] is None and layout == "append_block":
+                        # билингв-перевод (append_block): приглушаем русский
+                        # (id*="__translated"), чтобы читатель текл по английскому
+                        _inject_translation_style(dst)
                 elif item["name"].endswith(".md"):
                     _epub_to_markdown(src, dst)  # calibre не выводит .md (решение 12)
                 else:
