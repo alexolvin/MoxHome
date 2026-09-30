@@ -63,6 +63,23 @@ def cefr_out_of_range(card_cefr: str, user_cefr: str | None, distance: int) -> b
     return abs(CEFR_ORDER.index(card_cefr) - CEFR_ORDER.index(user_cefr)) >= distance
 
 
+def _salvage_main_forms(projection: dict[str, Any], schema: Mapping[str, Any]) -> None:
+    """Спасение глагольных полей (S1): `main_forms` — конструкция германской
+    схемы; для других языков модель иногда выдаёт её, хотя в схеме нет
+    (`additionalProperties: false` → отклонение). Переносим подполя в поля
+    глагола схемы (en: past_tense/past_participle) и убираем лишнее поле."""
+    main_forms = projection.get("main_forms")
+    if not isinstance(main_forms, Mapping):
+        return
+    props = schema.get("properties") or {}
+    if "main_forms" in props:
+        return  # германская схема — main_forms легитимен, не трогаем
+    for target, src in (("past_tense", "past"), ("past_participle", "participle")):
+        if target in props and target not in projection and main_forms.get(src):
+            projection[target] = main_forms[src]
+    projection.pop("main_forms", None)
+
+
 def assemble_card(
     candidate: LexisCandidate,
     item: Mapping[str, Any],
@@ -142,6 +159,7 @@ def check_vocab_cards(
         lemma = str(item.get("lemma", ""))
         candidate = candidates.get(lemma)
         reasons: list[str] = []
+        salvaged = dict(item)
         if candidate is None:
             reasons.append("подброшенная карточка: лемма не среди кандидатов (S1.5)")
         else:
@@ -153,30 +171,31 @@ def check_vocab_cards(
             elif lemma_of(nlp, candidate.word_form) != candidate.lemma:
                 reasons.append("лемма не соответствует словоформе по spaCy (S1.5)")
             else:
+                _salvage_main_forms(salvaged, card_schema)
                 projection = {
                     "lemma": candidate.lemma,
                     "word_form": candidate.word_form,
                     "pos": candidate.pos,
-                    "meaning": item.get("meaning"),
-                    "translation": item.get("translation"),
-                    "example": item.get("example"),
+                    "meaning": salvaged.get("meaning"),
+                    "translation": salvaged.get("translation"),
+                    "example": salvaged.get("example"),
                     "segment_id": candidate.first_segment_id,
                     "frequency_band": candidate.frequency_band,
                     "cefr_level": candidate.cefr_level,
                     "cefr_source": candidate.cefr_source,
                 }
-                for key, value in item.items():
+                for key, value in salvaged.items():
                     if key not in _ITEM_CORE_FIELDS:
                         projection[key] = value
                 ok, errors = validate_card(projection, card_schema)
                 if not ok:
                     reasons.extend(f"card_schema.json: {e}" for e in errors)
-                elif not bool(item.get("example_generated", False)) and not example_in_book(
-                    str(item.get("example", "")), chapter_texts.get(candidate.chapter_id, "")
+                elif not bool(salvaged.get("example_generated", False)) and not example_in_book(
+                    str(salvaged.get("example", "")), chapter_texts.get(candidate.chapter_id, "")
                 ):
                     reasons.append("пример не из книги и не помечен сгенерированным (S1.6)")
         if reasons or candidate is None:
             rejected.append({"lemma": lemma, "reasons": reasons})
         else:
-            validated.append((dict(item), candidate))
+            validated.append((salvaged, candidate))
     return validated, rejected

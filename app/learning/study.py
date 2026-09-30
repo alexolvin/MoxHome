@@ -91,19 +91,37 @@ def check_mc(options: list[Mapping[str, Any]], answer: str) -> list[str]:
     return reasons
 
 
+#: Очевидные булевы слова (язык цели) — принимаются как true/false (S4 tf).
+_TF_TRUE = frozenset({"true", "yes", "да", "верно", "правильно"})
+_TF_FALSE = frozenset({"false", "no", "нет", "неверно", "неправильно"})
+
+
 def check_tf_answer(answer: str) -> list[str]:
-    """Верно/неверно: ответ — true/false."""
-    if answer.casefold() not in ("true", "false"):
-        return [f"верно/неверно: ответ не true/false (получено {answer!r})"]
-    return []
+    """Верно/неверно: ответ — true/false (принимает и очевидные синонимы)."""
+    a = str(answer).strip().casefold()
+    if a in _TF_TRUE or a in _TF_FALSE:
+        return []
+    return [f"верно/неверно: ответ не true/false (получено {answer!r})"]
 
 
 def check_entities(
-    entities: list[str], chapter_text: str, normalize: Callable[[str], str]
+    entities: list[str],
+    chapter_text: str,
+    chapter_text_target: str | None,
+    normalize: Callable[[str], str],
 ) -> list[str]:
-    """S4.4: каждая сущность вопроса присутствует в тексте главы."""
-    haystack = normalize(chapter_text)
-    missing = [e for e in entities if not contains_form(haystack, normalize(e))]
+    """S4.4: каждая сущность вопроса присутствует в тексте главы.
+
+    Сущности проверяются в исходнике ИЛИ в переводе: вопросы/упражнения
+    формулируются на языке цели, их сущности живут в переводе (S4-4).
+    """
+    haystacks = [normalize(chapter_text)]
+    if chapter_text_target is not None:
+        haystacks.append(normalize(chapter_text_target))
+    missing = [
+        e for e in entities
+        if not any(contains_form(h, normalize(e)) for h in haystacks)
+    ]
     return [f"сущность отсутствует в главе (S4.4): {m}" for m in missing]
 
 
@@ -154,11 +172,13 @@ def validate_question(
     *,
     chapter_seg_ids: frozenset[str],
     chapter_text: str,
+    chapter_text_target: str | None = None,
     normalize: Callable[[str], str],
 ) -> list[str]:
     """S4: валидация ОДНОГО вопроса (детерминированная, mock-проверяемая).
 
     Возвращает список причин отклонения (пусто — вопрос валиден).
+    `chapter_text_target` — перевод главы (для S4.4: сущности языка цели).
     """
     reasons: list[str] = []
     qtype = item.get("type")
@@ -175,7 +195,9 @@ def validate_question(
     if not isinstance(entities, list) or any(not isinstance(e, str) for e in entities):
         reasons.append("entities — не массив строк")
     else:
-        reasons.extend(check_entities(list(entities), chapter_text, normalize))
+        reasons.extend(
+            check_entities(list(entities), chapter_text, chapter_text_target, normalize)
+        )
     reasons.extend(
         _question_content_reasons(qtype, item, str(item.get("answer") or ""))
     )
@@ -211,7 +233,13 @@ def _exercise_ref_reasons(
             )
     elif etype == "translation":
         prompt = str(item.get("prompt") or "")
-        if not contains_form(normalize(chapter_text), normalize(prompt)):
+        norm_hay = normalize(chapter_text)
+        found = contains_form(norm_hay, normalize(prompt))
+        if not found and ": " in prompt:
+            # backstop: модель иногда добавляет инструкцию («Переведите…: …»),
+            # исходное предложение — после первого «: ».
+            found = contains_form(norm_hay, normalize(prompt.split(": ", 1)[-1]))
+        if not found:
             reasons.append("перевод: исходное предложение отсутствует в тексте главы")
     return reasons
 
@@ -220,6 +248,7 @@ def _exercise_content_reasons(
     etype: Any,
     item: Mapping[str, Any],
     chapter_text: str,
+    chapter_text_target: str | None,
     normalize: Callable[[str], str],
 ) -> list[str]:
     """S4: проверки содержимого по типу (gap/mc/tf) — те же, что у вопросов,
@@ -246,7 +275,9 @@ def _exercise_content_reasons(
         if not isinstance(entities, list) or any(not isinstance(e, str) for e in entities):
             reasons.append("entities — не массив строк")
         else:
-            reasons.extend(check_entities(list(entities), chapter_text, normalize))
+            reasons.extend(
+                check_entities(list(entities), chapter_text, chapter_text_target, normalize)
+            )
     return reasons
 
 
@@ -255,6 +286,7 @@ def validate_exercise(
     *,
     chapter_seg_ids: frozenset[str],
     chapter_text: str,
+    chapter_text_target: str | None = None,
     card_ids: frozenset[str],
     note_ids: frozenset[str],
     allowed_types: frozenset[str],
@@ -264,7 +296,8 @@ def validate_exercise(
 
     `card_ids`/`note_ids` — выпущенные карточки S1 / заметки S3 ГЛАВЫ
     (лексика/грамматика — только из выпущенного, S4.6); `allowed_types` —
-    конфиг `limits.exercises_types`.
+    конфиг `limits.exercises_types`; `chapter_text_target` — перевод главы
+    (S4.4: сущности tf на языке цели).
     """
     etype = item.get("type")
     if etype not in _EXERCISE_TYPES:
@@ -281,7 +314,7 @@ def validate_exercise(
     if not str(item.get("answer") or "").strip():
         reasons.append("пустой ответ упражнения")
     reasons.extend(
-        _exercise_content_reasons(etype, item, chapter_text, normalize)
+        _exercise_content_reasons(etype, item, chapter_text, chapter_text_target, normalize)
     )
     reasons.extend(
         _exercise_ref_reasons(

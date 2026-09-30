@@ -1897,16 +1897,24 @@ class Pipeline:
             if not source_text:
                 continue  # пустой сегмент — текста нет (S4.1)
             entry = data.setdefault(
-                chapter_id, {"segments": [], "text_parts": [], "word_count": 0}
+                chapter_id,
+                {
+                    "segments": [],
+                    "text_parts": [],
+                    "text_parts_target": [],
+                    "word_count": 0,
+                },
             )
+            translation_text = pair.translation_text.strip()
             entry["segments"].append(
                 {
                     "segment_id": pair.segment_id,
                     "source": source_text,
-                    "translation": pair.translation_text.strip(),
+                    "translation": translation_text,
                 }
             )
             entry["text_parts"].append(source_text)
+            entry["text_parts_target"].append(translation_text)
             entry["word_count"] += len(source_text.split())
         return data
 
@@ -2140,6 +2148,7 @@ class Pipeline:
                 raise AppError("S4: ответ LLM — items отсутствует или не массив")
             seg_ids = frozenset(seg["segment_id"] for seg in data["segments"])
             chapter_text = "\n".join(data["text_parts"])
+            chapter_text_target = "\n".join(data.get("text_parts_target", []))
             for raw in raw_items:
                 if not isinstance(raw, dict):
                     raise AppError("S4: ответ LLM — элемент items не объект")
@@ -2147,6 +2156,7 @@ class Pipeline:
                     raw,
                     chapter_seg_ids=seg_ids,
                     chapter_text=chapter_text,
+                    chapter_text_target=chapter_text_target,
                     normalize=normalize,
                 )
                 if reasons:
@@ -2386,6 +2396,7 @@ class Pipeline:
                 raise AppError("S4: ответ LLM — items отсутствует или не массив")
             seg_ids = frozenset(seg["segment_id"] for seg in data["segments"])
             chapter_text = "\n".join(data["text_parts"])
+            chapter_text_target = "\n".join(data.get("text_parts_target", []))
             card_ids = frozenset(str(c["id"]) for c in payload["cards"])
             note_ids = frozenset(str(n["id"]) for n in payload["notes"])
             for raw in raw_items:
@@ -2395,6 +2406,7 @@ class Pipeline:
                     raw,
                     chapter_seg_ids=seg_ids,
                     chapter_text=chapter_text,
+                    chapter_text_target=chapter_text_target,
                     card_ids=card_ids,
                     note_ids=note_ids,
                     allowed_types=allowed_types,
