@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Alex Olvin. All rights reserved.
 # Proprietary. Unauthorized use, copying, modification, or distribution
 # is prohibited without prior written permission. See LICENSE.
-"""Командный интерфейс ``moxmate`` (U2, ТЗ_04 §U2).
+"""Командный интерфейс ``moxhome`` (U2, ТЗ_04 §U2).
 
 CLI поверх тех же сервисов, что API (U2-1: собственной бизнес-логики нет —
 проверка по вызываемым сервисам):
@@ -23,7 +23,7 @@ CLI поверх тех же сервисов, что API (U2-1: собстве�
 и ``job status``.
 
 Запуск: ``python -m app.cli <команда> …`` (после установки —
-``moxmate <команда>``). Воркер — отдельный процесс
+``moxhome <команда>``). Воркер — отдельный процесс
 (``python -m app.workers.run --loop``); CLI не запускает его.
 """
 
@@ -381,8 +381,8 @@ def cmd_export_cards(settings: Settings, args: argparse.Namespace) -> int:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="moxmate",
-        description="MoxMate: перевод EPUB и учебные материалы (CLI, U2)",
+        prog="moxhome",
+        description="MoxHome: перевод EPUB и учебные материалы (CLI, U2)",
     )
     parser.add_argument(
         "--config",

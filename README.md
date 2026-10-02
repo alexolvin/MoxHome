@@ -1,4 +1,4 @@
-# MoxMate
+# MoxHome
 
 **Languages:** English | [Русский](README.ru.md)
 
@@ -42,7 +42,7 @@ not implemented (a documented limitation, not a silent no-op).
   non-EPUB import (Step 1)
 - An OpenAI-compatible LLM endpoint (`/v1/chat/completions`)
 
-**No local GPU or local model is required.** MoxMate performs no local
+**No local GPU or local model is required.** MoxHome performs no local
 inference; it calls an external LLM endpoint. The web server and worker run
 on an ordinary CPU machine.
 
@@ -53,8 +53,8 @@ All commands run **from the project root**.
 ### Step 1 — Install
 
 ```bash
-git clone <repository-url> MoxMate
-cd MoxMate
+git clone <repository-url> MoxHome
+cd MoxHome
 
 uv venv
 uv sync
@@ -224,7 +224,7 @@ not installed into site-packages).
 ## Project structure
 
 ```
-MoxMate/
+MoxHome/
 ├── app/               # application code
 │   ├── web/           # FastAPI app, views, API, templates, static (UI)
 │   ├── services/      # business logic (jobs, import, analyze, llm config)
@@ -277,7 +277,7 @@ fail closed with `403`.
 
 ## Contributing
 
-MoxMate is proprietary (All Rights Reserved — see [LICENSE](LICENSE)).
+MoxHome is proprietary (All Rights Reserved — see [LICENSE](LICENSE)).
 Contributions require the maintainer's prior written agreement — see
 [CONTRIBUTING.md](CONTRIBUTING.md).
 

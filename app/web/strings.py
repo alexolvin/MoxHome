@@ -42,7 +42,7 @@ UI_STRINGS: dict[str, str] = {
     "fab_add_book": "Добавить книгу",
     "fab_new_job": "Новое задание",
     # ------------------------------------------------------------- каркас
-    "brand": "MoxMate",
+    "brand": "MoxHome",
     "title_jobs": "Задания",
     "title_job": "Задание {id}",
     "title_books": "Книги",
@@ -844,7 +844,7 @@ UI_STRINGS: dict[str, str] = {
     ),
     "auth_label": "Общий секрет",
     "auth_btn": "Войти",
-    "auth_brand": "MoxMate",
+    "auth_brand": "MoxHome",
     "auth_wrong": "Секрет неверен. Попробуйте ещё раз.",
     "forbidden_title": "Доступ запрещён",
     "forbidden_back": "Вернуться к заданиям",

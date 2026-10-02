@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Alex Olvin. All rights reserved.
 # Proprietary. Unauthorized use, copying, modification, or distribution
 # is prohibited without prior written permission. See LICENSE.
-"""U2 (ТЗ_04 §U2): CLI ``moxmate`` — тесты T-U2-1..T-U2-4.
+"""U2 (ТЗ_04 §U2): CLI ``moxhome`` — тесты T-U2-1..T-U2-4.
 
 Принципы (тот же стандарт, что у предыдущих стадий):
 - CLI — реальный subprocess (``python -m app.cli --config … --env …``),

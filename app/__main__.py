@@ -26,7 +26,7 @@ from app.web.app import create_app
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="moxmate",
+        prog="moxhome",
         description="Конвейер перевода EPUB и генерации учебных материалов",
     )
     parser.add_argument("--config", default="config/config.yaml", help="путь к YAML-конфигу")

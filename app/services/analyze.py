@@ -5,7 +5,7 @@
 
 Один механизм (Rule 8): ``read_epub`` + ``detect_book`` — те же примитивы,
 что стадия validating (E2.5/L0.4). Потребители: API (``POST /api/books``)
-и CLI (``moxmate analyze``, U2) — дублирования разбора нет.
+и CLI (``moxhome analyze``, U2) — дублирования разбора нет.
 """
 
 from __future__ import annotations

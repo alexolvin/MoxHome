@@ -1,6 +1,6 @@
 # Contributing
 
-MoxMate is **proprietary** — see [LICENSE](LICENSE) (All Rights Reserved).
+MoxHome is **proprietary** — see [LICENSE](LICENSE) (All Rights Reserved).
 This repository is published for viewing and reference, not for
 unrestricted reuse.
 

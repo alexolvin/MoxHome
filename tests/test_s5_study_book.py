@@ -845,7 +845,7 @@ def test_s5_7_anki_structure_blocker(s5_env: S5Env) -> None:
         fields = line.split("\t")
         assert len(fields) == len(columns)
         assert all("\t" not in f and "\n" not in f for f in fields)
-        assert fields[-1].startswith("moxmate ")
+        assert fields[-1].startswith("moxhome ")
 
 
 # ------------------------------------------------------------------ T-S5-8

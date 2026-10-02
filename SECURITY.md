@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-The current `main` branch is the only supported line. MoxMate has no
+The current `main` branch is the only supported line. MoxHome has no
 published releases or versioned support tiers.
 
 ## Reporting a vulnerability

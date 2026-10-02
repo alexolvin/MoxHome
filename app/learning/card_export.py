@@ -39,7 +39,7 @@ COMMON_COLUMNS: tuple[str, ...] = (
 
 #: Имена артефактов карточек (S5.6): формат → файл задания. Единственный
 #: источник (Rule 8): писатель S5, API `/api/jobs/{id}/result`, CLI
-#: `moxmate export cards` (U2).
+#: `moxhome export cards` (U2).
 CARDS_FILES: dict[str, str] = {
     "csv": "cards.csv",
     "anki": "cards.anki.tsv",
@@ -165,7 +165,7 @@ def export_cards_anki(
     for card in cards:
         row = card_to_row(card, schema)
         tags = (
-            "moxmate pos=" + row["pos"]
+            "moxhome pos=" + row["pos"]
             + " cefr=" + row["cefr_level"]
             + " band=" + row["frequency_band"]
             + " chapter=" + row["chapter_id"]

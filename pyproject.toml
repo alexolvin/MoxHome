@@ -1,5 +1,5 @@
 [project]
-name = "moxmate"
+name = "moxhome"
 version = "0.1.0"
 description = "Self-hosted pipeline: EPUB translation and learning materials generation"
 requires-python = ">=3.11,<3.14"
@@ -23,7 +23,7 @@ dependencies = [
 ]
 
 [project.scripts]
-moxmate = "app.cli:main"
+moxhome = "app.cli:main"
 
 [tool.ruff]
 line-length = 100

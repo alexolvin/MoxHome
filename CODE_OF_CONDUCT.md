@@ -1,6 +1,6 @@
 # Code of Conduct
 
-MoxMate is a small, primarily single-maintainer project. Where collaboration
+MoxHome is a small, primarily single-maintainer project. Where collaboration
 does occur (see [CONTRIBUTING.md](CONTRIBUTING.md)), participants are expected
 to follow the [Contributor Covenant Code of Conduct, version 2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/).
 

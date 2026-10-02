@@ -1,4 +1,0 @@
-/mdisk/EpubTranslator/.venv/lib64/python3.11/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
-  from starlette.testclient import TestClient as TestClient  # noqa
-[v111] evidence: v1f-11-tailnet.txt
-[v111] вердикт: PASS 4/4

@@ -1,8 +1,0 @@
-##### E2-2: число сегментов на complex.epub (verbatim)
-дата: 2026-09-12 05:49:46Z
-эталон (вручную по структуре фикстуры): ch1=8, ch2=13, ch3=5, итого 26
-spine[0] chapter_id=ch1 document=OEBPS/z_alpha.xhtml title='Chapter One' segments=8
-spine[1] chapter_id=ch2 document=OEBPS/m_mid.xhtml title='Chapter Two' segments=13
-spine[2] chapter_id=ch3 document=OEBPS/a_last.xhtml title='Chapter Three' segments=5
-итого сегментов: 26
-совпадение с эталоном: True

@@ -138,7 +138,7 @@ def create_app(
     E3.1: API пишет только создание задания и управляющие команды).
     ``config_path``/``env_path`` (R8) — пути config.yaml/.env для
     записи LLM-настроек и релоада `app.state.settings` после сохранения."""
-    app = FastAPI(title="MoxMate", docs_url=None, redoc_url=None)
+    app = FastAPI(title="MoxHome", docs_url=None, redoc_url=None)
     if db is None:
         db = Database(settings.jobs_db_path, settings.storage.busy_timeout_ms)
     repo = JobRepository(db)

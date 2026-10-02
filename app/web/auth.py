@@ -48,7 +48,7 @@ from starlette.responses import JSONResponse
 from app.core.config import Settings
 from app.web.strings import UI_STRINGS
 
-WWW_AUTHENTICATE = 'Basic realm="moxmate"'
+WWW_AUTHENTICATE = 'Basic realm="moxhome"'
 #: Методы, изменяющие состояние (U3 3.9.40).
 MUTATING_METHODS: frozenset[str] = frozenset({"POST", "PUT", "DELETE", "PATCH"})
 #: Заголовок CSRF для fetch-запросов (app.js).
