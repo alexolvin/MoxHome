@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Web UI и API (этап U1): FastAPI + серверный HTML + минимум JavaScript.
 
 Доступ только внутри Tailscale (bind из конфигурации); при заданном

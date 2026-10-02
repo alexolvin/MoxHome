@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Тесты M4 (CONTROL): тракт M — постредактура (MTPE TZ §4).
 
 - M4-1 — потеря структурных элементов в итоговом тексте 0 (сверка карт разметки).

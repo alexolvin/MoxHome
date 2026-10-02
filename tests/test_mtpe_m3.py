@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Тесты M3 (CONTROL): тракт M — кодек разметки + черновик (MTPE TZ §4.7, §7).
 
 - M3-1 — кодек обратим: `decode(encode(marked_text)) == marked_text` побайтно,

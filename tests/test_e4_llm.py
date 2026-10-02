@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Тесты E4: LLM-профили, внешние промпты, клиент анализа, токены, стоимость.
 
 - T-E4-1 — поиск хардкода: URL/модель/ключ в коде — 0 попаданий (E4-1).

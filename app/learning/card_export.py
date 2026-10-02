@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """S5 (ТЗ_03): экспорт карточек — CSV, формат для Anki, JSON.
 
 Собственный формат не изобретается (S5.6): CSV — RFC 4180 (модуль `csv`);
@@ -36,7 +39,7 @@ COMMON_COLUMNS: tuple[str, ...] = (
 
 #: Имена артефактов карточек (S5.6): формат → файл задания. Единственный
 #: источник (Rule 8): писатель S5, API `/api/jobs/{id}/result`, CLI
-#: `epubtranslator export cards` (U2).
+#: `moxmate export cards` (U2).
 CARDS_FILES: dict[str, str] = {
     "csv": "cards.csv",
     "anki": "cards.anki.tsv",
@@ -162,7 +165,7 @@ def export_cards_anki(
     for card in cards:
         row = card_to_row(card, schema)
         tags = (
-            "epubtranslator pos=" + row["pos"]
+            "moxmate pos=" + row["pos"]
             + " cefr=" + row["cefr_level"]
             + " band=" + row["frequency_band"]
             + " chapter=" + row["chapter_id"]

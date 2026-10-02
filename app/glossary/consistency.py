@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Проверка согласованности перевода по глоссарию (ТЗ L2.6, L2-3/L2-4/L2-7).
 
 Механизм (детерминированный, без LLM): по карте выравнивания E6

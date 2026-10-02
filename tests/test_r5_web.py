@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Серия R, R5 (ТЗ §7 + §15): «Библиотека» и карточка книги.
 
 Т-подложка T10 (удаление книги с заданиями — лист с тремя путями, голый

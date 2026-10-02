@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Tесты L2: глоссарий книги (ТЗ L2.1–L2.8, CONTROL L2-1…L2-8).
 
 Сквозной in-process прогон (Pipeline) — по образцу E5; mock-сервер (D3) —

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Сверка компонентов с эталоном (TZ-UI-AUDIT §8 step 4, R-K / R-T4 / R-L4).
 
 Замер контура 2 (машина) поверх декларации `ui-components.yaml` + `ui-roles.yaml`:

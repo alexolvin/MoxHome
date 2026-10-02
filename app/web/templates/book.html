@@ -23,7 +23,7 @@
 <section class="u3-book-head">
   {% if detail.has_cover and detail.cover_v %}
   {# V2 §8.3: настоящая обложка — WebP srcset 256/512, фикс. 120×180. #}
-  <img class="u3-book-cover" srcset="/books/{{ detail.name }}/cover?v={{ detail.cover_v }}&w=256 256w, /books/{{ detail.name }}/cover?v={{ detail.cover_v }}&w=512 512w" sizes="160px" width="256" height="384" loading="eager" decoding="async" alt="">
+  <img class="u3-book-cover" srcset="/books/{{ detail.name | urlpath }}/cover?v={{ detail.cover_v }}&w=256 256w, /books/{{ detail.name | urlpath }}/cover?v={{ detail.cover_v }}&w=512 512w" sizes="160px" width="256" height="384" loading="eager" decoding="async" alt="">
   {% else %}
   {# V2 §8.4: заглушка — градиент (sha256(filename) mod 6) + иконка-книга
      (признак заглушки); название/автор — в правой колонке. #}
@@ -100,7 +100,10 @@
     <input type="text" id="u3-book-meta-input" class="u3-input" aria-label="{{ s["book_meta_title"] }}" maxlength="2000">
     <select id="u3-book-meta-select" class="u3-input" hidden aria-label="{{ s["book_meta_title"] }}"></select>
     <input type="hidden" name="u3_csrf" value="{{ csrf }}">
-    <button type="submit" class="u3-btn u3-primary u3-sheet-action">{{ s["book_meta_save"] }}</button>
+    <span class="u3-sheet-actions">
+      <button type="button" class="u3-btn" id="u3-book-meta-cancel">{{ s["book_delete_cancel"] }}</button>
+      <button type="submit" class="u3-btn u3-primary">{{ s["book_meta_save"] }}</button>
+    </span>
     <span id="u3-book-meta-msg" role="status"></span>
   </form>
 </dialog>
@@ -109,6 +112,7 @@
    «Файл книги». #}
 <dialog class="u3-sheet" id="u3-sheet-export" aria-label="{{ s["job_export_title"] }}">
   <h2 class="u3-sheet-title">{{ s["job_export_title"] }}</h2>
+  <p class="hint">{{ s["job_export_download_note"] }}</p>
   <div id="u3-export-body"></div>
 </dialog>
 {% include "_book_delete_sheets.html" %}

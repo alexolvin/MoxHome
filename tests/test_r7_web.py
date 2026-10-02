@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """R7 (ТЗ §9): экспорт — 8 форматов, макеты билингвы, карточки, TTL.
 
 Т-подложки:

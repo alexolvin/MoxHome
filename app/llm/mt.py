@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Транспорт `completions` клиента тракта A (MTPE §4.9) — рядом с `chat`.
 
 Второго клиента нет: это вторая транспортная ветвь того же клиента `app/llm/`.

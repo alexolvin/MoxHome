@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """SQLite в режиме WAL с миграциями (E3.1).
 
 Единственный писатель — воркер; API пишет только создание задания и управляющие

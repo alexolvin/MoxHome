@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Создание задания и управляющие команды (E3.1).
 
 API-сторона пишет только создание задания и управляющие команды — исполнением
@@ -27,6 +30,7 @@ from app.core.llm_settings import build_job_config_snapshot, validate_llm_settin
 from app.domain.job import LEARNING_LEVELS, Job, JobStatus
 from app.epub.reader import read_dc_language
 from app.languages.cefr import CEFR_LEVELS
+from app.languages.detect import normalize_code
 from app.languages.registry import load_registry
 from app.languages.resolver import PairResolver, PairStatus, mt_pe_supported
 from app.storage.jobs_repo import JobRepository
@@ -177,9 +181,10 @@ def create_job(
     if not zipfile.is_zipfile(source_path):
         raise InputValidationError(f"не является ZIP-архивом: {source_path.name}")
     # L0.7: проверка пары ДО создания задания (fail closed). dc:language может
-    # отсутствовать — тогда исходный язык определит детектор на validating (L0.5).
+    # отсутствовать ИЛИ быть "und" (неопределённый, ставит конвертер) — в обоих
+    # случаях исходный язык определит детектор на validating (L0.5).
     dc_language = read_dc_language(source_path)
-    if dc_language is not None:
+    if dc_language is not None and normalize_code(dc_language) != "und":
         resolver = PairResolver(
             registry_root=settings.languages_root, prompts_root=settings.prompts_dir
         )

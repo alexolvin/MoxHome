@@ -10,13 +10,17 @@
 {% if sheet == "delete" %}
 <form method="post" action="/api/jobs/{{ job_id }}">
   <input type="hidden" name="u3_csrf" value="{{ csrf }}">
-  <button type="submit" class="u3-btn u3-danger u3-sheet-action">{{ s["job_delete_sheet_btn"] }}</button>
-  <a class="u3-btn u3-sheet-action" href="/jobs/{{ job_id }}">{{ s["job_delete_sheet_cancel"] }}</a>
+  <span class="u3-sheet-actions">
+    <a class="u3-btn u3-sheet-action" href="/jobs/{{ job_id }}">{{ s["job_delete_sheet_cancel"] }}</a>
+    <button type="submit" class="u3-btn u3-danger u3-sheet-action">{{ s["job_delete_sheet_btn"] }}</button>
+  </span>
 </form>
 {% else %}
 <form class="u3-sheet-form" id="u3-del-job-form" data-job="{{ job_id }}">
-  <button type="button" id="u3-del-job-confirm" class="u3-btn u3-danger u3-sheet-action">{{ s["job_delete_sheet_btn"] }}</button>
-  <button type="button" id="u3-del-job-cancel" class="u3-btn u3-sheet-action">{{ s["job_delete_sheet_cancel"] }}</button>
+  <span class="u3-sheet-actions">
+    <button type="button" id="u3-del-job-cancel" class="u3-btn u3-sheet-action">{{ s["job_delete_sheet_cancel"] }}</button>
+    <button type="button" id="u3-del-job-confirm" class="u3-btn u3-danger u3-sheet-action">{{ s["job_delete_sheet_btn"] }}</button>
+  </span>
   <span id="u3-del-job-msg" role="status"></span>
 </form>
 {% endif %}

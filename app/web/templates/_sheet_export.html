@@ -8,6 +8,7 @@
 {% if export_err %}
 <p class="u3-warn" role="alert">{{ export_err }}</p>
 {% endif %}
+<p class="hint">{{ s["job_export_download_note"] }}</p>
 {% if export.kind == "job" %}
 <p class="u3-export-book">{{ export.book_name }}</p>
 {% if not export.result_ready %}

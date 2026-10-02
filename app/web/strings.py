@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Единый словарь строк интерфейса (U3 3.1, критерий U3-1).
 
 Все видимые строки UI — только здесь: плоский словарь «ключ → строка».
@@ -39,7 +42,7 @@ UI_STRINGS: dict[str, str] = {
     "fab_add_book": "Добавить книгу",
     "fab_new_job": "Новое задание",
     # ------------------------------------------------------------- каркас
-    "brand": "EpubTranslator",
+    "brand": "MoxMate",
     "title_jobs": "Задания",
     "title_job": "Задание {id}",
     "title_books": "Книги",
@@ -195,7 +198,7 @@ UI_STRINGS: dict[str, str] = {
     "book_field_source": "Язык оригинала",
     "book_field_target": "Язык перевода по умолчанию",
     "book_field_cefr": "Уровень CEFR по умолчанию",
-    "book_field_note": "Заметка",
+    "book_field_note": "О книге",
     "book_meta_save": "Сохранить",
     "book_meta_title": "Метаданные книги",
     "jobs_book_strip": "Книга: {name}",
@@ -505,6 +508,9 @@ UI_STRINGS: dict[str, str] = {
     "job_export_layout_only": "Только перевод",
     "job_export_layout_columns": "Две колонки (PDF, HTMLZ)",
     "job_export_btn": "Экспорт",
+    "job_export_download_note": "Файл сохранится на вашем устройстве — после экспорта нажмите на его имя.",
+    "book_export_download_btn": "Скачать книгу",
+    "book_export_default_hint": "По умолчанию — только «Перевод» (один файл). Отметьте другие пункты, чтобы собрать архив (zip) с учебными материалами.",
     "job_export_progress": "Конвертация… {done} из {total}",
     "job_export_files": "Файлы",
     "job_export_book_block": "Файл книги",
@@ -513,6 +519,7 @@ UI_STRINGS: dict[str, str] = {
     "job_export_book_missing": "Книга не найдена",
     "job_export_status_converting": "Конвертация…",
     "job_export_status_done": "Экспорт завершён",
+    "job_export_status_done_note": "Нажмите на файл, чтобы скачать его на устройство.",
     "job_export_status_error": "Ошибка экспорта",
     "err_export_pending": "Задание ещё не завершено (статус: {status})",
     "err_export_in_progress": "Экспорт уже выполняется",
@@ -558,6 +565,9 @@ UI_STRINGS: dict[str, str] = {
     "languages_col_name": "название",
     "languages_col_spacy": "spaCy",
     "languages_col_cefr": "CEFR",
+    "main_lang_h2": "Основной язык",
+    "main_lang_hint": "Целевой язык по умолчанию при импорте книги.",
+    "main_lang_notset": "Не задан",
     "pairs_h2": "Пары (статусы — резолвер L0)",
     "pairs_col_source": "исходный",
     "pairs_col_target": "целевой",
@@ -834,7 +844,7 @@ UI_STRINGS: dict[str, str] = {
     ),
     "auth_label": "Общий секрет",
     "auth_btn": "Войти",
-    "auth_brand": "EpubTranslator",
+    "auth_brand": "MoxMate",
     "auth_wrong": "Секрет неверен. Попробуйте ещё раз.",
     "forbidden_title": "Доступ запрещён",
     "forbidden_back": "Вернуться к заданиям",

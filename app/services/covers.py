@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Обложки (ТЗ §8, V2): извлечение, безопасность, миниатюры, выдача.
 
 §8.1 — порядок извлечения (строго): EPUB3 ``cover-image`` → EPUB2

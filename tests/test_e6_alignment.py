@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """T-E6: выравнивание оригинал ↔ перевод (CONTROL E6-1…E6-7, T-E6-8).
 
 Механизм — измеренная разметка движка (E1, `docs/ENGINE_PROBE.md` §3 P3):

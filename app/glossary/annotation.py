@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """LLM-аннотация кандидатов глоссария (ТЗ L2.2/L2.3/L2.4).
 
 LLM привлекается ТОЛЬКО для перевода и краткого пояснения детерминированно

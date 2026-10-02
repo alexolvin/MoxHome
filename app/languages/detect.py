@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Детерминированное определение исходного языка (L0.4, D7): langdetect с фикс. сидом.
 
 НЕ через LLM (L0.4). langdetect 1.x: `DetectorFactory` с фиксированным сидом —
@@ -152,6 +155,11 @@ def decide(
     """Правила L0.5. Возврат: (решение, принятый язык, причины для отчёта/подтверждения)."""
     det_code = normalize_code(detection.language, aliases)
     dc_code = normalize_code(dc_language, aliases)
+    # BCP-47 "und" (неопределённый) — отсутствие языка, а не отдельный язык:
+    # конвертер ставит --language und (adapters.convert.IMPORT_FLAGS), и
+    # «конфликт» уверенного детектора с und — ложный (L0.5) → считаем dc нет.
+    if dc_code == "und":
+        dc_code = None
     confident = (
         det_code is not None
         and detection.confidence is not None

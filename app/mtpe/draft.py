@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Черновик тракта M (MTPE M3, §7): MT-модель переводит сегменты в черновик.
 
 Состав сегментов — ровно тот, что переводит тракт T (тракт A: `read_epub` →

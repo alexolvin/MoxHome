@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Кодек внутренней разметки сегмента (MTPE §4.7) — единственный для M3, M4, M5.
 
 Внутристрочные элементы сегмента нумеруются в порядке документа и заменяются

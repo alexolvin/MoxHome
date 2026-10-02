@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Тесты M5 (CONTROL): тракт M — писатель сегментов (MTPE TZ §4.9, §7).
 
 - M5-1 — EPUBCheck на пяти книгах тестового корпуса (mock): 0 ошибок;

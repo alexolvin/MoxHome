@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Строковое редактирование файлов конфигурации (R8, ТЗ §13).
 
 `config.yaml` — единственный источник LLM-настроек; интерфейс правит
@@ -159,6 +162,32 @@ def apply_translation_pipeline(text: str, pipeline: str) -> str:
             lines[idx] = f"  pipeline: {pipeline}"
             return "\n".join(lines)
     lines.insert(trans_start + 1, f"  pipeline: {pipeline}")
+    return "\n".join(lines)
+
+
+def apply_ui_main_language(text: str, code: str) -> str:
+    """Поставить/обновить `ui.main_language` (основной язык пользователя).
+
+    Индентация секции — 2 пробела. Значение — код языка (простое, без
+    кавык; пусто — `""`). Отсутствующее поле — вставка после строки
+    `ui:`. ValueError — секция ui не найдена (fail-closed)."""
+    lines = text.split("\n")
+    ui_start: int | None = None
+    for idx, line in enumerate(lines):
+        if line.startswith("ui:"):
+            ui_start = idx
+            break
+    if ui_start is None:
+        raise ValueError("секция ui не найдена в конфиге")
+    value = code if code else '""'
+    for idx in range(ui_start + 1, len(lines)):
+        stripped = lines[idx].strip()
+        if stripped and _indent(lines[idx]) < 2:
+            break  # конец секции ui
+        if re.match(r"^  main_language:", lines[idx]):
+            lines[idx] = f"  main_language: {value}"
+            return "\n".join(lines)
+    lines.insert(ui_start + 1, f"  main_language: {value}")
     return "\n".join(lines)
 
 

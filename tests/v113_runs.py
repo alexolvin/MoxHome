@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """V1.13 (ТЗ_04 §V1.13): полный конвейер на реальных книгах, 5 исходных языков.
 
 Запуск: python tests/v113_runs.py [en de fr it nl]   (без аргументов — все)

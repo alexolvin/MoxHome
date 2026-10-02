@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """V1 (ТЗ 2026-09-22) V-T10 — контраст тёмной темы (WCAG 2.x).
 
 Критерий: main text ≥ 7, secondary/status ≥ 4.5, borders ≥ 3.

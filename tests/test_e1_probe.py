@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """T-E1: pytest-тесты к ENGINE_PROBE (критерии E1-2, E1-3, E1-6).
 
 Пороги дублируют CONTROL: тёплый кэш ≤ 2% токенов, смена языка ≥ 90%,

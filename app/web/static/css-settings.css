@@ -54,3 +54,4 @@ html.js #u3-appearance-submit{display:none}
 .u3-grp-l{flex:1 1 auto;min-width:0;font-size:var(--fb);font-weight:600}
 .u3-grp-c{flex:0 0 auto;width:var(--i20);height:var(--i20);color:var(--fgs)}
 .u3-fld-err{margin:var(--gx) 0 0;font-size:var(--fsm);color:var(--st-e);font-weight:600}
+.u3-mainlang-list{display:grid;gap:var(--u3-tap-gap);margin:var(--gs) 0 var(--g)}

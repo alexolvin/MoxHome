@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """CONTROL M6 (docs/CONTROL/M6.md): способ mt_pe — ветвление TRANSLATING,
 прогресс §4.4, прогрев LLM-стадий (§4.6), причины остановки (req 9), 422,
 страница постредактуры, CLI. Тесты воспроизводят критерии CONTROL M6.

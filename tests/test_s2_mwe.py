@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Тесты S2: устойчивые выражения и MWE (ТЗ_03 §S2, CONTROL S2-1…S2-6).
 
 Сквозной in-process прогон (Pipeline) до LEARNING — по образцу S1

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Тесты L3: правка расхождений перевода по глоссарию (ТЗ_02 §L3, CONTROL L3-1…L3-10).
 
 Сквозной in-process прогон (Pipeline) ходит по тем же переходам, что воркер

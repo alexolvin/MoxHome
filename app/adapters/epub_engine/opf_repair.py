@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Ремонт пространств имён атрибутов EPUB 2.0 OPF (D83).
 
 Движок epub-translator 0.1.10 (переписывать запрещено, ТЗ §5.1) при

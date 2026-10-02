@@ -1,0 +1,20 @@
+# Predictable checkouts (GitHub Publication Standard, §8).
+* text=auto eol=lf
+
+# Scripts keep their platform line endings.
+*.sh text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary assets.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.jar binary

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Лексика книги (S1, ТЗ_03): кандидат, прошедший детерминированный отбор.
 
 Детерминированная стадия (ДО LLM, обратный порядок запрещён — ТЗ_03 S1):

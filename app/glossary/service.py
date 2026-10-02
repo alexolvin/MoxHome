@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Оркестрация глоссария книги (L2): сборка при первом задании версии,
 загрузка при повторных (L2.8: привязка к хэшу исходного файла).
 

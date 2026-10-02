@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """MTPE M1: единая проверка настроек LLM (TZ §5.3), миграция jobs, снимок (§4.5).
 
 Покрытие критериев M1:

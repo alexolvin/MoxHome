@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Ридер EPUB (тракт A, D14): детерминированное чтение в Book → Chapter → Segment.
 
 Порядок валидации (E2.5) — до любого обращения к LLM:

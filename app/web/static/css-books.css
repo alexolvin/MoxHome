@@ -7,8 +7,6 @@
 .u3-search-input{flex:1 1 auto;min-width:0}
 .u3-search-btn{flex:0 0 auto}
 .u3-row-link{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:var(--gs);min-height:var(--u3-tap);text-decoration:none;color:inherit}.u3-book-del-jobs{display:flex;flex-direction:column;gap:var(--gx);margin:0 0 var(--g);padding:0;list-style:none}.u3-book-del-jobs li{display:flex;align-items:center;gap:var(--gs);min-width:0}.u3-book-del-jobs .u3-mono{min-width:0;overflow:hidden;text-overflow:ellipsis}
-#u3-sheet-book-delete .u3-filter-actions{flex-direction:column;align-items:stretch;gap:var(--gs);margin-top:var(--gs)}
-#u3-sheet-book-delete .u3-filter-actions .u3-btn{width:100%}
 .u3-book-del-btn{width:100%}
 .u3-btn-danger{background:var(--st-e);color:var(--os)}
 .u3-book-del-q{margin:0 0 var(--gs);font-size:var(--fmd);font-weight:600}

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Внутренняя структурная валидация выходного EPUB (E5.7, тракт A).
 
 Жёсткий шлюз ПЕРЕД `os.replace` (E5.6): не пройдена → результата нет, задание

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Learning-материалы (TЗ_03, S1–S5): отбор, генерация, валидация, выпуск.
 
 Материалы строятся ТОЛЬКО по выровненному подмножеству E6 и ТОЛЬКО по тексту

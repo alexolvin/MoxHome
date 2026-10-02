@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Контракт адаптера (E5.1): типы TranslationEngine Protocol и запроса/результата.
 
 Модуль НЕ импортирует `epub_translator` (Rule 8, D2): типы движка существуют

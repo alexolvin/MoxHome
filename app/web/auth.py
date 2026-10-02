@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Доступ U1 + безопасность мутирующих операций U3.
 
 Правила (ТЗ U1.10): привязка к Tailscale-адресу — через ``server.bind_address``
@@ -45,7 +48,7 @@ from starlette.responses import JSONResponse
 from app.core.config import Settings
 from app.web.strings import UI_STRINGS
 
-WWW_AUTHENTICATE = 'Basic realm="epubtranslator"'
+WWW_AUTHENTICATE = 'Basic realm="moxmate"'
 #: Методы, изменяющие состояние (U3 3.9.40).
 MUTATING_METHODS: frozenset[str] = frozenset({"POST", "PUT", "DELETE", "PATCH"})
 #: Заголовок CSRF для fetch-запросов (app.js).

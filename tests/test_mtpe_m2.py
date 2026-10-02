@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """MTPE M2: экран «LLM и модели» (TZ §6) — способ, проба, бюджеты.
 
 Pytest-часть критериев M2 (Playwright-часть — CONTROL, живой стенд):

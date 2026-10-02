@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Глоссарий → user_prompt движка (E5.5, TZ 02 L2.5).
 
 Лимит по размеру — из конфигурации (limits.glossary_max_user_prompt_chars).

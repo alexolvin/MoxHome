@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """T-E0-1, T-E0-2: конфигурация — отказ при пропуске обязательных параметров,
 отказ wildcard-bind без флага, воспроизводимость валидной загрузки."""
 

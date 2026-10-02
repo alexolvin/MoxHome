@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """T-E5-12…T-E5-18: EPUBCheck fail-closed (D82), валидация .partial (D85),
 ремонт OPF (D83).
 

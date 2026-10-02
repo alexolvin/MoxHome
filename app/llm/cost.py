@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Стоимость (E4.7): показывается ТОЛЬКО при заданной в конфигурации цене.
 
 Выдуманная стоимость запрещена: без обеих цен профиля (вход и выход) функция

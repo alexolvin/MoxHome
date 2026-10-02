@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """S5 (ТЗ_03): сборка учебного EPUB — дополнение выходного EPUB тракта (T).
 
 Метод (ТЗ_03 §S5): НЕ «с нуля» — распаковка `target.epub`, вставка XHTML-

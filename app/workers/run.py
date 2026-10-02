@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Входная точка воркера (E3).
 
     python -m app.workers.run --config config/config.yaml --env .env [--loop]

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Единая проверка настроек LLM (MTPE TZ §5.3).
 
 `validate_llm_settings(settings) -> list[SettingsIssue]` — ЕДИНСТВЕННАЯ точка

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Запуск EPUBCheck (E5.7, D4): Java 17 + jar из конфигурации.
 
 Распределение W3C 5.x: рядом с jar лежит каталог `lib/` — класспасс

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Общие фикстуры E0/E4: изоляция окружения, генерация .env и YAML.
 
 E4.1: адреса/модели LLM задаются в YAML-профилях (make_yaml), в .env — только

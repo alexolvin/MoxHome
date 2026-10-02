@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """S2/S3 (ТЗ_03): идиомы, устойчивые сочетания, языкоспецифичные MWE (S2) и
 грамматические явления (S3) — в терминах таксономии языка-источника
 (механизм двухступенчатый, как S1).

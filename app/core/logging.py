@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Структурное логирование: JSON-строки, job_id в записях, redaction секретов (E0.7).
 
 Секрет (ключ, токен, cookie) не попадает в лог ни при каком уровне детализации:

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Тесты S1: отбор лексики (ТЗ_03 §S1, CONTROL S1-1…S1-7).
 
 Сквозной in-process прогон (Pipeline) — по образцу L3Env; mock-сервер (D3) —

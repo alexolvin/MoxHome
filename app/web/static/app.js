@@ -871,11 +871,11 @@ else if(booksRefresh)booksRefresh();
 };
 const btn=(name,data,cls,label)=>"<button type='button' class='"+cls+"' data-name='"+esc(name)+"' "+data+">"+esc(label)+"</button>";
 const jobLines=jobs=>"<ul class='u3-sheet-list'>"+jobs.map(j=>"<li><span class='u3-status status-"+esc(j.status_group)+"'>"+esc(j.status)+"</span><span class='u3-mono'>"+esc(j.id)+"</span></li>").join("")+"</ul>";
-const simpleHtml=name=>"<p class='u3-book-del-q'>"+esc(fmt(S.book_delete_simple_q,{name}))+"</p><span class='u3-filter-actions'>"+btn(name,"data-del-cancel","u3-btn",S.book_delete_cancel)+btn(name,"data-del-simple","u3-btn u3-danger",S.book_delete_yes)+"</span>";
+const simpleHtml=name=>"<p class='u3-book-del-q'>"+esc(fmt(S.book_delete_simple_q,{name}))+"</p><span class='u3-sheet-actions'>"+btn(name,"data-del-cancel","u3-btn",S.book_delete_cancel)+btn(name,"data-del-simple","u3-btn u3-danger",S.book_delete_yes)+"</span>";
 const usageHtml=(name,usage)=>{
 const nonterminal=usage.jobs.filter(j=>!j.terminal);
 const cascade=nonterminal.length?"<button type='button' class='u3-btn u3-danger' disabled>"+esc(fmt(S.book_delete_cascade,{n:usage.count}))+"</button>":btn(name,"data-del-cascade","u3-btn u3-danger",fmt(S.book_delete_cascade,{n:usage.count}));
-return "<p role='status' style='margin:0 0 var(--g);padding:var(--gs) var(--p);border:1px solid var(--st-a);border-left:3px solid var(--st-a);border-radius:var(--r8);background:var(--st-ab);color:var(--st-a);font-size:var(--fsm);font-weight:600'>"+esc(fmt(S.book_delete_referenced,{n:usage.count}))+"</p>"+jobLines(usage.jobs)+(nonterminal.length?"<p class='u3-warn'>"+esc(fmt(S.book_delete_nonterminal,{n:usage.count,ids:nonterminal.map(j=>j.id).join(", ")}))+"</p>":"")+"<span class='u3-filter-actions'>"+btn(name,"data-del-file","u3-btn",S.book_delete_file_only)+cascade+btn(name,"data-del-cancel","u3-btn",S.book_delete_cancel)+"</span>";
+return "<p role='status' style='margin:0 0 var(--g);padding:var(--gs) var(--p);border:1px solid var(--st-a);border-left:3px solid var(--st-a);border-radius:var(--r8);background:var(--st-ab);color:var(--st-a);font-size:var(--fsm);font-weight:600'>"+esc(fmt(S.book_delete_referenced,{n:usage.count}))+"</p>"+jobLines(usage.jobs)+(nonterminal.length?"<p class='u3-warn'>"+esc(fmt(S.book_delete_nonterminal,{n:usage.count,ids:nonterminal.map(j=>j.id).join(", ")}))+"</p>":"")+"<span class='u3-sheet-actions'>"+btn(name,"data-del-cancel","u3-btn",S.book_delete_cancel)+btn(name,"data-del-file","u3-btn",S.book_delete_file_only)+cascade+"</span>";
 };
 const openFor=async name=>{
 body.innerHTML="";
@@ -968,7 +968,8 @@ const select=$("u3-book-meta-select");
 const msg=$("u3-book-meta-msg");
 const FIELD_KEYS={title:"title",author:"author",note:"note",source_language:"source",target_default:"target",cefr_default:"cefr"};
 const FIELD_KIND={title:"str",author:"str",note:"str",source_language:"lang",target_default:"lang",cefr_default:"cefr"};
-const bookName=(window.location.pathname||"").split("/")[2]||"";
+let bookName=(window.location.pathname||"").split("/")[2]||"";
+try{bookName=decodeURIComponent(bookName);}catch(e){}
 document.addEventListener("click",e=>{
 const target=e.target;
 if(!target||!target.getAttribute)return;
@@ -1011,6 +1012,8 @@ toast(S.book_meta_saved);
 };
 run();
 });
+const cancel=$("u3-book-meta-cancel");
+if(cancel)cancel.addEventListener("click",()=>dialog.close());
 }
 function bindPurge(){
 const form=$("u3-purge-form");
@@ -1230,7 +1233,7 @@ const base=(mode==="job"?"/api/jobs/":"/api/books/")+enc(arg)+"/export";
 const tick=()=>{
 fetchJSON(base).then(rec=>{
 if(rec.status==="done"){
-let h="<p class='hint'>"+esc(S.job_export_status_done)+"</p><div class='u3-export-files'>";
+let h="<p class='hint'>"+esc(S.job_export_status_done)+" · "+esc(S.job_export_status_done_note)+"</p><div class='u3-export-files'>";
 for(const n of rec.files||[])h+="<a class='u3-btn' href='"+base + "/" + enc(n)+"' download='"+enc(n)+"'>"+esc(n)+"</a>";
 res.innerHTML=h+"</div>";
 }else if(rec.status==="error"){
@@ -1319,6 +1322,8 @@ fetchJSON("/api/jobs/"+enc(jobId)).then(facts=>{
 if(opts.parentNode!==body)return;
 const ex=facts.export||{objects:{},layouts:false};
 opts.innerHTML=exportOptsHtml(ex.objects||{},!!ex.layouts,ok);
+// book: default to translation only (one file); other items stay available for a zip archive.
+for(const c of opts.querySelectorAll("[name='objects']")){ if(c.value!=="translation")c.checked=false; }
 syncExportTwo(body);
 syncExportSel(body);
 }).catch(e=>{
@@ -1343,9 +1348,10 @@ h+="<label class='u3-exp-item'><input type='radio' name='xformat' value='"+f+"'"
 }
 h+="</div></fieldset><button type='button' class='u3-btn u3-primary u3-sheet-action' data-u3-exp-run data-exp-mode='bookfile' data-exp-arg='"+enc(bookName)+"'>"+esc(S.job_export_btn)+"</button>";
 }else{
+h+="<p class='hint'>"+esc(S.book_export_default_hint)+"</p>";
 h+="<fieldset class='u3-exp-section'><legend>"+esc(S.job_export_section_job)+"</legend>";
 for(const j of jobs)h+="<label class='u3-exp-item'><input type='radio' name='xjob' value='"+j.id+"'"+(jobs.indexOf(j)===0?" checked":"")+"> "+esc(j.book_name||NS)+" · "+esc(j.status)+" · "+esc(j.updated_at_human||NS)+"</label>";
-h+="</fieldset><div id='u3-exp-job-opts'></div><button type='button' class='u3-btn u3-primary u3-sheet-action' data-u3-exp-run data-exp-mode='book'>"+esc(S.job_export_btn)+"</button>";
+h+="</fieldset><div id='u3-exp-job-opts'></div><button type='button' class='u3-btn u3-primary u3-sheet-action' data-u3-exp-run data-exp-mode='book'>"+esc(S.book_export_download_btn)+"</button>";
 }
 h+="<div id='u3-exp-result' role='status'></div>";
 body.innerHTML=h;

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Детерминированный QC после перевода (E5.8): 10 проверок из ТЗ.
 
 Работает в стадии validating_output по финальному выходу (target.epub) и

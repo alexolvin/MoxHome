@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Детерминированный генератор фикстур ВРЕДНЫХ обложек (TZ-UI-V §11, V-T8).
 
 Запуск: python tests/fixtures/covers/build.py

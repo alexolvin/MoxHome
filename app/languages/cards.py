@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Словарные карточки (L1.6): JSON-схема на язык (`card_schema.json`).
 
 Состав обязательных полей зависит от языка и части речи (ТЗ L1 п.6, таблица):

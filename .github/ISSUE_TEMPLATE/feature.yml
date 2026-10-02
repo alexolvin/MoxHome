@@ -1,0 +1,17 @@
+name: Feature / request
+description: Propose an idea or request (contributions require prior agreement — see LICENSE).
+title: "[request] "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What would you like?
+      description: A clear description of the feature or request.
+    required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why this would be useful.
+    required: false

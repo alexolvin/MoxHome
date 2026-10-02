@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """A3-сверка протокола осмотра (D112, Поправка A к ТЗ V).
 
 Сверяет протокол (inspection.md) с артефактами съёмки:

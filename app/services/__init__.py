@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Сервисы (сценарии): задание, подтверждение, разбор книги (E3; поверх — U1 HTTP, U2 CLI)."""
 
 from app.services.analyze import scan_book

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """E1 ENGINE_PROBE: измерение фактического поведения epub-translator (verbatim-захваты).
 
 Запуск: python tests/probe/run_probe.py

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """T-U3-1..15 — переработка Web UI (TZ U3 §7).
 
 Окружение — как U1Env (mock-сервер, профили, книги), новых тестовых

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Модели представлений U1/U3: страницы и API читают ТОЛЬКО эти функции.
 
 Честность прогресса (У1.1/У1.2): отображаемые величины — чистые функции
@@ -1177,7 +1180,7 @@ def languages_view(settings: Settings) -> dict[str, Any]:
         }
         for report in matrix_report(settings)
     ]
-    return {"languages": languages, "pairs": pairs}
+    return {"languages": languages, "pairs": pairs, "main_language": settings.ui.main_language}
 
 
 # ---------------------------------------------------------------- модели (Models)

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Клиент анализа (тракт A, E4.4): структурированный ответ, валидация по
 JSON-схеме задачи, ограниченные повторы, полное сохранение сырых ответов.
 

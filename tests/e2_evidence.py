@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Сборщик verbatim-evidence для CONTROL E2 (не тест; assertions — в test_e2_reader.py).
 
 Запуск: python tests/e2_evidence.py

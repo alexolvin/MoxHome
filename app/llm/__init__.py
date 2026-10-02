@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """LLM-слой (E4): единая конфигурация профилей, внешние промпты, клиент
 анализа (тракт A), стоимость.
 

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Конфигурация приложения — ЕДИНСТВЕННЫЙ слой чтения .env и YAML (Rule 1).
 
 Разделение: секреты (API-ключи) и адрес бинда — в .env; всё остальное
@@ -499,6 +502,9 @@ class UiSection(BaseModel):
     #: Витрина компонентов /dev/kit (ТЗ V §7.9): доступна только при true,
     #: иначе 404. По умолчанию false (не боевая страница).
     dev_kit: bool = Field(default=False)
+    #: Основной язык пользователя: целевой язык по умолчанию при импорте
+    #: книги. Пусто — не задан (целевой при импорте не предзаполняется).
+    main_language: str = ""
 
     @model_validator(mode="after")
     def _check_refresh_bounds(self) -> UiSection:

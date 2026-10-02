@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Compare-листы серии TZ-UI-V (TZ §2.5).
 
 Склеивает в одну картинку одинаковой высоты эталонный фрагмент (слева)
@@ -8,7 +11,7 @@
 Запуск:
     .a/tasks/ui-audit/.venv/bin/python scripts/ui_compare.py --stage V0
     .a/tasks/ui-audit/.venv/bin/python scripts/ui_compare.py --stage V2 \
-        --shots /mdisk/EpubTranslator/.a/tasks/ui-audit/shots/V2/abc1234
+        --shots .a/tasks/ui-audit/shots/V2/abc1234
 Результат: compare-S<nn>.png в том же каталоге снимков.
 """
 

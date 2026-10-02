@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Показ LLM-профилей (E4.3): провайдер, эндпоинт, модель, профиль — по каждому.
 
 Показывается CLI перед стартом задания (app.workers.run) и доступна UI (U1).

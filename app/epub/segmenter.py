@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Сегментатор XHTML: блочные элементы → сегменты с устойчивыми идентификаторами (E2.2–4)."""
 
 from __future__ import annotations

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """T-L0-1…T-L0-8: языковой слой (L0) — детерминированное определение и резолвер пар.
 
 TZ_EpubTranslator_02_LANGUAGES.md, раздел L0:
@@ -22,6 +25,7 @@ TZ_EpubTranslator_02_LANGUAGES.md, раздел L0:
 
 from __future__ import annotations
 
+import zipfile
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
@@ -30,7 +34,7 @@ import pytest
 from app.core.config import Settings, load_settings
 from app.core.errors import ConfigurationError, InputValidationError
 from app.domain.job import JobStatus
-from app.epub.reader import read_epub
+from app.epub.reader import read_dc_language, read_epub
 from app.languages.detect import (
     Detection,
     LanguageDecision,
@@ -168,6 +172,14 @@ def test_l0_1_detection_is_deterministic() -> None:
             {"eng": "en"},
             (LanguageDecision.ACCEPTED, "en", 0),
         ),
+        # BCP-47 "und" (неопределённый, ставит конвертер) — как отсутствие dc:
+        # уверенный детектор решает, ложного конфликта нет
+        (
+            Detection("en", 0.9, {"en": 0.9}),
+            "und",
+            None,
+            (LanguageDecision.ACCEPTED_BY_DETECTOR, "en", 0),
+        ),
     ],
     ids=[
         "dc_match_accepted",
@@ -177,6 +189,7 @@ def test_l0_1_detection_is_deterministic() -> None:
         "no_dc_low_confidence_needs_confirmation",
         "boundary_confidence_accepted",
         "alias_normalization",
+        "und_treated_as_absent",
     ],
 )
 def test_l0_2_decide_rules(
@@ -230,6 +243,59 @@ def test_l0_7_wrong_dc_language_requires_confirmation(
         assert repo.require(job.id).source_language == "de"
         pipeline.run_planning(repo, repo.require(job.id))
         assert (settings.jobs_dir / job.id / "plan.json").is_file()
+    finally:
+        db.close()
+
+
+def _make_und_epub(path: Path) -> Path:
+    """Минимальный EPUB с ``dc:language=und`` (как ставит конвертер, IMPORT_FLAGS)."""
+    container = (
+        '<?xml version="1.0"?>'
+        '<container version="1.0" '
+        'xmlns="urn:oasis:names:tc:opendocument:xmlns:container">'
+        '<rootfiles><rootfile full-path="OEBPS/content.opf" '
+        'media-type="application/oebps-package+xml"/></rootfiles></container>'
+    )
+    opf = (
+        '<?xml version="1.0" encoding="utf-8"?>'
+        '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" '
+        'unique-identifier="uid"><metadata '
+        'xmlns:dc="http://purl.org/dc/elements/1.1/">'
+        '<dc:identifier id="uid">und</dc:identifier><dc:title>Und</dc:title>'
+        "<dc:language>und</dc:language></metadata><manifest>"
+        '<item id="ch1" href="chapter1.xhtml" '
+        'media-type="application/xhtml+xml"/></manifest>'
+        "<spine><itemref idref=\"ch1\"/></spine></package>"
+    )
+    xhtml = (
+        '<?xml version="1.0" encoding="utf-8"?>'
+        '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>ch</title></head>'
+        "<body><p>The quick brown fox jumps over the lazy dog by the river.</p></body></html>"
+    )
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("mimetype", "application/epub+zip", compress_type=zipfile.ZIP_STORED)
+        archive.writestr("META-INF/container.xml", container)
+        archive.writestr("OEBPS/content.opf", opf)
+        archive.writestr("OEBPS/chapter1.xhtml", xhtml)
+    return path
+
+
+def test_l0_7_und_dc_skips_pair_precheck(
+    tmp_path: Path,
+    make_env: Callable[[Mapping[str, str | None] | None], Path],
+    make_yaml: Callable[..., Path],
+) -> None:
+    """L0.7/L0.5: ``dc:language=und`` (неопределённый, ставит конвертер) — не язык.
+
+    Создание задания НЕ отклоняет пару (und → ru) как unsupported: исходный язык
+    определит детектор на validating. Ретрегрессия: до фикса — InputValidationError
+    «языковая пара und → ru не поддерживается (L0.2)»."""
+    settings, db, repo = _settings_for(tmp_path, make_env, make_yaml)
+    try:
+        epub = _make_und_epub(tmp_path / "und.epub")
+        assert read_dc_language(epub) == "und", "фикстура: dc:language должен быть und"
+        job = create_job(repo, settings, source_path=epub, target_language="ru")
+        assert job.status is JobStatus.CREATED
     finally:
         db.close()
 

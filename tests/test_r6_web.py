@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Серия R, R6 (ТЗ §8): импорт — 16 форматов, ebook-convert в контейнере.
 
 Т-подложки:
@@ -30,6 +33,7 @@ from __future__ import annotations
 import base64
 import json
 import re
+import shutil
 import time
 import zipfile
 from pathlib import Path
@@ -39,7 +43,11 @@ from fastapi.testclient import TestClient
 from test_u1_web import AUTH_SECRET, U1Env, _auth_header, _make_u1_storage
 
 from app.adapters.convert import reset_probe_cache
-from app.services.import_book import sweep_orphans
+from app.core.config import load_settings
+from app.core.config_edit import apply_ui_main_language
+from app.core.errors import AppError
+from app.services.import_book import sweep_orphans, title_author
+from app.services.llm_config import set_main_language
 from app.web.auth import csrf_token
 from app.web.strings import UI_STRINGS
 
@@ -399,9 +407,32 @@ def test_r6_26_convert_invokes_epub3(r6_env: U1Env, tmp_path: Path) -> None:
     log = r6_env.base / "r6_stubs" / "stub.log"
     assert log.is_file()
     lines = [line.rstrip() for line in log.read_text(encoding="utf-8").splitlines()]
+    # заголовок — из имени исходного файла (служебный префикс u1-<uuid8>-
+    # и расширение убрал), иначе calibre кладёт в dc:title имя файла
     assert any(
-        line.endswith(" --epub-version 3 --language und") for line in lines
+        " --epub-version 3 --language und --title r6_epub3" in line for line in lines
     ), lines
+
+
+def test_title_author_pure() -> None:
+    """title_author: чистый заголовок из имени книги u1-<uuid8>-<файл>;
+    автор — только при явном «…, by …» (с разделителем)."""
+    # префикс u1-<uuid8>- и расширение не попадают в заголовок
+    assert title_author("u1-de4cc5ad-Book Name.pdf") == ("Book Name", None)
+    # явный «, by Автор» → заголовок + автор
+    assert title_author("u1-abc12345-The Battle For Your Mind, by Dick Sutphen.pdf") == (
+        "The Battle For Your Mind",
+        "Dick Sutphen",
+    )
+    # дефис + by, регистр
+    assert title_author("u1-00000000-Hobbit - by J.R.R. Tolkien.fb2") == (
+        "Hobbit",
+        "J.R.R. Tolkien",
+    )
+    # «by» без разделителя не режет (ложный срабатывание)
+    assert title_author("u1-00000000-A Story by the Sea.epub") == ("A Story by the Sea", None)
+    # кириллица, without by
+    assert title_author("u1-00000000-Биллиберда. Путь.pdf") == ("Биллиберда. Путь", None)
 
 
 def test_r6_6_import_intermediate_status(r6_env: U1Env, tmp_path: Path) -> None:
@@ -796,3 +827,75 @@ def test_r6_25_t17_guard_and_js_wiring() -> None:
     # V2 §8.3: выдача — /books/{f}/cover WebP srcset 256/512 (не /api/books/covers)
     card = (templates / "_book_card.html").read_text(encoding="utf-8")
     assert "/cover?v=" in card and "&w=256" in card and "&w=512" in card
+
+
+# ------------------------------------------------------------------ основной язык (Part 2)
+
+
+def test_main_lang_apply_edit() -> None:
+    """apply_ui_main_language: вставка / обновление / сброс / fail-closed
+    (нет секции ui)."""
+    sample = "server:\n  port: 8422\nui:\n  page_size: 20\nllm:\n  x: 1\n"
+    out1 = apply_ui_main_language(sample, "ru")
+    assert "  main_language: ru" in out1
+    out2 = apply_ui_main_language(out1, "de")
+    assert "  main_language: de" in out2 and "main_language: ru" not in out2
+    out3 = apply_ui_main_language(out2, "")
+    assert 'main_language: ""' in out3
+    with pytest.raises(ValueError):
+        apply_ui_main_language("server:\n  port: 1\n", "ru")
+
+
+def test_main_lang_set_service(r6_env: U1Env, tmp_path: Path) -> None:
+    """set_main_language: запись ui.main_language в config.yaml + релоад;
+    неизвестный код — отказ (файл не тронут); сброс — пустая строка."""
+    profile = r6_env.profiles["r6"]
+    cfg = tmp_path / "config.yaml"
+    env = tmp_path / "test.env"
+    text = profile.cfg.read_text(encoding="utf-8")
+    if "ui:" not in text:  # в шаблоне теста секции нет — добавляем
+        text += "ui:\n  page_size: 20\n"
+    cfg.write_text(text, encoding="utf-8")
+    shutil.copyfile(profile.env_file, env)
+    s1 = set_main_language(config_path=cfg, env_path=env, code="ru")
+    assert s1.ui.main_language == "ru"
+    assert "main_language: ru" in cfg.read_text(encoding="utf-8")
+    with pytest.raises(AppError):
+        set_main_language(config_path=cfg, env_path=env, code="zz")
+    assert "main_language: ru" in cfg.read_text(encoding="utf-8")  # не тронут
+    s3 = set_main_language(config_path=cfg, env_path=env, code="")
+    assert s3.ui.main_language == ""
+
+
+def test_main_lang_endpoint_and_import(r6_env: U1Env, tmp_path: Path) -> None:
+    """Эндпоинт POST /settings/languages (303 + релоад) и импорт: целевой
+    язык при импорте = основной язык пользователя (если не задан)."""
+    profile = r6_env.profiles["r6"]
+    orig_cfg = profile.cfg.read_text(encoding="utf-8")
+    try:
+        if "ui:" not in orig_cfg:  # в шаблоне теста секции нет — добавляем
+            profile.cfg.write_text(orig_cfg + "ui:\n  page_size: 20\n", encoding="utf-8")
+        # в тесте app создан без путей конфигов (в проде — из __main__)
+        profile.app.state.config_path = profile.cfg
+        profile.app.state.env_path = profile.env_file
+        page = profile.client.get("/settings/languages")
+        assert page.status_code == 200, page.text
+        assert 'name="main_language"' in page.text
+        resp = profile.client.post(
+            "/settings/languages",
+            data={"main_language": "ru"},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303, resp.text
+        assert profile.app.state.settings.ui.main_language == "ru"
+        src = tmp_path / "ml_main.txt"
+        src.write_text("The quick brown fox jumps over the lazy dog.\n" * 6, encoding="utf-8")
+        up = _post_file(profile.client, src)
+        assert up.status_code == 202, up.text
+        rec = _wait_import(profile.client, str(up.json()["import_id"]))
+        assert rec["status"] == "done", rec
+        meta = _read_meta(profile.app.state.settings.input_dir, str(rec["name"]))
+        assert meta["target_default"] == "ru", meta
+    finally:
+        profile.cfg.write_text(orig_cfg, encoding="utf-8")
+        profile.app.state.settings = load_settings(profile.cfg, profile.env_file)

@@ -334,7 +334,7 @@ wheels = [
 ]
 
 [[package]]
-name = "epubtranslator"
+name = "moxmate"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

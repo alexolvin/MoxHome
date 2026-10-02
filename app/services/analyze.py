@@ -1,8 +1,11 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Лёгкий разбор книги (L0): заголовок + определение языка.
 
 Один механизм (Rule 8): ``read_epub`` + ``detect_book`` — те же примитивы,
 что стадия validating (E2.5/L0.4). Потребители: API (``POST /api/books``)
-и CLI (``epubtranslator analyze``, U2) — дублирования разбора нет.
+и CLI (``moxmate analyze``, U2) — дублирования разбора нет.
 """
 
 from __future__ import annotations

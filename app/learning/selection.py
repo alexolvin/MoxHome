@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """S1.1/S1.2 (ТЗ_03): детерминированный отбор лексики (до LLM).
 
 Цепочка (обратный порядок запрещён — ТЗ_03 S1): пары выравнивания E6 →

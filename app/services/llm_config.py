@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """LLM-настройки (R8, ТЗ §13): валидация, проба соединения, запись.
 
 Единые точки для JS-эндпоинтов (POST /api/llm/probe, GET /api/llm/models)
@@ -30,6 +33,7 @@ from app.core.config_edit import (
     apply_env_keys,
     apply_llm_profiles,
     apply_translation_pipeline,
+    apply_ui_main_language,
 )
 from app.core.errors import AppError, ConfigurationError, SettingsIncompleteError
 from app.core.llm_settings import validate_llm_settings
@@ -593,6 +597,43 @@ def update_llm_config(
     finally:
         cfg_tmp.unlink(missing_ok=True)
         env_tmp.unlink(missing_ok=True)
+    return load_settings(config_path, env_path)
+
+
+def set_main_language(*, config_path: Path, env_path: Path, code: str) -> Settings:
+    """Запись основного языка пользователя (ui.main_language). fail-closed.
+
+    ``code`` — код языка из реестра либо "" (сброс). Возврат — НОВЫЕ
+    `Settings` (веб-эндпоинт подменяет `app.state.settings`). AppError —
+    неизвестный код / невалидный конфиг (файлы не тронуты)."""
+    current = load_settings(config_path, env_path)
+    if code:
+        registry = load_registry(current.languages_root)
+        if code not in registry:
+            raise AppError(
+                _S["err_llm_config_invalid"].format(reason=f"неизвестный язык: {code}")
+            )
+    cfg_text = config_path.read_text(encoding="utf-8")
+    try:
+        new_cfg = apply_ui_main_language(cfg_text, code)
+    except ValueError as exc:
+        raise AppError(_S["err_llm_config_invalid"].format(reason=str(exc))) from exc
+    cfg_tmp = config_path.with_name(f".u3-cfg-{os.getpid()}.partial")
+    try:
+        cfg_tmp.write_text(new_cfg, encoding="utf-8")
+        try:
+            load_settings(cfg_tmp, env_path)
+        except ConfigurationError as exc:
+            raise AppError(
+                _S["err_llm_config_invalid"].format(reason=_load_error_reason(exc))
+            ) from exc
+        cfg_tmp.replace(config_path)
+    except OSError as exc:
+        raise AppError(
+            _S["err_llm_config_invalid"].format(reason=f"запись: {exc}")
+        ) from exc
+    finally:
+        cfg_tmp.unlink(missing_ok=True)
     return load_settings(config_path, env_path)
 
 

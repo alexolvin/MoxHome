@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Детерминированный OpenAI-совместимый mock-сервер (тестовый инструмент, D3).
 
 Назначение: E1 (разведка движка), E3 (воркер) и E4 (клиент анализа).

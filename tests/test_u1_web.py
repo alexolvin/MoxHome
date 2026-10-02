@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """U1 (ТЗ_04 §U1): Web UI + API — тесты T-U1-1..T-U1-10.
 
 Принципы (тот же стандарт, что у предыдущих стадий):
@@ -768,7 +771,7 @@ def test_u1_7_auth_denies_without_secret(u1_env: U1Env) -> None:
 
 def test_u3_1_login_centered_block(u1_env: U1Env) -> None:
     """V3 §7.1: вход — центрированный блок: плитка (book-open), бренд
-    «EpubTranslator», поле пароля, кнопка «Войти»; appbar на входе скрыт
+    «MoxMate», поле пароля, кнопка «Войти»; appbar на входе скрыт
     (css-auth.css линкуется только auth.html)."""
     client = u1_env.profiles["auth"].client
     response = client.get("/login")
@@ -778,7 +781,7 @@ def test_u3_1_login_centered_block(u1_env: U1Env) -> None:
     assert 'class="u3-auth-tile"' in text
     assert "/static/icons.svg#book-open" in text
     assert 'class="u3-auth-brand"' in text
-    assert ">EpubTranslator</h1>" in text
+    assert ">MoxMate</h1>" in text
     assert 'type="password" name="password"' in text
     assert 'class="u3-btn u3-primary"' in text
     assert ">Войти</button>" in text

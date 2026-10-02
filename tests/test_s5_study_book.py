@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Тесты S5: сборка учебного EPUB и экспорт карточек (ТЗ_03 §S5, CONTROL S5-1…S5-9).
 
 Сквозной in-process прогон (Pipeline) — по образцу S1Env; mock-сервер (D3) —
@@ -842,7 +845,7 @@ def test_s5_7_anki_structure_blocker(s5_env: S5Env) -> None:
         fields = line.split("\t")
         assert len(fields) == len(columns)
         assert all("\t" not in f and "\n" not in f for f in fields)
-        assert fields[-1].startswith("epubtranslator ")
+        assert fields[-1].startswith("moxmate ")
 
 
 # ------------------------------------------------------------------ T-S5-8

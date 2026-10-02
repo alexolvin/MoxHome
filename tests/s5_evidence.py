@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """S5: доказательства CONTROL (verbatim).
 
 Запуск: python tests/s5_evidence.py
@@ -474,7 +477,7 @@ def _ev_s5_7(run: S5Run) -> None:
     lines = (run.job_dir / "cards.anki.tsv").read_text(encoding="utf-8").splitlines()
     header = "\n".join(line for line in lines[:4])
     tags_ok = all(
-        line.split("\t")[-1].startswith("epubtranslator ") for line in lines[3:]
+        line.split("\t")[-1].startswith("moxmate ") for line in lines[3:]
     )
     content = (
         _header()
@@ -483,7 +486,7 @@ def _ev_s5_7(run: S5Run) -> None:
         + "cards.anki.tsv (verbatim, служебные строки + первая строка данных):\n"
         + header
         + f"\n\nтеги всех {len(lines) - 3} строк начинаются с "
-        f"«epubtranslator »: {tags_ok}\n\n"
+        f"«moxmate »: {tags_ok}\n\n"
         + "S5-7: не проверено фактически (BLOCKER: Anki/pyanki отсутствуют "
         "в окружении) — формат Anki text import верифицирован структурно: "
         "служебные строки, число полей, теги, verbatim-пример выше\n"

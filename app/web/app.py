@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Сборка приложения U1: FastAPI + Jinja2 + статика + auth middleware.
 
 Доступ (ТЗ U1.10): bind-адрес — Tailscale-адрес из конфигурации
@@ -29,6 +32,7 @@ import hmac
 import logging
 from collections.abc import Awaitable, Callable
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import FastAPI, Request
 from fastapi.exception_handlers import http_exception_handler as _default_http_handler
@@ -134,7 +138,7 @@ def create_app(
     E3.1: API пишет только создание задания и управляющие команды).
     ``config_path``/``env_path`` (R8) — пути config.yaml/.env для
     записи LLM-настроек и релоада `app.state.settings` после сохранения."""
-    app = FastAPI(title="EpubTranslator", docs_url=None, redoc_url=None)
+    app = FastAPI(title="MoxMate", docs_url=None, redoc_url=None)
     if db is None:
         db = Database(settings.jobs_db_path, settings.storage.busy_timeout_ms)
     repo = JobRepository(db)
@@ -165,6 +169,11 @@ def create_app(
     # в шаблонах условий по статусу нет, только эти два вызова.
     templates.env.filters["status_group"] = views.status_group
     templates.env.globals["status_glyph"] = views.status_glyph
+    # Имя книги — сегмент пути в URL. В ``srcset`` пробел — разделитель
+    # кандидатов, поэтому незакодированное имя (с пробелом) ломает srcset
+    # (браузер не делает запрос — битая картинка). Кодируем путь (как enc() в
+    # app.js).
+    templates.env.filters["urlpath"] = lambda value: quote(str(value or ""), safe="")
 
     @app.middleware("http")
     async def _auth(

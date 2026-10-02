@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """T-L1-1…T-L1-12: языковые пакеты (L1) — NLP, таксономия, карточки, CEFR, частотность.
 
 TZ_EpubTranslator_03_PACKAGES.md, раздел L1:

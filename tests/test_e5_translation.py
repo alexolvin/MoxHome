@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """T-E5: тракт T (перевод): адаптер, атомарный выход, валидация, QC (CONTROL E5-1…E5-8).
 
 Тесты:

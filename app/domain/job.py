@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Модель задания (E3): статусы и явная таблица допустимых переходов (E3.2).
 
 Машина состояний — из ТЗ §E3 (+ L3, ТЗ_02 §L3; + LEARNING, ТЗ_03):

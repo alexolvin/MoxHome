@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Тесты S3: грамматические заметки (ТЗ_03 §S3, CONTROL S3-1…S3-7).
 
 Сквозной in-process прогон (Pipeline) до LEARNING — по образцу S2 (S1Env

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Сигнал «воркер жив» (D87): heartbeat-файл в корне storage.
 
 Воркер — отдельный процесс (ТЗ §5.4); API/UI не знают его PID, пока он не

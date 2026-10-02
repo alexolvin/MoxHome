@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Тесты S4: summary главы, вопросы на понимание, упражнения (ТЗ_03 §S4,
 CONTROL S4-1…S4-7).
 

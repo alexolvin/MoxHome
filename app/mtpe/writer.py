@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Писатель сегментов (MTPE M5, §4.9) — четвёртое разрешённое исключение Rule 8.
 
 Дублирует сборку EPUB **движка** (`epub-translator 0.1.10`, эталон

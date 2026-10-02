@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Языковой слой (L0): реестр языков, матрица пар, определение исходного языка.
 
 Язык — это данные, а не код (Rule 1): `config/languages/<code>/pack.yaml`,

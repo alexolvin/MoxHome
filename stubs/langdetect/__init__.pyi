@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 # Заглушка langdetect 1.0.9 (нет py.typed): только реально используемый API (L0.4).
 # Явный re-export (`as`) — mypy --strict включает --no-implicit-reexport.
 from langdetect.detector_factory import (

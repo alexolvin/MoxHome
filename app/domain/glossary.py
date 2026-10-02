@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Модели глоссария книги (L2): запись термина, парадигма, стиль, расхождения.
 
 Глоссарий строится ДО перевода (L2.1–L2.4) и хранится с книгой, привязанно к

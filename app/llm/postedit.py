@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Транспорт постредактуры (MTPE M4, §4.2) — ветвь `chat` того же клиента `app/llm/`.
 
 Второго клиента нет (§4.9): это третья ветвь клиента тракта A рядом с `chat`

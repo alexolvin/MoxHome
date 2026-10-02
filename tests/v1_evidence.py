@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """V1 (ТЗ_04 §V1.5–V1.9): verbatim-захваты программы приёмки.
 
 Запуск: python tests/v1_evidence.py [v5 v6 v7 v8 v8a v9]   (без аргументов — все)

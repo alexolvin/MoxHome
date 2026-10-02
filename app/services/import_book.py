@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """R6 импорт (TZ §8): не-EPUB-книга → EPUB в потоке веб-процесса
 (арена воркера не занимается), состояние
 ``checking → converting → validating → language → done | error``.
@@ -13,6 +16,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import threading
 import time
 import uuid
@@ -37,6 +41,31 @@ STATUS_ERROR = "error"
 
 _registry: dict[str, dict[str, Any]] = {}
 _lock = threading.Lock()
+
+# Имя книги ``u1-<uuid8>-<файл>``; для заголовка уберём служебный префикс
+# и расширение — иначе calibre кладёт в dc:title имя входного файла
+# (``u1-…-…source``), и мусор виден в карточке.
+_TITLE_PREFIX_RE = re.compile(r"^u1-[0-9a-f]{8}-")
+# Явный «…, by …» / «… - by …» в имени файла → автор (только с разделителем,
+# чтобы не резать «A Story by the Sea»).
+_BY_AUTHOR_RE = re.compile(r"[,;_\-–—]\s*by\s+", re.IGNORECASE)
+
+
+def title_author(name: str) -> tuple[str, str | None]:
+    """Чистый заголовок (и автор, если в имени файла явно «…, by …»).
+
+    Ввод — имя книги ``u1-<uuid8>-<файл>`` (с расширением). Выход —
+    ``(заголовок, автор|None)``; расширение и служебный префикс не в
+    заголовок попадают."""
+    stem = _TITLE_PREFIX_RE.sub("", name)
+    stem = Path(stem).stem.strip() or name
+    match = _BY_AUTHOR_RE.search(stem)
+    if match:
+        title, author = stem.split(match.group(0), 1)
+        title, author = title.strip(), author.strip()
+        if title and author:
+            return title, author
+    return stem, None
 
 
 def get_import(import_id: str) -> dict[str, Any] | None:
@@ -101,12 +130,16 @@ def _run_import(
     cover_path: str | None = None
     try:
         _set(import_id, status="converting", step="converting")
+        title, author = title_author(name)
+        flags = (*IMPORT_FLAGS, "--title", title)
+        if author:
+            flags = (*flags, "--authors", author)
         ok, reason = convert(
             settings,
             src,
             dest,
             timeout=settings.converter.timeout_import_seconds,
-            flags=IMPORT_FLAGS,
+            flags=flags,
         )
         if not ok:
             raise AppError(_S["err_convert_failed"].format(reason=reason))
@@ -138,6 +171,13 @@ def _run_import(
             "cover": cover.status,
             "cover_sha256": cover.sha256,
         }
+        # автор — из имени файла («…, by …»); scan_book автора не читает
+        if author is not None and not meta.get("author"):
+            meta["author"] = author
+        # основной язык пользователя → целевой при импорте (если не задан)
+        main = settings.ui.main_language
+        if main and not meta.get("target_default"):
+            meta["target_default"] = main
         views.write_book_meta(dest, meta)
         _set(import_id, status=STATUS_DONE, step=STATUS_DONE, name=dest.name)
         logger.info("import_done: id=%s name=%s format=%s", import_id, dest.name, fmt)

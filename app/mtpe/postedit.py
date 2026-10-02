@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Постредактура тракта M (MTPE M4, §4): LLM дорабатывает MT-черновик там, где он
 ошибочен, и переносит маркеры оригинала в итоговый текст. Переписывание верного
 черновика «покрасивее» — дефект (жёсткие H1–H7 + мягкие S1–S3, §4.5).

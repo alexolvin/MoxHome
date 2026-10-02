@@ -1,45 +1,99 @@
-# Папки, начинающиеся с точки (рабочее пространство агента .a/ и любые другие)
+# =====================================================================
+# MoxMate — publication .gitignore
+# Local-only, secret, and agent/operational paths are NEVER published.
+# (GitHub Publication Standard §7.)
+# =====================================================================
+
+# --- Dot-directories (agent workspaces, caches, venvs) are local.
+# --- The public community/CI directory `.github/` is the exception.
 .[!.]*/
 ..?*/
+!.github/
 
-# Секреты (E0.9)
+# --- Secrets and local configuration (never commit) ---
 .env
 .env.demo
 .env.r6ctl
 .env.r7ctl
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.yaml
+secrets.yml
+.qwenignore
 
-# Сигнал «воркер жив» (D87): runtime-файл heartbeat в корне storage.root
+# --- Real (non-example) configuration ---
+config/config.yaml
+config/demo.yaml
+
+# --- Worker runtime heartbeat (runtime file in storage.root) ---
 .worker-heartbeat
 
-# Реальный YAML-конфиг (в репо — только example)
-config/config.yaml
-
-# Данные и рабочие области (E0.9)
+# --- Data and working areas (local only) ---
 cache/
 input/
-**/.covers/
 jobs/
-
-# Демо-стенд TZ-UI-V (локальные данные, TZ §11)
-data/demo/
+output/
+working/
+backups/
 books/
 logs/
-data/lexicons/
-data/models/
-data/tools/
-data/v1/
+data/
 *.db
 *.db-wal
 *.db-shm
-working/
-output/
+**/.covers/
 
-# TZ-UI-AUDIT: декларация чисел — управляется владельцем, живёт локально (не в git).
-# Аудит её читает, а скрипты требуют чистого дерева (git status --porcelain пуст).
+# --- Agent / local AI tooling (never publish) ---
+.agent/
+.agents/
+.a/
+.qwen/
+.claude/
+.cursor/
+*.agent.md
+
+# --- Terminal sessions / multiplexers / distributed-agent runtime ---
+*.tmux
+*.tmux.log
+tmux-client-*
+tmux-server-*
+screenlog.*
+*.screenlog
+zellij-dump*
+nohup.out
+*.cast
+tmux-sessions/
+terminal-dumps/
+.queue/
+.runs/
+gpu-pool/
+
+# --- Internal engineering docs (acceptance evidence, screenshots, handoffs)
+# --- are local-only and intentionally not published.
+docs/CONTROL/
+docs/design/
+docs/HANDOFF.md
+docs/UI_HANDOFF.md
+docs/ENGINE_PROBE.md
+docs/MTPE_BASELINE.md
+docs/DECISIONS.md
+
+# --- Author-specific test that exercises a private tailnet stand (no public
+# --- value; the values are the publisher's own overlay network).
+tests/v111_tailnet.py
+
+# --- Owner-managed UI rule declaration (lives locally, not in git) ---
 ui-rules.yaml
 
-# Python
+# --- Python ---
 .venv/
+.venv-anki/
+.venv-u3browser/
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -48,3 +102,8 @@ __pycache__/
 dist/
 build/
 *.egg-info/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+Desktop.ini

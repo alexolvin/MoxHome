@@ -9,6 +9,22 @@
 <p class="hint">{{ s["languages_hint"] }}</p>
 
 <div id="u1-languages">
+  {# Основной язык пользователя (Part 2): целевой язык при импорте.
+     no-JS: форма (радио + «Сохранить»); запись — ui.main_language. #}
+  <form method="post" action="/settings/languages">
+    <input type="hidden" name="u3_csrf" value="{{ csrf }}">
+    <h2>{{ s["main_lang_h2"] }}</h2>
+    <p class="hint">{{ s["main_lang_hint"] }}</p>
+    {% if error %}<p class="u3-warn" role="alert">{{ error }}</p>{% endif %}
+    <div class="u3-mainlang-list">
+      <label class="u3-check"><input type="radio" name="main_language" value=""{% if not data.main_language %} checked{% endif %}>{{ s["main_lang_notset"] }}</label>
+      {% for l in data.languages %}
+      <label class="u3-check"><input type="radio" name="main_language" value="{{ l.code }}"{% if data.main_language == l.code %} checked{% endif %}>{{ l.name }} <span class="u3-mono">({{ l.code }})</span></label>
+      {% endfor %}
+    </div>
+    <button type="submit" class="u3-btn u3-primary u3-sheet-action">{{ s["common_save"] }}</button>
+  </form>
+
   <h2>{{ s["languages_h2"] }}</h2>
   <table class="u3-table">
     <thead>

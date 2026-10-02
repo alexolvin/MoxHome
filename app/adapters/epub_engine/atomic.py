@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Атомарная публикация выходного EPUB (E5.6/E5.9; механизм общий с L3).
 
 Порядок (единый для движка E5 и пересборки L3, Rule 8):

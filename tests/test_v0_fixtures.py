@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """V0 (TZ-UI-V §11): фикстуры вредных обложек — структура.
 
 Поведенческие тесты (заглушка + WARNING, процесс жив) — в V2 (V-T8);

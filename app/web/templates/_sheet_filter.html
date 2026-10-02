@@ -24,6 +24,8 @@
     </label>
     {% endfor %}
   </fieldset>
-  <a class="u3-btn u3-sheet-action" href="{{ reset_href }}">{{ s["state_reset_filter"] }}</a>
-  <button type="submit" class="u3-btn u3-primary u3-sheet-action">{{ s["jobs_filter_apply"] }}</button>
+  <span class="u3-sheet-actions">
+    <a class="u3-btn u3-sheet-action" href="{{ reset_href }}">{{ s["state_reset_filter"] }}</a>
+    <button type="submit" class="u3-btn u3-primary u3-sheet-action">{{ s["jobs_filter_apply"] }}</button>
+  </span>
 </form>

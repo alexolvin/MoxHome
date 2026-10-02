@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """U3 (ТЗ_04 §U3): verbatim-захваты критериев CONTROL U3.
 
 Запуск: python tests/u3_evidence.py

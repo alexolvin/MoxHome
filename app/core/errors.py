@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Ошибки приложения и классы кодов выхода.
 
 Коды выхода (U2): 0 — успех; 2 — конфигурация; 3 — валидация входа;

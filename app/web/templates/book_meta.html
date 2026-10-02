@@ -37,9 +37,9 @@
     </label>
     <input type="hidden" name="field" value="{{ field }}">
     <input type="hidden" name="u3_csrf" value="{{ csrf }}">
-    <span class="u3-filter-actions">
-      <button type="submit" class="u3-btn u3-primary u3-sheet-action">{{ s["book_meta_save"] }}</button>
+    <span class="u3-sheet-actions">
       <a class="u3-btn" href="/books/{{ book_name }}">{{ s["book_delete_cancel"] }}</a>
+      <button type="submit" class="u3-btn u3-primary">{{ s["book_meta_save"] }}</button>
     </span>
   </form>
 </section>

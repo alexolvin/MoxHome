@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """HTML-страницы U1/U3: разделы Books/Jobs/Settings (+Languages/Models/Prompts).
 
 Каждая страница — серверный shell + данные своего API-endpoint'а
@@ -59,6 +62,7 @@ from app.services.llm_config import (
     probe_conflict,
     probe_profile,
     probe_request,
+    set_main_language,
     update_llm_config,
 )
 from app.storage.jobs_repo import JobRepository, TransitionRecord
@@ -450,6 +454,8 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
             # model_dump: Jinja tojson сериализует plain-dict (установка
             # из YAML — Rule 1; шаблоны числовых дефолтов не имеют).
             "ui": settings.ui.model_dump(),
+            # R7-бис: каталоги экспорта — подсказка «куда сохраняется файл».
+            "storage": {"jobs": str(settings.jobs_dir), "input": str(settings.input_dir)},
             # Серия R §5: точка на вкладке «Задания», пока есть run-задание.
             "has_active_job": bool(repo.list_jobs(1, 0, statuses=_RUN_STATUS_VALUES)),
         }
@@ -1624,6 +1630,50 @@ def build_router(  # noqa: PLR0915 — роутер FastAPI: все маршру
                 "data": views.languages_view(_live(request)),
             },
         )
+
+    @router.post("/settings/languages")
+    async def settings_languages_save(request: Request) -> Response:
+        """Основной язык пользователя (ui.main_language) — no-JS: форма
+        (радио + «Сохранить»). Успех — 303; отказ — 400, страница со строкой."""
+        form = await request.form()
+        code = str(form.get("main_language") or "").strip()
+        config_path = request.app.state.config_path
+        env_path = request.app.state.env_path
+        if config_path is None or env_path is None:
+            return templates.TemplateResponse(
+                request,
+                "settings_languages.html",
+                ctx(request, _page_title("title_languages"), "settings")
+                | {
+                    "back_href": "/settings",
+                    "data": views.languages_view(_live(request)),
+                    "error": _S["err_llm_paths_missing"],
+                },
+                status_code=500,
+            )
+        try:
+            new = set_main_language(
+                config_path=config_path, env_path=env_path, code=code
+            )
+        except AppError as exc:
+            return templates.TemplateResponse(
+                request,
+                "settings_languages.html",
+                ctx(request, _page_title("title_languages"), "settings")
+                | {
+                    "back_href": "/settings",
+                    "data": views.languages_view(_live(request)),
+                    "error": exc.message,
+                },
+                status_code=400,
+            )
+        request.app.state.settings = new
+        logger.info(
+            "main_language_save(no-js): user=%s code=%s",
+            _basic_user(request),
+            code or "-",
+        )
+        return RedirectResponse("/settings/languages", status_code=303)
 
     @router.get("/settings/prompts")
     def settings_prompts_page(request: Request) -> Response:

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Глоссарий книги (L2): кандидаты (детерминированно), аннотация LLM,
 парадигма, хранилище с привязкой к версии книги, проверка согласованности.
 

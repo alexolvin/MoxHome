@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Точка входа приложения.
 
 E0: загрузка и валидация конфигурации (fail closed), инициализация логирования.
@@ -23,7 +26,7 @@ from app.web.app import create_app
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="epubtranslator",
+        prog="moxmate",
         description="Конвейер перевода EPUB и генерации учебных материалов",
     )
     parser.add_argument("--config", default="config/config.yaml", help="путь к YAML-конфигу")

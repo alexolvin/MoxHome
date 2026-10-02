@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """API U1/U3 (JSON). Каждый endpoint имеет потребителя в UI (критерий U1-6);
 бизнес-логики здесь нет — только сервисы ``app.services``, ``JobRepository``
 и чтение артефактов через ``app.web.views`` (Rule 8: дублей механизмов нет).
@@ -381,6 +384,10 @@ async def _import_epub_sync(
             "cover": cover.status,
             "cover_sha256": cover.sha256,
         }
+        # основной язык пользователя → целевой при импорте (если не задан)
+        main = settings.ui.main_language
+        if main and not meta.get("target_default"):
+            meta["target_default"] = main
         views.write_book_meta(dest, meta)
     except HTTPException:
         views.delete_book_files(settings, dest)

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """CEFR-уровень (L1.4): источник — машиночитаемый лексикон либо вычисление.
 
 - `cefr_source: lexicon:<имя>` — уровень из лексикона `config/languages/<code>/

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Прогрев LLM-стадий (MTPE §4.6): один запрос в профиль ДО первой рабочей
 LLM-операции стадии/фазы. «Свой клиент» воркера (не движок): прокси держит
 запрос на время загрузки модели, а HTTP-таймауты рабочих запросов короче —

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Адаптер движка epub-translator (E5.1, D2): единственная точка импорта движка.
 
 - `TranslationEngine` — Protocol (интерфейс по ТЗ E5).

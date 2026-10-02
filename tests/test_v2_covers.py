@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """V2 (TZ-UI-V §8): поведенческие тесты обложек — V-T8 + V-T9.
 
 V-T8: 3 вредоносные фикстуры (SVG / заявленные 1 ГБ / обрезанный JPEG) →

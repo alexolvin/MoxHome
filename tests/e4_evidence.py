@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Сборщик verbatim-evidence для CONTROL E4 (не тест; assertions — в test_e4_llm.py).
 
 Запуск: python tests/e4_evidence.py

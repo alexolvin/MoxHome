@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """R3 — управление заданиями (TZ-UI-R §11/§14/§15): бэкенд-часть.
 
 Т-подложка T5 (кнопки первичных действий — UI-замером) и T15 (no-JS-

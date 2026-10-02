@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Детерминированные проверки ответа постредактуры (MTPE §4.5) + таксономия (данные).
 
 Жёсткие H1–H7: любой отказ ведёт на следующую ступень лестницы §4.6. Мягкие S1–S3:

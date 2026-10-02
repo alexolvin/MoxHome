@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """``/api/health`` (U1.8): покомпонентное состояние, никогда общий флаг.
 
 Форма ответа — как в ТЗ (пример)::

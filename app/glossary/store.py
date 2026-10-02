@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Хранилище данных книги (Л2.3/L2.7/L2.8): глоссарий, стилевой профиль,
 расхождения — в `books/_book_store/<book_key>/<source_hash>/` под storage.root
 (D81: зарезервированное поддерево — исходная книга может лежать в `books/`

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """V2 — готовность продукта: удобство интерфейса (T-V2-1..T-V2-5).
 
 - T-V2-1: сигнал «воркер жив» (D87): живой воркер ``--loop`` пишет heartbeat

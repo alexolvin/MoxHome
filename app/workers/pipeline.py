@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Конвейер задания (E3/E5): исполнение этапов с идемпотентностью (E3.6).
 
 - validating: ридер (E2) → validation.json (вкл. TOC/metadata/сегменты по главам

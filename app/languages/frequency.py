@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Частотность (L1.3): `wordfreq` + Zipf-шкала.
 
 Источник — `wordfreq` (замороженный снимок ~2021 года — ограничение

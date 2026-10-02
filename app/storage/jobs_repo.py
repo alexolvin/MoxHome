@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Alex Olvin. All rights reserved.
+# Proprietary. Unauthorized use, copying, modification, or distribution
+# is prohibited without prior written permission. See LICENSE.
 """Репозиторий заданий (E3): состояния, переходы, аренда, результаты этапов.
 
 - Переход вне явной таблицы — JobStateError + запись в лог (E3.2).
